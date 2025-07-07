@@ -18,6 +18,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
+import android.content.Context;
 
 public class FloatingAccessibilityService extends AccessibilityService {
 
@@ -41,6 +42,22 @@ public class FloatingAccessibilityService extends AccessibilityService {
     private boolean isManuallyHidden = false;
     private Handler autoShowHandler;
     private Runnable autoShowRunnable;
+    
+    // 数学题验证管理器
+    private MathChallengeManager mathChallengeManager;
+    
+    // 保活管理器
+    private ServiceKeepAliveManager keepAliveManager;
+    
+    // 应用状态检测增强
+    private Handler appStateHandler;
+    private Runnable appStateCheckRunnable;
+    private long lastAppStateCheckTime = 0;
+    private static final long APP_STATE_CHECK_INTERVAL = 2000; // 2秒检查一次
+    private long mathChallengeStartTime = 0; // 数学题验证开始时间
+    
+    // 设置管理器
+    private SettingsManager settingsManager;
 
     @Override
     public void onServiceConnected() {
@@ -62,6 +79,15 @@ public class FloatingAccessibilityService extends AccessibilityService {
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC;
         info.flags = AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS;
         setServiceInfo(info);
+        
+        // 初始化保活管理器
+        initKeepAliveManager();
+        
+        // 初始化应用状态检测增强机制
+        initAppStateEnhancement();
+        
+        // 初始化设置管理器
+        settingsManager = new SettingsManager(this);
         
         Log.d(TAG, "AccessibilityService 配置完成");
     }
@@ -88,6 +114,12 @@ public class FloatingAccessibilityService extends AccessibilityService {
                 return;
             }
             
+            // 过滤掉输入法应用，避免输入法弹出时误判
+            if (isInputMethodApp(packageName)) {
+                Log.d(TAG, "忽略输入法应用: " + packageName);
+                return;
+            }
+            
             boolean newState = XIAOHONGSHU_PACKAGE.equals(packageName);
             Log.d(TAG, "是否是小红书: " + newState + " (期望包名: " + XIAOHONGSHU_PACKAGE + ")");
             
@@ -105,6 +137,35 @@ public class FloatingAccessibilityService extends AccessibilityService {
                 }
             }
         }
+    }
+    
+    /**
+     * 判断是否是输入法应用
+     */
+    private boolean isInputMethodApp(String packageName) {
+        // 常见输入法包名列表
+        String[] inputMethodPackages = {
+            "com.baidu.input",           // 百度输入法
+            "com.baidu.input_hihonor",   // 荣耀百度输入法
+            "com.sohu.inputmethod.sogou", // 搜狗输入法
+            "com.iflytek.inputmethod",   // 讯飞输入法
+            "com.touchtype.swiftkey",    // SwiftKey
+            "com.google.android.inputmethod.latin", // Google输入法
+            "com.android.inputmethod.latin", // 系统输入法
+            "com.samsung.android.honeyboard", // 三星输入法
+            "com.huawei.inputmethod",    // 华为输入法
+            "com.xiaomi.inputmethod",    // 小米输入法
+            "com.tencent.qqpinyin",      // QQ输入法
+            "com.qihoo.inputmethod"      // 360输入法
+        };
+        
+        for (String inputMethodPackage : inputMethodPackages) {
+            if (packageName.contains(inputMethodPackage) || packageName.contains("input")) {
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     private void handleWindowContentChanged(AccessibilityEvent event) {
@@ -282,6 +343,145 @@ public class FloatingAccessibilityService extends AccessibilityService {
     }
     
     /**
+     * 初始化保活管理器
+     */
+    private void initKeepAliveManager() {
+        keepAliveManager = new ServiceKeepAliveManager(this);
+        keepAliveManager.setOnServiceStateListener(new ServiceKeepAliveManager.OnServiceStateListener() {
+            @Override
+            public void onScreenUnlocked() {
+                Log.d(TAG, "屏幕解锁，检查悬浮窗状态");
+                // 屏幕解锁后，重新检查小红书状态
+                if (isInXiaohongshu && "discover".equals(lastDetectedInterface) && !isManuallyHidden) {
+                    if (!isFloatingWindowVisible) {
+                        handler.postDelayed(() -> {
+                            Log.d(TAG, "屏幕解锁后恢复悬浮窗显示");
+                            showFloatingWindow();
+                        }, 1000);
+                    }
+                }
+            }
+            
+            @Override
+            public void onUserPresent() {
+                Log.d(TAG, "用户解锁设备，重新检查应用状态");
+                // 用户解锁后，重新检测当前是否在小红书
+                handler.postDelayed(() -> {
+                    if (isInXiaohongshu) {
+                        checkTextContentOptimized();
+                    }
+                }, 1500);
+            }
+            
+            @Override
+            public void onServiceNeedRestart() {
+                Log.w(TAG, "检测到服务需要重启，但AccessibilityService由系统管理");
+                // AccessibilityService由系统管理，这里主要是记录日志
+                // 用户需要手动到设置中重新开启无障碍服务
+            }
+        });
+        
+        // 启动保活机制
+        keepAliveManager.startKeepAlive();
+        keepAliveManager.startPeriodicCheck();
+        
+        Log.d(TAG, "保活管理器已初始化");
+    }
+    
+    /**
+     * 初始化应用状态检测增强机制
+     */
+    private void initAppStateEnhancement() {
+        appStateHandler = new Handler(Looper.getMainLooper());
+        
+        appStateCheckRunnable = new Runnable() {
+            @Override
+            public void run() {
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastAppStateCheckTime > APP_STATE_CHECK_INTERVAL) {
+                    lastAppStateCheckTime = currentTime;
+                    
+                    // 检查当前前台应用状态
+                    checkCurrentAppState();
+                }
+                
+                // 继续循环检查
+                appStateHandler.postDelayed(this, APP_STATE_CHECK_INTERVAL);
+            }
+        };
+        
+        // 开始定期检查
+        appStateHandler.postDelayed(appStateCheckRunnable, APP_STATE_CHECK_INTERVAL);
+        Log.d(TAG, "应用状态检测增强机制已启动");
+    }
+    
+    /**
+     * 检查当前前台应用状态
+     */
+    private void checkCurrentAppState() {
+        try {
+            // 如果数学题验证界面正在显示，暂停状态检测
+            if (mathChallengeManager != null && mathChallengeManager.isMathChallengeActive()) {
+                Log.v(TAG, "数学题验证界面活跃，暂停应用状态检测");
+                return;
+            }
+            
+            // 如果数学题验证界面刚刚显示（前5秒），也暂停状态检测
+            // 这可以避免输入法显示过程中的误判
+            if (mathChallengeStartTime > 0 && (System.currentTimeMillis() - mathChallengeStartTime) < 5000) {
+                Log.v(TAG, "数学题验证界面刚显示，暂停应用状态检测");
+                return;
+            }
+            
+            // 获取当前窗口信息
+            AccessibilityNodeInfo rootNode = getRootInActiveWindow();
+            if (rootNode != null) {
+                String currentPackage = rootNode.getPackageName().toString();
+                boolean isCurrentlyInXiaohongshu = XIAOHONGSHU_PACKAGE.equals(currentPackage);
+                
+                Log.v(TAG, "当前前台应用: " + currentPackage + ", 是否小红书: " + isCurrentlyInXiaohongshu);
+                
+                // 如果检测到自己的应用，可能是悬浮窗或输入法导致的，不进行状态切换
+                if (currentPackage.equals(getPackageName())) {
+                    Log.v(TAG, "检测到自己的应用包名，可能是悬浮窗或输入法影响，保持当前状态");
+                    rootNode.recycle();
+                    return;
+                }
+                
+                // 如果状态发生变化，进行相应处理
+                if (isCurrentlyInXiaohongshu != isInXiaohongshu) {
+                    Log.d(TAG, "应用状态发生变化: " + isInXiaohongshu + " -> " + isCurrentlyInXiaohongshu);
+                    
+                    isInXiaohongshu = isCurrentlyInXiaohongshu;
+                    
+                    if (isInXiaohongshu) {
+                        Log.d(TAG, "重新进入小红书，开始检测文本内容");
+                        // 延迟检查，给应用时间加载
+                        handler.postDelayed(() -> {
+                            checkTextContentOptimized();
+                        }, 1000);
+                    } else {
+                        Log.d(TAG, "离开小红书，隐藏悬浮窗");
+                        hideFloatingWindow();
+                        lastDetectedInterface = "";
+                    }
+                }
+                
+                // 如果在小红书中，定期检查界面状态
+                if (isInXiaohongshu) {
+                    checkTextContentOptimized();
+                }
+                
+                rootNode.recycle();
+            } else {
+                Log.v(TAG, "无法获取当前窗口根节点");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "检查应用状态时出错", e);
+        }
+    }
+    
+    /**
      * 临时调试方法：输出可见文本内容
      */
     private void logVisibleTexts(AccessibilityNodeInfo node, int currentDepth, int maxDepth) {
@@ -335,7 +535,12 @@ public class FloatingAccessibilityService extends AccessibilityService {
             // 设置悬浮窗参数
             layoutParams = new WindowManager.LayoutParams();
             layoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-            layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+            // 添加FLAG_NOT_FOCUSABLE确保悬浮窗不会获得焦点，避免影响前台应用检测
+            // 添加FLAG_NOT_TOUCH_MODAL确保触摸事件可以传递到下层窗口
+            // 添加FLAG_NOT_TOUCHABLE确保悬浮窗默认不拦截触摸事件（除了特定区域）
+            layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
+                                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
+                                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
             layoutParams.format = PixelFormat.TRANSLUCENT;
             layoutParams.gravity = Gravity.LEFT | Gravity.TOP;
             
@@ -375,44 +580,54 @@ public class FloatingAccessibilityService extends AccessibilityService {
             Log.d(TAG, "悬浮窗参数: 宽度=" + layoutParams.width + ", 高度=" + layoutParams.height + ", X=" + layoutParams.x + ", Y=" + layoutParams.y);
             
             // 设置界面元素
-            TextView statusText = floatingView.findViewById(R.id.tv_content);
-            statusText.setText("✅ 检测到\"发现\"页面");
+            // 初始化数学题验证管理器
+            mathChallengeManager = new MathChallengeManager(this, floatingView, windowManager, layoutParams, handler, this);
+            mathChallengeManager.setOnMathChallengeListener(new MathChallengeManager.OnMathChallengeListener() {
+                @Override
+                public void onAnswerCorrect() {
+                    Log.d(TAG, "数学题验证成功，关闭悬浮窗");
+                    isManuallyHidden = true;
+                    hideFloatingWindow();
+                    
+                    // 根据用户设置的时间间隔自动重新显示
+                    if (autoShowRunnable != null) {
+                        autoShowHandler.removeCallbacks(autoShowRunnable);
+                    }
+                    autoShowRunnable = () -> {
+                        Log.d(TAG, "自动重新显示悬浮窗");
+                        isManuallyHidden = false;
+                        if (isInXiaohongshu && "discover".equals(lastDetectedInterface)) {
+                            showFloatingWindow();
+                        }
+                    };
+                    
+                    // 使用用户设置的时间间隔
+                    long interval = settingsManager.getAutoShowIntervalMillis();
+                    autoShowHandler.postDelayed(autoShowRunnable, interval);
+                    
+                    String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
+                    Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗");
+                }
+                
+                @Override
+                public void onChallengeCancel() {
+                    Log.d(TAG, "用户取消数学题验证");
+                }
+            });
             
             Button closeButton = floatingView.findViewById(R.id.btn_close);
             closeButton.setOnClickListener(v -> {
                 Log.d(TAG, "用户点击关闭按钮");
-                isManuallyHidden = true;
-                hideFloatingWindow();
-                
-                // 5秒后自动重新显示
-                if (autoShowRunnable != null) {
-                    autoShowHandler.removeCallbacks(autoShowRunnable);
-                }
-                autoShowRunnable = () -> {
-                    Log.d(TAG, "自动重新显示悬浮窗");
-                    isManuallyHidden = false;
-                    if (isInXiaohongshu && "discover".equals(lastDetectedInterface)) {
-                        showFloatingWindow();
-                    }
-                };
-                autoShowHandler.postDelayed(autoShowRunnable, 5000);
+                // 显示数学题验证界面
+                mathChallengeManager.showMathChallenge();
             });
-            
-            closeButton.setOnLongClickListener(v -> {
-                Log.d(TAG, "用户长按关闭按钮");
-                isManuallyHidden = true;
-                hideFloatingWindow();
-                
-                // 取消自动显示
-                if (autoShowRunnable != null) {
-                    autoShowHandler.removeCallbacks(autoShowRunnable);
-                }
-                return true;
-            });
-            
+
             // 设置拖拽功能
             View dragArea = floatingView.findViewById(R.id.top_info_layout);
             dragArea.setOnTouchListener(new FloatingOnTouchListener(layoutParams, windowManager));
+            
+            // 更新悬浮窗内容，显示当前时间间隔设置
+            updateFloatingWindowContent();
             
             // 添加悬浮窗到窗口管理器
             try {
@@ -426,14 +641,34 @@ public class FloatingAccessibilityService extends AccessibilityService {
         }
     }
     
+    /**
+     * 更新悬浮窗内容
+     */
+    private void updateFloatingWindowContent() {
+        if (floatingView == null || settingsManager == null) return;
+        
+        TextView contentText = floatingView.findViewById(R.id.tv_content);
+        if (contentText != null) {
+            String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
+            String content = "小红书应用正在运行\n关闭后" + intervalText + "自动重新显示";
+            contentText.setText(content);
+        }
+    }
+    
     private void hideFloatingWindow() {
         if (isFloatingWindowVisible) {
             Log.d(TAG, "开始隐藏悬浮窗");
+            
+            // 隐藏数学题验证界面
+            if (mathChallengeManager != null && mathChallengeManager.isMathChallengeActive()) {
+                mathChallengeManager.hideMathChallenge();
+            }
             
             try {
                 if (floatingView != null && windowManager != null) {
                     windowManager.removeView(floatingView);
                     floatingView = null;
+                    mathChallengeManager = null; // 清理管理器引用
                     Log.d(TAG, "悬浮窗隐藏成功");
                 }
             } catch (Exception e) {
@@ -454,6 +689,32 @@ public class FloatingAccessibilityService extends AccessibilityService {
 
     public static boolean isServiceRunning() {
         return instance != null;
+    }
+    
+    /**
+     * 通知设置已更新，刷新悬浮窗内容
+     */
+    public static void notifySettingsChanged() {
+        if (instance != null && instance.isFloatingWindowVisible) {
+            instance.updateFloatingWindowContent();
+            Log.d(instance.TAG, "设置已更新，悬浮窗内容已刷新");
+        }
+    }
+    
+    /**
+     * 记录数学题验证开始时间
+     */
+    public void onMathChallengeStart() {
+        mathChallengeStartTime = System.currentTimeMillis();
+        Log.d(TAG, "数学题验证开始，暂停应用状态检测");
+    }
+    
+    /**
+     * 重置数学题验证时间
+     */
+    public void onMathChallengeEnd() {
+        mathChallengeStartTime = 0;
+        Log.d(TAG, "数学题验证结束，恢复应用状态检测");
     }
 
     @Override
@@ -477,6 +738,11 @@ public class FloatingAccessibilityService extends AccessibilityService {
             autoShowHandler.removeCallbacks(autoShowRunnable);
         }
         
+        // 清理应用状态检测Handler
+        if (appStateHandler != null && appStateCheckRunnable != null) {
+            appStateHandler.removeCallbacks(appStateCheckRunnable);
+        }
+        
         // 清理悬浮窗
         if (floatingView != null && windowManager != null) {
             try {
@@ -485,6 +751,11 @@ public class FloatingAccessibilityService extends AccessibilityService {
             } catch (Exception e) {
                 Log.e(TAG, "清理悬浮窗时出错", e);
             }
+        }
+        
+        // 清理保活管理器
+        if (keepAliveManager != null) {
+            keepAliveManager.stopKeepAlive();
         }
         
         Log.d(TAG, "AccessibilityService 已销毁");

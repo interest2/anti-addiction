@@ -6,6 +6,12 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <!-- 无障碍服务权限 -->
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
+    <!-- 接收启动完成广播 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- 唤醒锁权限，用于保活 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 前台服务权限 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:allowBackup="true"

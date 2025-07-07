@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#EE000000"
+    android:background="#FCF8EB"
     android:clickable="true"
     android:focusable="true">
 
@@ -22,7 +22,7 @@
             android:id="@+id/tv_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="悬浮窗口 - 小红书"
+            android:text="小红书防沉迷"
             android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold" />
@@ -35,6 +35,92 @@
             android:text="小红书应用正在运行"
             android:textColor="#CCCCCC"
             android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- 数学题验证区域 -->
+    <LinearLayout
+        android:id="@+id/math_challenge_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/top_info_layout"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:background="#FF333333"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔢 回答数学题才能关闭悬浮窗"
+            android:textColor="#FFFF9800"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:id="@+id/tv_math_question"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3 + 5 = ?"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <EditText
+                android:id="@+id/et_math_answer"
+                android:layout_width="120dp"
+                android:layout_height="48dp"
+                android:layout_marginRight="12dp"
+                android:background="#FFFFFF"
+                android:gravity="center"
+                android:hint="答案"
+                android:inputType="numberSigned"
+                android:imeOptions="actionDone"
+                android:maxLength="4"
+                android:textColor="#000000"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/btn_submit_answer"
+                android:layout_width="80dp"
+                android:layout_height="48dp"
+                android:layout_marginRight="8dp"
+                android:text="确定"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:backgroundTint="#4CAF50" />
+
+            <Button
+                android:id="@+id/btn_cancel_close"
+                android:layout_width="80dp"
+                android:layout_height="48dp"
+                android:text="取消"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_math_result"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text=""
+            android:textColor="#FFFF5722"
+            android:textSize="12sp"
+            android:visibility="gone" />
 
     </LinearLayout>
 
@@ -53,16 +139,4 @@
         android:backgroundTint="#FF6B6B"
         android:gravity="center" />
 
-    <!-- 中央提示文本 -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:text="🔴 小红书检测中 🔴"
-        android:textColor="#FFFFFF"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:background="#FF888888"
-        android:padding="16dp" />
-
-</RelativeLayout> 
+</RelativeLayout>

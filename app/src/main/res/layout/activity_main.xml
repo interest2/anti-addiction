@@ -26,7 +26,7 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="32dp"
         android:layout_marginTop="16dp"
-        android:text="使用无障碍服务准确检测小红书APP。打开小红书时显示悬浮窗，离开时自动隐藏。需要开启悬浮窗权限和无障碍服务。"
+        android:text="打开小红书时显示悬浮窗，离开时自动隐藏。需要开启悬浮窗权限和无障碍服务。"
         android:textAlignment="center"
         android:textSize="16sp"
         app:layout_constraintBottom_toTopOf="@+id/btn_test"
@@ -51,9 +51,33 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="显示当前前台应用"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/btn_optimization_guide"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/btn_test" />
+
+    <Button
+        android:id="@+id/btn_optimization_guide"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="电池优化指引"
+        android:backgroundTint="@color/orange"
+        app:layout_constraintBottom_toTopOf="@+id/btn_time_setting"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btn_show_current_app" />
+
+    <Button
+        android:id="@+id/btn_time_setting"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="⏰ 时间间隔设置"
+        android:backgroundTint="@color/green"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btn_optimization_guide" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

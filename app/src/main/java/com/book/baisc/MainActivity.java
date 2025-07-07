@@ -43,6 +43,12 @@ public class MainActivity extends AppCompatActivity {
         
         // 设置显示当前应用按钮点击事件
         setupShowCurrentAppButton();
+        
+        // 设置优化指引按钮点击事件
+        setupOptimizationGuideButton();
+        
+        // 设置时间间隔设置按钮点击事件
+        setupTimeSettingButton();
     }
 
     private void checkAndRequestPermissions() {
@@ -135,9 +141,13 @@ public class MainActivity extends AppCompatActivity {
             boolean hasOverlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this);
             boolean hasAccessibility = isAccessibilityServiceEnabled();
             
-            String status = String.format("权限状态:\n悬浮窗: %s\n无障碍: %s", 
+            SettingsManager settingsManager = new SettingsManager(this);
+            String currentInterval = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
+            
+            String status = String.format("权限状态:\n悬浮窗: %s\n无障碍: %s\n⏰ 时间间隔: %s", 
                 hasOverlay ? "✓" : "✗", 
-                hasAccessibility ? "✓" : "✗");
+                hasAccessibility ? "✓" : "✗",
+                currentInterval);
             
             Toast.makeText(this, status, Toast.LENGTH_LONG).show();
             android.util.Log.d("MainActivity", status);
@@ -178,10 +188,138 @@ public class MainActivity extends AppCompatActivity {
             }
             
             // 显示检测逻辑信息（已优化：取消广播通信）
-            String detectionInfo = "检测逻辑 (已优化响应速度):\n小红书包名: com.xingin.xhs\n显示条件: 检测到\"发现\"文本\n隐藏条件: 检测到\"搜索\"文本或离开小红书\n手动关闭: 5秒后自动重新显示\n性能优化: 防抖+缓存+限制递归深度\n⚡ 新优化: 取消广播通信，直接管理悬浮窗";
+            SettingsManager settingsManager = new SettingsManager(this);
+            String currentInterval = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
+            
+            String detectionInfo = "检测逻辑 (已优化响应速度):\n小红书包名: com.xingin.xhs\n显示条件: 检测到\"发现\"文本\n隐藏条件: 检测到\"搜索\"文本或离开小红书\n🔢 数学题验证关闭功能\n- 点击关闭需要答题\n- 答对后" + currentInterval + "自动重新显示\n⚙️ 时间间隔配置\n- 当前设置: " + currentInterval + "\n- 可在\"时间间隔设置\"中修改\n⚡ 性能优化: 取消广播通信，直接管理悬浮窗\n🔋 保活优化: 锁屏解锁、应用切换后自动恢复\n- 2秒定期检查应用状态\n- 系统广播监听屏幕解锁\n- 建议设置电池优化白名单\n🔧 输入法优化: 解决验证界面输入法闪烁问题";
             Toast.makeText(this, detectionInfo, Toast.LENGTH_LONG).show();
             android.util.Log.d("MainActivity", detectionInfo);
         });
+    }
+    
+    private void setupOptimizationGuideButton() {
+        Button optimizationButton = findViewById(R.id.btn_optimization_guide);
+        optimizationButton.setOnClickListener(v -> showOptimizationGuide());
+    }
+    
+    private void showOptimizationGuide() {
+        StringBuilder guide = new StringBuilder();
+        guide.append("🔋 电池优化指引\n\n");
+        guide.append("为了确保悬浮窗功能正常使用，请进行以下设置：\n\n");
+        
+        guide.append("1️⃣ 电池优化白名单\n");
+        guide.append("- 设置 → 电池 → 电池优化 → 不限制\n");
+        guide.append("- 或设置 → 应用管理 → 电池优化 → 允许后台运行\n\n");
+        
+        guide.append("2️⃣ 自启动管理\n");
+        guide.append("- 设置 → 应用管理 → 自启动管理 → 允许\n");
+        guide.append("- 华为/荣耀: 手机管家 → 应用启动管理 → 手动管理\n\n");
+        
+        guide.append("3️⃣ 后台应用限制\n");
+        guide.append("- 设置 → 应用管理 → 后台应用刷新 → 允许\n");
+        guide.append("- 小米: 设置 → 省电与电池 → 应用配置 → 无限制\n\n");
+        
+        guide.append("4️⃣ 通知权限\n");
+        guide.append("- 设置 → 通知管理 → 允许通知\n\n");
+        
+        guide.append("5️⃣ 锁屏清理\n");
+        guide.append("- 设置 → 锁屏 → 锁屏清理 → 关闭\n\n");
+        
+        guide.append("⚠️ 注意：不同品牌手机设置路径可能不同\n");
+        guide.append("如果仍有问题，请重启手机后再试");
+        
+        // 显示指引
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("电池优化指引")
+               .setMessage(guide.toString())
+               .setPositiveButton("去电池设置", (dialog, which) -> {
+                   try {
+                       Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                       startActivity(intent);
+                   } catch (Exception e) {
+                       try {
+                           Intent intent = new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS);
+                           startActivity(intent);
+                       } catch (Exception ex) {
+                           Intent intent = new Intent(Settings.ACTION_SETTINGS);
+                           startActivity(intent);
+                       }
+                   }
+               })
+               .setNegativeButton("稍后处理", null)
+                               .show();
+    }
+    
+    private void setupTimeSettingButton() {
+        Button timeSettingButton = findViewById(R.id.btn_time_setting);
+        timeSettingButton.setOnClickListener(v -> showTimeSettingDialog());
+    }
+    
+    private void showTimeSettingDialog() {
+        SettingsManager settingsManager = new SettingsManager(this);
+        int currentInterval = settingsManager.getAutoShowInterval();
+        
+        // 获取可选的时间间隔
+        int[] intervals = SettingsManager.getAvailableIntervals();
+        String[] intervalTexts = new String[intervals.length];
+        int selectedIndex = 0;
+        
+        for (int i = 0; i < intervals.length; i++) {
+            intervalTexts[i] = SettingsManager.getIntervalDisplayText(intervals[i]);
+            if (intervals[i] == currentInterval) {
+                selectedIndex = i;
+            }
+        }
+        
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("设置自动显示时间间隔")
+               .setSingleChoiceItems(intervalTexts, selectedIndex, null)
+               .setPositiveButton("确定", (dialog, which) -> {
+                   int selectedPosition = ((android.app.AlertDialog) dialog).getListView().getCheckedItemPosition();
+                   if (selectedPosition >= 0) {
+                       int newInterval = intervals[selectedPosition];
+                       settingsManager.setAutoShowInterval(newInterval);
+                       
+                       String message = "时间间隔已设置为 " + SettingsManager.getIntervalDisplayText(newInterval);
+                       Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+                       
+                       // 通知AccessibilityService设置已更改
+                       FloatingAccessibilityService.notifySettingsChanged();
+                       
+                       // 显示详细说明
+                       showIntervalExplanation(newInterval);
+                   }
+               })
+               .setNegativeButton("取消", null)
+               .setNeutralButton("重置默认", (dialog, which) -> {
+                   settingsManager.resetToDefault();
+                   Toast.makeText(this, "已重置为默认设置（5秒）", Toast.LENGTH_SHORT).show();
+                   
+                   // 通知AccessibilityService设置已更改
+                   FloatingAccessibilityService.notifySettingsChanged();
+               })
+               .show();
+    }
+    
+    private void showIntervalExplanation(int interval) {
+        StringBuilder explanation = new StringBuilder();
+        explanation.append("⏰ 时间间隔设置说明\n\n");
+        explanation.append("当前设置: ").append(SettingsManager.getIntervalDisplayText(interval)).append("\n\n");
+        explanation.append("📌 说明:\n");
+        explanation.append("• 关闭悬浮窗后，等待设定时间再自动显示\n");
+        explanation.append("• 较短间隔：更频繁提醒，防沉迷效果更强\n");
+        explanation.append("• 较长间隔：减少打扰，适合偶尔使用\n\n");
+        explanation.append("💡 建议:\n");
+        explanation.append("• 强制防沉迷：3-5秒\n");
+        explanation.append("• 平衡使用：10-15秒\n");
+        explanation.append("• 轻度提醒：30-60秒\n\n");
+        explanation.append("⚠️ 注意：设置立即生效，无需重启应用");
+        
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        builder.setTitle("设置完成")
+               .setMessage(explanation.toString())
+               .setPositiveButton("知道了", null)
+               .show();
     }
 
     @Override
