@@ -75,8 +75,7 @@ public class DeviceInfoReporter {
         deviceInfo.put("model", Build.MODEL); // 型号
         deviceInfo.put("manufacturer", Build.MANUFACTURER); // 制造商
         deviceInfo.put("device", Build.DEVICE); // 设备代号
-        deviceInfo.put("product", Build.PRODUCT); // 产品名称
-        
+
         // 系统版本信息
         deviceInfo.put("androidVersion", Build.VERSION.RELEASE); // Android版本
         deviceInfo.put("sdkVersion", Build.VERSION.SDK_INT); // SDK版本
@@ -85,7 +84,6 @@ public class DeviceInfoReporter {
         
         // 硬件信息
         deviceInfo.put("hardware", Build.HARDWARE); // 硬件信息
-        deviceInfo.put("board", Build.BOARD); // 主板信息
         deviceInfo.put("cpuAbi", Build.CPU_ABI); // CPU架构
         
         // 序列号（处理权限问题）
