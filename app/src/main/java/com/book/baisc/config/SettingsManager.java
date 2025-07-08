@@ -1,4 +1,4 @@
-package com.book.baisc;
+package com.book.baisc.config;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -14,7 +14,8 @@ public class SettingsManager {
     
     // 默认自动显示间隔（秒）
     private static final int DEFAULT_AUTO_SHOW_INTERVAL = 5;
-    
+    private static final int[] intervalArray = {10, 60, 300, 1200};
+
     private SharedPreferences prefs;
     
     public SettingsManager(Context context) {
@@ -32,7 +33,9 @@ public class SettingsManager {
      * 设置自动显示间隔（秒）
      */
     public void setAutoShowInterval(int seconds) {
-        if (seconds >= 3 && seconds <= 60) {
+        int minInterval = intervalArray[0];
+        int maxInterval = intervalArray[intervalArray.length - 1];
+        if (seconds >= minInterval && seconds <= maxInterval) {
             prefs.edit().putInt(KEY_AUTO_SHOW_INTERVAL, seconds).apply();
         }
     }
@@ -55,7 +58,7 @@ public class SettingsManager {
      * 获取可选的时间间隔列表
      */
     public static int[] getAvailableIntervals() {
-        return new int[]{5, 10, 15, 20, 30, 45, 60};
+        return intervalArray;
     }
     
     /**

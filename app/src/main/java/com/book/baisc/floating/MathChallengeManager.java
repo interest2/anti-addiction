@@ -1,4 +1,4 @@
-package com.book.baisc;
+package com.book.baisc.floating;
 
 import android.content.Context;
 import android.os.Handler;
@@ -13,6 +13,8 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.util.Random;
+
+import com.book.baisc.R;
 
 /**
  * 数学题验证管理器
@@ -271,7 +273,6 @@ public class MathChallengeManager {
         Log.d(TAG, "生成数学题: " + question + " (答案: " + currentAnswer + ")");
         return question;
     }
-
     
     /**
      * 处理提交答案

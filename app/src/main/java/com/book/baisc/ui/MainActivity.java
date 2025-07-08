@@ -1,4 +1,4 @@
-package com.book.baisc;
+package com.book.baisc.ui;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -18,11 +18,18 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.view.accessibility.AccessibilityManager;
 import java.util.List;
 
+import com.book.baisc.R;
+import com.book.baisc.floating.FloatingAccessibilityService;
+import com.book.baisc.lifecycle.AppLifecycleObserver;
+import com.book.baisc.network.DeviceInfoReporter;
+import com.book.baisc.config.SettingsManager;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_OVERLAY_PERMISSION = 1001;
     private static final int REQUEST_ACCESSIBILITY_PERMISSION = 1003;
     private AppLifecycleObserver appLifecycleObserver;
+    private DeviceInfoReporter deviceInfoReporter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +56,10 @@ public class MainActivity extends AppCompatActivity {
         
         // 设置时间间隔设置按钮点击事件
         setupTimeSettingButton();
+        
+        // 初始化设备信息上报器并上报设备信息
+        deviceInfoReporter = new DeviceInfoReporter(this);
+        deviceInfoReporter.reportDeviceInfo();
     }
 
     private void checkAndRequestPermissions() {
@@ -143,11 +154,13 @@ public class MainActivity extends AppCompatActivity {
             
             SettingsManager settingsManager = new SettingsManager(this);
             String currentInterval = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
+            boolean isTimerRunning = FloatingAccessibilityService.isAutoShowTimerRunning();
             
-            String status = String.format("权限状态:\n悬浮窗: %s\n无障碍: %s\n⏰ 时间间隔: %s", 
+            String status = String.format("权限状态:\n悬浮窗: %s\n无障碍: %s\n⏰ 时间间隔: %s\n📱 定时器状态: %s", 
                 hasOverlay ? "✓" : "✗", 
                 hasAccessibility ? "✓" : "✗",
-                currentInterval);
+                currentInterval,
+                isTimerRunning ? "运行中" : "未运行");
             
             Toast.makeText(this, status, Toast.LENGTH_LONG).show();
             android.util.Log.d("MainActivity", status);
@@ -155,6 +168,12 @@ public class MainActivity extends AppCompatActivity {
             if (hasOverlay && hasAccessibility) {
                 // 无障碍服务已启动，悬浮窗功能已可用
                 Toast.makeText(this, "✅ 服务已启动，打开小红书时会显示悬浮窗", Toast.LENGTH_SHORT).show();
+                
+                // 测试设备信息上报功能
+                if (deviceInfoReporter != null) {
+                    deviceInfoReporter.reportDeviceInfo();
+                    Toast.makeText(this, "📊 设备信息上报测试已执行", Toast.LENGTH_SHORT).show();
+                }
             } else {
                 String missing = "";
                 if (!hasOverlay) missing += "悬浮窗权限 ";
@@ -283,8 +302,8 @@ public class MainActivity extends AppCompatActivity {
                        String message = "时间间隔已设置为 " + SettingsManager.getIntervalDisplayText(newInterval);
                        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
                        
-                       // 通知AccessibilityService设置已更改
-                       FloatingAccessibilityService.notifySettingsChanged();
+                       // 通知AccessibilityService时间间隔设置已更改，立即应用新间隔
+                       FloatingAccessibilityService.notifyIntervalChanged();
                        
                        // 显示详细说明
                        showIntervalExplanation(newInterval);
@@ -295,8 +314,8 @@ public class MainActivity extends AppCompatActivity {
                    settingsManager.resetToDefault();
                    Toast.makeText(this, "已重置为默认设置（5秒）", Toast.LENGTH_SHORT).show();
                    
-                   // 通知AccessibilityService设置已更改
-                   FloatingAccessibilityService.notifySettingsChanged();
+                   // 通知AccessibilityService时间间隔设置已更改，立即应用新间隔
+                   FloatingAccessibilityService.notifyIntervalChanged();
                })
                .show();
     }
@@ -313,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
         explanation.append("• 强制防沉迷：3-5秒\n");
         explanation.append("• 平衡使用：10-15秒\n");
         explanation.append("• 轻度提醒：30-60秒\n\n");
-        explanation.append("⚠️ 注意：设置立即生效，无需重启应用");
+        explanation.append("⚠️ 注意：设置立即生效，正在运行的定时器会立即更新");
         
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
         builder.setTitle("设置完成")
@@ -356,4 +375,20 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-}
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        
+        // 释放设备信息上报器资源
+        if (deviceInfoReporter != null) {
+            deviceInfoReporter.release();
+            deviceInfoReporter = null;
+        }
+        
+        // 释放应用生命周期监听器
+        if (appLifecycleObserver != null) {
+            appLifecycleObserver = null;
+        }
+    }
+} 
