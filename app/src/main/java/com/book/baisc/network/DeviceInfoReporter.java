@@ -32,10 +32,7 @@ public class DeviceInfoReporter {
     private static final String TAG = "DeviceInfoReporter";
     
     // 云端接口配置
-/*
-    private static final String REPORT_URL = "https://api.example.com/device/report"; // 请替换为实际的接口地址
-*/
-    private static final String REPORT_URL = "http://localhost:8002/antiAddict/report"; // 请替换为实际的接口地址
+    private static final String REPORT_URL = "https://www.ratetend.com:5001/antiAddict/report"; // 请替换为实际的接口地址
     private static final String CONTENT_TYPE = "application/json";
     private static final int TIMEOUT_CONNECT = 10000; // 10秒连接超时
     private static final int TIMEOUT_READ = 15000; // 15秒读取超时
@@ -81,31 +78,31 @@ public class DeviceInfoReporter {
         deviceInfo.put("product", Build.PRODUCT); // 产品名称
         
         // 系统版本信息
-        deviceInfo.put("android_version", Build.VERSION.RELEASE); // Android版本
-        deviceInfo.put("sdk_version", Build.VERSION.SDK_INT); // SDK版本
-        deviceInfo.put("build_id", Build.ID); // 构建ID
-        deviceInfo.put("build_time", Build.TIME); // 构建时间
+        deviceInfo.put("androidVersion", Build.VERSION.RELEASE); // Android版本
+        deviceInfo.put("sdkVersion", Build.VERSION.SDK_INT); // SDK版本
+        deviceInfo.put("buildId", Build.ID); // 构建ID
+        deviceInfo.put("buildTime", Build.TIME); // 构建时间
         
         // 硬件信息
         deviceInfo.put("hardware", Build.HARDWARE); // 硬件信息
         deviceInfo.put("board", Build.BOARD); // 主板信息
-        deviceInfo.put("cpu_abi", Build.CPU_ABI); // CPU架构
+        deviceInfo.put("cpuAbi", Build.CPU_ABI); // CPU架构
         
         // 序列号（处理权限问题）
         String serialNumber = getSerialNumber();
-        deviceInfo.put("serial_number", serialNumber);
+        deviceInfo.put("serialNumber", serialNumber);
         
         // 唯一标识符
         String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
-        deviceInfo.put("android_id", androidId);
+        deviceInfo.put("androidId", androidId);
         
         // 应用信息
         try {
             PackageManager pm = context.getPackageManager();
             PackageInfo packageInfo = pm.getPackageInfo(context.getPackageName(), 0);
-            deviceInfo.put("app_version", packageInfo.versionName);
-            deviceInfo.put("app_version_code", packageInfo.versionCode);
-            deviceInfo.put("app_package", packageInfo.packageName);
+            deviceInfo.put("appVersion", packageInfo.versionName);
+            deviceInfo.put("appVersionCode", packageInfo.versionCode);
+            deviceInfo.put("appPackage", packageInfo.packageName);
         } catch (PackageManager.NameNotFoundException e) {
             Log.w(TAG, "获取应用信息失败", e);
         }
@@ -115,8 +112,8 @@ public class DeviceInfoReporter {
         if (cm != null) {
             NetworkInfo networkInfo = cm.getActiveNetworkInfo();
             if (networkInfo != null) {
-                deviceInfo.put("network_type", networkInfo.getTypeName());
-                deviceInfo.put("network_connected", networkInfo.isConnected());
+                deviceInfo.put("networkType", networkInfo.getTypeName());
+                deviceInfo.put("networkConnected", networkInfo.isConnected());
             }
         }
         

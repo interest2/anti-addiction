@@ -16,6 +16,7 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Button;
+import android.util.DisplayMetrics;
 
 import com.book.baisc.R;
 import com.book.baisc.lifecycle.ServiceKeepAliveManager;
@@ -38,17 +39,13 @@ public class FloatingAccessibilityService extends AccessibilityService
     // 性能优化相关
     private Handler handler;
     private Runnable contentCheckRunnable;
-    private static final long CONTENT_CHECK_DELAY = 300; // 300ms防抖延迟
     private long lastContentCheckTime = 0;
     private String lastDetectedInterface = ""; // 缓存上次检测的界面类型
     
-    // 悬浮窗管理相关
-    private WindowManager windowManager;
-    private View floatingView;
-    private WindowManager.LayoutParams layoutParams;
-    private boolean isManuallyHidden = false;
-    private Handler autoShowHandler;
-    private Runnable autoShowRunnable;
+    // 积极显示策略相关
+    private boolean hasShownFloatingWindowOnce = false;
+    private long lastFloatingWindowShowTime = 0;
+    private static final long FLOATING_WINDOW_PROTECTION_TIME = 1000; // 1秒保护时间
     
     // 数学题验证管理器
     private MathChallengeManager mathChallengeManager;
@@ -68,6 +65,14 @@ public class FloatingAccessibilityService extends AccessibilityService
     
     // 设备信息上报器
     private DeviceInfoReporter deviceInfoReporter;
+
+    // 悬浮窗管理相关
+    private WindowManager windowManager;
+    private View floatingView;
+    private WindowManager.LayoutParams layoutParams;
+    private boolean isManuallyHidden = false;
+    private Handler autoShowHandler;
+    private Runnable autoShowRunnable;
 
     @Override
     public void onServiceConnected() {
@@ -118,111 +123,127 @@ public class FloatingAccessibilityService extends AccessibilityService
     }
 
     private void handleWindowStateChanged(AccessibilityEvent event) {
-        CharSequence packageName = event.getPackageName();
-        Log.d(TAG, "窗口状态变化，包名: " + packageName);
-        
-        if (packageName != null) {
-            String currentPackage = packageName.toString();
+        if (event.getPackageName() != null) {
+            String packageName = event.getPackageName().toString();
+            Log.d(TAG, "窗口状态改变，当前应用: " + packageName);
             
-            if (XIAOHONGSHU_PACKAGE.equals(currentPackage)) {
-                Log.d(TAG, "检测到进入小红书应用");
-                isInXiaohongshu = true;
+            // 过滤掉我们自己的应用，避免悬浮窗显示时触发状态变化
+            if (packageName.equals(getPackageName())) {
+                Log.d(TAG, "忽略自己的应用: " + packageName);
+                return;
+            }
+            
+            // 过滤掉输入法应用，避免输入法弹出时误判
+            if (isInputMethodApp(packageName)) {
+                Log.d(TAG, "忽略输入法应用: " + packageName);
+                return;
+            }
+            
+            boolean newState = XIAOHONGSHU_PACKAGE.equals(packageName);
+            Log.d(TAG, "是否是小红书: " + newState + " (期望包名: " + XIAOHONGSHU_PACKAGE + ")");
+            
+            if (newState != isInXiaohongshu) {
+                isInXiaohongshu = newState;
+                Log.d(TAG, "小红书应用状态发生变化，新状态: " + (isInXiaohongshu ? "前台" : "后台"));
                 
-                // 防抖：延迟检查内容，避免频繁更新
-                if (contentCheckRunnable != null) {
-                    handler.removeCallbacks(contentCheckRunnable);
+                if (!isInXiaohongshu) {
+                    // 离开小红书，立即隐藏悬浮窗
+                    lastDetectedInterface = ""; // 清除缓存
+                    hideFloatingWindow();
+                } else {
+                    // 进入小红书，立即开始检测文本内容
+                    checkTextContentOptimized();
                 }
-                contentCheckRunnable = () -> checkTextContentOptimized();
-                handler.postDelayed(contentCheckRunnable, CONTENT_CHECK_DELAY);
-            } else {
-                Log.d(TAG, "离开小红书应用，当前包名: " + currentPackage);
-                isInXiaohongshu = false;
-                lastDetectedInterface = "";
-                hideFloatingWindow();
             }
         }
     }
     
     private void handleWindowContentChanged(AccessibilityEvent event) {
-        // 只在小红书应用内处理内容变化
-        if (isInXiaohongshu) {
+        // 只在小红书应用中检测文本内容
+        if (isInXiaohongshu && event.getPackageName() != null && 
+            XIAOHONGSHU_PACKAGE.equals(event.getPackageName().toString())) {
+            
+            // 防抖机制：避免频繁检测
             long currentTime = System.currentTimeMillis();
-            if (currentTime - lastContentCheckTime > CONTENT_CHECK_DELAY) {
-                lastContentCheckTime = currentTime;
-                
-                // 防抖：延迟检查内容
-                if (contentCheckRunnable != null) {
-                    handler.removeCallbacks(contentCheckRunnable);
-                }
-                contentCheckRunnable = () -> checkTextContentOptimized();
-                handler.postDelayed(contentCheckRunnable, CONTENT_CHECK_DELAY);
+            if (currentTime - lastContentCheckTime < 200) {
+                return; // 200ms内的重复事件直接忽略
             }
+            lastContentCheckTime = currentTime;
+            
+            // 使用Handler延迟执行，进一步防抖
+            if (contentCheckRunnable == null) {
+                contentCheckRunnable = new Runnable() {
+                    @Override
+                    public void run() {
+                        checkTextContentOptimized();
+                    }
+                };
+            }
+            
+            // 取消之前的延迟任务，重新安排
+            handler.removeCallbacks(contentCheckRunnable);
+            handler.postDelayed(contentCheckRunnable, 300); // 300ms防抖延迟
         }
     }
     
     /**
-     * 优化的文本内容检查方法
+     * 判断是否是输入法应用
      */
-    private void checkTextContentOptimized() {
-        try {
-            AccessibilityNodeInfo rootNode = getRootInActiveWindow();
-            if (rootNode == null) {
-                Log.v(TAG, "rootNode为null，跳过检查");
-                return;
+    private boolean isInputMethodApp(String packageName) {
+        // 常见输入法包名列表
+        String[] inputMethodPackages = {
+            "com.baidu.input",           // 百度输入法
+            "com.baidu.input_hihonor",   // 荣耀百度输入法
+            "com.sohu.inputmethod.sogou", // 搜狗输入法
+            "com.iflytek.inputmethod",   // 讯飞输入法
+            "com.touchtype.swiftkey",    // SwiftKey
+            "com.google.android.inputmethod.latin", // Google输入法
+            "com.android.inputmethod.latin", // 系统输入法
+            "com.samsung.android.honeyboard", // 三星输入法
+            "com.huawei.inputmethod",    // 华为输入法
+            "com.xiaomi.inputmethod",    // 小米输入法
+            "com.tencent.qqpinyin",      // QQ输入法
+            "com.qihoo.inputmethod"      // 360输入法
+        };
+        
+        for (String inputMethodPackage : inputMethodPackages) {
+            if (packageName.contains(inputMethodPackage) || packageName.contains("input")) {
+                return true;
             }
-            
-            // 使用递归查找关键文本
-            boolean hasDiscoverText = findTextInNode(rootNode, "发现");
-            boolean hasSearchText = findTextInNode(rootNode, "搜索");
-            
-            String currentInterface = "";
-            if (hasDiscoverText && !hasSearchText) {
-                currentInterface = "discover";
-            } else if (hasSearchText) {
-                currentInterface = "search";
-            }
-            
-            // 只在界面类型真正变化时更新悬浮窗状态
-            if (!currentInterface.equals(lastDetectedInterface)) {
-                lastDetectedInterface = currentInterface;
-                Log.d(TAG, "界面类型变化: " + currentInterface);
-                
-                if ("discover".equals(currentInterface) && !isManuallyHidden) {
-                    // 发现页面且没有手动隐藏 - 显示悬浮窗
-                    showFloatingWindow();
-                } else {
-                    // 搜索页面或其他页面 - 隐藏悬浮窗
-                    hideFloatingWindow();
-                }
-            }
-            
-            rootNode.recycle();
-        } catch (Exception e) {
-            Log.e(TAG, "检查文本内容时出错", e);
         }
+        
+        return false;
     }
-    
-    /**
-     * 在节点树中递归查找指定文本
-     */
+
     private boolean findTextInNode(AccessibilityNodeInfo node, String targetText) {
         if (node == null) return false;
         
         // 检查当前节点的文本
-        CharSequence nodeText = node.getText();
-        if (nodeText != null && nodeText.toString().contains(targetText)) {
-            return true;
+        CharSequence text = node.getText();
+        if (text != null && text.toString().equalsIgnoreCase(targetText)) {
+            // 检查节点是否可见
+            if (node.isVisibleToUser()) {
+                Log.d(TAG, "找到目标文本: " + targetText + " (可见)");
+                return true;
+            } else {
+                Log.d(TAG, "找到目标文本: " + targetText + " (不可见，忽略)");
+            }
         }
         
-        // 检查内容描述
+        // 检查contentDescription
         CharSequence contentDesc = node.getContentDescription();
-        if (contentDesc != null && contentDesc.toString().contains(targetText)) {
-            return true;
+        if (contentDesc != null && contentDesc.toString().equalsIgnoreCase(targetText)) {
+            // 检查节点是否可见
+            if (node.isVisibleToUser()) {
+                Log.d(TAG, "在contentDescription中找到目标文本: " + targetText + " (可见)");
+                return true;
+            } else {
+                Log.d(TAG, "在contentDescription中找到目标文本: " + targetText + " (不可见，忽略)");
+            }
         }
         
         // 递归检查子节点
-        int childCount = node.getChildCount();
-        for (int i = 0; i < childCount; i++) {
+        for (int i = 0; i < node.getChildCount(); i++) {
             AccessibilityNodeInfo child = node.getChild(i);
             if (child != null) {
                 if (findTextInNode(child, targetText)) {
@@ -235,7 +256,135 @@ public class FloatingAccessibilityService extends AccessibilityService
         
         return false;
     }
+    
+    /**
+     * 优化版本的文本查找，限制递归深度
+     */
+    private boolean findTextOptimized(AccessibilityNodeInfo node, String targetText, int maxDepth) {
+        if (node == null || maxDepth <= 0) return false;
+        
+        // 检查当前节点的文本
+        CharSequence text = node.getText();
+        if (text != null && node.isVisibleToUser() && text.toString().contains(targetText)) {
+            Log.d(TAG, "快速找到目标文本: " + targetText + " (深度: " + (6-maxDepth) + ")");
+            return true;
+        }
+        
+        // 检查contentDescription
+        CharSequence contentDesc = node.getContentDescription();
+        if (contentDesc != null && node.isVisibleToUser() && contentDesc.toString().contains(targetText)) {
+            Log.d(TAG, "在contentDescription中快速找到: " + targetText + " (深度: " + (6-maxDepth) + ")");
+            return true;
+        }
+        
+        // 增加子节点检查数量，确保不遗漏
+        int childCount = Math.min(node.getChildCount(), 20); // 增加到20个子节点
+        for (int i = 0; i < childCount; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null) {
+                if (findTextOptimized(child, targetText, maxDepth - 1)) {
+                    child.recycle();
+                    return true;
+                }
+                child.recycle();
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 临时调试方法：输出可见文本内容
+     */
+    private void logVisibleTexts(AccessibilityNodeInfo node, int currentDepth, int maxDepth) {
+        if (node == null || currentDepth > maxDepth) return;
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < currentDepth; i++) {
+            sb.append("  ");
+        }
+        String indent = sb.toString();
+        
+        // 输出当前节点的文本
+        CharSequence text = node.getText();
+        if (text != null && !text.toString().trim().isEmpty() && node.isVisibleToUser()) {
+            Log.d(TAG, indent + "文本: " + text.toString().trim());
+        }
+        
+        // 输出contentDescription
+        CharSequence contentDesc = node.getContentDescription();
+        if (contentDesc != null && !contentDesc.toString().trim().isEmpty() && node.isVisibleToUser()) {
+            Log.d(TAG, indent + "描述: " + contentDesc.toString().trim());
+        }
+        
+        // 递归检查子节点（限制数量）
+        int childCount = Math.min(node.getChildCount(), 15);
+        for (int i = 0; i < childCount; i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null) {
+                logVisibleTexts(child, currentDepth + 1, maxDepth);
+                child.recycle();
+            }
+        }
+    }
 
+    /**
+     * 优化版本的文本内容检测
+     * 1. 先用快速检测，如果失败则用完整检测
+     * 2. 优先检查常见的文本节点类型
+     * 3. 使用缓存避免重复检测
+     */
+    private void checkTextContentOptimized() {
+        try {
+            AccessibilityNodeInfo rootNode = getRootInActiveWindow();
+            if (rootNode != null) {
+                // 第一阶段：快速检测"发现"文本（限制深度）
+                boolean hasFaxian = findTextOptimized(rootNode, "发现", 5);
+                
+                // 第二阶段：如果快速检测没找到"发现"，使用完整检测作为备用
+                if (!hasFaxian) {
+                    Log.d(TAG, "快速检测未找到'发现'，启用完整检测");
+                    hasFaxian = findTextInNode(rootNode, "发现");
+                    
+                    // 临时调试：如果还是找不到，输出一些可见文本内容
+                    if (!hasFaxian) {
+                        Log.d(TAG, "完整检测也未找到'发现'，输出部分可见文本:");
+                        logVisibleTexts(rootNode, 0, 2); // 只输出前2层的文本，避免刷屏
+                    }
+                }
+                
+                // 简化界面判断逻辑：只检测"发现"
+                String currentInterface = hasFaxian ? "discover" : "other";
+                
+                // 添加详细调试信息
+                Log.d(TAG, "文本检测结果: 发现=" + hasFaxian + ", 当前界面=" + currentInterface);
+                
+                // 只有界面状态发生变化时才执行操作
+                if (!currentInterface.equals(lastDetectedInterface)) {
+                    lastDetectedInterface = currentInterface;
+                    
+                    Log.d(TAG, "界面变化检测: " + currentInterface);
+                    
+                    if ("discover".equals(currentInterface)) {
+                        if (!isFloatingWindowVisible && !isManuallyHidden) {
+                            showFloatingWindow();
+                        }
+                    } else {
+                        if (isFloatingWindowVisible) {
+                            hideFloatingWindow();
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface);
+                }
+                
+                rootNode.recycle();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "优化版文本检测失败", e);
+        }
+    }
+    
     /**
      * 创建并显示悬浮窗
      */
@@ -261,20 +410,47 @@ public class FloatingAccessibilityService extends AccessibilityService
         LayoutInflater inflater = LayoutInflater.from(this);
         floatingView = inflater.inflate(R.layout.floating_window_layout, null);
         
-        // 设置窗口参数
-        layoutParams = new WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
-            WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
-            PixelFormat.TRANSLUCENT
-        );
+        // 设置悬浮窗参数
+        layoutParams = new WindowManager.LayoutParams();
+        layoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        // 添加FLAG_NOT_FOCUSABLE确保悬浮窗不会获得焦点，避免影响前台应用检测
+        // 添加FLAG_NOT_TOUCH_MODAL确保触摸事件可以传递到下层窗口
+        // 添加FLAG_NOT_TOUCHABLE确保悬浮窗默认不拦截触摸事件（除了特定区域）
+        layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
+                            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
+                            WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
+        layoutParams.format = PixelFormat.TRANSLUCENT;
+        layoutParams.gravity = Gravity.LEFT | Gravity.TOP;
         
-        layoutParams.gravity = Gravity.TOP | Gravity.START;
-        layoutParams.x = 100;
-        layoutParams.y = 200;
+        // 计算悬浮窗位置和大小
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+        
+        int screenWidth = displayMetrics.widthPixels;
+        int screenHeight = displayMetrics.heightPixels;
+        
+        // 获取状态栏高度
+        int statusBarHeight = 0;
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            statusBarHeight = getResources().getDimensionPixelSize(resourceId);
+        }
+        
+        // 获取导航栏高度
+        int navigationBarHeight = 0;
+        resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            navigationBarHeight = getResources().getDimensionPixelSize(resourceId);
+        }
+        
+        // 设置悬浮窗位置和大小
+        int topOffset = 130;
+        int bottomOffset = 230;
+
+        layoutParams.x = 0;
+        layoutParams.y = topOffset;
+        layoutParams.width = screenWidth;
+        layoutParams.height = screenHeight - topOffset - bottomOffset;
         
         // 初始化数学题验证管理器
         if (floatingView != null) {
@@ -333,6 +509,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             try {
                 windowManager.addView(floatingView, layoutParams);
                 isFloatingWindowVisible = true;
+                lastFloatingWindowShowTime = System.currentTimeMillis();
                 Log.d(TAG, "悬浮窗显示成功");
             } catch (Exception e) {
                 Log.e(TAG, "显示悬浮窗失败", e);
@@ -657,6 +834,100 @@ public class FloatingAccessibilityService extends AccessibilityService
                     return true;
             }
             return false;
+        }
+    }
+
+    /**
+     * 获取浮窗在屏幕上的位置
+     */
+    private void getWindowPosition() {
+        if (floatingView != null) {
+            WindowManager.LayoutParams params = layoutParams;
+            if (params != null) {
+                Log.d(TAG, "当前悬浮窗位置: x=" + params.x + ", y=" + params.y + ", width=" + params.width + ", height=" + params.height);
+            }
+        }
+    }
+    
+    /**
+     * 输出窗口层级信息，用于调试
+     */
+    private void dumpWindowHierarchy() {
+        try {
+            AccessibilityNodeInfo rootNode = getRootInActiveWindow();
+            if (rootNode != null) {
+                Log.d(TAG, "========== 窗口层级信息 ==========");
+                dumpNodeHierarchy(rootNode, 0);
+                rootNode.recycle();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "输出窗口层级信息失败", e);
+        }
+    }
+    
+    /**
+     * 递归输出节点层级信息
+     */
+    private void dumpNodeHierarchy(AccessibilityNodeInfo node, int level) {
+        if (node == null) return;
+        
+        StringBuilder indent = new StringBuilder();
+        for (int i = 0; i < level; i++) {
+            indent.append("  ");
+        }
+        
+        String text = node.getText() != null ? node.getText().toString() : "";
+        String className = node.getClassName() != null ? node.getClassName().toString() : "";
+        String contentDesc = node.getContentDescription() != null ? node.getContentDescription().toString() : "";
+        
+        Log.d(TAG, indent + "Node[" + level + "] class=" + className + 
+               ", text='" + text + "', desc='" + contentDesc + "'");
+        
+        // 递归处理子节点
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null) {
+                dumpNodeHierarchy(child, level + 1);
+                child.recycle();
+            }
+        }
+    }
+    
+    /**
+     * 转储所有文本内容，用于调试
+     */
+    private void dumpAllText(AccessibilityNodeInfo node, int currentDepth, int maxDepth) {
+        if (node == null || currentDepth > maxDepth) {
+            return;
+        }
+        
+        StringBuilder indent = new StringBuilder();
+        for (int i = 0; i < currentDepth; i++) {
+            indent.append("  ");
+        }
+        
+        CharSequence text = node.getText();
+        if (text != null && !text.toString().trim().isEmpty()) {
+            Log.d(TAG, indent + "文本[" + currentDepth + "]: " + text);
+        }
+        
+        CharSequence contentDesc = node.getContentDescription();
+        if (contentDesc != null && !contentDesc.toString().trim().isEmpty()) {
+            Log.d(TAG, indent + "描述[" + currentDepth + "]: " + contentDesc);
+        }
+        
+        CharSequence className = node.getClassName();
+        if (className != null) {
+            Log.v(TAG, indent + "类名[" + currentDepth + "]: " + className);
+        }
+        
+        // 递归检查子节点
+        for (int i = 0; i < node.getChildCount(); i++) {
+            AccessibilityNodeInfo child = node.getChild(i);
+            if (child != null) {
+                dumpAllText(child, currentDepth + 1, maxDepth);
+                child.recycle();
+            }
         }
     }
 } 
