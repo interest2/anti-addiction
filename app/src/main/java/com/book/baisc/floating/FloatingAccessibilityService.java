@@ -22,6 +22,7 @@ import com.book.baisc.R;
 import com.book.baisc.lifecycle.ServiceKeepAliveManager;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.DeviceInfoReporter;
+import com.book.baisc.network.FloatingTextFetcher;
 
 /**
  * 悬浮窗无障碍服务
@@ -65,6 +66,9 @@ public class FloatingAccessibilityService extends AccessibilityService
     
     // 设备信息上报器
     private DeviceInfoReporter deviceInfoReporter;
+    
+    // 悬浮窗文字获取器
+    private FloatingTextFetcher floatingTextFetcher;
 
     // 悬浮窗管理相关
     private WindowManager windowManager;
@@ -107,6 +111,9 @@ public class FloatingAccessibilityService extends AccessibilityService
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();
+        
+        // 初始化悬浮窗文字获取器
+        floatingTextFetcher = new FloatingTextFetcher(this);
         
         Log.d(TAG, "AccessibilityService 配置完成");
     }
@@ -505,6 +512,24 @@ public class FloatingAccessibilityService extends AccessibilityService
             // 更新悬浮窗内容，显示当前时间间隔设置
             updateFloatingWindowContent();
             
+            // 异步获取最新的动态文字内容
+            if (floatingTextFetcher != null) {
+                floatingTextFetcher.fetchLatestText(new FloatingTextFetcher.OnTextFetchListener() {
+                    @Override
+                    public void onTextFetched(String text) {
+                        Log.d(TAG, "获取到新的动态文字: " + text);
+                        // 更新悬浮窗显示的文字
+                        updateFloatingWindowContentWithText(text);
+                    }
+                    
+                    @Override
+                    public void onFetchError(String error) {
+                        Log.w(TAG, "获取动态文字失败: " + error);
+                        // 保持使用缓存的文字，不做额外处理
+                    }
+                });
+            }
+            
             // 添加悬浮窗到窗口管理器
             try {
                 windowManager.addView(floatingView, layoutParams);
@@ -522,13 +547,45 @@ public class FloatingAccessibilityService extends AccessibilityService
      * 更新悬浮窗内容
      */
     private void updateFloatingWindowContent() {
-        if (floatingView == null || settingsManager == null) return;
+        if (floatingView == null) return;
         
         TextView contentText = floatingView.findViewById(R.id.tv_content);
         if (contentText != null) {
-            String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
-            String content = "小红书应用正在运行\n关闭后" + intervalText + "自动重新显示";
+            // 获取缓存的动态文字内容
+            String dynamicText = "小红书应用正在运行"; // 默认文字
+            if (floatingTextFetcher != null) {
+                dynamicText = floatingTextFetcher.getCachedText();
+            }
+            
+            // 显示动态文字和时间间隔信息
+            String intervalText = "";
+            if (settingsManager != null) {
+                intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
+                dynamicText += "\n关闭后" + intervalText + "自动重新显示";
+            }
+            
+            contentText.setText(dynamicText);
+            Log.d(TAG, "悬浮窗内容已更新: " + dynamicText);
+        }
+    }
+    
+    /**
+     * 使用指定的文字内容更新悬浮窗
+     */
+    private void updateFloatingWindowContentWithText(String text) {
+        if (floatingView == null || text == null) return;
+        
+        TextView contentText = floatingView.findViewById(R.id.tv_content);
+        if (contentText != null) {
+            // 显示动态文字和时间间隔信息
+            String content = text;
+            if (settingsManager != null) {
+                String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
+                content += "\n关闭后" + intervalText + "自动重新显示";
+            }
+            
             contentText.setText(content);
+            Log.d(TAG, "悬浮窗内容已更新为新文字: " + content);
         }
     }
     
@@ -794,6 +851,12 @@ public class FloatingAccessibilityService extends AccessibilityService
         if (deviceInfoReporter != null) {
             deviceInfoReporter.release();
             deviceInfoReporter = null;
+        }
+        
+        // 清理悬浮窗文字获取器
+        if (floatingTextFetcher != null) {
+            floatingTextFetcher.cleanup();
+            floatingTextFetcher = null;
         }
         
         Log.d(TAG, "AccessibilityService 已销毁");
