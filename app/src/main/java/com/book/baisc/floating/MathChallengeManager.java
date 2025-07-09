@@ -335,7 +335,7 @@ public class MathChallengeManager {
                     resultText.setVisibility(View.GONE);
                     
                     Log.d(TAG, "生成新数学题，保持输入法显示");
-                }, 3000);
+                }, 1000);
             }
         } catch (NumberFormatException e) {
             resultText.setText("⚠️ 请输入有效数字");

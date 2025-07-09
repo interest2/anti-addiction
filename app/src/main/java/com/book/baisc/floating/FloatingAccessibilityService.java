@@ -19,7 +19,7 @@ import android.widget.Button;
 import android.util.DisplayMetrics;
 
 import com.book.baisc.R;
-import com.book.baisc.config.Constants;
+import com.book.baisc.config.Const;
 import com.book.baisc.lifecycle.ServiceKeepAliveManager;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.DeviceInfoReporter;
@@ -33,22 +33,16 @@ public class FloatingAccessibilityService extends AccessibilityService
 {
 
     private static final String TAG = "FloatingAccessibility";
-    private static final String XIAOHONGSHU_PACKAGE = "com.xingin.xhs";
     private static FloatingAccessibilityService instance;
     private boolean isFloatingWindowVisible = false;
-    private boolean isInXiaohongshu = false;
+    private boolean isInXHS = false;
     
     // 性能优化相关
     private Handler handler;
     private Runnable contentCheckRunnable;
     private long lastContentCheckTime = 0;
     private String lastDetectedInterface = ""; // 缓存上次检测的界面类型
-    
-    // 积极显示策略相关
-    private boolean hasShownFloatingWindowOnce = false;
-    private long lastFloatingWindowShowTime = 0;
-    private static final long FLOATING_WINDOW_PROTECTION_TIME = 1000; // 1秒保护时间
-    
+
     // 数学题验证管理器
     private MathChallengeManager mathChallengeManager;
     
@@ -147,14 +141,14 @@ public class FloatingAccessibilityService extends AccessibilityService
                 return;
             }
             
-            boolean newState = XIAOHONGSHU_PACKAGE.equals(packageName);
-            Log.d(TAG, "是否是小红书: " + newState + " (期望包名: " + XIAOHONGSHU_PACKAGE + ")");
+            boolean newState = Const.XHS_PACKAGE.equals(packageName);
+            Log.d(TAG, "是否是小红书: " + newState + " (期望包名: " + Const.XHS_PACKAGE + ")");
             
-            if (newState != isInXiaohongshu) {
-                isInXiaohongshu = newState;
-                Log.d(TAG, "小红书应用状态发生变化，新状态: " + (isInXiaohongshu ? "前台" : "后台"));
+            if (newState != isInXHS) {
+                isInXHS = newState;
+                Log.d(TAG, "小红书应用状态发生变化，新状态: " + (isInXHS ? "前台" : "后台"));
                 
-                if (!isInXiaohongshu) {
+                if (!isInXHS) {
                     // 离开小红书，立即隐藏悬浮窗
                     lastDetectedInterface = ""; // 清除缓存
                     hideFloatingWindow();
@@ -168,8 +162,8 @@ public class FloatingAccessibilityService extends AccessibilityService
     
     private void handleWindowContentChanged(AccessibilityEvent event) {
         // 只在小红书应用中检测文本内容
-        if (isInXiaohongshu && event.getPackageName() != null && 
-            XIAOHONGSHU_PACKAGE.equals(event.getPackageName().toString())) {
+        if (isInXHS && event.getPackageName() != null &&
+                Const.XHS_PACKAGE.equals(event.getPackageName().toString())) {
             
             // 防抖机制：避免频繁检测
             long currentTime = System.currentTimeMillis();
@@ -481,7 +475,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                         Log.d(TAG, "休闲版关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
 
                         // 当日关闭次数达到上限后，再次关闭时强制切换为日常版
-                        if (currentCount >= Constants.CASUAL_LIMIT_COUNT) {
+                        if (currentCount >= Const.CASUAL_LIMIT_COUNT) {
                             int maxDailyInterval = SettingsManager.getMaxDailyInterval();
                             settingsManager.setAutoShowInterval(maxDailyInterval);
                             
@@ -503,7 +497,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                     autoShowRunnable = () -> {
                         Log.d(TAG, "自动重新显示悬浮窗");
                         isManuallyHidden = false;
-                        if (isInXiaohongshu && "discover".equals(lastDetectedInterface)) {
+                        if (isInXHS && "discover".equals(lastDetectedInterface)) {
                             showFloatingWindow();
                         }
                     };
@@ -542,8 +536,6 @@ public class FloatingAccessibilityService extends AccessibilityService
                     @Override
                     public void onTextFetched(String text) {
                         Log.d(TAG, "获取到新的动态文字: " + text);
-                        // 更新悬浮窗显示的文字
-//                        updateFloatingWindowContentWithText(text);
                     }
                     
                     @Override
@@ -558,7 +550,6 @@ public class FloatingAccessibilityService extends AccessibilityService
             try {
                 windowManager.addView(floatingView, layoutParams);
                 isFloatingWindowVisible = true;
-                lastFloatingWindowShowTime = System.currentTimeMillis();
                 Log.d(TAG, "悬浮窗显示成功");
             } catch (Exception e) {
                 Log.e(TAG, "显示悬浮窗失败", e);
@@ -624,23 +615,7 @@ public class FloatingAccessibilityService extends AccessibilityService
     public static boolean isServiceRunning() {
         return instance != null;
     }
-    
-    /**
-     * 检查是否正在运行自动显示定时器
-     */
-    public static boolean isAutoShowTimerRunning() {
-        return instance != null && instance.autoShowRunnable != null && instance.isManuallyHidden;
-    }
-    
-    /**
-     * 通知设置已更新，刷新悬浮窗内容
-     */
-    public static void notifySettingsChanged() {
-        if (instance != null && instance.isFloatingWindowVisible) {
-            instance.updateFloatingWindowContent();
-            Log.d(instance.TAG, "设置已更新，悬浮窗内容已刷新");
-        }
-    }
+
     
     /**
      * 通知时间间隔设置已更新，立即应用新的间隔
@@ -697,7 +672,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             public void onScreenUnlocked() {
                 Log.d(TAG, "屏幕解锁，检查悬浮窗状态");
                 // 屏幕解锁后，重新检查小红书状态
-                if (isInXiaohongshu && "discover".equals(lastDetectedInterface) && !isManuallyHidden) {
+                if (isInXHS && "discover".equals(lastDetectedInterface) && !isManuallyHidden) {
                     if (!isFloatingWindowVisible) {
                         handler.postDelayed(() -> {
                             Log.d(TAG, "屏幕解锁后恢复悬浮窗显示");
@@ -712,7 +687,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                 Log.d(TAG, "用户解锁设备，重新检查应用状态");
                 // 用户解锁后，重新检测当前是否在小红书
                 handler.postDelayed(() -> {
-                    if (isInXiaohongshu) {
+                    if (isInXHS) {
                         checkTextContentOptimized();
                     }
                 }, 1500);
@@ -784,16 +759,16 @@ public class FloatingAccessibilityService extends AccessibilityService
                 String currentPackage = rootNode.getPackageName() != null ? 
                     rootNode.getPackageName().toString() : "";
                 
-                if (XIAOHONGSHU_PACKAGE.equals(currentPackage)) {
-                    if (!isInXiaohongshu) {
+                if (Const.XHS_PACKAGE.equals(currentPackage)) {
+                    if (!isInXHS) {
                         Log.d(TAG, "应用状态检测：发现小红书应用");
-                        isInXiaohongshu = true;
+                        isInXHS = true;
                         checkTextContentOptimized();
                     }
                 } else {
-                    if (isInXiaohongshu) {
+                    if (isInXHS) {
                         Log.d(TAG, "应用状态检测：离开小红书应用");
-                        isInXiaohongshu = false;
+                        isInXHS = false;
                         lastDetectedInterface = "";
                         hideFloatingWindow();
                     }
@@ -900,97 +875,4 @@ public class FloatingAccessibilityService extends AccessibilityService
         }
     }
 
-    /**
-     * 获取浮窗在屏幕上的位置
-     */
-    private void getWindowPosition() {
-        if (floatingView != null) {
-            WindowManager.LayoutParams params = layoutParams;
-            if (params != null) {
-                Log.d(TAG, "当前悬浮窗位置: x=" + params.x + ", y=" + params.y + ", width=" + params.width + ", height=" + params.height);
-            }
-        }
-    }
-    
-    /**
-     * 输出窗口层级信息，用于调试
-     */
-    private void dumpWindowHierarchy() {
-        try {
-            AccessibilityNodeInfo rootNode = getRootInActiveWindow();
-            if (rootNode != null) {
-                Log.d(TAG, "========== 窗口层级信息 ==========");
-                dumpNodeHierarchy(rootNode, 0);
-                rootNode.recycle();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "输出窗口层级信息失败", e);
-        }
-    }
-    
-    /**
-     * 递归输出节点层级信息
-     */
-    private void dumpNodeHierarchy(AccessibilityNodeInfo node, int level) {
-        if (node == null) return;
-        
-        StringBuilder indent = new StringBuilder();
-        for (int i = 0; i < level; i++) {
-            indent.append("  ");
-        }
-        
-        String text = node.getText() != null ? node.getText().toString() : "";
-        String className = node.getClassName() != null ? node.getClassName().toString() : "";
-        String contentDesc = node.getContentDescription() != null ? node.getContentDescription().toString() : "";
-        
-        Log.d(TAG, indent + "Node[" + level + "] class=" + className + 
-               ", text='" + text + "', desc='" + contentDesc + "'");
-        
-        // 递归处理子节点
-        for (int i = 0; i < node.getChildCount(); i++) {
-            AccessibilityNodeInfo child = node.getChild(i);
-            if (child != null) {
-                dumpNodeHierarchy(child, level + 1);
-                child.recycle();
-            }
-        }
-    }
-    
-    /**
-     * 转储所有文本内容，用于调试
-     */
-    private void dumpAllText(AccessibilityNodeInfo node, int currentDepth, int maxDepth) {
-        if (node == null || currentDepth > maxDepth) {
-            return;
-        }
-        
-        StringBuilder indent = new StringBuilder();
-        for (int i = 0; i < currentDepth; i++) {
-            indent.append("  ");
-        }
-        
-        CharSequence text = node.getText();
-        if (text != null && !text.toString().trim().isEmpty()) {
-            Log.d(TAG, indent + "文本[" + currentDepth + "]: " + text);
-        }
-        
-        CharSequence contentDesc = node.getContentDescription();
-        if (contentDesc != null && !contentDesc.toString().trim().isEmpty()) {
-            Log.d(TAG, indent + "描述[" + currentDepth + "]: " + contentDesc);
-        }
-        
-        CharSequence className = node.getClassName();
-        if (className != null) {
-            Log.v(TAG, indent + "类名[" + currentDepth + "]: " + className);
-        }
-        
-        // 递归检查子节点
-        for (int i = 0; i < node.getChildCount(); i++) {
-            AccessibilityNodeInfo child = node.getChild(i);
-            if (child != null) {
-                dumpAllText(child, currentDepth + 1, maxDepth);
-                child.recycle();
-            }
-        }
-    }
 } 
