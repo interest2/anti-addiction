@@ -26,6 +26,7 @@ import com.book.baisc.floating.FloatingAccessibilityService;
 import com.book.baisc.lifecycle.AppLifecycleObserver;
 import com.book.baisc.network.DeviceInfoReporter;
 import com.book.baisc.config.SettingsManager;
+import com.book.baisc.network.FloatingTextFetcher;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -68,13 +69,40 @@ public class MainActivity extends AppCompatActivity {
         
         // 设置激励语标签按钮
         setupTagSettingButton();
-
+        
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();
 
+        // 检查缓存并获取云端内容
+        checkAndFetchCachedContent();
+
         updateCasualButtonState();
         updateCasualCountDisplay();
+    }
+
+    private void checkAndFetchCachedContent() {
+        // 创建 FloatingTextFetcher 实例
+        FloatingTextFetcher textFetcher = new FloatingTextFetcher(this);
+        
+        // 检查是否有缓存内容
+        String cachedText = textFetcher.getCachedText();
+        if (cachedText == null || cachedText.isEmpty()) {
+            // 没有缓存内容，立即获取
+            textFetcher.fetchLatestText(new FloatingTextFetcher.OnTextFetchListener() {
+                @Override
+                public void onTextFetched(String text) {
+                    android.util.Log.d("MainActivity", "应用启动时获取到云端内容: " + text);
+                }
+
+                @Override
+                public void onFetchError(String error) {
+                    android.util.Log.w("MainActivity", "应用启动时获取云端内容失败: " + error);
+                }
+            });
+        } else {
+            android.util.Log.d("MainActivity", "应用启动时发现缓存内容: " + cachedText);
+        }
     }
 
     private void checkAndRequestPermissions() {
@@ -164,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
         Button optimizationButton = findViewById(R.id.btn_optimization_guide);
         optimizationButton.setOnClickListener(v -> showOptimizationGuide());
     }
-
+    
     private void showOptimizationGuide() {
         StringBuilder guide = new StringBuilder();
         guide.append("🔋 设置须知\n\n");
@@ -200,9 +228,9 @@ public class MainActivity extends AppCompatActivity {
                    }
                })
                .setNegativeButton("稍后处理", null)
-               .show();
+                               .show();
     }
-
+    
     private void setupTimeSettingButtons() {
         Button dailyButton = findViewById(R.id.btn_daily_time_setting);
         dailyButton.setOnClickListener(v -> {
@@ -214,7 +242,7 @@ public class MainActivity extends AppCompatActivity {
             showTimeSettingDialog(false); // false for casual
         });
     }
-
+    
     private void showTimeSettingDialog(boolean isDaily) {
         final int[] intervals = isDaily ? 
             SettingsManager.getDailyAvailableIntervals() : 
@@ -243,18 +271,18 @@ public class MainActivity extends AppCompatActivity {
                 settingsManager.setAutoShowInterval(selectedInterval);
                 
                 // 通知服务配置已更改
-                FloatingAccessibilityService.notifyIntervalChanged();
-                
+                       FloatingAccessibilityService.notifyIntervalChanged();
+                       
                 // 显示提示信息
                 showIntervalExplanation(selectedInterval);
                 
                 Toast.makeText(this, "已设置为: " + intervalOptions[which], Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
-            })
-            .setNegativeButton("取消", null)
-            .show();
+               })
+               .setNegativeButton("取消", null)
+               .show();
     }
-
+    
     private void showIntervalExplanation(int interval) {
         StringBuilder explanation = new StringBuilder();
         explanation.append("⏰ 时间间隔设置说明\n\n");
@@ -265,7 +293,7 @@ public class MainActivity extends AppCompatActivity {
         
         new android.app.AlertDialog.Builder(this)
                 .setTitle("时间间隔说明")
-                .setMessage(explanation.toString())
+               .setMessage(explanation.toString())
                 .setPositiveButton("好的", null)
                 .show();
     }
@@ -348,7 +376,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             })
             .setNegativeButton("取消", null)
-            .show();
+               .show();
     }
 
     @Override
