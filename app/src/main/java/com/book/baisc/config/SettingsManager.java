@@ -138,6 +138,21 @@ public class SettingsManager {
     }
     
     /**
+     * 获取日常版的最大时间间隔
+     */
+    public static int getMaxDailyInterval() {
+        int max = 0;
+        if (dailyIntervalArray != null && dailyIntervalArray.length > 0) {
+            for (int interval : dailyIntervalArray) {
+                if (interval > max) {
+                    max = interval;
+                }
+            }
+        }
+        return max;
+    }
+    
+    /**
      * 获取时间间隔的显示文本
      */
     public static String getIntervalDisplayText(int seconds) {

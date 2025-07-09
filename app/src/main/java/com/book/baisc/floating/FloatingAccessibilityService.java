@@ -19,6 +19,7 @@ import android.widget.Button;
 import android.util.DisplayMetrics;
 
 import com.book.baisc.R;
+import com.book.baisc.config.Constants;
 import com.book.baisc.lifecycle.ServiceKeepAliveManager;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.DeviceInfoReporter;
@@ -472,12 +473,27 @@ public class FloatingAccessibilityService extends AccessibilityService
                     isManuallyHidden = true;
                     hideFloatingWindow();
 
-                    // 如果是休闲版，增加关闭次数
+                    // 如果是休闲版，增加关闭次数并检查是否需要切换模式
                     if (settingsManager.isCasualMode()) {
+                        int currentCount = settingsManager.getCasualCloseCount();
                         settingsManager.incrementCasualCloseCount();
-                        int newCount = settingsManager.getCasualCloseCount();
-                        String message = "休闲版今日已关闭 " + newCount + " 次";
-                        Log.d(TAG, message);
+                        
+                        Log.d(TAG, "休闲版关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
+
+                        // 当日关闭次数达到上限后，再次关闭时强制切换为日常版
+                        if (currentCount >= Constants.CASUAL_LIMIT_COUNT) {
+                            int maxDailyInterval = SettingsManager.getMaxDailyInterval();
+                            settingsManager.setAutoShowInterval(maxDailyInterval);
+                            
+                            // 通知服务时间间隔已更改
+                            FloatingAccessibilityService.notifyIntervalChanged();
+                            
+                            String newIntervalText = SettingsManager.getIntervalDisplayText(maxDailyInterval);
+                            String message = "休闲版使用已达上限，已强制切换为日常模式 (" + newIntervalText + ")";
+                            
+                            Log.d(TAG, message);
+                            Toast.makeText(FloatingAccessibilityService.this, message, Toast.LENGTH_LONG).show();
+                        }
                     }
                     
                     // 根据用户设置的时间间隔自动重新显示

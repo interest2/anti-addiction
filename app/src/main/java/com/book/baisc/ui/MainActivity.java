@@ -30,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_ACCESSIBILITY_PERMISSION = 1003;
     private AppLifecycleObserver appLifecycleObserver;
     private DeviceInfoReporter deviceInfoReporter;
+    private SettingsManager settingsManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        settingsManager = new SettingsManager(this);
 
         // 检查并请求所有必要权限
         checkAndRequestPermissions();
@@ -54,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();
+
+        updateCasualButtonState();
     }
 
     private void checkAndRequestPermissions() {
@@ -205,7 +210,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showTimeSettingDialog(boolean isDaily) {
-        final SettingsManager settingsManager = new SettingsManager(this);
         final int[] intervals = isDaily ? 
             SettingsManager.getDailyAvailableIntervals() : 
             SettingsManager.getCasualAvailableIntervals();
@@ -253,11 +257,19 @@ public class MainActivity extends AppCompatActivity {
         explanation.append("• 关闭悬浮窗后，等待设定时间再自动显示\n");
         explanation.append("⚠️ 注意：设置立即生效，正在运行的定时器会立即更新");
         
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("设置完成")
-               .setMessage(explanation.toString())
-               .setPositiveButton("知道了", null)
-               .show();
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("时间间隔说明")
+                .setMessage(explanation.toString())
+                .setPositiveButton("好的", null)
+                .show();
+    }
+    
+    private void updateCasualButtonState() {
+        Button casualButton = findViewById(R.id.btn_casual_time_setting);
+        if (casualButton != null) {
+            int closeCount = settingsManager.getCasualCloseCount();
+            casualButton.setEnabled(closeCount < 2);
+        }
     }
 
     @Override
@@ -285,6 +297,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        checkAndRequestPermissions();
+        updateCasualButtonState();
         // 每次返回时检查权限状态
         if (isAccessibilityServiceEnabled() && 
             (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {
