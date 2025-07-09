@@ -29,44 +29,22 @@
         android:text="打开小红书时显示悬浮窗，离开时自动隐藏。需要开启悬浮窗权限和无障碍服务。"
         android:textAlignment="center"
         android:textSize="16sp"
-        app:layout_constraintBottom_toTopOf="@+id/btn_test"
+        app:layout_constraintBottom_toTopOf="@+id/btn_optimization_guide"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tv_title" />
 
     <Button
-        android:id="@+id/btn_test"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:text="测试悬浮窗功能"
-        app:layout_constraintBottom_toTopOf="@+id/btn_show_current_app"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_description" />
-
-    <Button
-        android:id="@+id/btn_show_current_app"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="显示当前前台应用"
-        app:layout_constraintBottom_toTopOf="@+id/btn_optimization_guide"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btn_test" />
-
-    <Button
         android:id="@+id/btn_optimization_guide"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="32dp"
         android:text="电池优化指引"
         android:backgroundTint="@color/orange"
         app:layout_constraintBottom_toTopOf="@+id/btn_daily_time_setting"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btn_show_current_app" />
+        app:layout_constraintTop_toBottomOf="@+id/tv_description" />
 
     <Button
         android:id="@+id/btn_daily_time_setting"

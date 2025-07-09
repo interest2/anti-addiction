@@ -45,12 +45,6 @@ public class MainActivity extends AppCompatActivity {
         // 检查并请求所有必要权限
         checkAndRequestPermissions();
         
-        // 设置测试按钮点击事件
-        setupTestButton();
-        
-        // 设置显示当前应用按钮点击事件
-        setupShowCurrentAppButton();
-        
         // 设置优化指引按钮点击事件
         setupOptimizationGuideButton();
         
@@ -143,77 +137,6 @@ public class MainActivity extends AppCompatActivity {
     private void initAppLifecycleObserver() {
         appLifecycleObserver = new AppLifecycleObserver(this);
         Toast.makeText(this, "检测功能已启用，打开小红书时会显示悬浮窗", Toast.LENGTH_LONG).show();
-    }
-    
-    private void setupTestButton() {
-        Button testButton = findViewById(R.id.btn_test);
-        testButton.setOnClickListener(v -> {
-            // 显示当前权限状态
-            boolean hasOverlay = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this);
-            boolean hasAccessibility = isAccessibilityServiceEnabled();
-            
-            SettingsManager settingsManager = new SettingsManager(this);
-            String currentInterval = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
-            boolean isTimerRunning = FloatingAccessibilityService.isAutoShowTimerRunning();
-            
-            String status = String.format("权限状态:\n悬浮窗: %s\n无障碍: %s\n⏰ 时间间隔: %s\n📱 定时器状态: %s", 
-                hasOverlay ? "✓" : "✗", 
-                hasAccessibility ? "✓" : "✗",
-                currentInterval,
-                isTimerRunning ? "运行中" : "未运行");
-            
-            Toast.makeText(this, status, Toast.LENGTH_LONG).show();
-            android.util.Log.d("MainActivity", status);
-            
-            if (hasOverlay && hasAccessibility) {
-                // 无障碍服务已启动，悬浮窗功能已可用
-                Toast.makeText(this, "✅ 服务已启动，打开小红书时会显示悬浮窗", Toast.LENGTH_SHORT).show();
-                
-                // 测试设备信息上报功能
-                if (deviceInfoReporter != null) {
-                    deviceInfoReporter.reportDeviceInfo();
-                    Toast.makeText(this, "📊 设备信息上报测试已执行", Toast.LENGTH_SHORT).show();
-                }
-            } else {
-                String missing = "";
-                if (!hasOverlay) missing += "悬浮窗权限 ";
-                if (!hasAccessibility) missing += "无障碍服务 ";
-                Toast.makeText(this, "请先开启：" + missing, Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-    
-    private void setupShowCurrentAppButton() {
-        Button showAppButton = findViewById(R.id.btn_show_current_app);
-        showAppButton.setOnClickListener(v -> {
-            // 检查无障碍服务的状态
-            boolean isAccessibilityRunning = FloatingAccessibilityService.isServiceRunning();
-            
-            String serviceStatus = String.format("服务状态:\n无障碍服务: %s", 
-                isAccessibilityRunning ? "✓" : "✗");
-            
-            Toast.makeText(this, serviceStatus, Toast.LENGTH_LONG).show();
-            android.util.Log.d("MainActivity", serviceStatus);
-            
-            // 如果AccessibilityService正在运行，显示当前状态
-            if (isAccessibilityRunning) {
-                boolean isInXhs = FloatingAccessibilityService.isInXiaohongshu();
-                boolean isFloatingVisible = FloatingAccessibilityService.isFloatingWindowVisible();
-                String message = String.format("小红书状态: %s\n悬浮窗状态: %s", 
-                    isInXhs ? "前台运行" : "未运行",
-                    isFloatingVisible ? "显示中" : "隐藏中");
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show();
-                android.util.Log.d("MainActivity", message);
-            }
-            
-            // 显示检测逻辑信息（已优化：取消广播通信）
-            SettingsManager settingsManager = new SettingsManager(this);
-            String currentInterval = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
-            
-            String detectionInfo = "检测逻辑 (已优化响应速度):\n小红书包名: com.xingin.xhs\n显示条件: 检测到\"发现\"文本\n隐藏条件: 检测到\"搜索\"文本或离开小红书\n🔢 数学题验证关闭功能\n- 点击关闭需要答题\n- 答对后" + currentInterval + "自动重新显示\n⚙️ 时间间隔配置\n- 当前设置: " + currentInterval + "\n- 可在\"时间间隔设置\"中修改\n⚡ 性能优化: 取消广播通信，直接管理悬浮窗\n🔋 保活优化: 锁屏解锁、应用切换后自动恢复\n- 2秒定期检查应用状态\n- 系统广播监听屏幕解锁\n- 建议设置电池优化白名单\n🔧 输入法优化: 解决验证界面输入法闪烁问题";
-            Toast.makeText(this, detectionInfo, Toast.LENGTH_LONG).show();
-            android.util.Log.d("MainActivity", detectionInfo);
-        });
     }
     
     private void setupOptimizationGuideButton() {
