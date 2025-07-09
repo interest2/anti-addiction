@@ -298,7 +298,7 @@ public class MainActivity extends AppCompatActivity {
         Button tagButton = findViewById(R.id.btn_tag_setting);
         if (tagButton != null) {
             String currentTag = settingsManager.getMotivationTag();
-            tagButton.setText("激励语: " + currentTag);
+            tagButton.setText("目标: " + currentTag);
         }
     }
 

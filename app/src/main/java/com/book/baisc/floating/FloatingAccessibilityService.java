@@ -115,7 +115,7 @@ public class FloatingAccessibilityService extends AccessibilityService
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        Log.d(TAG, "onAccessibilityEvent 被调用，事件类型: " + event.getEventType());
+//        Log.d(TAG, "onAccessibilityEvent 被调用，事件类型: " + event.getEventType());
         
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             handleWindowStateChanged(event);
@@ -260,42 +260,6 @@ public class FloatingAccessibilityService extends AccessibilityService
     }
     
     /**
-     * 优化版本的文本查找，限制递归深度
-     */
-    private boolean findTextOptimized(AccessibilityNodeInfo node, String targetText, int maxDepth) {
-        if (node == null || maxDepth <= 0) return false;
-        
-        // 检查当前节点的文本
-        CharSequence text = node.getText();
-        if (text != null && node.isVisibleToUser() && text.toString().contains(targetText)) {
-            Log.d(TAG, "快速找到目标文本: " + targetText + " (深度: " + (6-maxDepth) + ")");
-            return true;
-        }
-        
-        // 检查contentDescription
-        CharSequence contentDesc = node.getContentDescription();
-        if (contentDesc != null && node.isVisibleToUser() && contentDesc.toString().contains(targetText)) {
-            Log.d(TAG, "在contentDescription中快速找到: " + targetText + " (深度: " + (6-maxDepth) + ")");
-            return true;
-        }
-        
-        // 增加子节点检查数量，确保不遗漏
-        int childCount = Math.min(node.getChildCount(), 20); // 增加到20个子节点
-        for (int i = 0; i < childCount; i++) {
-            AccessibilityNodeInfo child = node.getChild(i);
-            if (child != null) {
-                if (findTextOptimized(child, targetText, maxDepth - 1)) {
-                    child.recycle();
-                    return true;
-                }
-                child.recycle();
-            }
-        }
-        
-        return false;
-    }
-    
-    /**
      * 临时调试方法：输出可见文本内容
      */
     private void logVisibleTexts(AccessibilityNodeInfo node, int currentDepth, int maxDepth) {
@@ -341,8 +305,9 @@ public class FloatingAccessibilityService extends AccessibilityService
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             if (rootNode != null) {
                 // 第一阶段：快速检测"发现"文本（限制深度）
-                boolean hasFaxian = findTextOptimized(rootNode, "发现", 5);
-                
+//                boolean hasFaxian = findTextOptimized(rootNode, "发现", 5);
+                boolean hasFaxian = false;
+
                 // 第二阶段：如果快速检测没找到"发现"，使用完整检测作为备用
                 if (!hasFaxian) {
                     Log.d(TAG, "快速检测未找到'发现'，启用完整检测");
