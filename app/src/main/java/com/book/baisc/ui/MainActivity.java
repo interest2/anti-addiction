@@ -285,14 +285,10 @@ public class MainActivity extends AppCompatActivity {
     
     private void showIntervalExplanation(int interval) {
         StringBuilder explanation = new StringBuilder();
-        explanation.append("⏰ 时间间隔设置说明\n\n");
-        explanation.append("当前设置: ").append(SettingsManager.getIntervalDisplayText(interval)).append("\n\n");
-        explanation.append("📌 说明:\n");
-        explanation.append("• 关闭悬浮窗后，等待设定时间再自动显示\n");
-        explanation.append("⚠️ 注意：设置立即生效，正在运行的定时器会立即更新");
-        
+        explanation.append("新的时长，将在回答一次算术题后才会生效");
+
         new android.app.AlertDialog.Builder(this)
-                .setTitle("时间间隔说明")
+                .setTitle("解禁时长说明")
                .setMessage(explanation.toString())
                 .setPositiveButton("好的", null)
                 .show();
