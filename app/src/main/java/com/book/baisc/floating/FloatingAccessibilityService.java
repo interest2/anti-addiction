@@ -431,20 +431,6 @@ public class FloatingAccessibilityService extends AccessibilityService
         int screenWidth = displayMetrics.widthPixels;
         int screenHeight = displayMetrics.heightPixels;
         
-        // 获取状态栏高度
-        int statusBarHeight = 0;
-        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            statusBarHeight = getResources().getDimensionPixelSize(resourceId);
-        }
-        
-        // 获取导航栏高度
-        int navigationBarHeight = 0;
-        resourceId = getResources().getIdentifier("navigation_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            navigationBarHeight = getResources().getDimensionPixelSize(resourceId);
-        }
-        
         // 设置悬浮窗位置和大小
         int topOffset = 130;
         int bottomOffset = 230;
@@ -576,10 +562,12 @@ public class FloatingAccessibilityService extends AccessibilityService
             String content = dynamicText;
             if (settingsManager != null) {
                 String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
+
+                String hintTIme = "\n若关闭，" + intervalText + "后将重新显示本页面";
                 if (!dynamicText.isEmpty()) {
-                    content = dynamicText + "\n关闭后" + intervalText + "自动重新显示";
+                    content = dynamicText + "\n" + hintTIme;
                 } else {
-                    content = "关闭后" + intervalText + "自动重新显示";
+                    content = hintTIme;
                 }
             }
             

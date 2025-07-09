@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.provider.Settings;
 import android.widget.Button;
 import android.widget.Toast;
+import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -59,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
         deviceInfoReporter.reportDeviceInfo();
 
         updateCasualButtonState();
+        updateCasualCountDisplay();
     }
 
     private void checkAndRequestPermissions() {
@@ -272,6 +274,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updateCasualCountDisplay() {
+        TextView countText = findViewById(R.id.tv_casual_count);
+        if (countText != null) {
+            int closeCount = settingsManager.getCasualCloseCount();
+            int remainingCount = Math.max(0, 2 - closeCount);
+            countText.setText("今日剩余: " + remainingCount + "次");
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -299,6 +310,7 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         checkAndRequestPermissions();
         updateCasualButtonState();
+        updateCasualCountDisplay();
         // 每次返回时检查权限状态
         if (isAccessibilityServiceEnabled() && 
             (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {

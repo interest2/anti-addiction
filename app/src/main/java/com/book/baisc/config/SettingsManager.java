@@ -14,9 +14,6 @@ public class SettingsManager {
     private static final String KEY_CASUAL_CLOSE_COUNT = "casual_close_count";
     private static final String KEY_LAST_CASUAL_CLOSE_DATE = "last_casual_close_date";
     
-    // 默认自动显示间隔（秒）
-    private static final int DEFAULT_AUTO_SHOW_INTERVAL = 5;
-
     // 日常版时间间隔（秒）
     // 休闲版时间间隔（秒）
 //    private static final int[] dailyIntervalArray = {3, 5};
@@ -34,7 +31,7 @@ public class SettingsManager {
      * 获取自动显示间隔（秒）
      */
     public int getAutoShowInterval() {
-        return prefs.getInt(KEY_AUTO_SHOW_INTERVAL, DEFAULT_AUTO_SHOW_INTERVAL);
+        return prefs.getInt(KEY_AUTO_SHOW_INTERVAL, dailyIntervalArray[0]);
     }
     
     /**
