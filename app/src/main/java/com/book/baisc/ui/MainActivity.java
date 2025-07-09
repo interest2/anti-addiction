@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
         setupOptimizationGuideButton();
         
         // 设置时间间隔设置按钮点击事件
-        setupTimeSettingButton();
+        setupTimeSettingButtons();
         
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
@@ -220,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
         Button optimizationButton = findViewById(R.id.btn_optimization_guide);
         optimizationButton.setOnClickListener(v -> showOptimizationGuide());
     }
-    
+
     private void showOptimizationGuide() {
         StringBuilder guide = new StringBuilder();
         guide.append("🔋 电池优化指引\n\n");
@@ -248,78 +248,80 @@ public class MainActivity extends AppCompatActivity {
         guide.append("如果仍有问题，请重启手机后再试");
         
         // 显示指引
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("电池优化指引")
+        new android.app.AlertDialog.Builder(this)
+               .setTitle("电池优化指引")
                .setMessage(guide.toString())
                .setPositiveButton("去电池设置", (dialog, which) -> {
                    try {
-                       Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                       Intent intent = new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
                        startActivity(intent);
                    } catch (Exception e) {
                        try {
-                           Intent intent = new Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS);
+                           Intent intent = new Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS);
                            startActivity(intent);
                        } catch (Exception ex) {
-                           Intent intent = new Intent(Settings.ACTION_SETTINGS);
+                           Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
                            startActivity(intent);
                        }
                    }
                })
                .setNegativeButton("稍后处理", null)
-                               .show();
+               .show();
     }
-    
-    private void setupTimeSettingButton() {
-        Button timeSettingButton = findViewById(R.id.btn_time_setting);
-        timeSettingButton.setOnClickListener(v -> showTimeSettingDialog());
+
+    private void setupTimeSettingButtons() {
+        Button dailyButton = findViewById(R.id.btn_daily_time_setting);
+        dailyButton.setOnClickListener(v -> {
+            showTimeSettingDialog(true); // true for daily
+        });
+        
+        Button casualButton = findViewById(R.id.btn_casual_time_setting);
+        casualButton.setOnClickListener(v -> {
+            showTimeSettingDialog(false); // false for casual
+        });
     }
-    
-    private void showTimeSettingDialog() {
-        SettingsManager settingsManager = new SettingsManager(this);
-        int currentInterval = settingsManager.getAutoShowInterval();
+
+    private void showTimeSettingDialog(boolean isDaily) {
+        final SettingsManager settingsManager = new SettingsManager(this);
+        final int[] intervals = isDaily ? 
+            SettingsManager.getDailyAvailableIntervals() : 
+            SettingsManager.getCasualAvailableIntervals();
         
-        // 获取可选的时间间隔
-        int[] intervals = SettingsManager.getAvailableIntervals();
-        String[] intervalTexts = new String[intervals.length];
-        int selectedIndex = 0;
-        
+        String[] intervalOptions = new String[intervals.length];
         for (int i = 0; i < intervals.length; i++) {
-            intervalTexts[i] = SettingsManager.getIntervalDisplayText(intervals[i]);
+            intervalOptions[i] = SettingsManager.getIntervalDisplayText(intervals[i]);
+        }
+
+        int currentInterval = settingsManager.getAutoShowInterval();
+        int checkedItem = -1;
+        for (int i = 0; i < intervals.length; i++) {
             if (intervals[i] == currentInterval) {
-                selectedIndex = i;
+                checkedItem = i;
+                break;
             }
         }
         
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        builder.setTitle("设置自动显示时间间隔")
-               .setSingleChoiceItems(intervalTexts, selectedIndex, null)
-               .setPositiveButton("确定", (dialog, which) -> {
-                   int selectedPosition = ((android.app.AlertDialog) dialog).getListView().getCheckedItemPosition();
-                   if (selectedPosition >= 0) {
-                       int newInterval = intervals[selectedPosition];
-                       settingsManager.setAutoShowInterval(newInterval);
-                       
-                       String message = "时间间隔已设置为 " + SettingsManager.getIntervalDisplayText(newInterval);
-                       Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-                       
-                       // 通知AccessibilityService时间间隔设置已更改，立即应用新间隔
-                       FloatingAccessibilityService.notifyIntervalChanged();
-                       
-                       // 显示详细说明
-                       showIntervalExplanation(newInterval);
-                   }
-               })
-               .setNegativeButton("取消", null)
-               .setNeutralButton("重置默认", (dialog, which) -> {
-                   settingsManager.resetToDefault();
-                   Toast.makeText(this, "已重置为默认设置（5秒）", Toast.LENGTH_SHORT).show();
-                   
-                   // 通知AccessibilityService时间间隔设置已更改，立即应用新间隔
-                   FloatingAccessibilityService.notifyIntervalChanged();
-               })
-               .show();
+        String dialogTitle = isDaily ? "日常版时间间隔" : "休闲版时间间隔";
+
+        new android.app.AlertDialog.Builder(this)
+            .setTitle(dialogTitle)
+            .setSingleChoiceItems(intervalOptions, checkedItem, (dialog, which) -> {
+                int selectedInterval = intervals[which];
+                settingsManager.setAutoShowInterval(selectedInterval);
+                
+                // 通知服务配置已更改
+                FloatingAccessibilityService.notifyIntervalChanged();
+                
+                // 显示提示信息
+                showIntervalExplanation(selectedInterval);
+                
+                Toast.makeText(this, "已设置为: " + intervalOptions[which], Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            })
+            .setNegativeButton("取消", null)
+            .show();
     }
-    
+
     private void showIntervalExplanation(int interval) {
         StringBuilder explanation = new StringBuilder();
         explanation.append("⏰ 时间间隔设置说明\n\n");

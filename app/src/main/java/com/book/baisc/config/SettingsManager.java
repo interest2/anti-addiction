@@ -14,7 +14,11 @@ public class SettingsManager {
     
     // 默认自动显示间隔（秒）
     private static final int DEFAULT_AUTO_SHOW_INTERVAL = 5;
-    private static final int[] intervalArray = {10, 60, 300, 1200};
+    
+    // 日常版时间间隔（秒）
+    private static final int[] dailyIntervalArray = {10, 60}; 
+    // 休闲版时间间隔（秒）
+    private static final int[] casualIntervalArray = {600, 1200};
 
     private SharedPreferences prefs;
     
@@ -33,8 +37,8 @@ public class SettingsManager {
      * 设置自动显示间隔（秒）
      */
     public void setAutoShowInterval(int seconds) {
-        int minInterval = intervalArray[0];
-        int maxInterval = intervalArray[intervalArray.length - 1];
+        int minInterval = dailyIntervalArray[0];
+        int maxInterval = casualIntervalArray[casualIntervalArray.length - 1];
         if (seconds >= minInterval && seconds <= maxInterval) {
             prefs.edit().putInt(KEY_AUTO_SHOW_INTERVAL, seconds).apply();
         }
@@ -55,10 +59,17 @@ public class SettingsManager {
     }
     
     /**
-     * 获取可选的时间间隔列表
+     * 获取日常版可选的时间间隔列表
      */
-    public static int[] getAvailableIntervals() {
-        return intervalArray;
+    public static int[] getDailyAvailableIntervals() {
+        return dailyIntervalArray;
+    }
+    
+    /**
+     * 获取休闲版可选的时间间隔列表
+     */
+    public static int[] getCasualAvailableIntervals() {
+        return casualIntervalArray;
     }
     
     /**
