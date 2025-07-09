@@ -11,6 +11,8 @@ public class SettingsManager {
     
     private static final String PREFS_NAME = "app_settings";
     private static final String KEY_AUTO_SHOW_INTERVAL = "auto_show_interval";
+    private static final String KEY_CASUAL_CLOSE_COUNT = "casual_close_count";
+    private static final String KEY_LAST_CASUAL_CLOSE_DATE = "last_casual_close_date";
     
     // 默认自动显示间隔（秒）
     private static final int DEFAULT_AUTO_SHOW_INTERVAL = 5;
@@ -58,6 +60,66 @@ public class SettingsManager {
         prefs.edit().clear().apply();
     }
     
+    /**
+     * 判断当前是否是休闲版模式
+     */
+    public boolean isCasualMode() {
+        int currentInterval = getAutoShowInterval();
+        for (int interval : casualIntervalArray) {
+            if (interval == currentInterval) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 获取当前日期字符串 "yyyy-MM-dd"
+     */
+    private String getCurrentDate() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(new java.util.Date());
+    }
+
+    /**
+     * 增加休闲版关闭次数，并处理每日重置
+     */
+    public void incrementCasualCloseCount() {
+        String currentDate = getCurrentDate();
+        String lastDate = prefs.getString(KEY_LAST_CASUAL_CLOSE_DATE, "");
+        
+        int count = prefs.getInt(KEY_CASUAL_CLOSE_COUNT, 0);
+
+        if (currentDate.equals(lastDate)) {
+            // 是同一天，计数+1
+            count++;
+        } else {
+            // 是新的一天，重置为1
+            count = 1;
+        }
+
+        prefs.edit()
+             .putInt(KEY_CASUAL_CLOSE_COUNT, count)
+             .putString(KEY_LAST_CASUAL_CLOSE_DATE, currentDate)
+             .apply();
+        
+        android.util.Log.d("SettingsManager", "休闲版关闭次数增加. 当前次数: " + count + " 日期: " + currentDate);
+    }
+
+    /**
+     * 获取今天的休闲版关闭次数
+     */
+    public int getCasualCloseCount() {
+        String currentDate = getCurrentDate();
+        String lastDate = prefs.getString(KEY_LAST_CASUAL_CLOSE_DATE, "");
+        
+        if (currentDate.equals(lastDate)) {
+            return prefs.getInt(KEY_CASUAL_CLOSE_COUNT, 0);
+        }
+        
+        // 如果不是同一天，返回0
+        return 0;
+    }
+
     /**
      * 获取日常版可选的时间间隔列表
      */

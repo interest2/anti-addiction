@@ -471,6 +471,14 @@ public class FloatingAccessibilityService extends AccessibilityService
                     Log.d(TAG, "数学题验证成功，关闭悬浮窗");
                     isManuallyHidden = true;
                     hideFloatingWindow();
+
+                    // 如果是休闲版，增加关闭次数
+                    if (settingsManager.isCasualMode()) {
+                        settingsManager.incrementCasualCloseCount();
+                        int newCount = settingsManager.getCasualCloseCount();
+                        String message = "休闲版今日已关闭 " + newCount + " 次";
+                        Log.d(TAG, message);
+                    }
                     
                     // 根据用户设置的时间间隔自动重新显示
                     if (autoShowRunnable != null) {

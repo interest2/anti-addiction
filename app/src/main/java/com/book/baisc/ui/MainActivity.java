@@ -251,12 +251,6 @@ public class MainActivity extends AppCompatActivity {
         explanation.append("当前设置: ").append(SettingsManager.getIntervalDisplayText(interval)).append("\n\n");
         explanation.append("📌 说明:\n");
         explanation.append("• 关闭悬浮窗后，等待设定时间再自动显示\n");
-        explanation.append("• 较短间隔：更频繁提醒，防沉迷效果更强\n");
-        explanation.append("• 较长间隔：减少打扰，适合偶尔使用\n\n");
-        explanation.append("💡 建议:\n");
-        explanation.append("• 强制防沉迷：3-5秒\n");
-        explanation.append("• 平衡使用：10-15秒\n");
-        explanation.append("• 轻度提醒：30-60秒\n\n");
         explanation.append("⚠️ 注意：设置立即生效，正在运行的定时器会立即更新");
         
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
