@@ -4,4 +4,5 @@ public class Const {
     public static final String XHS_PACKAGE = "com.xingin.xhs";
 
     public final static int CASUAL_LIMIT_COUNT = 3;
+    public static boolean MOTIVATE_CHANGE = false;
 }

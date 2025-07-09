@@ -512,26 +512,16 @@ public class FloatingAccessibilityService extends AccessibilityService
             // 设置拖拽功能
             View dragArea = floatingView.findViewById(R.id.top_info_layout);
             dragArea.setOnTouchListener(new FloatingOnTouchListener(layoutParams, windowManager));
-            
+
+//            // 如果目标更新，本次立即请求更新缓存
+//            if(Const.MOTIVATE_CHANGE){
+//                fetchNew();
+//                Const.MOTIVATE_CHANGE = false;
+//            }
             // 更新悬浮窗内容，显示当前时间间隔设置
             updateFloatingWindowContent();
-            
-            // 异步获取最新的动态文字内容
-            if (floatingTextFetcher != null) {
-                floatingTextFetcher.fetchLatestText(new FloatingTextFetcher.OnTextFetchListener() {
-                    @Override
-                    public void onTextFetched(String text) {
-                        Log.d(TAG, "获取到新的动态文字: " + text);
-                    }
-                    
-                    @Override
-                    public void onFetchError(String error) {
-                        Log.w(TAG, "获取动态文字失败: " + error);
-                        // 保持使用缓存的文字，不做额外处理
-                    }
-                });
-            }
-            
+            fetchNew();
+
             // 添加悬浮窗到窗口管理器
             try {
                 windowManager.addView(floatingView, layoutParams);
@@ -543,7 +533,25 @@ public class FloatingAccessibilityService extends AccessibilityService
             }
         }
     }
-    
+
+    private void fetchNew() {
+        // 异步获取最新的动态文字内容
+        if (floatingTextFetcher != null) {
+            floatingTextFetcher.fetchLatestText(new FloatingTextFetcher.OnTextFetchListener() {
+                @Override
+                public void onTextFetched(String text) {
+                    Log.d(TAG, "获取到新的动态文字: " + text);
+                }
+
+                @Override
+                public void onFetchError(String error) {
+                    Log.w(TAG, "获取动态文字失败: " + error);
+                    // 保持使用缓存的文字，不做额外处理
+                }
+            });
+        }
+    }
+
     /**
      * 更新悬浮窗内容
      */

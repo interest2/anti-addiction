@@ -10,9 +10,12 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import com.book.baisc.config.SettingsManager;
 
 public class FloatingTextFetcher {
     
@@ -28,6 +31,7 @@ public class FloatingTextFetcher {
     private ExecutorService executorService;
     private Handler mainHandler;
     private SharedPreferences prefs;
+    private SettingsManager settingsManager;
     
     public interface OnTextFetchListener {
         void onTextFetched(String text);
@@ -39,6 +43,7 @@ public class FloatingTextFetcher {
         this.executorService = Executors.newSingleThreadExecutor();
         this.mainHandler = new Handler(Looper.getMainLooper());
         this.prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        this.settingsManager = new SettingsManager(context);
     }
     
     /**
@@ -104,7 +109,9 @@ public class FloatingTextFetcher {
     private String performHttpRequest() {
         HttpURLConnection connection = null;
         try {
-            URL url = new URL(API_URL + "?tag=找工作");
+            String tag = settingsManager.getMotivationTag();
+            String encodedTag = URLEncoder.encode(tag, StandardCharsets.UTF_8.name());
+            URL url = new URL(API_URL + "?tag=" + encodedTag);
             connection = (HttpURLConnection) url.openConnection();
             
             // 设置请求方法和属性

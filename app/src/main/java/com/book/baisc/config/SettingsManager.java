@@ -13,7 +13,17 @@ public class SettingsManager {
     private static final String KEY_AUTO_SHOW_INTERVAL = "auto_show_interval";
     private static final String KEY_CASUAL_CLOSE_COUNT = "casual_close_count";
     private static final String KEY_LAST_CASUAL_CLOSE_DATE = "last_casual_close_date";
+    private static final String KEY_MOTIVATION_TAG = "motivation_tag";
     
+    // 默认自动显示间隔（秒）
+    private static final int DEFAULT_AUTO_SHOW_INTERVAL = 5;
+
+    // 激励语标签列表
+    private static final String[] MOTIVATION_TAGS = {
+            "高考", "考研", "保研", "出国升学", "跳槽", "找工作", "考公务员"
+    };
+    private static final String DEFAULT_MOTIVATION_TAG = "找工作";
+
     // 日常版时间间隔（秒）
     // 休闲版时间间隔（秒）
 //    private static final int[] dailyIntervalArray = {3, 5};
@@ -57,6 +67,28 @@ public class SettingsManager {
      */
     public void resetToDefault() {
         prefs.edit().clear().apply();
+    }
+    
+    /**
+     * 设置激励语标签
+     */
+    public void setMotivationTag(String tag) {
+        prefs.edit().putString(KEY_MOTIVATION_TAG, tag).apply();
+        Const.MOTIVATE_CHANGE = true;
+    }
+
+    /**
+     * 获取激励语标签
+     */
+    public String getMotivationTag() {
+        return prefs.getString(KEY_MOTIVATION_TAG, DEFAULT_MOTIVATION_TAG);
+    }
+
+    /**
+     * 获取可选的激励语标签列表
+     */
+    public static String[] getAvailableTags() {
+        return MOTIVATION_TAGS;
     }
     
     /**

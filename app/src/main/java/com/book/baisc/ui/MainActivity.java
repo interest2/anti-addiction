@@ -5,7 +5,9 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.InputFilter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
 import android.widget.TextView;
 
@@ -55,6 +57,9 @@ public class MainActivity extends AppCompatActivity {
         // 设置时间间隔设置按钮点击事件
         setupTimeSettingButtons();
         
+        // 设置激励语标签按钮
+        setupTagSettingButton();
+
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();
@@ -283,6 +288,70 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void setupTagSettingButton() {
+        Button tagButton = findViewById(R.id.btn_tag_setting);
+        tagButton.setOnClickListener(v -> showTagSettingDialog());
+        updateTagButtonText();
+    }
+    
+    private void updateTagButtonText() {
+        Button tagButton = findViewById(R.id.btn_tag_setting);
+        if (tagButton != null) {
+            String currentTag = settingsManager.getMotivationTag();
+            tagButton.setText("激励语: " + currentTag);
+        }
+    }
+
+    private void showTagSettingDialog() {
+        final String[] predefinedTags = SettingsManager.getAvailableTags();
+        final String customTagOption = "自定义...";
+
+        // 将预设标签和“自定义”选项合并
+        final String[] dialogOptions = new String[predefinedTags.length + 1];
+        System.arraycopy(predefinedTags, 0, dialogOptions, 0, predefinedTags.length);
+        dialogOptions[dialogOptions.length - 1] = customTagOption;
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("选择激励语标签")
+                .setItems(dialogOptions, (dialog, which) -> {
+                    if (which == predefinedTags.length) {
+                        // 点击了“自定义...”
+                        showCustomTagInputDialog();
+                    } else {
+                        // 点击了预设标签
+                        String selectedTag = dialogOptions[which];
+                        settingsManager.setMotivationTag(selectedTag);
+                        updateTagButtonText();
+                        Toast.makeText(this, "已设置为: " + selectedTag, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void showCustomTagInputDialog() {
+        final EditText input = new EditText(this);
+        // 设置输入长度限制为8
+        input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(8) });
+        input.setHint("不超过8个字");
+
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("自定义激励语标签")
+            .setView(input)
+            .setPositiveButton("确定", (dialog, which) -> {
+                String customTag = input.getText().toString().trim();
+                if (customTag.isEmpty()) {
+                    Toast.makeText(this, "标签不能为空", Toast.LENGTH_SHORT).show();
+                } else {
+                    settingsManager.setMotivationTag(customTag);
+                    updateTagButtonText();
+                    Toast.makeText(this, "已设置为: " + customTag, Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -311,6 +380,7 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestPermissions();
         updateCasualButtonState();
         updateCasualCountDisplay();
+        updateTagButtonText();
         // 每次返回时检查权限状态
         if (isAccessibilityServiceEnabled() && 
             (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {
