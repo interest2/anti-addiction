@@ -50,7 +50,8 @@ public class FloatingTextFetcher {
             Log.d(TAG, "获取到缓存文字: " + cachedText);
             return cachedText;
         }
-        return "小红书应用正在运行"; // 默认文字
+        Log.d(TAG, "没有缓存文字，返回空字符串");
+        return ""; // 没有缓存时返回空字符串
     }
     
     /**

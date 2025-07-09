@@ -519,7 +519,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                     public void onTextFetched(String text) {
                         Log.d(TAG, "获取到新的动态文字: " + text);
                         // 更新悬浮窗显示的文字
-                        updateFloatingWindowContentWithText(text);
+//                        updateFloatingWindowContentWithText(text);
                     }
                     
                     @Override
@@ -552,20 +552,24 @@ public class FloatingAccessibilityService extends AccessibilityService
         TextView contentText = floatingView.findViewById(R.id.tv_content);
         if (contentText != null) {
             // 获取缓存的动态文字内容
-            String dynamicText = "小红书应用正在运行"; // 默认文字
+            String dynamicText = "";
             if (floatingTextFetcher != null) {
                 dynamicText = floatingTextFetcher.getCachedText();
             }
             
             // 显示动态文字和时间间隔信息
-            String intervalText = "";
+            String content = dynamicText;
             if (settingsManager != null) {
-                intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
-                dynamicText += "\n关闭后" + intervalText + "自动重新显示";
+                String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
+                if (!dynamicText.isEmpty()) {
+                    content = dynamicText + "\n关闭后" + intervalText + "自动重新显示";
+                } else {
+                    content = "关闭后" + intervalText + "自动重新显示";
+                }
             }
             
-            contentText.setText(dynamicText);
-            Log.d(TAG, "悬浮窗内容已更新: " + dynamicText);
+            contentText.setText(content);
+            Log.d(TAG, "悬浮窗内容已更新: " + content);
         }
     }
     
