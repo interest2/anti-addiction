@@ -22,7 +22,7 @@ public class SettingsManager {
     private static final String[] MOTIVATION_TAGS = {
             "高考", "考研", "保研", "出国升学", "跳槽", "找工作", "考公务员"
     };
-    private static final String DEFAULT_MOTIVATION_TAG = "找工作";
+    private static final String DEFAULT_MOTIVATION_TAG = "待设置";
 
     // 日常版时间间隔（秒）
     // 休闲版时间间隔（秒）

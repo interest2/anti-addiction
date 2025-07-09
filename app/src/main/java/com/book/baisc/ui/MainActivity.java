@@ -42,7 +42,16 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            
+            // 将 dp 值转换为像素
+            int horizontalPadding = (int) (32 * getResources().getDisplayMetrics().density);
+            
+            v.setPadding(
+                systemBars.left + horizontalPadding, 
+                systemBars.top, 
+                systemBars.right + horizontalPadding, 
+                systemBars.bottom
+            );
             return insets;
         });
 
@@ -158,50 +167,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void showOptimizationGuide() {
         StringBuilder guide = new StringBuilder();
-        guide.append("🔋 电池优化指引\n\n");
+        guide.append("🔋 设置须知\n\n");
         guide.append("为了确保悬浮窗功能正常使用，请进行以下设置：\n\n");
         
         guide.append("1️⃣ 电池优化白名单\n");
         guide.append("- 设置 → 电池 → 电池优化 → 不限制\n");
         guide.append("- 或设置 → 应用管理 → 电池优化 → 允许后台运行\n\n");
-        
-        guide.append("2️⃣ 自启动管理\n");
-        guide.append("- 设置 → 应用管理 → 自启动管理 → 允许\n");
-        guide.append("- 华为/荣耀: 手机管家 → 应用启动管理 → 手动管理\n\n");
-        
-        guide.append("3️⃣ 后台应用限制\n");
-        guide.append("- 设置 → 应用管理 → 后台应用刷新 → 允许\n");
-        guide.append("- 小米: 设置 → 省电与电池 → 应用配置 → 无限制\n\n");
-        
-        guide.append("4️⃣ 通知权限\n");
-        guide.append("- 设置 → 通知管理 → 允许通知\n\n");
-        
-        guide.append("5️⃣ 锁屏清理\n");
-        guide.append("- 设置 → 锁屏 → 锁屏清理 → 关闭\n\n");
-        
-        guide.append("⚠️ 注意：不同品牌手机设置路径可能不同\n");
-        guide.append("如果仍有问题，请重启手机后再试");
-        
-        // 显示指引
-        new android.app.AlertDialog.Builder(this)
-               .setTitle("电池优化指引")
-               .setMessage(guide.toString())
-               .setPositiveButton("去电池设置", (dialog, which) -> {
-                   try {
-                       Intent intent = new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-                       startActivity(intent);
-                   } catch (Exception e) {
-                       try {
-                           Intent intent = new Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS);
-                           startActivity(intent);
-                       } catch (Exception ex) {
-                           Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
-                           startActivity(intent);
-                       }
-                   }
-               })
-               .setNegativeButton("稍后处理", null)
-               .show();
+
     }
 
     private void setupTimeSettingButtons() {
@@ -235,7 +207,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         
-        String dialogTitle = isDaily ? "日常版时间间隔" : "休闲版时间间隔";
+        String dialogTitle = isDaily ? "严格版" : "宽松版";
 
         new android.app.AlertDialog.Builder(this)
             .setTitle(dialogTitle)

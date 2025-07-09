@@ -423,18 +423,18 @@ public class FloatingAccessibilityService extends AccessibilityService
                         int currentCount = settingsManager.getCasualCloseCount();
                         settingsManager.incrementCasualCloseCount();
                         
-                        Log.d(TAG, "休闲版关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
+                        Log.d(TAG, "宽松版关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
 
-                        // 当日关闭次数达到上限后，再次关闭时强制切换为日常版
-                        if (currentCount >= Const.CASUAL_LIMIT_COUNT) {
+                        // 当日关闭次数达到2次后，再次关闭时强制切换为日常版
+                        if (currentCount >= 2) {
                             int maxDailyInterval = SettingsManager.getMaxDailyInterval();
                             settingsManager.setAutoShowInterval(maxDailyInterval);
                             
                             // 通知服务时间间隔已更改
-                            FloatingAccessibilityService.notifyIntervalChanged();
+                            notifyIntervalChanged();
                             
                             String newIntervalText = SettingsManager.getIntervalDisplayText(maxDailyInterval);
-                            String message = "休闲版使用已达上限，已强制切换为日常模式 (" + newIntervalText + ")";
+                            String message = "宽松版使用已达上限，已强制切换为严格模式 (" + newIntervalText + ")";
                             
                             Log.d(TAG, message);
                             Toast.makeText(FloatingAccessibilityService.this, message, Toast.LENGTH_LONG).show();
