@@ -18,9 +18,12 @@ public class SettingsManager {
     private static final int DEFAULT_AUTO_SHOW_INTERVAL = 5;
     
     // 日常版时间间隔（秒）
-    private static final int[] dailyIntervalArray = {10, 60}; 
+    private static final int[] dailyIntervalArray = {3, 5};
     // 休闲版时间间隔（秒）
-    private static final int[] casualIntervalArray = {600, 1200};
+    private static final int[] casualIntervalArray = {10, 15};
+//    private static final int[] dailyIntervalArray = {10, 60};
+//    // 休闲版时间间隔（秒）
+//    private static final int[] casualIntervalArray = {600, 1200};
 
     private SharedPreferences prefs;
     

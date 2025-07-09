@@ -581,26 +581,6 @@ public class FloatingAccessibilityService extends AccessibilityService
         }
     }
     
-    /**
-     * 使用指定的文字内容更新悬浮窗
-     */
-    private void updateFloatingWindowContentWithText(String text) {
-        if (floatingView == null || text == null) return;
-        
-        TextView contentText = floatingView.findViewById(R.id.tv_content);
-        if (contentText != null) {
-            // 显示动态文字和时间间隔信息
-            String content = text;
-            if (settingsManager != null) {
-                String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
-                content += "\n关闭后" + intervalText + "自动重新显示";
-            }
-            
-            contentText.setText(content);
-            Log.d(TAG, "悬浮窗内容已更新为新文字: " + content);
-        }
-    }
-    
     private void hideFloatingWindow() {
         if (isFloatingWindowVisible) {
             Log.d(TAG, "开始隐藏悬浮窗");
@@ -623,14 +603,6 @@ public class FloatingAccessibilityService extends AccessibilityService
             
             isFloatingWindowVisible = false;
         }
-    }
-
-    public static boolean isFloatingWindowVisible() {
-        return instance != null && instance.isFloatingWindowVisible;
-    }
-    
-    public static boolean isInXiaohongshu() {
-        return instance != null && instance.isInXiaohongshu;
     }
 
     public static boolean isServiceRunning() {
