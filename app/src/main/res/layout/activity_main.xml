@@ -28,7 +28,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="打开小红书时显示悬浮窗，离开时自动隐藏。需要开启悬浮窗权限和无障碍服务。"
+        android:text="功能：打开小红书首页显示悬浮窗遮盖内容。\n所需权限：悬浮窗、无障碍服务、允许后台运行。"
         android:textAlignment="viewStart"
         android:textSize="16sp"
         app:layout_constraintBottom_toTopOf="@+id/btn_optimization_guide"
@@ -42,6 +42,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
         android:text="使用设置须知"
+        android:visibility="gone"
         android:backgroundTint="@color/orange"
         app:layout_constraintBottom_toTopOf="@+id/btn_daily_time_setting"
         app:layout_constraintStart_toStartOf="parent"
@@ -63,7 +64,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:backgroundTint="@color/green"
+        android:backgroundTint="#4CAF50"
         android:text="严格版"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tv_duration_subtitle" />
@@ -99,15 +100,15 @@
         android:textSize="18sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/btn_optimization_guide" />
+        app:layout_constraintTop_toBottomOf="@id/btn_casual_time_setting" />
 
     <Button
         android:id="@+id/btn_tag_setting"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:text="选择或自定义目标"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btn_casual_time_setting" />
+        app:layout_constraintTop_toBottomOf="@+id/tv_ambition_subtitle" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

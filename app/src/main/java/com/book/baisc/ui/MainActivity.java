@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
         checkAndRequestPermissions();
         
         // 设置优化指引按钮点击事件
-        setupOptimizationGuideButton();
+//        setupOptimizationGuideButton();
         
         // 设置时间间隔设置按钮点击事件
         setupTimeSettingButtons();
@@ -173,7 +173,34 @@ public class MainActivity extends AppCompatActivity {
         guide.append("1️⃣ 电池优化白名单\n");
         guide.append("- 设置 → 电池 → 电池优化 → 不限制\n");
         guide.append("- 或设置 → 应用管理 → 电池优化 → 允许后台运行\n\n");
-
+        
+        guide.append("2️⃣ 自启动管理\n");
+        guide.append("- 设置 → 应用管理 → 自启动管理 → 允许\n");
+        guide.append("- 华为/荣耀: 手机管家 → 应用启动管理 → 手动管理\n\n");
+        
+        guide.append("⚠️ 注意：不同品牌手机设置路径可能不同\n");
+        guide.append("如果仍有问题，请重启手机后再试");
+        
+        // 显示指引
+        new android.app.AlertDialog.Builder(this)
+               .setTitle("设置须知")
+               .setMessage(guide.toString())
+               .setPositiveButton("去电池设置", (dialog, which) -> {
+                   try {
+                       Intent intent = new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                       startActivity(intent);
+                   } catch (Exception e) {
+                       try {
+                           Intent intent = new Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS);
+                           startActivity(intent);
+                       } catch (Exception ex) {
+                           Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
+                           startActivity(intent);
+                       }
+                   }
+               })
+               .setNegativeButton("稍后处理", null)
+               .show();
     }
 
     private void setupTimeSettingButtons() {
@@ -284,7 +311,7 @@ public class MainActivity extends AppCompatActivity {
         dialogOptions[dialogOptions.length - 1] = customTagOption;
 
         new android.app.AlertDialog.Builder(this)
-                .setTitle("选择激励语标签")
+                .setTitle("选择或自定义目标")
                 .setItems(dialogOptions, (dialog, which) -> {
                     if (which == predefinedTags.length) {
                         // 点击了“自定义...”
