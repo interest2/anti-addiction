@@ -324,7 +324,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                         }
                     };
                     
-                    // 使用用户设置的时间间隔
+                    // 下次弹窗：用户最新设置的时间间隔
                     long interval = settingsManager.getAutoShowIntervalMillis();
                     autoShowHandler.postDelayed(autoShowRunnable, interval);
                     
@@ -335,10 +335,8 @@ public class FloatingAccessibilityService extends AccessibilityService
                     if (settingsManager.isCasualMode()) {
                         int currentCount = settingsManager.getCasualCloseCount();
                         settingsManager.incrementCasualCloseCount();
-
+                        settingsManager.setAutoShowInterval(settingsManager.getMaxDailyInterval());
                         Log.d(TAG, "宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
-                        // 通知服务时间间隔已更改
-                        notifyIntervalChanged();
                     }
                     Log.d(TAG, "下次时长：" + settingsManager.getAutoShowInterval());
                 }
