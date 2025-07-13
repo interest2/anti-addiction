@@ -251,14 +251,14 @@ public class MathChallengeManager {
                 currentAnswer = num1 + num2;
                 break;
             case 1: // 减法 - 三位数
-                num1 = random.nextInt(800) + 200; // 100-999
-                num2 = Math.max(100, Math.min(random.nextInt(900) + 100, num1 - 100));
+                num1 = random.nextInt(800) + 200; // 200-999
+                num2 = random.nextInt(num1 - 200) + 100;
                 operator = "-";
                 currentAnswer = num1 - num2;
                 break;
             case 2: // 乘法 - 20以内
-                num1 = random.nextInt(10) + 10; // 1-20
-                num2 = random.nextInt(10) + 10; // 1-20
+                num1 = random.nextInt(9) + 11; // 11-19
+                num2 = random.nextInt(9) + 11; // 11-19
                 operator = "×";
                 currentAnswer = num1 * num2;
                 break;
@@ -273,7 +273,7 @@ public class MathChallengeManager {
         Log.d(TAG, "生成数学题: " + question + " (答案: " + currentAnswer + ")");
         return question;
     }
-    
+
     /**
      * 处理提交答案
      */
