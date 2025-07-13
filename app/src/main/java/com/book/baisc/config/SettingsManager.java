@@ -26,10 +26,10 @@ public class SettingsManager {
 
     // 日常版时间间隔（秒）
     // 休闲版时间间隔（秒）
-//    private static final int[] dailyIntervalArray = {3, 5};
-//    private static final int[] casualIntervalArray = {10, 15};
-    private static final int[] dailyIntervalArray = {10, 60};
-    private static final int[] casualIntervalArray = {600, 900};
+    private static final int[] dailyIntervalArray = {3, 5};
+    private static final int[] casualIntervalArray = {10, 15};
+//    private static final int[] dailyIntervalArray = {10, 60};
+//    private static final int[] casualIntervalArray = {600, 900};
 
     private SharedPreferences prefs;
     
@@ -63,18 +63,11 @@ public class SettingsManager {
     }
     
     /**
-     * 重置为默认设置
-     */
-    public void resetToDefault() {
-        prefs.edit().clear().apply();
-    }
-    
-    /**
      * 设置激励语标签
      */
     public void setMotivationTag(String tag) {
         prefs.edit().putString(KEY_MOTIVATION_TAG, tag).apply();
-        Const.MOTIVATE_CHANGE = true;
+        Share.MOTIVATE_CHANGE = true;
     }
 
     /**
@@ -166,7 +159,7 @@ public class SettingsManager {
     }
     
     /**
-     * 获取日常版的最大时间间隔
+     * 获取严格模式的最大时间间隔
      */
     public static int getMaxDailyInterval() {
         int max = 0;

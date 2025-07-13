@@ -20,6 +20,7 @@ import android.util.DisplayMetrics;
 
 import com.book.baisc.R;
 import com.book.baisc.config.Const;
+import com.book.baisc.config.Share;
 import com.book.baisc.lifecycle.ServiceKeepAliveManager;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.DeviceInfoReporter;
@@ -41,7 +42,6 @@ public class FloatingAccessibilityService extends AccessibilityService
     private Handler handler;
     private Runnable contentCheckRunnable;
     private long lastContentCheckTime = 0;
-    private String lastDetectedInterface = ""; // 缓存上次检测的界面类型
 
     // 数学题验证管理器
     private MathChallengeManager mathChallengeManager;
@@ -136,7 +136,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             }
             
             // 过滤掉输入法应用，避免输入法弹出时误判
-            if (isInputMethodApp(packageName)) {
+            if (FloatHelper.isInputMethodApp(packageName)) {
                 Log.d(TAG, "忽略输入法应用: " + packageName);
                 return;
             }
@@ -150,7 +150,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                 
                 if (!isInXHS) {
                     // 离开小红书，立即隐藏悬浮窗
-                    lastDetectedInterface = ""; // 清除缓存
+                    Share.lastDetectedInterface = ""; // 清除缓存
                     hideFloatingWindow();
                 } else {
                     // 进入小红书，立即开始检测文本内容
@@ -187,112 +187,6 @@ public class FloatingAccessibilityService extends AccessibilityService
             handler.postDelayed(contentCheckRunnable, 300); // 300ms防抖延迟
         }
     }
-    
-    /**
-     * 判断是否是输入法应用
-     */
-    private boolean isInputMethodApp(String packageName) {
-        // 常见输入法包名列表
-        String[] inputMethodPackages = {
-            "com.baidu.input",           // 百度输入法
-            "com.baidu.input_hihonor",   // 荣耀百度输入法
-            "com.sohu.inputmethod.sogou", // 搜狗输入法
-            "com.iflytek.inputmethod",   // 讯飞输入法
-            "com.touchtype.swiftkey",    // SwiftKey
-            "com.google.android.inputmethod.latin", // Google输入法
-            "com.android.inputmethod.latin", // 系统输入法
-            "com.samsung.android.honeyboard", // 三星输入法
-            "com.huawei.inputmethod",    // 华为输入法
-            "com.xiaomi.inputmethod",    // 小米输入法
-            "com.tencent.qqpinyin",      // QQ输入法
-            "com.qihoo.inputmethod"      // 360输入法
-        };
-        
-        for (String inputMethodPackage : inputMethodPackages) {
-            if (packageName.contains(inputMethodPackage) || packageName.contains("input")) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    private boolean findTextInNode(AccessibilityNodeInfo node, String targetText) {
-        if (node == null) return false;
-        
-        // 检查当前节点的文本
-        CharSequence text = node.getText();
-        if (text != null && text.toString().equalsIgnoreCase(targetText)) {
-            // 检查节点是否可见
-            if (node.isVisibleToUser()) {
-                Log.d(TAG, "找到目标文本: " + targetText + " (可见)");
-                return true;
-            } else {
-                Log.d(TAG, "找到目标文本: " + targetText + " (不可见，忽略)");
-            }
-        }
-        
-        // 检查contentDescription
-        CharSequence contentDesc = node.getContentDescription();
-        if (contentDesc != null && contentDesc.toString().equalsIgnoreCase(targetText)) {
-            // 检查节点是否可见
-            if (node.isVisibleToUser()) {
-                Log.d(TAG, "在contentDescription中找到目标文本: " + targetText + " (可见)");
-                return true;
-            } else {
-                Log.d(TAG, "在contentDescription中找到目标文本: " + targetText + " (不可见，忽略)");
-            }
-        }
-        
-        // 递归检查子节点
-        for (int i = 0; i < node.getChildCount(); i++) {
-            AccessibilityNodeInfo child = node.getChild(i);
-            if (child != null) {
-                if (findTextInNode(child, targetText)) {
-                    child.recycle();
-                    return true;
-                }
-                child.recycle();
-            }
-        }
-        
-        return false;
-    }
-    
-    /**
-     * 临时调试方法：输出可见文本内容
-     */
-    private void logVisibleTexts(AccessibilityNodeInfo node, int currentDepth, int maxDepth) {
-        if (node == null || currentDepth > maxDepth) return;
-        
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < currentDepth; i++) {
-            sb.append("  ");
-        }
-        String indent = sb.toString();
-        
-        // 输出当前节点的文本
-        CharSequence text = node.getText();
-        if (text != null && !text.toString().trim().isEmpty() && node.isVisibleToUser()) {
-            Log.d(TAG, indent + "文本: " + text.toString().trim());
-        }
-        
-        // 输出contentDescription
-        CharSequence contentDesc = node.getContentDescription();
-        if (contentDesc != null && !contentDesc.toString().trim().isEmpty() && node.isVisibleToUser()) {
-            Log.d(TAG, indent + "描述: " + contentDesc.toString().trim());
-        }
-        
-        // 递归检查子节点（限制数量）
-        int childCount = Math.min(node.getChildCount(), 15);
-        for (int i = 0; i < childCount; i++) {
-            AccessibilityNodeInfo child = node.getChild(i);
-            if (child != null) {
-                logVisibleTexts(child, currentDepth + 1, maxDepth);
-                child.recycle();
-            }
-        }
-    }
 
     /**
      * 优化版本的文本内容检测
@@ -300,7 +194,7 @@ public class FloatingAccessibilityService extends AccessibilityService
      * 2. 优先检查常见的文本节点类型
      * 3. 使用缓存避免重复检测
      */
-    private void checkTextContentOptimized() {
+    void checkTextContentOptimized() {
         try {
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             if (rootNode != null) {
@@ -311,27 +205,27 @@ public class FloatingAccessibilityService extends AccessibilityService
                 // 第二阶段：如果快速检测没找到"发现"，使用完整检测作为备用
                 if (!hasFaxian) {
                     Log.d(TAG, "快速检测未找到'发现'，启用完整检测");
-                    hasFaxian = findTextInNode(rootNode, "发现");
-                    
+                    hasFaxian = FloatHelper.findTextInNode(rootNode, "发现");
+
                     // 临时调试：如果还是找不到，输出一些可见文本内容
                     if (!hasFaxian) {
                         Log.d(TAG, "完整检测也未找到'发现'，输出部分可见文本:");
-                        logVisibleTexts(rootNode, 0, 2); // 只输出前2层的文本，避免刷屏
+                        FloatHelper.logVisibleTexts(rootNode, 0, 2); // 只输出前2层的文本，避免刷屏
                     }
                 }
-                
+
                 // 简化界面判断逻辑：只检测"发现"
                 String currentInterface = hasFaxian ? "discover" : "other";
-                
+
                 // 添加详细调试信息
                 Log.d(TAG, "文本检测结果: 发现=" + hasFaxian + ", 当前界面=" + currentInterface);
-                
+
                 // 只有界面状态发生变化时才执行操作
-                if (!currentInterface.equals(lastDetectedInterface)) {
-                    lastDetectedInterface = currentInterface;
-                    
+                if (!currentInterface.equals(Share.lastDetectedInterface)) {
+                    Share.lastDetectedInterface = currentInterface;
+
                     Log.d(TAG, "界面变化检测: " + currentInterface);
-                    
+
                     if ("discover".equals(currentInterface)) {
                         if (!isFloatingWindowVisible && !isManuallyHidden) {
                             showFloatingWindow();
@@ -344,18 +238,18 @@ public class FloatingAccessibilityService extends AccessibilityService
                 } else {
                     Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface);
                 }
-                
+
                 rootNode.recycle();
             }
         } catch (Exception e) {
             Log.e(TAG, "优化版文本检测失败", e);
         }
     }
-    
+
     /**
      * 创建并显示悬浮窗
      */
-    private void showFloatingWindow() {
+    void showFloatingWindow() {
         if (isFloatingWindowVisible) {
             Log.v(TAG, "悬浮窗已显示，跳过重复显示");
             return;
@@ -418,29 +312,6 @@ public class FloatingAccessibilityService extends AccessibilityService
                     isManuallyHidden = true;
                     hideFloatingWindow();
 
-                    // 如果是休闲版，增加关闭次数并检查是否需要切换模式
-                    if (settingsManager.isCasualMode()) {
-                        int currentCount = settingsManager.getCasualCloseCount();
-                        settingsManager.incrementCasualCloseCount();
-                        
-                        Log.d(TAG, "宽松版关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
-
-                        // 当日关闭次数达到2次后，再次关闭时强制切换为日常版
-                        if (currentCount >= 2) {
-                            int maxDailyInterval = SettingsManager.getMaxDailyInterval();
-                            settingsManager.setAutoShowInterval(maxDailyInterval);
-                            
-                            // 通知服务时间间隔已更改
-                            notifyIntervalChanged();
-                            
-                            String newIntervalText = SettingsManager.getIntervalDisplayText(maxDailyInterval);
-                            String message = "宽松版使用已达上限，已强制切换为严格模式 (" + newIntervalText + ")";
-                            
-                            Log.d(TAG, message);
-                            Toast.makeText(FloatingAccessibilityService.this, message, Toast.LENGTH_LONG).show();
-                        }
-                    }
-                    
                     // 根据用户设置的时间间隔自动重新显示
                     if (autoShowRunnable != null) {
                         autoShowHandler.removeCallbacks(autoShowRunnable);
@@ -448,7 +319,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                     autoShowRunnable = () -> {
                         Log.d(TAG, "自动重新显示悬浮窗");
                         isManuallyHidden = false;
-                        if (isInXHS && "discover".equals(lastDetectedInterface)) {
+                        if (isInXHS && "discover".equals(Share.lastDetectedInterface)) {
                             showFloatingWindow();
                         }
                     };
@@ -459,6 +330,17 @@ public class FloatingAccessibilityService extends AccessibilityService
                     
                     String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
                     Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗");
+
+                    // 如果是宽松模式，增加关闭次数，并自动切为严格模式
+                    if (settingsManager.isCasualMode()) {
+                        int currentCount = settingsManager.getCasualCloseCount();
+                        settingsManager.incrementCasualCloseCount();
+
+                        Log.d(TAG, "宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
+                        // 通知服务时间间隔已更改
+                        notifyIntervalChanged();
+                    }
+                    Log.d(TAG, "下次时长：" + settingsManager.getAutoShowInterval());
                 }
                 
                 @Override
@@ -633,7 +515,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             public void onScreenUnlocked() {
                 Log.d(TAG, "屏幕解锁，检查悬浮窗状态");
                 // 屏幕解锁后，重新检查小红书状态
-                if (isInXHS && "discover".equals(lastDetectedInterface) && !isManuallyHidden) {
+                if (isInXHS && "discover".equals(Share.lastDetectedInterface) && !isManuallyHidden) {
                     if (!isFloatingWindowVisible) {
                         handler.postDelayed(() -> {
                             Log.d(TAG, "屏幕解锁后恢复悬浮窗显示");
@@ -730,7 +612,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                     if (isInXHS) {
                         Log.d(TAG, "应用状态检测：离开小红书应用");
                         isInXHS = false;
-                        lastDetectedInterface = "";
+                        Share.lastDetectedInterface = "";
                         hideFloatingWindow();
                     }
                 }

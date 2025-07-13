@@ -22,6 +22,7 @@ import android.view.accessibility.AccessibilityManager;
 import java.util.List;
 
 import com.book.baisc.R;
+import com.book.baisc.config.Const;
 import com.book.baisc.floating.FloatingAccessibilityService;
 import com.book.baisc.lifecycle.AppLifecycleObserver;
 import com.book.baisc.network.DeviceInfoReporter;
@@ -187,50 +188,7 @@ public class MainActivity extends AppCompatActivity {
         appLifecycleObserver = new AppLifecycleObserver(this);
         Toast.makeText(this, "检测功能已启用，打开小红书时会显示悬浮窗", Toast.LENGTH_LONG).show();
     }
-    
-    private void setupOptimizationGuideButton() {
-        Button optimizationButton = findViewById(R.id.btn_optimization_guide);
-        optimizationButton.setOnClickListener(v -> showOptimizationGuide());
-    }
-    
-    private void showOptimizationGuide() {
-        StringBuilder guide = new StringBuilder();
-        guide.append("🔋 设置须知\n\n");
-        guide.append("为了确保悬浮窗功能正常使用，请进行以下设置：\n\n");
-        
-        guide.append("1️⃣ 电池优化白名单\n");
-        guide.append("- 设置 → 电池 → 电池优化 → 不限制\n");
-        guide.append("- 或设置 → 应用管理 → 电池优化 → 允许后台运行\n\n");
-        
-        guide.append("2️⃣ 自启动管理\n");
-        guide.append("- 设置 → 应用管理 → 自启动管理 → 允许\n");
-        guide.append("- 华为/荣耀: 手机管家 → 应用启动管理 → 手动管理\n\n");
-        
-        guide.append("⚠️ 注意：不同品牌手机设置路径可能不同\n");
-        guide.append("如果仍有问题，请重启手机后再试");
-        
-        // 显示指引
-        new android.app.AlertDialog.Builder(this)
-               .setTitle("设置须知")
-               .setMessage(guide.toString())
-               .setPositiveButton("去电池设置", (dialog, which) -> {
-                   try {
-                       Intent intent = new Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
-                       startActivity(intent);
-                   } catch (Exception e) {
-                       try {
-                           Intent intent = new Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS);
-                           startActivity(intent);
-                       } catch (Exception ex) {
-                           Intent intent = new Intent(android.provider.Settings.ACTION_SETTINGS);
-                           startActivity(intent);
-                       }
-                   }
-               })
-               .setNegativeButton("稍后处理", null)
-                               .show();
-    }
-    
+
     private void setupTimeSettingButtons() {
         Button dailyButton = findViewById(R.id.btn_daily_time_setting);
         dailyButton.setOnClickListener(v -> {
@@ -262,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         
-        String dialogTitle = isDaily ? "严格版" : "宽松版";
+        String dialogTitle = isDaily ? "严格模式" : "宽松模式";
 
         new android.app.AlertDialog.Builder(this)
             .setTitle(dialogTitle)
@@ -271,7 +229,7 @@ public class MainActivity extends AppCompatActivity {
                 settingsManager.setAutoShowInterval(selectedInterval);
                 
                 // 通知服务配置已更改
-                       FloatingAccessibilityService.notifyIntervalChanged();
+                FloatingAccessibilityService.notifyIntervalChanged();
                        
                 // 显示提示信息
                 showIntervalExplanation(selectedInterval);
@@ -298,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
         Button casualButton = findViewById(R.id.btn_casual_time_setting);
         if (casualButton != null) {
             int closeCount = settingsManager.getCasualCloseCount();
-            casualButton.setEnabled(closeCount < 2);
+            casualButton.setEnabled(closeCount < Const.CASUAL_LIMIT_COUNT);
         }
     }
 
@@ -306,7 +264,7 @@ public class MainActivity extends AppCompatActivity {
         TextView countText = findViewById(R.id.tv_casual_count);
         if (countText != null) {
             int closeCount = settingsManager.getCasualCloseCount();
-            int remainingCount = Math.max(0, 2 - closeCount);
+            int remainingCount = Math.max(0, Const.CASUAL_LIMIT_COUNT - closeCount);
             countText.setText("今日剩余: " + remainingCount + "次");
         }
     }
