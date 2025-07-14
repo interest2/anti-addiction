@@ -9,6 +9,7 @@ import android.widget.Toast;
 
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.floating.FloatingAccessibilityService;
+import com.book.baisc.ui.MainActivity;
 
 /**
  * 设置对话框管理器
@@ -175,6 +176,56 @@ public class SettingsDialogManager {
     }
     
     /**
+     * 显示目标完成日期选择对话框
+     */
+    public void showTargetDateSettingDialog() {
+        // 获取当前设置的日期
+        String currentDate = settingsManager.getTargetCompletionDate();
+        
+        // 创建日期选择器
+        android.app.DatePickerDialog datePickerDialog = new android.app.DatePickerDialog(
+            context,
+            (view, year, month, dayOfMonth) -> {
+                // 格式化日期为 yyyy-MM-dd 格式
+                String selectedDate = String.format("%04d-%02d-%02d", year, month + 1, dayOfMonth);
+                settingsManager.setTargetCompletionDate(selectedDate);
+                Toast.makeText(context, "目标完成日期已设置为: " + selectedDate, Toast.LENGTH_SHORT).show();
+                
+                // 通知MainActivity更新按钮文本
+                if (context instanceof MainActivity) {
+                    ((MainActivity) context).updateTargetDateButtonText();
+                }
+            },
+            java.util.Calendar.getInstance().get(java.util.Calendar.YEAR),
+            java.util.Calendar.getInstance().get(java.util.Calendar.MONTH),
+            java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_MONTH)
+        );
+        
+        // 设置最小日期为今天
+        datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis());
+        
+        // 如果当前有设置日期，解析并设置为当前选择
+        if (!"待设置".equals(currentDate) && !currentDate.isEmpty()) {
+            try {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
+                java.util.Date date = sdf.parse(currentDate);
+                if (date != null) {
+                    java.util.Calendar cal = java.util.Calendar.getInstance();
+                    cal.setTime(date);
+                    datePickerDialog.updateDate(cal.get(java.util.Calendar.YEAR), 
+                                               cal.get(java.util.Calendar.MONTH), 
+                                               cal.get(java.util.Calendar.DAY_OF_MONTH));
+                }
+            } catch (Exception e) {
+                android.util.Log.w("SettingsDialogManager", "解析当前日期失败", e);
+            }
+        }
+        
+        datePickerDialog.setTitle("选择目标完成日期");
+        datePickerDialog.show();
+    }
+    
+    /**
      * 复制文本到剪贴板
      */
     private void copyToClipboard(String text) {
@@ -190,6 +241,16 @@ public class SettingsDialogManager {
         if (tagButton != null) {
             String currentTag = settingsManager.getMotivationTag();
             tagButton.setText("目标: " + currentTag);
+        }
+    }
+    
+    /**
+     * 更新日期按钮文本
+     */
+    public void updateDateButtonText(Button dateButton) {
+        if (dateButton != null) {
+            String currentDate = settingsManager.getTargetCompletionDate();
+            dateButton.setText("完成日期: " + currentDate);
         }
     }
     

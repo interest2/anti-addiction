@@ -14,6 +14,7 @@ public class SettingsManager {
     private static final String KEY_CASUAL_CLOSE_COUNT = "casual_close_count";
     private static final String KEY_LAST_CASUAL_CLOSE_DATE = "last_casual_close_date";
     private static final String KEY_MOTIVATION_TAG = "motivation_tag";
+    private static final String KEY_TARGET_COMPLETION_DATE = "target_completion_date";
     
     // 默认自动显示间隔（秒）
     private static final int DEFAULT_AUTO_SHOW_INTERVAL = 5;
@@ -23,6 +24,7 @@ public class SettingsManager {
             "高考", "考研", "保研", "出国升学", "跳槽", "找工作", "考公务员"
     };
     private static final String DEFAULT_MOTIVATION_TAG = "待设置";
+    private static final String DEFAULT_TARGET_DATE = "待设置";
 
     // 日常版时间间隔（秒）
     // 休闲版时间间隔（秒）
@@ -75,6 +77,21 @@ public class SettingsManager {
      */
     public String getMotivationTag() {
         return prefs.getString(KEY_MOTIVATION_TAG, DEFAULT_MOTIVATION_TAG);
+    }
+
+    /**
+     * 设置目标完成日期
+     */
+    public void setTargetCompletionDate(String date) {
+        prefs.edit().putString(KEY_TARGET_COMPLETION_DATE, date).apply();
+        Share.MOTIVATE_CHANGE = true;
+    }
+
+    /**
+     * 获取目标完成日期
+     */
+    public String getTargetCompletionDate() {
+        return prefs.getString(KEY_TARGET_COMPLETION_DATE, DEFAULT_TARGET_DATE);
     }
 
     /**

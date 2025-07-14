@@ -25,6 +25,12 @@ import com.book.baisc.lifecycle.ServiceKeepAliveManager;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.DeviceInfoReporter;
 import com.book.baisc.network.FloatingTextFetcher;
+import com.book.baisc.ui.SettingsDialogManager;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 
 /**
  * 悬浮窗无障碍服务
@@ -404,7 +410,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             if (floatingTextFetcher != null) {
                 dynamicText = floatingTextFetcher.getCachedText();
             }
-            
+
             // 显示动态文字和时间间隔信息
             String content = dynamicText;
             if (settingsManager != null) {
@@ -417,12 +423,65 @@ public class FloatingAccessibilityService extends AccessibilityService
                     content = hintTIme;
                 }
             }
-            
+
+            content = calcDate() + "\n" + content;
             contentText.setText(content);
             Log.d(TAG, "悬浮窗内容已更新: " + content);
         }
     }
-    
+
+    private String calcDate(){
+        String dateHint = "";
+        // 获取目标完成日期
+        String targetDateStr = settingsManager.getTargetCompletionDate();
+
+// 如果不是默认值，则计算剩余天数
+        if (!"待设置".equals(targetDateStr) && !targetDateStr.isEmpty()) {
+            try {
+                // 解析目标日期
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                Date targetDate = sdf.parse(targetDateStr);
+
+                if (targetDate != null) {
+                    // 获取今天的日期（去掉时间部分）
+                    Calendar today = Calendar.getInstance();
+                    today.set(Calendar.HOUR_OF_DAY, 0);
+                    today.set(Calendar.MINUTE, 0);
+                    today.set(Calendar.SECOND, 0);
+                    today.set(Calendar.MILLISECOND, 0);
+
+                    // 获取目标日期的日历对象
+                    Calendar targetCalendar = Calendar.getInstance();
+                    targetCalendar.setTime(targetDate);
+                    targetCalendar.set(Calendar.HOUR_OF_DAY, 0);
+                    targetCalendar.set(Calendar.MINUTE, 0);
+                    targetCalendar.set(Calendar.SECOND, 0);
+                    targetCalendar.set(Calendar.MILLISECOND, 0);
+
+                    // 计算天数差（毫秒转换为天）
+                    long timeDiff = targetCalendar.getTimeInMillis() - today.getTimeInMillis();
+                    int daysRemaining = (int) (timeDiff / (24 * 60 * 60 * 1000));
+
+                    // 根据剩余天数生成提示文本
+                    if (daysRemaining > 0) {
+                        dateHint = "距离目标还有 " + daysRemaining + " 天。";
+                    } else if (daysRemaining == 0) {
+                        dateHint = "今天是目标日期。";
+                    } else {
+                        dateHint = "目标日期已过期 " + Math.abs(daysRemaining) + " 天。";
+                    }
+
+                    // 使用 dateHint 变量
+                    Log.d(TAG, "日期提示: " + dateHint);
+
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "计算剩余天数失败", e);
+            }
+        }
+        return dateHint;
+    }
+
     private void hideFloatingWindow() {
         if (isFloatingWindowVisible) {
             Log.d(TAG, "开始隐藏悬浮窗");
@@ -472,9 +531,9 @@ public class FloatingAccessibilityService extends AccessibilityService
                 Log.d(instance.TAG, "时间间隔设置已更新，立即应用新间隔: " + intervalText);
                 
                 // 显示提示
-                android.widget.Toast.makeText(instance, 
+                Toast.makeText(instance,
                     "⏰ 定时器已更新，将在" + intervalText + "后重新显示", 
-                    android.widget.Toast.LENGTH_SHORT).show();
+                    Toast.LENGTH_SHORT).show();
             }
         }
     }

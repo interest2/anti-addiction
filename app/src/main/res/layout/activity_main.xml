@@ -122,4 +122,14 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tv_ambition_subtitle" />
 
+    <Button
+        android:id="@+id/btn_target_date_setting"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="完成日期"
+        android:backgroundTint="#FF9800"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btn_tag_setting" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

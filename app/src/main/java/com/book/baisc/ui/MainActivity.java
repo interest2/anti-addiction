@@ -74,6 +74,9 @@ public class MainActivity extends AppCompatActivity {
         // 设置激励语标签按钮
         setupTagSettingButton();
         
+        // 设置目标完成日期按钮
+        setupTargetDateSettingButton();
+        
         // 设置最新安装包地址按钮
         setupLatestApkButton();
         
@@ -230,6 +233,17 @@ public class MainActivity extends AppCompatActivity {
         settingsDialogManager.updateTagButtonText(tagButton);
     }
 
+    private void setupTargetDateSettingButton() {
+        Button targetDateButton = findViewById(R.id.btn_target_date_setting);
+        targetDateButton.setOnClickListener(v -> settingsDialogManager.showTargetDateSettingDialog());
+        updateTargetDateButtonText();
+    }
+
+    public void updateTargetDateButtonText() {
+        Button targetDateButton = findViewById(R.id.btn_target_date_setting);
+        settingsDialogManager.updateDateButtonText(targetDateButton);
+    }
+
     private void setupLatestApkButton() {
         Button latestApkButton = findViewById(R.id.btn_latest_apk);
         latestApkButton.setOnClickListener(v -> {
@@ -266,6 +280,7 @@ public class MainActivity extends AppCompatActivity {
         updateCasualButtonState();
         updateCasualCountDisplay();
         updateTagButtonText();
+        updateTargetDateButtonText();
         // 每次返回时检查权限状态
         if (isAccessibilityServiceEnabled() && 
             (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {
