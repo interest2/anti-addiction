@@ -46,6 +46,27 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tv_app_info_subtitle" />
 
+        <TextView
+            android:id="@+id/tv_floating_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="悬浮窗设置"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/btn_latest_apk" />
+
+        <Button
+            android:id="@+id/btn_floating_position"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="调整悬浮窗边缘位置"
+            android:backgroundTint="#FF9800"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tv_floating_subtitle" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </ScrollView> 

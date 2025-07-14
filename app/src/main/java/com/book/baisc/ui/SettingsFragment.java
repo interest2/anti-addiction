@@ -30,6 +30,9 @@ public class SettingsFragment extends Fragment {
         // 设置最新安装包地址按钮
         setupLatestApkButton(view);
         
+        // 设置悬浮窗位置按钮
+        setupFloatingPositionButton(view);
+        
         return view;
     }
 
@@ -37,6 +40,13 @@ public class SettingsFragment extends Fragment {
         Button latestApkButton = view.findViewById(R.id.btn_latest_apk);
         latestApkButton.setOnClickListener(v -> {
             settingsDialogManager.showLatestApkDialog();
+        });
+    }
+
+    private void setupFloatingPositionButton(View view) {
+        Button floatingPositionButton = view.findViewById(R.id.btn_floating_position);
+        floatingPositionButton.setOnClickListener(v -> {
+            settingsDialogManager.showFloatingPositionDialog();
         });
     }
 } 

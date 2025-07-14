@@ -15,6 +15,8 @@ public class SettingsManager {
     private static final String KEY_LAST_CASUAL_CLOSE_DATE = "last_casual_close_date";
     private static final String KEY_MOTIVATION_TAG = "motivation_tag";
     private static final String KEY_TARGET_COMPLETION_DATE = "target_completion_date";
+    private static final String KEY_FLOATING_TOP_OFFSET = "floating_top_offset";
+    private static final String KEY_FLOATING_BOTTOM_OFFSET = "floating_bottom_offset";
     
     // 默认自动显示间隔（秒）
     private static final int DEFAULT_AUTO_SHOW_INTERVAL = 5;
@@ -25,6 +27,10 @@ public class SettingsManager {
     };
     private static final String DEFAULT_MOTIVATION_TAG = "待设置";
     private static final String DEFAULT_TARGET_DATE = "待设置";
+    
+    // 悬浮窗位置默认值（像素）
+    private static final int DEFAULT_TOP_OFFSET = 130;
+    private static final int DEFAULT_BOTTOM_OFFSET = 230;
 
     // 日常版时间间隔（秒）
     // 休闲版时间间隔（秒）
@@ -92,6 +98,34 @@ public class SettingsManager {
      */
     public String getTargetCompletionDate() {
         return prefs.getString(KEY_TARGET_COMPLETION_DATE, DEFAULT_TARGET_DATE);
+    }
+
+    /**
+     * 设置悬浮窗上边缘距离顶部的距离
+     */
+    public void setFloatingTopOffset(int offset) {
+        prefs.edit().putInt(KEY_FLOATING_TOP_OFFSET, offset).apply();
+    }
+
+    /**
+     * 获取悬浮窗上边缘距离顶部的距离
+     */
+    public int getFloatingTopOffset() {
+        return prefs.getInt(KEY_FLOATING_TOP_OFFSET, DEFAULT_TOP_OFFSET);
+    }
+
+    /**
+     * 设置悬浮窗下边缘距离底部的距离
+     */
+    public void setFloatingBottomOffset(int offset) {
+        prefs.edit().putInt(KEY_FLOATING_BOTTOM_OFFSET, offset).apply();
+    }
+
+    /**
+     * 获取悬浮窗下边缘距离底部的距离
+     */
+    public int getFloatingBottomOffset() {
+        return prefs.getInt(KEY_FLOATING_BOTTOM_OFFSET, DEFAULT_BOTTOM_OFFSET);
     }
 
     /**

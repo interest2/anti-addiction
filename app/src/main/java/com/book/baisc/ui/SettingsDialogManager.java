@@ -226,6 +226,98 @@ public class SettingsDialogManager {
     }
     
     /**
+     * 显示悬浮窗位置设置对话框
+     */
+    public void showFloatingPositionDialog() {
+        // 创建自定义布局
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(context);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(50, 50, 50, 50);
+
+        // 上边缘设置
+        android.widget.TextView topLabel = new android.widget.TextView(context);
+        topLabel.setText("上边缘距离顶部距离（像素）:");
+        topLabel.setTextSize(16);
+        layout.addView(topLabel);
+
+        final android.widget.EditText topEdit = new android.widget.EditText(context);
+        topEdit.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        topEdit.setText(String.valueOf(settingsManager.getFloatingTopOffset()));
+        topEdit.setHint("默认: 130");
+        layout.addView(topEdit);
+
+        // 添加间距
+        android.view.View spacer1 = new android.view.View(context);
+        spacer1.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 30));
+        layout.addView(spacer1);
+
+        // 下边缘设置
+        android.widget.TextView bottomLabel = new android.widget.TextView(context);
+        bottomLabel.setText("下边缘距离底部距离（像素）:");
+        bottomLabel.setTextSize(16);
+        layout.addView(bottomLabel);
+
+        final android.widget.EditText bottomEdit = new android.widget.EditText(context);
+        bottomEdit.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        bottomEdit.setText(String.valueOf(settingsManager.getFloatingBottomOffset()));
+        bottomEdit.setHint("默认: 230");
+        layout.addView(bottomEdit);
+
+        // 添加说明文字
+        android.view.View spacer2 = new android.view.View(context);
+        spacer2.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 20));
+        layout.addView(spacer2);
+
+        android.widget.TextView hintText = new android.widget.TextView(context);
+        hintText.setText("说明：不同机型分辨率不同，因此悬浮窗边缘距离顶部底部的距离可能需手动调整，直到观察到APP遮挡区域合适为止。");
+        hintText.setTextSize(14);
+        hintText.setTextColor(0xFF666666);
+        layout.addView(hintText);
+
+        new android.app.AlertDialog.Builder(context)
+            .setTitle("调整悬浮窗边缘位置")
+            .setView(layout)
+            .setPositiveButton("确定", (dialog, which) -> {
+                try {
+                    String topText = topEdit.getText().toString().trim();
+                    String bottomText = bottomEdit.getText().toString().trim();
+                    
+                    if (topText.isEmpty() || bottomText.isEmpty()) {
+                        Toast.makeText(context, "请填写完整的数值", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    int topOffset = Integer.parseInt(topText);
+                    int bottomOffset = Integer.parseInt(bottomText);
+                    
+                    // 数值范围检查
+                    if (topOffset < 0 || topOffset > 300) {
+                        Toast.makeText(context, "上边缘距离应在0-300像素之间", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    if (bottomOffset < 0 || bottomOffset > 400) {
+                        Toast.makeText(context, "下边缘距离应在0-400像素之间", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    // 保存设置
+                    settingsManager.setFloatingTopOffset(topOffset);
+                    settingsManager.setFloatingBottomOffset(bottomOffset);
+                    
+                    Toast.makeText(context, "悬浮窗位置已更新", Toast.LENGTH_SHORT).show();
+                    
+                } catch (NumberFormatException e) {
+                    Toast.makeText(context, "请输入有效的数字", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+    
+    /**
      * 复制文本到剪贴板
      */
     private void copyToClipboard(String text) {

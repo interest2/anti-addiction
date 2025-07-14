@@ -295,8 +295,8 @@ public class FloatingAccessibilityService extends AccessibilityService
         int screenHeight = displayMetrics.heightPixels;
         
         // 设置悬浮窗位置和大小
-        int topOffset = 130;
-        int bottomOffset = 230;
+        int topOffset = settingsManager.getFloatingTopOffset();
+        int bottomOffset = settingsManager.getFloatingBottomOffset();
 
         layoutParams.x = 0;
         layoutParams.y = topOffset;
@@ -357,10 +357,6 @@ public class FloatingAccessibilityService extends AccessibilityService
                 // 显示数学题验证界面
                 mathChallengeManager.showMathChallenge();
             });
-
-            // 设置拖拽功能
-            View dragArea = floatingView.findViewById(R.id.top_info_layout);
-            dragArea.setOnTouchListener(new FloatingOnTouchListener(layoutParams, windowManager));
 
             // 更新悬浮窗内容，显示当前时间间隔设置
             updateFloatingWindowContent();
