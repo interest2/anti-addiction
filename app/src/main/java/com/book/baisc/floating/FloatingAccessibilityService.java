@@ -357,11 +357,6 @@ public class FloatingAccessibilityService extends AccessibilityService
             View dragArea = floatingView.findViewById(R.id.top_info_layout);
             dragArea.setOnTouchListener(new FloatingOnTouchListener(layoutParams, windowManager));
 
-//            // 如果目标更新，本次立即请求更新缓存
-//            if(Const.MOTIVATE_CHANGE){
-//                fetchNew();
-//                Const.MOTIVATE_CHANGE = false;
-//            }
             // 更新悬浮窗内容，显示当前时间间隔设置
             updateFloatingWindowContent();
             fetchNew();

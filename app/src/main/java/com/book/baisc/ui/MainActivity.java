@@ -28,6 +28,7 @@ import com.book.baisc.lifecycle.AppLifecycleObserver;
 import com.book.baisc.network.DeviceInfoReporter;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.FloatingTextFetcher;
+import com.book.baisc.ui.SettingsDialogManager;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -36,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private AppLifecycleObserver appLifecycleObserver;
     private DeviceInfoReporter deviceInfoReporter;
     private SettingsManager settingsManager;
+    private SettingsDialogManager settingsDialogManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         settingsManager = new SettingsManager(this);
+        settingsDialogManager = new SettingsDialogManager(this, settingsManager);
 
         // 检查并请求所有必要权限
         checkAndRequestPermissions();
@@ -192,198 +195,46 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "检测功能已启用，打开小红书时会显示悬浮窗", Toast.LENGTH_LONG).show();
     }
 
-    private void setupTimeSettingButtons() {
+        private void setupTimeSettingButtons() {
         Button dailyButton = findViewById(R.id.btn_daily_time_setting);
         dailyButton.setOnClickListener(v -> {
-            showTimeSettingDialog(true); // true for daily
+            settingsDialogManager.showTimeSettingDialog(true); // true for daily
         });
         
         Button casualButton = findViewById(R.id.btn_casual_time_setting);
         casualButton.setOnClickListener(v -> {
-            showTimeSettingDialog(false); // false for casual
+            settingsDialogManager.showTimeSettingDialog(false); // false for casual
         });
     }
+
     
-    private void showTimeSettingDialog(boolean isDaily) {
-        final int[] intervals = isDaily ? 
-            SettingsManager.getDailyAvailableIntervals() : 
-            SettingsManager.getCasualAvailableIntervals();
-        
-        String[] intervalOptions = new String[intervals.length];
-        for (int i = 0; i < intervals.length; i++) {
-            intervalOptions[i] = SettingsManager.getIntervalDisplayText(intervals[i]);
-        }
-
-        int currentInterval = settingsManager.getAutoShowInterval();
-        int checkedItem = -1;
-        for (int i = 0; i < intervals.length; i++) {
-            if (intervals[i] == currentInterval) {
-                checkedItem = i;
-                break;
-            }
-        }
-        
-        String dialogTitle = isDaily ? "严格模式" : "宽松模式";
-
-        new android.app.AlertDialog.Builder(this)
-            .setTitle(dialogTitle)
-            .setSingleChoiceItems(intervalOptions, checkedItem, (dialog, which) -> {
-                int selectedInterval = intervals[which];
-                settingsManager.setAutoShowInterval(selectedInterval);
-                
-                // 通知服务配置已更改
-                FloatingAccessibilityService.notifyIntervalChanged();
-                       
-                // 显示提示信息
-                showIntervalExplanation(selectedInterval);
-                
-                Toast.makeText(this, "已设置为: " + intervalOptions[which], Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
-               })
-               .setNegativeButton("取消", null)
-               .show();
-    }
-    
-    private void showIntervalExplanation(int interval) {
-        StringBuilder explanation = new StringBuilder();
-        explanation.append("新的时长，将在回答一次算术题后才会生效");
-
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("解禁时长说明")
-               .setMessage(explanation.toString())
-                .setPositiveButton("好的", null)
-                .show();
-    }
     
     private void updateCasualButtonState() {
         Button casualButton = findViewById(R.id.btn_casual_time_setting);
-        if (casualButton != null) {
-            int closeCount = settingsManager.getCasualCloseCount();
-            casualButton.setEnabled(closeCount < Const.CASUAL_LIMIT_COUNT);
-        }
+        settingsDialogManager.updateCasualButtonState(casualButton);
     }
 
     private void updateCasualCountDisplay() {
         TextView countText = findViewById(R.id.tv_casual_count);
-        if (countText != null) {
-            int closeCount = settingsManager.getCasualCloseCount();
-            int remainingCount = Math.max(0, Const.CASUAL_LIMIT_COUNT - closeCount);
-            countText.setText("今日剩余: " + remainingCount + "次");
-        }
+        settingsDialogManager.updateCasualCountDisplay(countText);
     }
 
     private void setupTagSettingButton() {
         Button tagButton = findViewById(R.id.btn_tag_setting);
-        tagButton.setOnClickListener(v -> showTagSettingDialog());
+        tagButton.setOnClickListener(v -> settingsDialogManager.showTagSettingDialog());
         updateTagButtonText();
     }
     
     private void updateTagButtonText() {
         Button tagButton = findViewById(R.id.btn_tag_setting);
-        if (tagButton != null) {
-            String currentTag = settingsManager.getMotivationTag();
-            tagButton.setText("目标: " + currentTag);
-        }
+        settingsDialogManager.updateTagButtonText(tagButton);
     }
 
-    private void showTagSettingDialog() {
-        final String[] predefinedTags = SettingsManager.getAvailableTags();
-        final String customTagOption = "自定义...";
-
-        // 将预设标签和“自定义”选项合并
-        final String[] dialogOptions = new String[predefinedTags.length + 1];
-        System.arraycopy(predefinedTags, 0, dialogOptions, 0, predefinedTags.length);
-        dialogOptions[dialogOptions.length - 1] = customTagOption;
-
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("选择或自定义目标")
-                .setItems(dialogOptions, (dialog, which) -> {
-                    if (which == predefinedTags.length) {
-                        // 点击了“自定义...”
-                        showCustomTagInputDialog();
-                    } else {
-                        // 点击了预设标签
-                        String selectedTag = dialogOptions[which];
-                        settingsManager.setMotivationTag(selectedTag);
-                        updateTagButtonText();
-                        Toast.makeText(this, "已设置为: " + selectedTag, Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void showCustomTagInputDialog() {
-        final EditText input = new EditText(this);
-        // 设置输入长度限制为8
-        input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(8) });
-        input.setHint("不超过8个字");
-
-        new android.app.AlertDialog.Builder(this)
-            .setTitle("自定义激励语标签")
-            .setView(input)
-            .setPositiveButton("确定", (dialog, which) -> {
-                String customTag = input.getText().toString().trim();
-                if (customTag.isEmpty()) {
-                    Toast.makeText(this, "标签不能为空", Toast.LENGTH_SHORT).show();
-                } else {
-                    settingsManager.setMotivationTag(customTag);
-                    updateTagButtonText();
-                    Toast.makeText(this, "已设置为: " + customTag, Toast.LENGTH_SHORT).show();
-                }
-            })
-            .setNegativeButton("取消", null)
-               .show();
-    }
-    
     private void setupLatestApkButton() {
         Button latestApkButton = findViewById(R.id.btn_latest_apk);
         latestApkButton.setOnClickListener(v -> {
-            showLatestApkDialog();
+            settingsDialogManager.showLatestApkDialog();
         });
-    }
-    
-    private void showLatestApkDialog() {
-        try {
-            // 获取当前版本信息
-            String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            int versionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-            
-            // 构建弹窗内容
-            StringBuilder content = new StringBuilder();
-            content.append("• 当前版本：").append(versionName).append("\n\n");
-            content.append("• 下载页面（找到最新的 apk 文件下载）：\n");
-            content.append("https://gitee.com/interest2/anti-addiction/releases\n");
-            content.append("https://github.com/interest2/anti-addiction/releases\n\n");
-
-            content.append("备注：\n");
-            content.append("• gitee地址：需要登录\n");
-            content.append("• github地址：无需登录，但网络可能不稳定\n\n");
-            
-            new android.app.AlertDialog.Builder(this)
-                .setTitle("最新安装包地址")
-                .setMessage(content.toString())
-                .setPositiveButton("复制gitee地址", (dialog, which) -> {
-                    copyToClipboard("https://gitee.com/interest2/anti-addiction/releases");
-                    Toast.makeText(this, "gitee地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("复制github地址", (dialog, which) -> {
-                    copyToClipboard("https://github.com/interest2/anti-addiction/releases");
-                    Toast.makeText(this, "gitHub地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
-                })
-                .setNeutralButton("关闭", null)
-                .show();
-                
-        } catch (Exception e) {
-            android.util.Log.e("MainActivity", "获取版本信息失败", e);
-            Toast.makeText(this, "获取版本信息失败", Toast.LENGTH_SHORT).show();
-        }
-    }
-    
-    private void copyToClipboard(String text) {
-        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        android.content.ClipData clip = android.content.ClipData.newPlainText("下载地址", text);
-        clipboard.setPrimaryClip(clip);
     }
 
     @Override

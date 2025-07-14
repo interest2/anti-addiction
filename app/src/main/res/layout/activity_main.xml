@@ -28,8 +28,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="功能：打开小红书首页显示悬浮窗遮盖内容。\n
-        所需权限：悬浮窗、无障碍服务、允许后台运行。"
+        android:text="功能：打开小红书首页显示悬浮窗遮盖内容。\n所需权限：显示在其他应用的上层、无障碍服务、允许后台运行。"
         android:textAlignment="viewStart"
         android:textSize="16sp"
         app:layout_constraintBottom_toTopOf="@+id/btn_latest_apk"
