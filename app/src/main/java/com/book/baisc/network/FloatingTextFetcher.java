@@ -2,8 +2,11 @@ package com.book.baisc.network;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 import org.json.JSONObject;
 import java.io.BufferedReader;
@@ -109,9 +112,15 @@ public class FloatingTextFetcher {
     private String performHttpRequest() {
         HttpURLConnection connection = null;
         try {
+            String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
+            PackageManager pm = context.getPackageManager();
+            PackageInfo packageInfo = pm.getPackageInfo(context.getPackageName(), 0);
+
+            Log.d(TAG, "信息："+packageInfo.versionName);
+
             String tag = settingsManager.getMotivationTag();
             String encodedTag = URLEncoder.encode(tag, StandardCharsets.UTF_8.name());
-            URL url = new URL(API_URL + "?tag=" + encodedTag);
+            URL url = new URL(API_URL + "?tag=" + encodedTag + "&devId=" + androidId + "&version=" + packageInfo.versionName);
             connection = (HttpURLConnection) url.openConnection();
             
             // 设置请求方法和属性
