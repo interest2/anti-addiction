@@ -28,13 +28,25 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="功能：打开小红书首页显示悬浮窗遮盖内容。\n所需权限：悬浮窗、无障碍服务、允许后台运行。"
+        android:text="功能：打开小红书首页显示悬浮窗遮盖内容。\n
+        所需权限：悬浮窗、无障碍服务、允许后台运行。"
         android:textAlignment="viewStart"
         android:textSize="16sp"
-        app:layout_constraintBottom_toTopOf="@+id/btn_optimization_guide"
+        app:layout_constraintBottom_toTopOf="@+id/btn_latest_apk"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tv_title" />
+
+    <Button
+        android:id="@+id/btn_latest_apk"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="最新安装包地址"
+        android:backgroundTint="#2196F3"
+        app:layout_constraintBottom_toTopOf="@+id/btn_optimization_guide"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tv_description" />
 
     <Button
         android:id="@+id/btn_optimization_guide"
@@ -46,7 +58,7 @@
         android:backgroundTint="@color/orange"
         app:layout_constraintBottom_toTopOf="@+id/btn_daily_time_setting"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tv_description" />
+        app:layout_constraintTop_toBottomOf="@+id/btn_latest_apk" />
 
     <TextView
         android:id="@+id/tv_duration_subtitle"

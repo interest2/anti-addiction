@@ -201,19 +201,7 @@ public class FloatingTextFetcher {
             Log.e(TAG, "缓存文字失败", e);
         }
     }
-    
-    /**
-     * 检查是否需要更新文字（可选的优化）
-     */
-    public boolean shouldUpdateText() {
-        long lastUpdate = getLastUpdateTime();
-        long now = System.currentTimeMillis();
-        long timeDiff = now - lastUpdate;
-        
-        // 如果距离上次更新超过5分钟，则需要更新
-        return timeDiff > 5 * 60 * 1000;
-    }
-    
+
     /**
      * 清理资源
      */

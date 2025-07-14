@@ -71,6 +71,9 @@ public class MainActivity extends AppCompatActivity {
         // 设置激励语标签按钮
         setupTagSettingButton();
         
+        // 设置最新安装包地址按钮
+        setupLatestApkButton();
+        
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();
@@ -331,6 +334,56 @@ public class MainActivity extends AppCompatActivity {
             })
             .setNegativeButton("取消", null)
                .show();
+    }
+    
+    private void setupLatestApkButton() {
+        Button latestApkButton = findViewById(R.id.btn_latest_apk);
+        latestApkButton.setOnClickListener(v -> {
+            showLatestApkDialog();
+        });
+    }
+    
+    private void showLatestApkDialog() {
+        try {
+            // 获取当前版本信息
+            String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            int versionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+            
+            // 构建弹窗内容
+            StringBuilder content = new StringBuilder();
+            content.append("• 当前版本：").append(versionName).append("\n\n");
+            content.append("• 下载页面（找到最新的 apk 文件下载）：\n");
+            content.append("https://gitee.com/interest2/anti-addiction/releases\n");
+            content.append("https://github.com/interest2/anti-addiction/releases\n\n");
+
+            content.append("备注：\n");
+            content.append("• gitee地址：需要登录\n");
+            content.append("• github地址：无需登录，但网络可能不稳定\n\n");
+            
+            new android.app.AlertDialog.Builder(this)
+                .setTitle("最新安装包地址")
+                .setMessage(content.toString())
+                .setPositiveButton("复制gitee地址", (dialog, which) -> {
+                    copyToClipboard("https://gitee.com/interest2/anti-addiction/releases");
+                    Toast.makeText(this, "gitee地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("复制github地址", (dialog, which) -> {
+                    copyToClipboard("https://github.com/interest2/anti-addiction/releases");
+                    Toast.makeText(this, "gitHub地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
+                })
+                .setNeutralButton("关闭", null)
+                .show();
+                
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "获取版本信息失败", e);
+            Toast.makeText(this, "获取版本信息失败", Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    private void copyToClipboard(String text) {
+        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        android.content.ClipData clip = android.content.ClipData.newPlainText("下载地址", text);
+        clipboard.setPrimaryClip(clip);
     }
 
     @Override

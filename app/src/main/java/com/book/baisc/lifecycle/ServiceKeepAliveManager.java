@@ -8,6 +8,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.book.baisc.config.Const;
 import com.book.baisc.floating.FloatingAccessibilityService;
 
 public class ServiceKeepAliveManager {
@@ -115,9 +116,9 @@ public class ServiceKeepAliveManager {
                         listener.onServiceNeedRestart();
                     }
                 }
-                handler.postDelayed(this, 30000);
+                handler.postDelayed(this, Const.CHECK_SERVICE_RUNNING_DELAY);
             }
         };
-        handler.postDelayed(checkRunnable, 30000);
+        handler.postDelayed(checkRunnable, Const.CHECK_SERVICE_RUNNING_DELAY);
     }
 } 

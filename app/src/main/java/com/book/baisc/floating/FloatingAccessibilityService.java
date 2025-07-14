@@ -53,7 +53,6 @@ public class FloatingAccessibilityService extends AccessibilityService
     private Handler appStateHandler;
     private Runnable appStateCheckRunnable;
     private long lastAppStateCheckTime = 0;
-    private static final long APP_STATE_CHECK_INTERVAL = 2000; // 2秒检查一次
     private long mathChallengeStartTime = 0; // 数学题验证开始时间
     
     // 设置管理器
@@ -559,7 +558,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             @Override
             public void run() {
                 long currentTime = System.currentTimeMillis();
-                if (currentTime - lastAppStateCheckTime > APP_STATE_CHECK_INTERVAL) {
+                if (currentTime - lastAppStateCheckTime > Const.APP_STATE_CHECK_INTERVAL) {
                     lastAppStateCheckTime = currentTime;
                     
                     // 检查当前前台应用状态
@@ -567,12 +566,12 @@ public class FloatingAccessibilityService extends AccessibilityService
                 }
                 
                 // 继续循环检查
-                appStateHandler.postDelayed(this, APP_STATE_CHECK_INTERVAL);
+                appStateHandler.postDelayed(this, Const.APP_STATE_CHECK_INTERVAL);
             }
         };
         
         // 开始定期检查
-        appStateHandler.postDelayed(appStateCheckRunnable, APP_STATE_CHECK_INTERVAL);
+        appStateHandler.postDelayed(appStateCheckRunnable, Const.APP_STATE_CHECK_INTERVAL);
         Log.d(TAG, "应用状态检测增强机制已启动");
     }
     
