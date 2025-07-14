@@ -5,17 +5,15 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.text.InputFilter;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.Toast;
-import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
+
 import android.content.Context;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.view.accessibility.AccessibilityManager;
@@ -29,6 +27,7 @@ import com.book.baisc.network.DeviceInfoReporter;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.FloatingTextFetcher;
 import com.book.baisc.ui.SettingsDialogManager;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -38,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private DeviceInfoReporter deviceInfoReporter;
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
+    private HomeFragment homeFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,73 +46,65 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            
-            // 将 dp 值转换为像素
-            int horizontalPadding = (int) (32 * getResources().getDisplayMetrics().density);
-            
-            v.setPadding(
-                systemBars.left + horizontalPadding, 
-                systemBars.top, 
-                systemBars.right + horizontalPadding, 
-                systemBars.bottom
-            );
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
         settingsManager = new SettingsManager(this);
         settingsDialogManager = new SettingsDialogManager(this, settingsManager);
 
+        // 设置底部导航
+        setupBottomNavigation();
+        
         // 检查并请求所有必要权限
         checkAndRequestPermissions();
-        
-        // 设置优化指引按钮点击事件
-//        setupOptimizationGuideButton();
-        
-        // 设置时间间隔设置按钮点击事件
-        setupTimeSettingButtons();
-        
-        // 设置激励语标签按钮
-        setupTagSettingButton();
-        
-        // 设置目标完成日期按钮
-        setupTargetDateSettingButton();
-        
-        // 设置最新安装包地址按钮
-        setupLatestApkButton();
         
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();
 
         // 检查缓存并获取云端内容
-        checkAndFetchCachedContent();
+        FloatingTextFetcher fetcher = new FloatingTextFetcher(this);
+        fetcher.fetchLatestText(new FloatingTextFetcher.OnTextFetchListener() {
+            @Override
+            public void onTextFetched(String text) {
+                android.util.Log.d("MainActivity", "云端文字获取成功: " + text);
+            }
 
-        updateCasualButtonState();
-        updateCasualCountDisplay();
+            @Override
+            public void onFetchError(String error) {
+                android.util.Log.w("MainActivity", "云端文字获取失败: " + error);
+            }
+        });
     }
 
-    private void checkAndFetchCachedContent() {
-        // 创建 FloatingTextFetcher 实例
-        FloatingTextFetcher textFetcher = new FloatingTextFetcher(this);
+    private void setupBottomNavigation() {
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        bottomNav.setOnNavigationItemSelectedListener(item -> {
+            Fragment selectedFragment = null;
+            if (item.getItemId() == R.id.nav_home) {
+                if (homeFragment == null) {
+                    homeFragment = new HomeFragment();
+                }
+                selectedFragment = homeFragment;
+            } else if (item.getItemId() == R.id.nav_settings) {
+                selectedFragment = new SettingsFragment();
+            }
+            
+            if (selectedFragment != null) {
+                getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, selectedFragment)
+                    .commit();
+            }
+            return true;
+        });
         
-        // 检查是否有缓存内容
-        String cachedText = textFetcher.getCachedText();
-        if (cachedText == null || cachedText.isEmpty()) {
-            // 没有缓存内容，立即获取
-            textFetcher.fetchLatestText(new FloatingTextFetcher.OnTextFetchListener() {
-                @Override
-                public void onTextFetched(String text) {
-                    android.util.Log.d("MainActivity", "应用启动时获取到云端内容: " + text);
-                }
-
-                @Override
-                public void onFetchError(String error) {
-                    android.util.Log.w("MainActivity", "应用启动时获取云端内容失败: " + error);
-                }
-            });
-        } else {
-            android.util.Log.d("MainActivity", "应用启动时发现缓存内容: " + cachedText);
-        }
+        // 默认显示首页
+        homeFragment = new HomeFragment();
+        getSupportFragmentManager().beginTransaction()
+            .replace(R.id.fragment_container, homeFragment)
+            .commit();
+        bottomNav.setSelectedItemId(R.id.nav_home);
     }
 
     private void checkAndRequestPermissions() {
@@ -146,34 +138,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isAccessibilityServiceEnabled() {
-        // 方法1：直接检查AccessibilityService是否运行
-        if (FloatingAccessibilityService.isServiceRunning()) {
-            android.util.Log.d("MainActivity", "通过静态方法检查：AccessibilityService 正在运行");
-            return true;
-        }
+        AccessibilityManager accessibilityManager = (AccessibilityManager) getSystemService(Context.ACCESSIBILITY_SERVICE);
+        List<AccessibilityServiceInfo> accessibilityServices = accessibilityManager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
         
-        // 方法2：通过AccessibilityManager检查
-        AccessibilityManager am = (AccessibilityManager) getSystemService(Context.ACCESSIBILITY_SERVICE);
-        if (am != null) {
-            List<AccessibilityServiceInfo> runningServices = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
-            
-            String targetServiceName = getPackageName() + "/" + FloatingAccessibilityService.class.getName();
-            android.util.Log.d("MainActivity", "期望的服务名称: " + targetServiceName);
-            android.util.Log.d("MainActivity", "已启用的无障碍服务数量: " + runningServices.size());
-            
-            for (AccessibilityServiceInfo service : runningServices) {
-                String serviceId = service.getId();
-                android.util.Log.d("MainActivity", "发现的服务ID: " + serviceId);
-                
-                if (serviceId.contains(getPackageName()) && serviceId.contains("FloatingAccessibilityService")) {
-                    android.util.Log.d("MainActivity", "找到匹配的无障碍服务!");
-                    return true;
-                }
+        for (AccessibilityServiceInfo info : accessibilityServices) {
+            if (info.getId().equals(getPackageName() + "/" + FloatingAccessibilityService.class.getName())) {
+                return true;
             }
-            android.util.Log.d("MainActivity", "未找到匹配的无障碍服务");
         }
         
-        // 方法3：通过Settings.Secure检查
         try {
             String enabledServices = Settings.Secure.getString(
                 getContentResolver(), 
@@ -198,57 +171,13 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "检测功能已启用，打开小红书时会显示悬浮窗", Toast.LENGTH_LONG).show();
     }
 
-        private void setupTimeSettingButtons() {
-        Button dailyButton = findViewById(R.id.btn_daily_time_setting);
-        dailyButton.setOnClickListener(v -> {
-            settingsDialogManager.showTimeSettingDialog(true); // true for daily
-        });
-        
-        Button casualButton = findViewById(R.id.btn_casual_time_setting);
-        casualButton.setOnClickListener(v -> {
-            settingsDialogManager.showTimeSettingDialog(false); // false for casual
-        });
-    }
-
-    
-    
-    private void updateCasualButtonState() {
-        Button casualButton = findViewById(R.id.btn_casual_time_setting);
-        settingsDialogManager.updateCasualButtonState(casualButton);
-    }
-
-    private void updateCasualCountDisplay() {
-        TextView countText = findViewById(R.id.tv_casual_count);
-        settingsDialogManager.updateCasualCountDisplay(countText);
-    }
-
-    private void setupTagSettingButton() {
-        Button tagButton = findViewById(R.id.btn_tag_setting);
-        tagButton.setOnClickListener(v -> settingsDialogManager.showTagSettingDialog());
-        updateTagButtonText();
-    }
-    
-    private void updateTagButtonText() {
-        Button tagButton = findViewById(R.id.btn_tag_setting);
-        settingsDialogManager.updateTagButtonText(tagButton);
-    }
-
-    private void setupTargetDateSettingButton() {
-        Button targetDateButton = findViewById(R.id.btn_target_date_setting);
-        targetDateButton.setOnClickListener(v -> settingsDialogManager.showTargetDateSettingDialog());
-        updateTargetDateButtonText();
-    }
-
+    /**
+     * 供外部调用的方法，用于更新目标日期按钮文本
+     */
     public void updateTargetDateButtonText() {
-        Button targetDateButton = findViewById(R.id.btn_target_date_setting);
-        settingsDialogManager.updateDateButtonText(targetDateButton);
-    }
-
-    private void setupLatestApkButton() {
-        Button latestApkButton = findViewById(R.id.btn_latest_apk);
-        latestApkButton.setOnClickListener(v -> {
-            settingsDialogManager.showLatestApkDialog();
-        });
+        if (homeFragment != null) {
+            homeFragment.updateTargetDateButtonText();
+        }
     }
 
     @Override
@@ -276,15 +205,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        checkAndRequestPermissions();
-        updateCasualButtonState();
-        updateCasualCountDisplay();
-        updateTagButtonText();
-        updateTargetDateButtonText();
         // 每次返回时检查权限状态
         if (isAccessibilityServiceEnabled() && 
             (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {
-            // 权限已开启，确保显示正确的状态
             if (appLifecycleObserver == null) {
                 initAppLifecycleObserver();
             }
@@ -294,16 +217,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        
-        // 释放设备信息上报器资源
+        // 清理设备信息上报器
         if (deviceInfoReporter != null) {
             deviceInfoReporter.release();
             deviceInfoReporter = null;
-        }
-        
-        // 释放应用生命周期监听器
-        if (appLifecycleObserver != null) {
-            appLifecycleObserver = null;
         }
     }
 } 
