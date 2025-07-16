@@ -17,6 +17,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Button;
 import android.util.DisplayMetrics;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import com.book.baisc.R;
 import com.book.baisc.config.Const;
@@ -25,11 +28,6 @@ import com.book.baisc.lifecycle.ServiceKeepAliveManager;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.DeviceInfoReporter;
 import com.book.baisc.network.FloatingTextFetcher;
-
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Locale;
 
 /**
  * 悬浮窗无障碍服务
@@ -41,7 +39,19 @@ public class FloatingAccessibilityService extends AccessibilityService
     private static final String TAG = "FloatingAccessibility";
     private static FloatingAccessibilityService instance;
     private boolean isFloatingWindowVisible = false;
-    private boolean isInXHS = false;
+    private boolean isInXHS = false; // 兼容性保留
+    private Const.SupportedApp currentActiveApp = null; // 当前活跃的APP
+    
+    // 时间格式化器
+    private static final SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+    
+    /**
+     * 格式化时间戳为可读格式
+     */
+    private static String formatTime(long timestamp) {
+        if (timestamp == 0) return "未设置";
+        return timeFormatter.format(new Date(timestamp));
+    }
     
     // 性能优化相关
     private Handler handler;
@@ -73,7 +83,7 @@ public class FloatingAccessibilityService extends AccessibilityService
     private WindowManager windowManager;
     private View floatingView;
     private WindowManager.LayoutParams layoutParams;
-    private boolean isManuallyHidden = false;
+    private boolean isManuallyHidden = false; // 兼容性保留
     private Handler autoShowHandler;
     private Runnable autoShowRunnable;
 
@@ -145,50 +155,79 @@ public class FloatingAccessibilityService extends AccessibilityService
                 return;
             }
             
-            boolean newState = Const.XHS_PACKAGE.equals(packageName);
-            Log.d(TAG, "是否是小红书: " + newState + " (期望包名: " + Const.XHS_PACKAGE + ")");
+            // 检测当前是否是支持的APP
+            Const.SupportedApp detectedApp = Const.SupportedApp.getByPackageName(packageName);
             
-            if (newState != isInXHS) {
-                isInXHS = newState;
-                Log.d(TAG, "小红书应用状态发生变化，新状态: " + (isInXHS ? "前台" : "后台"));
+            // 兼容性保留：小红书状态
+            boolean newXhsState = Const.XHS_PACKAGE.equals(packageName);
+            if (newXhsState != isInXHS) {
+                isInXHS = newXhsState;
+            }
+            
+            if (detectedApp != null) {
+                Log.d(TAG, "检测到支持的APP: " + detectedApp.name() + " (包名: " + packageName + ")");
                 
-                if (!isInXHS) {
-                    // 离开小红书，立即隐藏悬浮窗
-                    Share.lastDetectedInterface = ""; // 清除缓存
-                    hideFloatingWindow();
-                } else {
-                    // 进入小红书，立即开始检测文本内容
+                if (detectedApp != currentActiveApp) {
+                    // 切换到新的APP
+                    if (currentActiveApp != null) {
+                        Log.d(TAG, "离开APP: " + currentActiveApp.name());
+                        Share.clearAppState(currentActiveApp);
+                        // 不清理手动隐藏状态，保持到下次自动解除
+                    }
+                    
+                    currentActiveApp = detectedApp;
+                    Share.currentApp = currentActiveApp;
+                    Log.d(TAG, "进入APP: " + currentActiveApp.name());
+                    
+                    // 检查当前APP是否被手动隐藏
+                    boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
+                    Log.d(TAG, "APP " + currentActiveApp.name() + " 手动隐藏状态: " + appManuallyHidden);
+                    
+                    // 立即开始检测文本内容
                     checkTextContentOptimized();
+                }
+            } else {
+                // 离开所有支持的APP
+                if (currentActiveApp != null) {
+                    Log.d(TAG, "离开APP: " + currentActiveApp.name());
+                    Share.clearAppState(currentActiveApp);
+                    // 不清理手动隐藏状态，保持到下次自动解除
+                    currentActiveApp = null;
+                    Share.currentApp = null;
+                    Share.lastDetectedInterface = ""; // 兼容性保留
+                    hideFloatingWindow();
                 }
             }
         }
     }
     
     private void handleWindowContentChanged(AccessibilityEvent event) {
-        // 只在小红书应用中检测文本内容
-        if (isInXHS && event.getPackageName() != null &&
-                Const.XHS_PACKAGE.equals(event.getPackageName().toString())) {
-            
-            // 防抖机制：避免频繁检测
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - lastContentCheckTime < 200) {
-                return; // 200ms内的重复事件直接忽略
+        // 只在支持的APP中检测文本内容
+        if (currentActiveApp != null && event.getPackageName() != null) {
+            String packageName = event.getPackageName().toString();
+            if (currentActiveApp.getPackageName().equals(packageName)) {
+                
+                // 防抖机制：避免频繁检测
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastContentCheckTime < 200) {
+                    return; // 200ms内的重复事件直接忽略
+                }
+                lastContentCheckTime = currentTime;
+                
+                // 使用Handler延迟执行，进一步防抖
+                if (contentCheckRunnable == null) {
+                    contentCheckRunnable = new Runnable() {
+                        @Override
+                        public void run() {
+                            checkTextContentOptimized();
+                        }
+                    };
+                }
+                
+                // 取消之前的延迟任务，重新安排
+                handler.removeCallbacks(contentCheckRunnable);
+                handler.postDelayed(contentCheckRunnable, 300); // 300ms防抖延迟
             }
-            lastContentCheckTime = currentTime;
-            
-            // 使用Handler延迟执行，进一步防抖
-            if (contentCheckRunnable == null) {
-                contentCheckRunnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        checkTextContentOptimized();
-                    }
-                };
-            }
-            
-            // 取消之前的延迟任务，重新安排
-            handler.removeCallbacks(contentCheckRunnable);
-            handler.postDelayed(contentCheckRunnable, 300); // 300ms防抖延迟
         }
     }
 
@@ -197,42 +236,62 @@ public class FloatingAccessibilityService extends AccessibilityService
      * 1. 先用快速检测，如果失败则用完整检测
      * 2. 优先检查常见的文本节点类型
      * 3. 使用缓存避免重复检测
+     * 4. 支持多APP的不同目标词
      */
     void checkTextContentOptimized() {
         try {
+            if (currentActiveApp == null) {
+                Log.d(TAG, "当前没有活跃的APP，跳过文本检测");
+                return;
+            }
+            
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             if (rootNode != null) {
-                // 第一阶段：快速检测"发现"文本（限制深度）
-//                boolean hasFaxian = findTextOptimized(rootNode, "发现", 5);
-                boolean hasFaxian = false;
+                String targetWord = currentActiveApp.getTargetWord();
+                
+                // 第一阶段：快速检测目标文本（限制深度）
+                boolean hasTargetWord = false;
 
-                // 第二阶段：如果快速检测没找到"发现"，使用完整检测作为备用
-                if (!hasFaxian) {
-                    Log.d(TAG, "快速检测未找到'发现'，启用完整检测");
-                    hasFaxian = FloatHelper.findTextInNode(rootNode, Const.TARGET_WORD);
+                // 第二阶段：如果快速检测没找到目标文本，使用完整检测作为备用
+                if (!hasTargetWord) {
+                    Log.d(TAG, "快速检测未找到'" + targetWord + "'，启用完整检测");
+                    hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
 
                     // 临时调试：如果还是找不到，输出一些可见文本内容
-                    if (!hasFaxian) {
-                        Log.d(TAG, "完整检测也未找到'发现'，输出部分可见文本:");
+                    if (!hasTargetWord) {
+                        Log.d(TAG, "完整检测也未找到'" + targetWord + "'，输出部分可见文本:");
                         FloatHelper.logVisibleTexts(rootNode, 0, 2); // 只输出前2层的文本，避免刷屏
                     }
                 }
 
-                // 简化界面判断逻辑：只检测"发现"
-                String currentInterface = hasFaxian ? "discover" : "other";
+                // 简化界面判断逻辑：只检测目标词
+                String currentInterface = hasTargetWord ? "target" : "other";
 
                 // 添加详细调试信息
-                Log.d(TAG, "文本检测结果: 发现=" + hasFaxian + ", 当前界面=" + currentInterface);
+                Log.d(TAG, "文本检测结果: " + targetWord + "=" + hasTargetWord + ", 当前界面=" + currentInterface + ", APP=" + currentActiveApp.name());
 
+                // 获取当前APP的状态
+                String lastAppState = Share.getAppState(currentActiveApp);
+                
                 // 只有界面状态发生变化时才执行操作
-                if (!currentInterface.equals(Share.lastDetectedInterface)) {
-                    Share.lastDetectedInterface = currentInterface;
+                if (!currentInterface.equals(lastAppState)) {
+                    Share.setAppState(currentActiveApp, currentInterface);
+                    Share.lastDetectedInterface = currentInterface; // 兼容性保留
 
-                    Log.d(TAG, "界面变化检测: " + currentInterface);
+                    Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: " + currentActiveApp.name() + ")");
 
-                    if ("discover".equals(currentInterface)) {
-                        if (!isFloatingWindowVisible && !isManuallyHidden) {
+                    if ("target".equals(currentInterface)) {
+                        // 检查当前APP是否被手动隐藏
+                        boolean appManuallyHidden = currentActiveApp != null ? 
+                            Share.isAppManuallyHidden(currentActiveApp) : isManuallyHidden;
+                        
+                        if (!isFloatingWindowVisible && !appManuallyHidden) {
+                            Log.d(TAG, "显示悬浮窗 - APP: " + (currentActiveApp != null ? currentActiveApp.name() : "unknown") + 
+                                ", 手动隐藏: " + appManuallyHidden);
                             showFloatingWindow();
+                        } else if (appManuallyHidden) {
+                            Log.d(TAG, "APP " + (currentActiveApp != null ? currentActiveApp.name() : "unknown") + 
+                                " 被手动隐藏，跳过显示悬浮窗");
                         }
                     } else {
                         if (isFloatingWindowVisible) {
@@ -240,7 +299,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                         }
                     }
                 } else {
-                    Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface);
+                    Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface + " (APP: " + currentActiveApp.name() + ")");
                 }
 
                 rootNode.recycle();
@@ -313,36 +372,88 @@ public class FloatingAccessibilityService extends AccessibilityService
                 @Override
                 public void onAnswerCorrect() {
                     Log.d(TAG, "数学题验证成功，关闭悬浮窗");
-                    isManuallyHidden = true;
+                    isManuallyHidden = true; // 兼容性保留
+                    
+                    // 获取当前的时间间隔（宽松模式生效一次）
+                    long interval;
+                    int intervalSeconds;
+                    
+                    if (currentActiveApp != null) {
+                        // 使用当前APP的时间间隔安排下次显示
+                        interval = settingsManager.getAppAutoShowIntervalMillis(currentActiveApp);
+                        intervalSeconds = settingsManager.getAppAutoShowInterval(currentActiveApp);
+                        
+                        Log.d(TAG, "APP " + currentActiveApp.name() + " 当前设置的时间间隔: " + intervalSeconds + "秒");
+                        
+                        // 记录关闭时间和当前使用的时间间隔
+                        settingsManager.recordAppCloseTime(currentActiveApp, intervalSeconds);
+                        Share.setAppManuallyHidden(currentActiveApp, true);
+                        Log.d(TAG, "设置APP " + currentActiveApp.name() + " 为手动隐藏状态");
+                        
+                        // 检查是否是宽松模式
+                        boolean isCasualMode = settingsManager.isAppCasualMode(currentActiveApp);
+                        Log.d(TAG, "APP " + currentActiveApp.name() + " 当前是否宽松模式: " + isCasualMode);
+                        
+                        // 如果是宽松模式，使用一次后切换到严格模式
+                        if (isCasualMode) {
+                            int currentCount = settingsManager.getAppCasualCloseCount(currentActiveApp);
+                            settingsManager.incrementAppCasualCloseCount(currentActiveApp);
+                            // 宽松模式使用一次后，立即切换到严格模式
+                            settingsManager.setAppAutoShowInterval(currentActiveApp, settingsManager.getMaxDailyInterval());
+                            Log.d(TAG, "APP " + currentActiveApp.name() + " 宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
+                            Log.d(TAG, "APP " + currentActiveApp.name() + " 宽松模式一次性生效，已切换到严格模式");
+                        }
+                    } else {
+                        // 兼容性保留：原有逻辑
+                        interval = settingsManager.getAutoShowIntervalMillis();
+                        intervalSeconds = settingsManager.getAutoShowInterval();
+                        
+                        Log.d(TAG, "全局设置的时间间隔: " + intervalSeconds + "秒");
+                        
+                        boolean isCasualMode = settingsManager.isCasualMode();
+                        Log.d(TAG, "全局是否宽松模式: " + isCasualMode);
+                        
+                        if (isCasualMode) {
+                            int currentCount = settingsManager.getCasualCloseCount();
+                            settingsManager.incrementCasualCloseCount();
+                            // 宽松模式使用一次后，立即切换到严格模式
+                            settingsManager.setAutoShowInterval(settingsManager.getMaxDailyInterval());
+                            Log.d(TAG, "宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
+                            Log.d(TAG, "宽松模式一次性生效，已切换到严格模式");
+                        }
+                    }
+                    
                     hideFloatingWindow();
 
-                    // 根据用户设置的时间间隔自动重新显示
+                    // 根据当前APP的用户设置时间间隔自动重新显示
                     if (autoShowRunnable != null) {
                         autoShowHandler.removeCallbacks(autoShowRunnable);
                     }
                     autoShowRunnable = () -> {
                         Log.d(TAG, "自动重新显示悬浮窗");
-                        isManuallyHidden = false;
-                        if (isInXHS && "discover".equals(Share.lastDetectedInterface)) {
-                            showFloatingWindow();
+                        isManuallyHidden = false; // 兼容性保留
+                        if (currentActiveApp != null) {
+                            Share.setAppManuallyHidden(currentActiveApp, false);
+                            Log.d(TAG, "解除APP " + currentActiveApp.name() + " 的手动隐藏状态");
+                            if ("target".equals(Share.getAppState(currentActiveApp))) {
+                                showFloatingWindow();
+                            }
                         }
                     };
                     
-                    // 下次弹窗：用户最新设置的时间间隔
-                    long interval = settingsManager.getAutoShowIntervalMillis();
+                    // 使用当前（宽松模式）的时间间隔安排下次显示
                     autoShowHandler.postDelayed(autoShowRunnable, interval);
                     
-                    String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
-                    Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗");
-
-                    // 如果是宽松模式，增加关闭次数，并自动切为严格模式
-                    if (settingsManager.isCasualMode()) {
-                        int currentCount = settingsManager.getCasualCloseCount();
-                        settingsManager.incrementCasualCloseCount();
-                        settingsManager.setAutoShowInterval(settingsManager.getMaxDailyInterval());
-                        Log.d(TAG, "宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
-                    }
-                    Log.d(TAG, "下次时长：" + settingsManager.getAutoShowInterval());
+                    String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
+                    Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗 (APP: " + 
+                        (currentActiveApp != null ? currentActiveApp.name() : "default") + ")");
+                    
+                    // 显示下次使用的时间间隔
+                    int nextIntervalSeconds = currentActiveApp != null ? 
+                        settingsManager.getAppAutoShowInterval(currentActiveApp) : 
+                        settingsManager.getAutoShowInterval();
+                    Log.d(TAG, "下次时长：" + nextIntervalSeconds + "秒 (APP: " + 
+                        (currentActiveApp != null ? currentActiveApp.name() : "default") + ")");
                 }
                 
                 @Override
@@ -366,10 +477,12 @@ public class FloatingAccessibilityService extends AccessibilityService
             try {
                 windowManager.addView(floatingView, layoutParams);
                 isFloatingWindowVisible = true;
+                Share.isFloatingWindowVisible = true; // 同步状态
                 Log.d(TAG, "悬浮窗显示成功");
             } catch (Exception e) {
                 Log.e(TAG, "显示悬浮窗失败", e);
                 isFloatingWindowVisible = false;
+                Share.isFloatingWindowVisible = false; // 同步状态
             }
         }
     }
@@ -409,8 +522,19 @@ public class FloatingAccessibilityService extends AccessibilityService
             // 显示动态文字和时间间隔信息
             String content = dynamicText;
             if (settingsManager != null) {
-                String intervalText = SettingsManager.getIntervalDisplayText(settingsManager.getAutoShowInterval());
-
+                // 使用当前APP的时间间隔显示
+                int intervalSeconds;
+                String appName = "";
+                if (currentActiveApp != null) {
+                    intervalSeconds = settingsManager.getAppAutoShowInterval(currentActiveApp);
+                    appName = currentActiveApp.name();
+                    Log.d(TAG, "悬浮窗显示APP " + appName + " 的时间间隔: " + intervalSeconds + "秒");
+                } else {
+                    intervalSeconds = settingsManager.getAutoShowInterval();
+                    Log.d(TAG, "悬浮窗显示全局时间间隔: " + intervalSeconds + "秒");
+                }
+                
+                String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
                 String hintTIme = "\n若关闭，" + intervalText + "后将重新显示本页面";
                 if (!dynamicText.isEmpty()) {
                     content = dynamicText + "\n" + hintTIme;
@@ -446,6 +570,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             }
             
             isFloatingWindowVisible = false;
+            Share.isFloatingWindowVisible = false; // 同步状态
         }
     }
 
@@ -462,21 +587,25 @@ public class FloatingAccessibilityService extends AccessibilityService
             instance.updateFloatingWindowContent();
             
             // 如果当前有正在运行的自动显示定时器，重新启动它
-            if (instance.autoShowRunnable != null && instance.isManuallyHidden) {
-                // 取消当前的定时器
-                instance.autoShowHandler.removeCallbacks(instance.autoShowRunnable);
-                
-                // 使用新的时间间隔重新启动定时器
-                long newInterval = instance.settingsManager.getAutoShowIntervalMillis();
-                instance.autoShowHandler.postDelayed(instance.autoShowRunnable, newInterval);
-                
-                String intervalText = SettingsManager.getIntervalDisplayText(instance.settingsManager.getAutoShowInterval());
-                Log.d(instance.TAG, "时间间隔设置已更新，立即应用新间隔: " + intervalText);
-                
-                // 显示提示
-                Toast.makeText(instance,
-                    "⏰ 定时器已更新，将在" + intervalText + "后重新显示", 
-                    Toast.LENGTH_SHORT).show();
+            if (instance.autoShowRunnable != null && instance.currentActiveApp != null) {
+                boolean appManuallyHidden = Share.isAppManuallyHidden(instance.currentActiveApp);
+                if (appManuallyHidden) {
+                    // 取消当前的定时器
+                    instance.autoShowHandler.removeCallbacks(instance.autoShowRunnable);
+                    
+                    // 使用当前APP的新时间间隔重新启动定时器
+                    long newInterval = instance.settingsManager.getAppAutoShowIntervalMillis(instance.currentActiveApp);
+                    instance.autoShowHandler.postDelayed(instance.autoShowRunnable, newInterval);
+                    
+                    int intervalSeconds = instance.settingsManager.getAppAutoShowInterval(instance.currentActiveApp);
+                    String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
+                    Log.d(instance.TAG, "时间间隔设置已更新，立即应用新间隔: " + intervalText + " (APP: " + instance.currentActiveApp.name() + ")");
+                    
+                    // 显示提示
+                    Toast.makeText(instance,
+                        "⏰ 定时器已更新，将在" + intervalText + "后重新显示", 
+                        Toast.LENGTH_SHORT).show();
+                }
             }
         }
     }
@@ -486,18 +615,51 @@ public class FloatingAccessibilityService extends AccessibilityService
      */
     public void onMathChallengeStart() {
         mathChallengeStartTime = System.currentTimeMillis();
-        Log.d(TAG, "数学题验证开始，暂停应用状态检测");
+        Log.d(TAG, "数学题验证开始，暂停应用状态检测 [时间: " + formatTime(mathChallengeStartTime) + "]");
     }
     
     /**
      * 重置数学题验证时间
      */
     public void onMathChallengeEnd() {
+        long endTime = System.currentTimeMillis();
+        long duration = mathChallengeStartTime > 0 ? (endTime - mathChallengeStartTime) : 0;
+        Log.d(TAG, "数学题验证结束，恢复应用状态检测 [开始: " + formatTime(mathChallengeStartTime) + ", 结束: " + formatTime(endTime) + ", 用时: " + duration + "ms]");
         mathChallengeStartTime = 0;
-        Log.d(TAG, "数学题验证结束，恢复应用状态检测");
     }
 
-    // ... 其他方法保持不变 ...
+    /**
+     * 触发立即检查是否需要显示悬浮窗
+     * 当用户从宽松模式切换到严格模式时调用
+     */
+    public static void triggerImmediateCheck(Const.SupportedApp app) {
+        if (instance != null) {
+            Log.d(TAG, "收到立即检查请求，目标APP: " + app.name());
+            
+            // 检查当前是否在目标APP中
+            if (app == instance.currentActiveApp) {
+                Log.d(TAG, "当前正在目标APP中，检查是否需要显示悬浮窗");
+                
+                // 检查APP状态
+                String appState = Share.getAppState(app);
+                boolean isManuallyHidden = Share.isAppManuallyHidden(app);
+                
+                Log.d(TAG, "APP " + app.name() + " 状态: " + appState + ", 手动隐藏: " + isManuallyHidden);
+                
+                // 如果APP状态是target且没有手动隐藏，立即显示悬浮窗
+                if ("target".equals(appState) && !isManuallyHidden) {
+                    Log.d(TAG, "立即显示悬浮窗");
+                    instance.showFloatingWindow();
+                } else {
+                    Log.d(TAG, "不满足显示条件，不显示悬浮窗");
+                }
+            } else {
+                Log.d(TAG, "当前不在目标APP中，无需显示悬浮窗");
+            }
+        } else {
+            Log.w(TAG, "无障碍服务实例不存在，无法立即检查");
+        }
+    }
     
     /**
      * 初始化保活管理器
@@ -508,13 +670,16 @@ public class FloatingAccessibilityService extends AccessibilityService
             @Override
             public void onScreenUnlocked() {
                 Log.d(TAG, "屏幕解锁，检查悬浮窗状态");
-                // 屏幕解锁后，重新检查小红书状态
-                if (isInXHS && "discover".equals(Share.lastDetectedInterface) && !isManuallyHidden) {
-                    if (!isFloatingWindowVisible) {
+                // 屏幕解锁后，重新检查当前APP状态
+                if (currentActiveApp != null && "target".equals(Share.getAppState(currentActiveApp))) {
+                    boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
+                    if (!isFloatingWindowVisible && !appManuallyHidden) {
                         handler.postDelayed(() -> {
-                            Log.d(TAG, "屏幕解锁后恢复悬浮窗显示");
+                            Log.d(TAG, "屏幕解锁后恢复悬浮窗显示 (APP: " + currentActiveApp.name() + ")");
                             showFloatingWindow();
                         }, 1000);
+                    } else if (appManuallyHidden) {
+                        Log.d(TAG, "APP " + currentActiveApp.name() + " 被手动隐藏，屏幕解锁后不恢复悬浮窗");
                     }
                 }
             }
@@ -522,9 +687,10 @@ public class FloatingAccessibilityService extends AccessibilityService
             @Override
             public void onUserPresent() {
                 Log.d(TAG, "用户解锁设备，重新检查应用状态");
-                // 用户解锁后，重新检测当前是否在小红书
+                // 用户解锁后，重新检测当前是否在支持的APP
                 handler.postDelayed(() -> {
-                    if (isInXHS) {
+                    if (currentActiveApp != null) {
+                        Log.d(TAG, "用户解锁后重新检测APP: " + currentActiveApp.name());
                         checkTextContentOptimized();
                     }
                 }, 1500);
@@ -586,7 +752,9 @@ public class FloatingAccessibilityService extends AccessibilityService
             // 如果数学题验证界面刚刚显示（前5秒），也暂停状态检测
             // 这可以避免输入法显示过程中的误判
             if (mathChallengeStartTime > 0 && (System.currentTimeMillis() - mathChallengeStartTime) < 5000) {
-                Log.v(TAG, "数学题验证界面刚显示，暂停应用状态检测");
+                long currentTime = System.currentTimeMillis();
+                long timeSinceStart = currentTime - mathChallengeStartTime;
+                Log.v(TAG, "数学题验证界面刚显示，暂停应用状态检测 [开始时间: " + formatTime(mathChallengeStartTime) + ", 当前时间: " + formatTime(currentTime) + ", 已过去: " + timeSinceStart + "ms]");
                 return;
             }
             
@@ -596,17 +764,43 @@ public class FloatingAccessibilityService extends AccessibilityService
                 String currentPackage = rootNode.getPackageName() != null ? 
                     rootNode.getPackageName().toString() : "";
                 
+                // 检测当前是否是支持的APP
+                Const.SupportedApp detectedApp = Const.SupportedApp.getByPackageName(currentPackage);
+                
+                // 兼容性保留：小红书状态检测
                 if (Const.XHS_PACKAGE.equals(currentPackage)) {
                     if (!isInXHS) {
                         Log.d(TAG, "应用状态检测：发现小红书应用");
                         isInXHS = true;
-                        checkTextContentOptimized();
                     }
                 } else {
                     if (isInXHS) {
                         Log.d(TAG, "应用状态检测：离开小红书应用");
                         isInXHS = false;
-                        Share.lastDetectedInterface = "";
+                    }
+                }
+                
+                // 多APP状态检测
+                if (detectedApp != null) {
+                    if (detectedApp != currentActiveApp) {
+                        Log.d(TAG, "应用状态检测：发现支持的APP - " + detectedApp.name());
+                        currentActiveApp = detectedApp;
+                        Share.currentApp = currentActiveApp;
+                        
+                        // 检查当前APP是否被手动隐藏
+                        boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
+                        Log.d(TAG, "APP " + currentActiveApp.name() + " 手动隐藏状态: " + appManuallyHidden);
+                        
+                        checkTextContentOptimized();
+                    }
+                } else {
+                    if (currentActiveApp != null) {
+                        Log.d(TAG, "应用状态检测：离开支持的APP - " + currentActiveApp.name());
+                        Share.clearAppState(currentActiveApp);
+                        // 不清理手动隐藏状态，保持到下次自动解除
+                        currentActiveApp = null;
+                        Share.currentApp = null;
+                        Share.lastDetectedInterface = ""; // 兼容性保留
                         hideFloatingWindow();
                     }
                 }
@@ -670,6 +864,11 @@ public class FloatingAccessibilityService extends AccessibilityService
             floatingTextFetcher.cleanup();
             floatingTextFetcher = null;
         }
+        
+        // 清理多APP状态
+        Share.clearAllAppStates();
+        currentActiveApp = null;
+        isInXHS = false;
         
         Log.d(TAG, "AccessibilityService 已销毁");
         Toast.makeText(this, "无障碍服务已停止", Toast.LENGTH_SHORT).show();

@@ -29,6 +29,46 @@ public class SettingsDialogManager {
      * 显示时间设置对话框
      */
     public void showTimeSettingDialog(boolean isDaily) {
+        // 获取当前活跃APP
+        com.book.baisc.config.Const.SupportedApp currentApp = com.book.baisc.config.Share.currentApp;
+        
+        if (currentApp != null) {
+            // 直接为当前活跃APP设置时间间隔
+            showTimeSettingDialogForApp(currentApp, isDaily);
+        } else {
+            // 没有活跃APP，让用户选择为哪个APP设置
+            showAppSelectionDialog(isDaily);
+        }
+    }
+    
+    /**
+     * 显示APP选择对话框
+     */
+    private void showAppSelectionDialog(boolean isDaily) {
+        String dialogTitle = isDaily ? "严格模式 - 选择APP" : "宽松模式 - 选择APP";
+        String[] appOptions = {"小红书", "支付宝"};
+        com.book.baisc.config.Const.SupportedApp[] apps = {
+            com.book.baisc.config.Const.SupportedApp.XHS,
+            com.book.baisc.config.Const.SupportedApp.ALIPAY
+        };
+        
+        android.util.Log.d("SettingsDialog", "显示APP选择对话框: " + dialogTitle);
+        
+        new android.app.AlertDialog.Builder(context)
+            .setTitle(dialogTitle)
+            .setItems(appOptions, (dialog, which) -> {
+                com.book.baisc.config.Const.SupportedApp selectedApp = apps[which];
+                android.util.Log.d("SettingsDialog", "用户选择APP: " + selectedApp.name());
+                showTimeSettingDialogForApp(selectedApp, isDaily);
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+    
+    /**
+     * 为指定APP显示时间设置对话框
+     */
+    private void showTimeSettingDialogForApp(com.book.baisc.config.Const.SupportedApp app, boolean isDaily) {
         final int[] intervals = isDaily ? 
             SettingsManager.getDailyAvailableIntervals() : 
             SettingsManager.getCasualAvailableIntervals();
@@ -38,7 +78,9 @@ public class SettingsDialogManager {
             intervalOptions[i] = SettingsManager.getIntervalDisplayText(intervals[i]);
         }
 
-        int currentInterval = settingsManager.getAutoShowInterval();
+        // 获取指定APP的当前设置
+        int currentInterval = settingsManager.getAppAutoShowInterval(app);
+        
         int checkedItem = -1;
         for (int i = 0; i < intervals.length; i++) {
             if (intervals[i] == currentInterval) {
@@ -48,12 +90,32 @@ public class SettingsDialogManager {
         }
         
         String dialogTitle = isDaily ? "严格模式" : "宽松模式";
+        String appName = app == com.book.baisc.config.Const.SupportedApp.XHS ? "小红书" : "支付宝";
+        String fullTitle = dialogTitle + " - " + appName;
+
+        android.util.Log.d("SettingsDialog", "显示时间设置对话框: " + fullTitle);
+        android.util.Log.d("SettingsDialog", "APP " + app.name() + " 当前时间间隔: " + currentInterval + "秒");
 
         new android.app.AlertDialog.Builder(context)
-            .setTitle(dialogTitle)
+            .setTitle(fullTitle)
             .setSingleChoiceItems(intervalOptions, checkedItem, (dialog, which) -> {
                 int selectedInterval = intervals[which];
-                settingsManager.setAutoShowInterval(selectedInterval);
+                
+                // 为指定APP设置时间间隔
+                settingsManager.setAppAutoShowInterval(app, selectedInterval);
+                android.util.Log.d("SettingsDialog", "设置APP " + app.name() + " 时间间隔为: " + selectedInterval + "秒");
+                
+                // 验证设置是否成功
+                int verifyInterval = settingsManager.getAppAutoShowInterval(app);
+                android.util.Log.d("SettingsDialog", "验证APP " + app.name() + " 实际保存的时间间隔: " + verifyInterval + "秒");
+                
+                // 检查是否是宽松模式
+                boolean isCasualMode = settingsManager.isAppCasualMode(app);
+                android.util.Log.d("SettingsDialog", "APP " + app.name() + " 是否宽松模式: " + isCasualMode);
+                
+                // 检查宽松模式的关闭次数
+                int casualCount = settingsManager.getAppCasualCloseCount(app);
+                android.util.Log.d("SettingsDialog", "APP " + app.name() + " 今日宽松模式关闭次数: " + casualCount);
                 
                 // 通知服务配置已更改
                 FloatingAccessibilityService.notifyIntervalChanged();
@@ -61,7 +123,8 @@ public class SettingsDialogManager {
                 // 显示提示信息
                 showIntervalExplanation(selectedInterval);
                 
-                Toast.makeText(context, "已设置为: " + intervalOptions[which], Toast.LENGTH_SHORT).show();
+                String modeText = isCasualMode ? "宽松模式" : "严格模式";
+                Toast.makeText(context, "已为" + appName + "设置为: " + intervalOptions[which] + " (" + modeText + ")", Toast.LENGTH_LONG).show();
                 dialog.dismiss();
                })
                .setNegativeButton("取消", null)

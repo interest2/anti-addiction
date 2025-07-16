@@ -1,6 +1,41 @@
 package com.book.baisc.config;
 
 public class Const {
+    // 支持的APP枚举
+    public enum SupportedApp {
+        XHS("com.xingin.xhs", "发现"),
+        ALIPAY("com.eg.android.AlipayGphone", "股票");
+        
+        private final String packageName;
+        private final String targetWord;
+        
+        SupportedApp(String packageName, String targetWord) {
+            this.packageName = packageName;
+            this.targetWord = targetWord;
+        }
+        
+        public String getPackageName() {
+            return packageName;
+        }
+        
+        public String getTargetWord() {
+            return targetWord;
+        }
+        
+        /**
+         * 根据包名获取对应的APP
+         */
+        public static SupportedApp getByPackageName(String packageName) {
+            for (SupportedApp app : values()) {
+                if (app.packageName.equals(packageName)) {
+                    return app;
+                }
+            }
+            return null;
+        }
+    }
+    
+    // 兼容性保留的常量
     public static final String XHS_PACKAGE = "com.xingin.xhs";
     public static final String XHS_TARGET_WORD = "发现";
 

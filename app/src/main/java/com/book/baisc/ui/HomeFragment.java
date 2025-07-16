@@ -1,6 +1,8 @@
 package com.book.baisc.ui;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,11 +15,18 @@ import androidx.fragment.app.Fragment;
 
 import com.book.baisc.R;
 import com.book.baisc.config.SettingsManager;
+import com.book.baisc.config.Const;
 
 public class HomeFragment extends Fragment {
 
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
+    
+    // 倒计时相关
+    private Handler countdownHandler;
+    private Runnable countdownRunnable;
+    private TextView tvXhsCountdown;
+    private TextView tvAlipayCountdown;
 
     @Nullable
     @Override
@@ -27,6 +36,9 @@ public class HomeFragment extends Fragment {
         // 初始化设置管理器
         settingsManager = new SettingsManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
+        
+        // 初始化倒计时相关
+        initCountdown(view);
         
         // 设置按钮点击事件
         setupTimeSettingButtons(view);
@@ -94,6 +106,25 @@ public class HomeFragment extends Fragment {
             updateTagButtonText(getView());
             updateTargetDateButtonText(getView());
         }
+        
+        // 启动倒计时
+        startCountdown();
+    }
+    
+    @Override
+    public void onPause() {
+        super.onPause();
+        // 停止倒计时
+        stopCountdown();
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // 清理资源
+        stopCountdown();
+        countdownHandler = null;
+        countdownRunnable = null;
     }
     
     /**
@@ -102,6 +133,63 @@ public class HomeFragment extends Fragment {
     public void updateTargetDateButtonText() {
         if (getView() != null) {
             updateTargetDateButtonText(getView());
+        }
+    }
+    
+    /**
+     * 初始化倒计时相关组件
+     */
+    private void initCountdown(View view) {
+        tvXhsCountdown = view.findViewById(R.id.tv_xhs_countdown);
+        tvAlipayCountdown = view.findViewById(R.id.tv_alipay_countdown);
+        
+        countdownHandler = new Handler(Looper.getMainLooper());
+        countdownRunnable = new Runnable() {
+            @Override
+            public void run() {
+                updateCountdown();
+                // 每秒更新一次
+                countdownHandler.postDelayed(this, 1000);
+            }
+        };
+    }
+    
+    /**
+     * 启动倒计时
+     */
+    private void startCountdown() {
+        if (countdownHandler != null && countdownRunnable != null) {
+            countdownHandler.post(countdownRunnable);
+        }
+    }
+    
+    /**
+     * 停止倒计时
+     */
+    private void stopCountdown() {
+        if (countdownHandler != null && countdownRunnable != null) {
+            countdownHandler.removeCallbacks(countdownRunnable);
+        }
+    }
+    
+    /**
+     * 更新倒计时显示
+     */
+    private void updateCountdown() {
+        if (tvXhsCountdown != null && tvAlipayCountdown != null && settingsManager != null) {
+            // 更新小红书倒计时
+            long xhsRemaining = settingsManager.getAppRemainingTime(Const.SupportedApp.XHS);
+            String xhsText = SettingsManager.formatRemainingTime(xhsRemaining);
+            tvXhsCountdown.setText(xhsText);
+            
+            // 更新支付宝倒计时
+            long alipayRemaining = settingsManager.getAppRemainingTime(Const.SupportedApp.ALIPAY);
+            String alipayText = SettingsManager.formatRemainingTime(alipayRemaining);
+            tvAlipayCountdown.setText(alipayText);
+            
+            // 设置颜色：绿色表示可用，红色表示不可用
+            tvXhsCountdown.setTextColor(xhsRemaining == -1 ? 0xFF4CAF50 : 0xFFE91E63);
+            tvAlipayCountdown.setTextColor(alipayRemaining == -1 ? 0xFF4CAF50 : 0xFFE91E63);
         }
     }
 } 
