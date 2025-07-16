@@ -209,7 +209,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                 // 第二阶段：如果快速检测没找到"发现"，使用完整检测作为备用
                 if (!hasFaxian) {
                     Log.d(TAG, "快速检测未找到'发现'，启用完整检测");
-                    hasFaxian = FloatHelper.findTextInNode(rootNode, "发现");
+                    hasFaxian = FloatHelper.findTextInNode(rootNode, Const.TARGET_WORD);
 
                     // 临时调试：如果还是找不到，输出一些可见文本内容
                     if (!hasFaxian) {
