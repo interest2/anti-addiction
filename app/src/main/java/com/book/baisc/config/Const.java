@@ -11,22 +11,26 @@ public class Const {
     public static final String ACTION_UPDATE_CASUAL_COUNT = "com.book.baisc.ACTION_UPDATE_CASUAL_COUNT";
 
 
-    // 兼容性保留的常量
-    public static final String XHS_PACKAGE = "com.xingin.xhs";
-
     // 支持的APP枚举
     public enum SupportedApp {
-        XHS("com.xingin.xhs", "发现"),
-        ALIPAY("com.eg.android.AlipayGphone", "股票,行情,持有");
-        
+        XHS("小红书", "com.xingin.xhs", "发现"),
+        ALIPAY("支付宝", "com.eg.android.AlipayGphone", "股票,行情,持有"),
+        ZHIHU("知乎", "com.zhihu.android", "首页");
+
+        private final String appName;
         private final String packageName;
         private final String targetWord;
         
-        SupportedApp(String packageName, String targetWord) {
+        SupportedApp(String appName, String packageName, String targetWord) {
+            this.appName = appName;
             this.packageName = packageName;
             this.targetWord = targetWord;
         }
-        
+
+        public String getAppName() {
+            return appName;
+        }
+
         public String getPackageName() {
             return packageName;
         }

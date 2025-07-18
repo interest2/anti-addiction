@@ -7,9 +7,9 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.book.baisc.config.Const;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.floating.FloatingAccessibilityService;
-import com.book.baisc.ui.MainActivity;
 
 /**
  * 设置对话框管理器
@@ -19,18 +19,28 @@ public class SettingsDialogManager {
     
     private final Context context;
     private final SettingsManager settingsManager;
-    
+
+    private static String[] appOptions;
+    private static Const.SupportedApp[] apps = Const.SupportedApp.values();
+
     public SettingsDialogManager(Context context, SettingsManager settingsManager) {
         this.context = context;
         this.settingsManager = settingsManager;
     }
-    
+
+    static {
+        appOptions = new String[apps.length];
+        for (int i = 0; i < apps.length; i++) {
+            appOptions[i] = apps[i].getAppName();
+        }
+    }
+
     /**
      * 显示时间设置对话框
      */
     public void showTimeSettingDialog(boolean isDaily) {
         // 获取当前活跃APP
-        com.book.baisc.config.Const.SupportedApp currentApp = com.book.baisc.config.Share.currentApp;
+        Const.SupportedApp currentApp = com.book.baisc.config.Share.currentApp;
         
         if (currentApp != null) {
             // 直接为当前活跃APP设置时间间隔
@@ -46,18 +56,13 @@ public class SettingsDialogManager {
      */
     private void showAppSelectionDialog(boolean isDaily) {
         String dialogTitle = isDaily ? "严格模式 - 选择APP" : "宽松模式 - 选择APP";
-        String[] appOptions = {"小红书", "支付宝"};
-        com.book.baisc.config.Const.SupportedApp[] apps = {
-            com.book.baisc.config.Const.SupportedApp.XHS,
-            com.book.baisc.config.Const.SupportedApp.ALIPAY
-        };
-        
+
         android.util.Log.d("SettingsDialog", "显示APP选择对话框: " + dialogTitle);
         
         new android.app.AlertDialog.Builder(context)
             .setTitle(dialogTitle)
             .setItems(appOptions, (dialog, which) -> {
-                com.book.baisc.config.Const.SupportedApp selectedApp = apps[which];
+                Const.SupportedApp selectedApp = apps[which];
                 android.util.Log.d("SettingsDialog", "用户选择APP: " + selectedApp.name());
                 showTimeSettingDialogForApp(selectedApp, isDaily);
             })
@@ -68,7 +73,7 @@ public class SettingsDialogManager {
     /**
      * 为指定APP显示时间设置对话框
      */
-    private void showTimeSettingDialogForApp(com.book.baisc.config.Const.SupportedApp app, boolean isDaily) {
+    private void showTimeSettingDialogForApp(Const.SupportedApp app, boolean isDaily) {
         final int[] intervals = isDaily ? 
             SettingsManager.getDailyAvailableIntervals() : 
             SettingsManager.getCasualAvailableIntervals();
@@ -90,7 +95,7 @@ public class SettingsDialogManager {
         }
         
         String dialogTitle = isDaily ? "严格模式" : "宽松模式";
-        String appName = app == com.book.baisc.config.Const.SupportedApp.XHS ? "小红书" : "支付宝";
+        String appName = app.getAppName();
         String fullTitle = dialogTitle + " - " + appName;
 
         android.util.Log.d("SettingsDialog", "显示时间设置对话框: " + fullTitle);
@@ -416,7 +421,7 @@ public class SettingsDialogManager {
         if (casualButton != null) {
             // 计算所有支持APP的宽松模式次数总和
             int totalCloseCount = 0;
-            for (com.book.baisc.config.Const.SupportedApp app : com.book.baisc.config.Const.SupportedApp.values()) {
+            for (Const.SupportedApp app : Const.SupportedApp.values()) {
                 totalCloseCount += settingsManager.getAppCasualCloseCount(app);
             }
             
@@ -425,7 +430,7 @@ public class SettingsDialogManager {
                 totalCloseCount = settingsManager.getCasualCloseCount();
             }
             
-            casualButton.setEnabled(totalCloseCount < com.book.baisc.config.Const.CASUAL_LIMIT_COUNT);
+            casualButton.setEnabled(totalCloseCount < Const.CASUAL_LIMIT_COUNT);
         }
     }
     
@@ -436,7 +441,7 @@ public class SettingsDialogManager {
         if (countText != null) {
             // 计算所有支持APP的宽松模式次数总和
             int totalCloseCount = 0;
-            for (com.book.baisc.config.Const.SupportedApp app : com.book.baisc.config.Const.SupportedApp.values()) {
+            for (Const.SupportedApp app : Const.SupportedApp.values()) {
                 totalCloseCount += settingsManager.getAppCasualCloseCount(app);
             }
             
@@ -445,7 +450,7 @@ public class SettingsDialogManager {
                 totalCloseCount = settingsManager.getCasualCloseCount();
             }
             
-            int remainingCount = Math.max(0, com.book.baisc.config.Const.CASUAL_LIMIT_COUNT - totalCloseCount);
+            int remainingCount = Math.max(0, Const.CASUAL_LIMIT_COUNT - totalCloseCount);
             countText.setText("总剩余: " + remainingCount + "次");
         }
     }
@@ -453,10 +458,10 @@ public class SettingsDialogManager {
     /**
      * 更新特定APP的宽松模式剩余次数显示
      */
-    public void updateAppCasualCountDisplay(TextView countText, com.book.baisc.config.Const.SupportedApp app) {
+    public void updateAppCasualCountDisplay(TextView countText, Const.SupportedApp app) {
         if (countText != null) {
             int closeCount = settingsManager.getAppCasualCloseCount(app);
-            int remainingCount = Math.max(0, com.book.baisc.config.Const.CASUAL_LIMIT_COUNT - closeCount);
+            int remainingCount = Math.max(0, Const.CASUAL_LIMIT_COUNT - closeCount);
             countText.setText("宽松剩余: " + remainingCount + "次");
         }
     }

@@ -22,7 +22,7 @@
             android:id="@+id/tv_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="小红书防沉迷"
+            android:text="防沉迷自由"
             android:textColor="#FFFFFF"
             android:textSize="18sp"
             android:textStyle="bold" />

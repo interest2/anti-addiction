@@ -161,9 +161,6 @@ public class FloatingAccessibilityService extends AccessibilityService
             // 检测当前是否是支持的APP
             Const.SupportedApp detectedApp = Const.SupportedApp.getByPackageName(packageName);
             
-            // 兼容性保留：小红书状态
-            boolean newXhsState = Const.XHS_PACKAGE.equals(packageName);
-
             if (detectedApp != null) {
                 Log.d(TAG, "检测到支持的APP: " + detectedApp.name() + " (包名: " + packageName + ")");
                 
@@ -194,7 +191,6 @@ public class FloatingAccessibilityService extends AccessibilityService
                     // 不清理手动隐藏状态，保持到下次自动解除
                     currentActiveApp = null;
                     Share.currentApp = null;
-                    Share.lastDetectedInterface = ""; // 兼容性保留
                     hideFloatingWindow();
                 }
             }
@@ -271,7 +267,6 @@ public class FloatingAccessibilityService extends AccessibilityService
                 if (forceCheck || !currentInterface.equals(lastAppState)) {
                     if (!forceCheck) {
                         Share.setAppState(currentActiveApp, currentInterface);
-                        Share.lastDetectedInterface = currentInterface; // 兼容性保留
                         Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: " + currentActiveApp.name() + ")");
                     } else {
                         Log.d(TAG, "强制检查模式 - 界面: " + currentInterface + " (APP: " + currentActiveApp.name() + ")");
@@ -785,7 +780,6 @@ public class FloatingAccessibilityService extends AccessibilityService
                         
                         currentActiveApp = null;
                         Share.currentApp = null;
-                        Share.lastDetectedInterface = ""; // 兼容性保留
                         hideFloatingWindow();
                     }
                 }

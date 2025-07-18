@@ -6,9 +6,6 @@ import java.util.Map;
 public class Share {
     public static boolean MOTIVATE_CHANGE = false;
 
-    // 兼容性保留的变量
-    public static String lastDetectedInterface = ""; // 缓存上次检测的界面类型
-    
     // 多APP状态管理
     public static Map<Const.SupportedApp, String> appStates = new HashMap<>();
     public static Const.SupportedApp currentApp = null; // 当前活跃的APP
