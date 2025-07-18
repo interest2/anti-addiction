@@ -262,19 +262,17 @@ public class FloatingAccessibilityService extends AccessibilityService
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             if (rootNode != null) {
                 String targetWord = currentActiveApp.getTargetWord();
-                
-                // 第一阶段：快速检测目标文本（限制深度）
+                String[] targets;
+                if(targetWord.contains(Const.SPLIT_CHAR)){
+                    targets = targetWord.split(Const.SPLIT_CHAR);
+                }else {
+                    targets = new String[]{targetWord};
+                }
                 boolean hasTargetWord = false;
-
-                // 第二阶段：如果快速检测没找到目标文本，使用完整检测作为备用
-                if (!hasTargetWord) {
-                    Log.d(TAG, "快速检测未找到'" + targetWord + "'，启用完整检测");
-                    hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
-
-                    // 临时调试：如果还是找不到，输出一些可见文本内容
-                    if (!hasTargetWord) {
-                        Log.d(TAG, "完整检测也未找到'" + targetWord + "'，输出部分可见文本:");
-                        FloatHelper.logVisibleTexts(rootNode, 0, 2); // 只输出前2层的文本，避免刷屏
+                for (int i = 0; i< targets.length; i++){
+                    hasTargetWord = FloatHelper.findTextInNode(rootNode, targets[i]);
+                    if(hasTargetWord){
+                        break;
                     }
                 }
 

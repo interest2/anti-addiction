@@ -1,10 +1,24 @@
 package com.book.baisc.config;
 
 public class Const {
+    public static final String SPLIT_CHAR = ",";
+
+    public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
+
+    public final static int CASUAL_LIMIT_COUNT = 3;
+    public static final long APP_STATE_CHECK_INTERVAL = 2000; // 2秒检查一次
+
+    // 广播Action常量
+    public static final String ACTION_UPDATE_CASUAL_COUNT = "com.book.baisc.ACTION_UPDATE_CASUAL_COUNT";
+
+
+    // 兼容性保留的常量
+    public static final String XHS_PACKAGE = "com.xingin.xhs";
+
     // 支持的APP枚举
     public enum SupportedApp {
         XHS("com.xingin.xhs", "发现"),
-        ALIPAY("com.eg.android.AlipayGphone", "全球投资");
+        ALIPAY("com.eg.android.AlipayGphone", "股票,行情,持有");
         
         private final String packageName;
         private final String targetWord;
@@ -34,16 +48,6 @@ public class Const {
             return null;
         }
     }
-    
-    // 兼容性保留的常量
-    public static final String XHS_PACKAGE = "com.xingin.xhs";
 
-    public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
-
-    public final static int CASUAL_LIMIT_COUNT = 3;
-    public static final long APP_STATE_CHECK_INTERVAL = 2000; // 2秒检查一次
-
-    // 广播Action常量
-    public static final String ACTION_UPDATE_CASUAL_COUNT = "com.book.baisc.ACTION_UPDATE_CASUAL_COUNT";
 
 }
