@@ -98,7 +98,7 @@ public class FloatHelper {
 
         // 检查当前节点的文本
         CharSequence text = node.getText();
-        if (text != null && text.toString().equals(targetText)) {
+        if (text != null && targetText.contains(text.toString())) {
             // 检查节点是否可见
             if (node.isVisibleToUser()) {
                 Log.d(TAG, "找到目标文本: " + targetText + " (可见)");
@@ -110,7 +110,7 @@ public class FloatHelper {
 
         // 检查contentDescription
         CharSequence contentDesc = node.getContentDescription();
-        if (contentDesc != null && contentDesc.toString().equals(targetText)) {
+        if (contentDesc != null && targetText.contains(contentDesc.toString())) {
             // 检查节点是否可见
             if (node.isVisibleToUser()) {
                 Log.d(TAG, "在contentDescription中找到目标文本: " + targetText + " (可见)");

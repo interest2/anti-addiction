@@ -262,19 +262,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             if (rootNode != null) {
                 String targetWord = currentActiveApp.getTargetWord();
-                String[] targets;
-                if(targetWord.contains(Const.SPLIT_CHAR)){
-                    targets = targetWord.split(Const.SPLIT_CHAR);
-                }else {
-                    targets = new String[]{targetWord};
-                }
-                boolean hasTargetWord = false;
-                for (int i = 0; i< targets.length; i++){
-                    hasTargetWord = FloatHelper.findTextInNode(rootNode, targets[i]);
-                    if(hasTargetWord){
-                        break;
-                    }
-                }
+                boolean hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
 
                 // 简化界面判断逻辑：只检测目标词
                 String currentInterface = hasTargetWord ? "target" : "other";
