@@ -84,6 +84,15 @@
                     android:textStyle="bold"
                     android:textColor="#4CAF50" />
 
+                <TextView
+                    android:id="@+id/tv_xhs_casual_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="宽松剩余: 3次"
+                    android:textSize="14sp"
+                    android:textColor="#666666" />
+
             </LinearLayout>
 
             <LinearLayout
@@ -107,6 +116,15 @@
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:textColor="#FF9800" />
+
+                <TextView
+                    android:id="@+id/tv_alipay_casual_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="宽松剩余: 3次"
+                    android:textSize="14sp"
+                    android:textColor="#666666" />
 
             </LinearLayout>
 
@@ -149,7 +167,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="今日剩余: 2次"
+            android:text="总剩余: 6次"
             android:textSize="16sp"
             app:layout_constraintBottom_toBottomOf="@+id/btn_casual_time_setting"
             app:layout_constraintStart_toEndOf="@+id/btn_casual_time_setting"

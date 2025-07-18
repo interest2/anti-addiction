@@ -27,6 +27,10 @@ public class HomeFragment extends Fragment {
     private Runnable countdownRunnable;
     private TextView tvXhsCountdown;
     private TextView tvAlipayCountdown;
+    
+    // 宽松模式剩余次数相关
+    private TextView tvXhsCasualCount;
+    private TextView tvAlipayCasualCount;
 
     @Nullable
     @Override
@@ -48,6 +52,7 @@ public class HomeFragment extends Fragment {
         // 更新UI状态
         updateCasualButtonState(view);
         updateCasualCountDisplay(view);
+        updateAppCasualCountDisplay(view);
         updateTagButtonText(view);
         updateTargetDateButtonText(view);
         
@@ -86,6 +91,16 @@ public class HomeFragment extends Fragment {
         settingsDialogManager.updateCasualCountDisplay(countText);
     }
 
+    private void updateAppCasualCountDisplay(View view) {
+        // 更新小红书宽松模式剩余次数显示
+        TextView xhsCasualCountText = view.findViewById(R.id.tv_xhs_casual_count);
+        settingsDialogManager.updateAppCasualCountDisplay(xhsCasualCountText, Const.SupportedApp.XHS);
+
+        // 更新支付宝宽松模式剩余次数显示
+        TextView alipayCasualCountText = view.findViewById(R.id.tv_alipay_casual_count);
+        settingsDialogManager.updateAppCasualCountDisplay(alipayCasualCountText, Const.SupportedApp.ALIPAY);
+    }
+
     private void updateTagButtonText(View view) {
         Button tagButton = view.findViewById(R.id.btn_tag_setting);
         settingsDialogManager.updateTagButtonText(tagButton);
@@ -103,6 +118,7 @@ public class HomeFragment extends Fragment {
         if (getView() != null) {
             updateCasualButtonState(getView());
             updateCasualCountDisplay(getView());
+            updateAppCasualCountDisplay(getView());
             updateTagButtonText(getView());
             updateTargetDateButtonText(getView());
         }
@@ -137,11 +153,33 @@ public class HomeFragment extends Fragment {
     }
     
     /**
+     * 供外部调用的方法，用于更新宽松模式次数显示
+     */
+    public void updateCasualCountDisplay() {
+        if (getView() != null) {
+            updateCasualCountDisplay(getView());
+        }
+    }
+    
+    /**
+     * 供外部调用的方法，用于更新APP宽松模式次数显示
+     */
+    public void updateAppCasualCountDisplay() {
+        if (getView() != null) {
+            updateAppCasualCountDisplay(getView());
+        }
+    }
+    
+    /**
      * 初始化倒计时相关组件
      */
     private void initCountdown(View view) {
         tvXhsCountdown = view.findViewById(R.id.tv_xhs_countdown);
         tvAlipayCountdown = view.findViewById(R.id.tv_alipay_countdown);
+        
+        // 初始化宽松模式剩余次数显示
+        tvXhsCasualCount = view.findViewById(R.id.tv_xhs_casual_count);
+        tvAlipayCasualCount = view.findViewById(R.id.tv_alipay_casual_count);
         
         countdownHandler = new Handler(Looper.getMainLooper());
         countdownRunnable = new Runnable() {

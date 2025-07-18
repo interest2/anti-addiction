@@ -44,4 +44,7 @@ public class Const {
     public final static int CASUAL_LIMIT_COUNT = 3;
     public static final long APP_STATE_CHECK_INTERVAL = 2000; // 2秒检查一次
 
+    // 广播Action常量
+    public static final String ACTION_UPDATE_CASUAL_COUNT = "com.book.baisc.ACTION_UPDATE_CASUAL_COUNT";
+
 }

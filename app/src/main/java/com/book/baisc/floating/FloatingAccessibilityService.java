@@ -28,6 +28,7 @@ import com.book.baisc.lifecycle.ServiceKeepAliveManager;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.DeviceInfoReporter;
 import com.book.baisc.network.FloatingTextFetcher;
+import android.content.Intent;
 
 /**
  * 悬浮窗无障碍服务
@@ -402,6 +403,9 @@ public class FloatingAccessibilityService extends AccessibilityService
                             settingsManager.setAppAutoShowInterval(currentActiveApp, settingsManager.getMaxDailyInterval());
                             Log.d(TAG, "APP " + currentActiveApp.name() + " 宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
                             Log.d(TAG, "APP " + currentActiveApp.name() + " 宽松模式一次性生效，已切换到严格模式");
+                            
+                            // 通知HomeFragment更新UI显示
+                            notifyHomeFragmentUpdate(currentActiveApp);
                         }
                     } else {
                         // 兼容性保留：原有逻辑
@@ -420,6 +424,9 @@ public class FloatingAccessibilityService extends AccessibilityService
                             settingsManager.setAutoShowInterval(settingsManager.getMaxDailyInterval());
                             Log.d(TAG, "宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
                             Log.d(TAG, "宽松模式一次性生效，已切换到严格模式");
+                            
+                            // 通知HomeFragment更新UI显示
+                            notifyHomeFragmentUpdate();
                         }
                     }
                     
@@ -908,6 +915,35 @@ public class FloatingAccessibilityService extends AccessibilityService
                     return true;
             }
             return false;
+        }
+    }
+
+    /**
+     * 通知HomeFragment更新UI显示
+     */
+    private void notifyHomeFragmentUpdate() {
+        try {
+            // 通过广播通知MainActivity更新HomeFragment
+            Intent intent = new Intent(Const.ACTION_UPDATE_CASUAL_COUNT);
+            sendBroadcast(intent);
+            Log.d(TAG, "已发送更新宽松模式次数的广播");
+        } catch (Exception e) {
+            Log.w(TAG, "发送更新广播失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 通知HomeFragment更新特定APP的UI显示
+     */
+    private void notifyHomeFragmentUpdate(Const.SupportedApp app) {
+        try {
+            // 通过广播通知MainActivity更新HomeFragment
+            Intent intent = new Intent(Const.ACTION_UPDATE_CASUAL_COUNT);
+            intent.putExtra("app_name", app.name());
+            sendBroadcast(intent);
+            Log.d(TAG, "已发送更新APP " + app.name() + " 宽松模式次数的广播");
+        } catch (Exception e) {
+            Log.w(TAG, "发送更新广播失败: " + e.getMessage());
         }
     }
 

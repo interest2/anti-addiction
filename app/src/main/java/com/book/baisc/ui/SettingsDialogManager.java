@@ -414,8 +414,18 @@ public class SettingsDialogManager {
      */
     public void updateCasualButtonState(Button casualButton) {
         if (casualButton != null) {
-            int closeCount = settingsManager.getCasualCloseCount();
-            casualButton.setEnabled(closeCount < com.book.baisc.config.Const.CASUAL_LIMIT_COUNT);
+            // 计算所有支持APP的宽松模式次数总和
+            int totalCloseCount = 0;
+            for (com.book.baisc.config.Const.SupportedApp app : com.book.baisc.config.Const.SupportedApp.values()) {
+                totalCloseCount += settingsManager.getAppCasualCloseCount(app);
+            }
+            
+            // 如果所有APP都没有使用过，则使用全局次数（兼容性）
+            if (totalCloseCount == 0) {
+                totalCloseCount = settingsManager.getCasualCloseCount();
+            }
+            
+            casualButton.setEnabled(totalCloseCount < com.book.baisc.config.Const.CASUAL_LIMIT_COUNT);
         }
     }
     
@@ -424,9 +434,30 @@ public class SettingsDialogManager {
      */
     public void updateCasualCountDisplay(TextView countText) {
         if (countText != null) {
-            int closeCount = settingsManager.getCasualCloseCount();
+            // 计算所有支持APP的宽松模式次数总和
+            int totalCloseCount = 0;
+            for (com.book.baisc.config.Const.SupportedApp app : com.book.baisc.config.Const.SupportedApp.values()) {
+                totalCloseCount += settingsManager.getAppCasualCloseCount(app);
+            }
+            
+            // 如果所有APP都没有使用过，则使用全局次数（兼容性）
+            if (totalCloseCount == 0) {
+                totalCloseCount = settingsManager.getCasualCloseCount();
+            }
+            
+            int remainingCount = Math.max(0, com.book.baisc.config.Const.CASUAL_LIMIT_COUNT - totalCloseCount);
+            countText.setText("总剩余: " + remainingCount + "次");
+        }
+    }
+    
+    /**
+     * 更新特定APP的宽松模式剩余次数显示
+     */
+    public void updateAppCasualCountDisplay(TextView countText, com.book.baisc.config.Const.SupportedApp app) {
+        if (countText != null) {
+            int closeCount = settingsManager.getAppCasualCloseCount(app);
             int remainingCount = Math.max(0, com.book.baisc.config.Const.CASUAL_LIMIT_COUNT - closeCount);
-            countText.setText("今日剩余: " + remainingCount + "次");
+            countText.setText("宽松剩余: " + remainingCount + "次");
         }
     }
 } 

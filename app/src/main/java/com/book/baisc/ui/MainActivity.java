@@ -6,6 +6,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.widget.Toast;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -38,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
     private HomeFragment homeFragment;
+    private BroadcastReceiver casualCountUpdateReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +58,9 @@ public class MainActivity extends AppCompatActivity {
 
         // 设置底部导航
         setupBottomNavigation();
+        
+        // 注册广播接收器
+        registerCasualCountUpdateReceiver();
         
         // 检查并请求所有必要权限
         checkAndRequestPermissions();
@@ -214,6 +220,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void registerCasualCountUpdateReceiver() {
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Const.ACTION_UPDATE_CASUAL_COUNT);
+        casualCountUpdateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (Const.ACTION_UPDATE_CASUAL_COUNT.equals(intent.getAction())) {
+                    // 通知HomeFragment更新宽松模式次数显示
+                    if (homeFragment != null && homeFragment.getView() != null) {
+                        homeFragment.updateCasualCountDisplay();
+                        homeFragment.updateAppCasualCountDisplay();
+                    }
+                }
+            }
+        };
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            registerReceiver(casualCountUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(casualCountUpdateReceiver, filter);
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -221,6 +249,11 @@ public class MainActivity extends AppCompatActivity {
         if (deviceInfoReporter != null) {
             deviceInfoReporter.release();
             deviceInfoReporter = null;
+        }
+        // 注销广播接收器
+        if (casualCountUpdateReceiver != null) {
+            unregisterReceiver(casualCountUpdateReceiver);
+            casualCountUpdateReceiver = null;
         }
     }
 } 
