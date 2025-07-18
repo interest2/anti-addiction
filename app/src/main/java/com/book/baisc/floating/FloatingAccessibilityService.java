@@ -8,7 +8,6 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
@@ -42,7 +41,6 @@ public class FloatingAccessibilityService extends AccessibilityService
     private static final String TAG = "FloatingAccessibility";
     private static FloatingAccessibilityService instance;
     private boolean isFloatingWindowVisible = false;
-    private boolean isInXHS = false; // 兼容性保留
     private Const.SupportedApp currentActiveApp = null; // 当前活跃的APP
     
     // 时间格式化器
@@ -165,10 +163,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             
             // 兼容性保留：小红书状态
             boolean newXhsState = Const.XHS_PACKAGE.equals(packageName);
-            if (newXhsState != isInXHS) {
-                isInXHS = newXhsState;
-            }
-            
+
             if (detectedApp != null) {
                 Log.d(TAG, "检测到支持的APP: " + detectedApp.name() + " (包名: " + packageName + ")");
                 
@@ -238,7 +233,6 @@ public class FloatingAccessibilityService extends AccessibilityService
 
     /**
      * 优化版本的文本内容检测
-     * 1. 先用快速检测，如果失败则用完整检测
      * 2. 优先检查常见的文本节点类型
      * 3. 使用缓存避免重复检测
      * 4. 支持多APP的不同目标词
@@ -327,7 +321,6 @@ public class FloatingAccessibilityService extends AccessibilityService
             Log.v(TAG, "悬浮窗已显示，跳过重复显示");
             return;
         }
-        
         Log.d(TAG, "开始显示悬浮窗");
         
         // 移除现有悬浮窗（如果存在）
@@ -343,34 +336,7 @@ public class FloatingAccessibilityService extends AccessibilityService
         // 创建悬浮窗布局
         LayoutInflater inflater = LayoutInflater.from(this);
         floatingView = inflater.inflate(R.layout.floating_window_layout, null);
-        
-        // 设置悬浮窗参数
-        layoutParams = new WindowManager.LayoutParams();
-        layoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        // 添加FLAG_NOT_FOCUSABLE确保悬浮窗不会获得焦点，避免影响前台应用检测
-        // 添加FLAG_NOT_TOUCH_MODAL确保触摸事件可以传递到下层窗口
-        // 添加FLAG_NOT_TOUCHABLE确保悬浮窗默认不拦截触摸事件（除了特定区域）
-        layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
-                            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
-                            WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
-        layoutParams.format = PixelFormat.TRANSLUCENT;
-        layoutParams.gravity = Gravity.LEFT | Gravity.TOP;
-        
-        // 计算悬浮窗位置和大小
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
-        
-        int screenWidth = displayMetrics.widthPixels;
-        int screenHeight = displayMetrics.heightPixels;
-        
-        // 设置悬浮窗位置和大小
-        int topOffset = settingsManager.getFloatingTopOffset();
-        int bottomOffset = settingsManager.getFloatingBottomOffset();
-
-        layoutParams.x = 0;
-        layoutParams.y = topOffset;
-        layoutParams.width = screenWidth;
-        layoutParams.height = screenHeight - topOffset - bottomOffset;
+        layoutParams = getLayoutParams();
         
         // 初始化数学题验证管理器
         if (floatingView != null) {
@@ -493,7 +459,6 @@ public class FloatingAccessibilityService extends AccessibilityService
 
             // 更新悬浮窗内容，显示当前时间间隔设置
             updateFloatingWindowContent();
-            fetchNew();
 
             // 添加悬浮窗到窗口管理器
             try {
@@ -506,6 +471,8 @@ public class FloatingAccessibilityService extends AccessibilityService
                 isFloatingWindowVisible = false;
                 Share.isFloatingWindowVisible = false; // 同步状态
             }
+            // 获取下次的文字
+            fetchNew();
         }
     }
 
@@ -515,9 +482,8 @@ public class FloatingAccessibilityService extends AccessibilityService
             floatingTextFetcher.fetchLatestText(new FloatingTextFetcher.OnTextFetchListener() {
                 @Override
                 public void onTextFetched(String text) {
-                    Log.d(TAG, "获取到新的动态文字: " + text);
+                    Log.d(TAG, "获取到新的动态文字");
                 }
-
                 @Override
                 public void onFetchError(String error) {
                     Log.w(TAG, "获取动态文字失败: " + error);
@@ -567,7 +533,7 @@ public class FloatingAccessibilityService extends AccessibilityService
             String targetDateStr = settingsManager.getTargetCompletionDate();
             content = FloatHelper.calcDate(targetDateStr) + "\n" + content;
             contentText.setText(content);
-            Log.d(TAG, "悬浮窗内容已更新: " + content);
+            Log.d(TAG, "悬浮窗内容已更新");
         }
     }
 
@@ -791,19 +757,6 @@ public class FloatingAccessibilityService extends AccessibilityService
                 // 检测当前是否是支持的APP
                 Const.SupportedApp detectedApp = Const.SupportedApp.getByPackageName(currentPackage);
                 
-                // 兼容性保留：小红书状态检测
-                if (Const.XHS_PACKAGE.equals(currentPackage)) {
-                    if (!isInXHS) {
-                        Log.d(TAG, "应用状态检测：发现小红书应用");
-                        isInXHS = true;
-                    }
-                } else {
-                    if (isInXHS) {
-                        Log.d(TAG, "应用状态检测：离开小红书应用");
-                        isInXHS = false;
-                    }
-                }
-                
                 // 多APP状态检测
                 if (detectedApp != null) {
                     if (detectedApp != currentActiveApp) {
@@ -908,63 +861,11 @@ public class FloatingAccessibilityService extends AccessibilityService
         // 清理多APP状态
         Share.clearAllAppStates();
         currentActiveApp = null;
-        isInXHS = false;
-        
+
         Log.d(TAG, "AccessibilityService 已销毁");
         Toast.makeText(this, "无障碍服务已停止", Toast.LENGTH_SHORT).show();
     }
-    
-    /**
-     * 悬浮窗拖拽监听器
-     */
-    private static class FloatingOnTouchListener implements View.OnTouchListener {
-        private WindowManager.LayoutParams layoutParams;
-        private WindowManager windowManager;
-        private int initialX, initialY;
-        private float initialTouchX, initialTouchY;
-        
-        public FloatingOnTouchListener(WindowManager.LayoutParams layoutParams, WindowManager windowManager) {
-            this.layoutParams = layoutParams;
-            this.windowManager = windowManager;
-        }
-        
-        @Override
-        public boolean onTouch(View v, MotionEvent event) {
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    initialX = layoutParams.x;
-                    initialY = layoutParams.y;
-                    initialTouchX = event.getRawX();
-                    initialTouchY = event.getRawY();
-                    return true;
-                    
-                case MotionEvent.ACTION_MOVE:
-                    layoutParams.x = initialX + (int) (event.getRawX() - initialTouchX);
-                    layoutParams.y = initialY + (int) (event.getRawY() - initialTouchY);
-                    windowManager.updateViewLayout(v.getParent() instanceof View ? (View) v.getParent() : v, layoutParams);
-                    return true;
-                    
-                case MotionEvent.ACTION_UP:
-                    return true;
-            }
-            return false;
-        }
-    }
 
-    /**
-     * 通知HomeFragment更新UI显示
-     */
-    private void notifyHomeFragmentUpdate() {
-        try {
-            // 通过广播通知MainActivity更新HomeFragment
-            Intent intent = new Intent(Const.ACTION_UPDATE_CASUAL_COUNT);
-            sendBroadcast(intent);
-            Log.d(TAG, "已发送更新宽松模式次数的广播");
-        } catch (Exception e) {
-            Log.w(TAG, "发送更新广播失败: " + e.getMessage());
-        }
-    }
-    
     /**
      * 通知HomeFragment更新特定APP的UI显示
      */
@@ -980,4 +881,36 @@ public class FloatingAccessibilityService extends AccessibilityService
         }
     }
 
+
+    private WindowManager.LayoutParams getLayoutParams(){
+
+        // 设置悬浮窗参数
+        layoutParams = new WindowManager.LayoutParams();
+        layoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        // 添加FLAG_NOT_FOCUSABLE确保悬浮窗不会获得焦点，避免影响前台应用检测
+        // 添加FLAG_NOT_TOUCH_MODAL确保触摸事件可以传递到下层窗口
+        // 添加FLAG_NOT_TOUCHABLE确保悬浮窗默认不拦截触摸事件（除了特定区域）
+        layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
+        layoutParams.format = PixelFormat.TRANSLUCENT;
+        layoutParams.gravity = Gravity.LEFT | Gravity.TOP;
+
+        // 计算悬浮窗位置和大小
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+
+        int screenWidth = displayMetrics.widthPixels;
+        int screenHeight = displayMetrics.heightPixels;
+
+        // 设置悬浮窗位置和大小
+        int topOffset = settingsManager.getFloatingTopOffset();
+        int bottomOffset = settingsManager.getFloatingBottomOffset();
+
+        layoutParams.x = 0;
+        layoutParams.y = topOffset;
+        layoutParams.width = screenWidth;
+        layoutParams.height = screenHeight - topOffset - bottomOffset;
+        return layoutParams;
+    }
 } 
