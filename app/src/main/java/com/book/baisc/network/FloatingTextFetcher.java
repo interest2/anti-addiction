@@ -83,7 +83,7 @@ public class FloatingTextFetcher {
                     if (result != null) {
                         // 缓存新文字
                         cacheText(result);
-                        Log.d(TAG, "获取到新文字: " + result);
+                        Log.d(TAG, "获取到新文字");
                         if (listener != null) {
                             listener.onTextFetched(result);
                         }
@@ -196,7 +196,7 @@ public class FloatingTextFetcher {
                     .putString(PREF_KEY_CACHED_TEXT, text)
                     .putLong(PREF_KEY_LAST_UPDATE, System.currentTimeMillis())
                     .apply();
-            Log.d(TAG, "文字已缓存: " + text);
+            Log.d(TAG, "文字已缓存");
         } catch (Exception e) {
             Log.e(TAG, "缓存文字失败", e);
         }
