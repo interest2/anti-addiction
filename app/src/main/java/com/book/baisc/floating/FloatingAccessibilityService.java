@@ -20,6 +20,8 @@ import android.util.DisplayMetrics;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
 
 import com.book.baisc.R;
 import com.book.baisc.config.Const;
@@ -87,6 +89,9 @@ public class FloatingAccessibilityService extends AccessibilityService
     private boolean isManuallyHidden = false; // 兼容性保留
     private Handler autoShowHandler;
     private Runnable autoShowRunnable;
+    
+    // 为每个APP维护独立的定时器
+    private Map<Const.SupportedApp, Runnable> appTimers = new HashMap<>();
 
     @Override
     public void onServiceConnected() {
@@ -240,6 +245,14 @@ public class FloatingAccessibilityService extends AccessibilityService
      * 4. 支持多APP的不同目标词
      */
     void checkTextContentOptimized() {
+        checkTextContentOptimized(false);
+    }
+    
+    /**
+     * 优化版本的文本内容检测
+     * @param forceCheck 是否强制检查（用于定时器触发的情况）
+     */
+    void checkTextContentOptimized(boolean forceCheck) {
         try {
             if (currentActiveApp == null) {
                 Log.d(TAG, "当前没有活跃的APP，跳过文本检测");
@@ -274,17 +287,25 @@ public class FloatingAccessibilityService extends AccessibilityService
                 // 获取当前APP的状态
                 String lastAppState = Share.getAppState(currentActiveApp);
                 
-                // 只有界面状态发生变化时才执行操作
-                if (!currentInterface.equals(lastAppState)) {
-                    Share.setAppState(currentActiveApp, currentInterface);
-                    Share.lastDetectedInterface = currentInterface; // 兼容性保留
-
-                    Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: " + currentActiveApp.name() + ")");
+                // 如果是强制检查或者界面状态发生变化时才执行操作
+                if (forceCheck || !currentInterface.equals(lastAppState)) {
+                    if (!forceCheck) {
+                        Share.setAppState(currentActiveApp, currentInterface);
+                        Share.lastDetectedInterface = currentInterface; // 兼容性保留
+                        Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: " + currentActiveApp.name() + ")");
+                    } else {
+                        Log.d(TAG, "强制检查模式 - 界面: " + currentInterface + " (APP: " + currentActiveApp.name() + ")");
+                    }
 
                     if ("target".equals(currentInterface)) {
                         // 检查当前APP是否被手动隐藏
                         boolean appManuallyHidden = currentActiveApp != null ? 
                             Share.isAppManuallyHidden(currentActiveApp) : isManuallyHidden;
+                        
+                        Log.d(TAG, "检测到目标界面 - APP: " + (currentActiveApp != null ? currentActiveApp.name() : "unknown") + 
+                            ", 手动隐藏状态: " + appManuallyHidden + 
+                            ", 悬浮窗可见: " + isFloatingWindowVisible + 
+                            ", 强制检查: " + forceCheck);
                         
                         if (!isFloatingWindowVisible && !appManuallyHidden) {
                             Log.d(TAG, "显示悬浮窗 - APP: " + (currentActiveApp != null ? currentActiveApp.name() : "unknown") + 
@@ -293,6 +314,8 @@ public class FloatingAccessibilityService extends AccessibilityService
                         } else if (appManuallyHidden) {
                             Log.d(TAG, "APP " + (currentActiveApp != null ? currentActiveApp.name() : "unknown") + 
                                 " 被手动隐藏，跳过显示悬浮窗");
+                        } else if (isFloatingWindowVisible) {
+                            Log.d(TAG, "悬浮窗已显示，跳过重复显示");
                         }
                     } else {
                         if (isFloatingWindowVisible) {
@@ -399,13 +422,14 @@ public class FloatingAccessibilityService extends AccessibilityService
                         if (isCasualMode) {
                             int currentCount = settingsManager.getAppCasualCloseCount(currentActiveApp);
                             settingsManager.incrementAppCasualCloseCount(currentActiveApp);
-                            // 宽松模式使用一次后，立即切换到严格模式
-                            settingsManager.setAppAutoShowInterval(currentActiveApp, settingsManager.getMaxDailyInterval());
                             Log.d(TAG, "APP " + currentActiveApp.name() + " 宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
-                            Log.d(TAG, "APP " + currentActiveApp.name() + " 宽松模式一次性生效，已切换到严格模式");
                             
                             // 通知HomeFragment更新UI显示
                             notifyHomeFragmentUpdate(currentActiveApp);
+                            
+                            // 注意：不要在这里立即切换时间间隔，保持原来的时间间隔用于定时器
+                            // 定时器到期后，在重新检测内容时再切换到严格模式
+                            Log.d(TAG, "APP " + currentActiveApp.name() + " 宽松模式一次性生效，定时器将使用原时间间隔: " + intervalSeconds + "秒");
                         }
                     } else {
                         // 兼容性保留：原有逻辑
@@ -433,23 +457,51 @@ public class FloatingAccessibilityService extends AccessibilityService
                     hideFloatingWindow();
 
                     // 根据当前APP的用户设置时间间隔自动重新显示
-                    if (autoShowRunnable != null) {
-                        autoShowHandler.removeCallbacks(autoShowRunnable);
+                    if (appTimers.get(currentActiveApp) != null) {
+                        autoShowHandler.removeCallbacks(appTimers.get(currentActiveApp));
                     }
-                    autoShowRunnable = () -> {
+                    
+                    // 保存当前APP的引用，用于定时器回调
+                    Const.SupportedApp appForTimer = currentActiveApp;
+                    
+                    Runnable newAutoShowRunnable = () -> {
                         Log.d(TAG, "自动重新显示悬浮窗");
                         isManuallyHidden = false; // 兼容性保留
-                        if (currentActiveApp != null) {
-                            Share.setAppManuallyHidden(currentActiveApp, false);
-                            Log.d(TAG, "解除APP " + currentActiveApp.name() + " 的手动隐藏状态");
-                            if ("target".equals(Share.getAppState(currentActiveApp))) {
-                                showFloatingWindow();
+                        if (appForTimer != null) {
+                            boolean beforeState = Share.isAppManuallyHidden(appForTimer);
+                            Log.d(TAG, "定时器触发 - APP: " + appForTimer.name() + 
+                                ", 设置前手动隐藏状态: " + beforeState);
+                            
+                            Share.setAppManuallyHidden(appForTimer, false);
+                            
+                            boolean afterState = Share.isAppManuallyHidden(appForTimer);
+                            Log.d(TAG, "解除APP " + appForTimer.name() + " 的手动隐藏状态 - 设置后状态: " + afterState);
+                            
+                            // 检查当前是否在该APP中，如果是则尝试显示悬浮窗
+                            if (currentActiveApp == appForTimer) {
+                                // 重新检测内容并显示悬浮窗
+                                Log.d(TAG, "开始重新检测内容 - APP: " + appForTimer.name());
+                                
+                                // 如果是宽松模式，现在切换到严格模式
+                                if (settingsManager.isAppCasualMode(appForTimer)) {
+                                    settingsManager.setAppAutoShowInterval(appForTimer, settingsManager.getMaxDailyInterval());
+                                    Log.d(TAG, "APP " + appForTimer.name() + " 宽松模式已切换到严格模式");
+                                }
+                                
+                                checkTextContentOptimized(true); // 使用强制检查模式
+                                Log.d(TAG, "自动重新显示悬浮窗 - 重新检测内容完成 - APP: " + appForTimer.name());
+                            } else {
+                                Log.d(TAG, "自动重新显示条件不满足 - 当前APP: " + 
+                                    (currentActiveApp != null ? currentActiveApp.name() : "null") + 
+                                    ", 定时器APP: " + appForTimer.name() + 
+                                    " (用户可能已离开该APP)");
                             }
                         }
                     };
                     
                     // 使用当前（宽松模式）的时间间隔安排下次显示
-                    autoShowHandler.postDelayed(autoShowRunnable, interval);
+                    autoShowHandler.postDelayed(newAutoShowRunnable, interval);
+                    appTimers.put(currentActiveApp, newAutoShowRunnable);
                     
                     String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
                     Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗 (APP: " + 
@@ -594,24 +646,26 @@ public class FloatingAccessibilityService extends AccessibilityService
             instance.updateFloatingWindowContent();
             
             // 如果当前有正在运行的自动显示定时器，重新启动它
-            if (instance.autoShowRunnable != null && instance.currentActiveApp != null) {
-                boolean appManuallyHidden = Share.isAppManuallyHidden(instance.currentActiveApp);
-                if (appManuallyHidden) {
-                    // 取消当前的定时器
-                    instance.autoShowHandler.removeCallbacks(instance.autoShowRunnable);
-                    
-                    // 使用当前APP的新时间间隔重新启动定时器
-                    long newInterval = instance.settingsManager.getAppAutoShowIntervalMillis(instance.currentActiveApp);
-                    instance.autoShowHandler.postDelayed(instance.autoShowRunnable, newInterval);
-                    
-                    int intervalSeconds = instance.settingsManager.getAppAutoShowInterval(instance.currentActiveApp);
-                    String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
-                    Log.d(instance.TAG, "时间间隔设置已更新，立即应用新间隔: " + intervalText + " (APP: " + instance.currentActiveApp.name() + ")");
-                    
-                    // 显示提示
-                    Toast.makeText(instance,
-                        "⏰ 定时器已更新，将在" + intervalText + "后重新显示", 
-                        Toast.LENGTH_SHORT).show();
+            if (instance.appTimers.size() > 0) {
+                for (Map.Entry<Const.SupportedApp, Runnable> entry : instance.appTimers.entrySet()) {
+                    boolean appManuallyHidden = Share.isAppManuallyHidden(entry.getKey());
+                    if (appManuallyHidden) {
+                        // 取消当前的定时器
+                        instance.autoShowHandler.removeCallbacks(entry.getValue());
+                        
+                        // 使用当前APP的新时间间隔重新启动定时器
+                        long newInterval = instance.settingsManager.getAppAutoShowIntervalMillis(entry.getKey());
+                        instance.autoShowHandler.postDelayed(entry.getValue(), newInterval);
+                        
+                        int intervalSeconds = instance.settingsManager.getAppAutoShowInterval(entry.getKey());
+                        String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
+                        Log.d(instance.TAG, "时间间隔设置已更新，立即应用新间隔: " + intervalText + " (APP: " + entry.getKey().name() + ")");
+                        
+                        // 显示提示
+                        Toast.makeText(instance,
+                            "⏰ 定时器已更新，将在" + intervalText + "后重新显示", 
+                            Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
         }
@@ -805,6 +859,14 @@ public class FloatingAccessibilityService extends AccessibilityService
                         Log.d(TAG, "应用状态检测：离开支持的APP - " + currentActiveApp.name());
                         Share.clearAppState(currentActiveApp);
                         // 不清理手动隐藏状态，保持到下次自动解除
+                        
+                        // 清理该APP的定时器
+                        if (appTimers.containsKey(currentActiveApp)) {
+                            autoShowHandler.removeCallbacks(appTimers.get(currentActiveApp));
+                            appTimers.remove(currentActiveApp);
+                            Log.d(TAG, "清理APP " + currentActiveApp.name() + " 的定时器");
+                        }
+                        
                         currentActiveApp = null;
                         Share.currentApp = null;
                         Share.lastDetectedInterface = ""; // 兼容性保留
@@ -838,6 +900,14 @@ public class FloatingAccessibilityService extends AccessibilityService
         // 清理自动显示Handler
         if (autoShowHandler != null && autoShowRunnable != null) {
             autoShowHandler.removeCallbacks(autoShowRunnable);
+        }
+        
+        // 清理所有APP的定时器
+        if (autoShowHandler != null && appTimers != null) {
+            for (Runnable timer : appTimers.values()) {
+                autoShowHandler.removeCallbacks(timer);
+            }
+            appTimers.clear();
         }
         
         // 清理应用状态检测Handler

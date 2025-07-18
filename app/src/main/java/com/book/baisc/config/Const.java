@@ -4,7 +4,7 @@ public class Const {
     // 支持的APP枚举
     public enum SupportedApp {
         XHS("com.xingin.xhs", "发现"),
-        ALIPAY("com.eg.android.AlipayGphone", "股票");
+        ALIPAY("com.eg.android.AlipayGphone", "全球投资");
         
         private final String packageName;
         private final String targetWord;
@@ -37,7 +37,6 @@ public class Const {
     
     // 兼容性保留的常量
     public static final String XHS_PACKAGE = "com.xingin.xhs";
-    public static final String XHS_TARGET_WORD = "发现";
 
     public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
 
