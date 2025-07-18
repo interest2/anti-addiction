@@ -101,9 +101,9 @@ public class FloatHelper {
 
         // 检查当前节点的文本
         CharSequence text = node.getText();
-        text = text != null ? text : node.getContentDescription();
+        text = !isEmpty(text) ? text : node.getContentDescription();
 
-        if (text != null && targetText.contains(text.toString())) {
+        if (!isEmpty(text) && targetText.contains(text.toString())) {
             // 检查节点是否可见
             if (node.isVisibleToUser()) {
                 Log.d(TAG, "找到目标文本: " + targetText + " (可见)");
@@ -126,6 +126,10 @@ public class FloatHelper {
         }
 
         return false;
+    }
+
+    public static boolean isEmpty(CharSequence cs) {
+        return cs == null || cs.length() == 0;
     }
 
 }

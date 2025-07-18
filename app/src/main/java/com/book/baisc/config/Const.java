@@ -15,7 +15,7 @@ public class Const {
     public enum SupportedApp {
         XHS("小红书", "com.xingin.xhs", "发现"),
         ALIPAY("支付宝", "com.eg.android.AlipayGphone", "股票,行情,持有"),
-        ZHIHU("知乎", "com.zhihu.android", "首页");
+        ZHIHU("知乎", "com.zhihu.android", "故事");
 
         private final String appName;
         private final String packageName;
