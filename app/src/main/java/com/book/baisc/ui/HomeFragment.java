@@ -196,7 +196,7 @@ public class HomeFragment extends Fragment implements
         // 处理监测开关状态变化
         String packageName = getPackageName(app);
         if (packageName != null) {
-            // 如果要关闭监测，需要算术题验证
+            // 如果要关闭屏蔽，需要算术题验证
             if (!isEnabled) {
                 showMathChallengeForMonitorToggle(app, packageName);
             } else {
@@ -205,7 +205,7 @@ public class HomeFragment extends Fragment implements
                 android.util.Log.d("HomeFragment", "监测开关状态改变: " + packageName + " = " + isEnabled);
                 
                 // 显示提示
-                String status = isEnabled ? "已开启监测" : "已关闭监测";
+                String status = isEnabled ? "已开启监测" : "已关闭屏蔽";
                 Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show();
             }
         }
@@ -346,7 +346,7 @@ public class HomeFragment extends Fragment implements
     }
 
     /**
-     * 显示算术题验证弹窗用于关闭监测
+     * 显示算术题验证弹窗用于关闭屏蔽
      */
     private void showMathChallengeForMonitorToggle(Object app, String packageName) {
         // 创建算术题验证弹窗
@@ -364,7 +364,7 @@ public class HomeFragment extends Fragment implements
         questionText.setText(question);
         
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-            .setTitle("关闭监测验证")
+            .setTitle("关闭屏蔽验证")
             .setView(dialogView)
             .setCancelable(false)
             .create();
@@ -381,17 +381,17 @@ public class HomeFragment extends Fragment implements
             try {
                 int answer = Integer.parseInt(userAnswer);
                 if (answer == correctAnswer[0]) {
-                    // 答案正确，关闭监测
+                    // 答案正确，关闭屏蔽
                     resultText.setText("✅ 答案正确！");
                     resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_green_light));
                     resultText.setVisibility(View.VISIBLE);
                     
-                    // 延迟关闭弹窗并执行关闭监测
+                    // 延迟关闭弹窗并执行关闭屏蔽
                     new Handler().postDelayed(() -> {
                         dialog.dismiss();
                         settingsManager.setAppMonitoringEnabled(packageName, false);
-                        android.util.Log.d("HomeFragment", "算术题验证通过，关闭监测: " + packageName);
-                        Toast.makeText(requireContext(), "已关闭监测", Toast.LENGTH_SHORT).show();
+                        android.util.Log.d("HomeFragment", "算术题验证通过，关闭屏蔽: " + packageName);
+                        Toast.makeText(requireContext(), "已关闭屏蔽", Toast.LENGTH_SHORT).show();
                         
                         // 更新APP列表显示
                         updateAppCardsDisplay();
@@ -424,7 +424,7 @@ public class HomeFragment extends Fragment implements
         // 取消按钮
         cancelButton.setOnClickListener(v -> {
             dialog.dismiss();
-            // 取消关闭监测，恢复开关状态
+            // 取消关闭屏蔽，恢复开关状态
             if (appCardAdapter != null) {
                 appCardAdapter.updateData(allApps);
             }
@@ -456,27 +456,40 @@ public class HomeFragment extends Fragment implements
         String operator;
         switch (operationType) {
             case 0: // 加法 - 三位数
-                num1 = random.nextInt(99900) + 100; // 100-999
-                num2 = random.nextInt(99900) + 100; // 100-999
+                num1 = customRandom(99900) + 10000; // 100-999
+                num2 = customRandom(99900) + 10000; // 100-999
                 operator = "+";
                 break;
             case 1: // 减法 - 三位数
-                num1 = random.nextInt(99800) + 200; // 200-999
-                num2 = random.nextInt(num1 - 200) + 100;
+                num1 = customRandom(99800) + 10000; // 200-999
+                num2 = customRandom(num1 - 200) + 10000;
                 operator = "-";
                 break;
             case 2: // 乘法 - 30以内
-                num1 = random.nextInt(999) + 100; // 11-19
-                num2 = random.nextInt(999) + 100; // 11-19
+                num1 = customRandom(9999) + 1000; // 11-19
+                num2 = customRandom(9999) + 1000; // 11-19
                 operator = "×";
                 break;
             default:
-                num1 = random.nextInt(99900) + 100; // 100-999
-                num2 = random.nextInt(99900) + 100; // 100-999
+                num1 = customRandom(99900) + 100; // 100-999
+                num2 = customRandom(99900) + 100; // 100-999
                 operator = "+";
         }
         return num1 + " " + operator + " " + num2 + " = ?";
     }
+
+    private int customRandom(int bound){
+        Random random = new Random();
+        int i = random.nextInt(bound);
+        if(i % 10 == 0){
+            i = random.nextInt(bound);
+            if(i % 10 == 0){
+                i = random.nextInt(bound);
+            }
+        }
+        return i;
+    }
+
 
     /**
      * 计算算术题答案

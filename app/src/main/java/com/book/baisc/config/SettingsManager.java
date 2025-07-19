@@ -41,10 +41,10 @@ public class SettingsManager {
 
     // 日常版时间间隔（秒）
     // 休闲版时间间隔（秒）
-    private static final int[] dailyIntervalArray = {3, 5};
-    private static final int[] casualIntervalArray = {20, 90};
-//    private static final int[] dailyIntervalArray = {10, 60};
-//    private static final int[] casualIntervalArray = {600, 900};
+//    private static final int[] dailyIntervalArray = {3, 5};
+//    private static final int[] casualIntervalArray = {20, 90};
+    private static final int[] dailyIntervalArray = {10, 60};
+    private static final int[] casualIntervalArray = {600, 900};
 
     private SharedPreferences prefs;
     

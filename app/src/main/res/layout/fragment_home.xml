@@ -80,7 +80,23 @@
             android:nestedScrollingEnabled="false"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/ll_apps_header" />
+            app:layout_constraintTop_toBottomOf="@+id/ll_apps_header"
+            app:layout_constraintBottom_toTopOf="@+id/tv_remark" />
+
+        <TextView
+            android:id="@+id/tv_remark"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="上面的卡片只有开启右上角开关才生效，特殊情况的说明：\n微信：无法针对性屏蔽指定页面，只能全局屏蔽，但关闭悬浮窗无需答题\n支付宝：是屏蔽了理财相关页面"
+            android:textSize="12sp"
+            android:textColor="#999999"
+            android:gravity="left"
+            android:padding="8dp"
+            android:background="#F5F5F5"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/rv_app_cards" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

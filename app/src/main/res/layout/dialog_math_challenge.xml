@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="🔢 回答算术题才能关闭监测"
+        android:text="🔢 回答算术题才能关闭屏蔽"
         android:textSize="16sp"
         android:textColor="#333333"
         android:textStyle="bold"

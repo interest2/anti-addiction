@@ -2,13 +2,13 @@
 
 ## 功能描述
 
-当用户点击关闭监测开关时，会弹出一个算术题验证弹窗，用户必须答对算术题才能成功关闭监测。
+当用户点击关闭屏蔽开关时，会弹出一个算术题验证弹窗，用户必须答对算术题才能成功关闭屏蔽。
 
 ## 功能特性
 
 ### 触发条件
 - **开启监测**：直接执行，无需验证
-- **关闭监测**：需要算术题验证
+- **关闭屏蔽**：需要算术题验证
 
 ### 算术题类型
 - **加法**：三位数加法（100-999）
@@ -16,11 +16,11 @@
 - **乘法**：两位数乘法（11-19）
 
 ### 验证流程
-1. 用户点击关闭监测开关
+1. 用户点击关闭屏蔽开关
 2. 弹出算术题验证弹窗
 3. 用户输入答案
 4. 验证答案正确性
-5. 答对：关闭监测并显示成功提示
+5. 答对：关闭屏蔽并显示成功提示
 6. 答错：显示错误提示，生成新题目
 
 ## 技术实现
@@ -33,14 +33,14 @@
 public void onMonitorToggle(Object app, boolean isEnabled) {
     String packageName = getPackageName(app);
     if (packageName != null) {
-        // 如果要关闭监测，需要算术题验证
+        // 如果要关闭屏蔽，需要算术题验证
         if (!isEnabled) {
             showMathChallengeForMonitorToggle(app, packageName);
         } else {
             // 开启监测直接执行
             settingsManager.setAppMonitoringEnabled(packageName, isEnabled);
             // 显示提示
-            String status = isEnabled ? "已开启监测" : "已关闭监测";
+            String status = isEnabled ? "已开启监测" : "已关闭屏蔽";
             Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show();
         }
     }
@@ -105,7 +105,7 @@ private String generateMathQuestion() {
 <LinearLayout>
     <!-- 标题 -->
     <TextView
-        android:text="🔢 回答算术题才能关闭监测"
+        android:text="🔢 回答算术题才能关闭屏蔽"
         android:textSize="16sp"
         android:textStyle="bold" />
     
@@ -149,7 +149,7 @@ private String generateMathQuestion() {
 3. **题目展示**：显示随机生成的算术题
 4. **用户输入**：在输入框中输入答案
 5. **答案验证**：
-   - **正确**：显示"✅ 答案正确！"，1秒后关闭弹窗并关闭监测
+   - **正确**：显示"✅ 答案正确！"，1秒后关闭弹窗并关闭屏蔽
    - **错误**：显示"❌ 答案错误，请重新计算"，1秒后生成新题目
 6. **取消操作**：点击取消按钮，弹窗关闭，开关状态恢复
 
@@ -166,8 +166,8 @@ private String generateMathQuestion() {
 ## 功能特点
 
 ### 安全性
-- **强制验证**：关闭监测必须通过算术题验证
-- **防误操作**：避免用户意外关闭监测
+- **强制验证**：关闭屏蔽必须通过算术题验证
+- **防误操作**：避免用户意外关闭屏蔽
 - **难度适中**：算术题难度适中，不会过于困难
 
 ### 用户体验
