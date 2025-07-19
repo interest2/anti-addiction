@@ -11,6 +11,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.EditText;
+import android.view.inputmethod.EditorInfo;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -25,6 +26,7 @@ import com.book.baisc.config.CustomAppManager;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.List;
+import java.util.Random;
 
 public class HomeFragment extends Fragment implements 
     AppCardAdapter.OnAppCardClickListener,
@@ -194,12 +196,18 @@ public class HomeFragment extends Fragment implements
         // 处理监测开关状态变化
         String packageName = getPackageName(app);
         if (packageName != null) {
-            settingsManager.setAppMonitoringEnabled(packageName, isEnabled);
-            android.util.Log.d("HomeFragment", "监测开关状态改变: " + packageName + " = " + isEnabled);
-            
-            // 显示提示
-            String status = isEnabled ? "已开启监测" : "已关闭监测";
-            Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show();
+            // 如果要关闭监测，需要算术题验证
+            if (!isEnabled) {
+                showMathChallengeForMonitorToggle(app, packageName);
+            } else {
+                // 开启监测直接执行
+                settingsManager.setAppMonitoringEnabled(packageName, isEnabled);
+                android.util.Log.d("HomeFragment", "监测开关状态改变: " + packageName + " = " + isEnabled);
+                
+                // 显示提示
+                String status = isEnabled ? "已开启监测" : "已关闭监测";
+                Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -335,6 +343,161 @@ public class HomeFragment extends Fragment implements
         });
         
         dialog.show();
+    }
+
+    /**
+     * 显示算术题验证弹窗用于关闭监测
+     */
+    private void showMathChallengeForMonitorToggle(Object app, String packageName) {
+        // 创建算术题验证弹窗
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_math_challenge, null);
+        
+        TextView questionText = dialogView.findViewById(R.id.tv_math_question);
+        EditText answerEdit = dialogView.findViewById(R.id.et_math_answer);
+        TextView resultText = dialogView.findViewById(R.id.tv_math_result);
+        Button submitButton = dialogView.findViewById(R.id.btn_submit_answer);
+        Button cancelButton = dialogView.findViewById(R.id.btn_cancel_close);
+        
+        // 生成算术题
+        String question = generateMathQuestion();
+        final int[] correctAnswer = {getMathAnswer(question)};
+        questionText.setText(question);
+        
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+            .setTitle("关闭监测验证")
+            .setView(dialogView)
+            .setCancelable(false)
+            .create();
+        
+        // 提交答案按钮
+        submitButton.setOnClickListener(v -> {
+            String userAnswer = answerEdit.getText().toString().trim();
+            if (userAnswer.isEmpty()) {
+                resultText.setText("⚠️ 请输入答案");
+                resultText.setVisibility(View.VISIBLE);
+                return;
+            }
+            
+            try {
+                int answer = Integer.parseInt(userAnswer);
+                if (answer == correctAnswer[0]) {
+                    // 答案正确，关闭监测
+                    resultText.setText("✅ 答案正确！");
+                    resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_green_light));
+                    resultText.setVisibility(View.VISIBLE);
+                    
+                    // 延迟关闭弹窗并执行关闭监测
+                    new Handler().postDelayed(() -> {
+                        dialog.dismiss();
+                        settingsManager.setAppMonitoringEnabled(packageName, false);
+                        android.util.Log.d("HomeFragment", "算术题验证通过，关闭监测: " + packageName);
+                        Toast.makeText(requireContext(), "已关闭监测", Toast.LENGTH_SHORT).show();
+                        
+                        // 更新APP列表显示
+                        updateAppCardsDisplay();
+                    }, 1000);
+                    
+                } else {
+                    // 答案错误
+                    resultText.setText("❌ 答案错误，请重新计算");
+                    resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_red_light));
+                    resultText.setVisibility(View.VISIBLE);
+                    
+                    // 清空输入框
+                    answerEdit.setText("");
+                    
+                    // 3秒后生成新题目
+                    new Handler().postDelayed(() -> {
+                        String newQuestion = generateMathQuestion();
+                        correctAnswer[0] = getMathAnswer(newQuestion);
+                        questionText.setText(newQuestion);
+                        answerEdit.setText("");
+                        resultText.setVisibility(View.GONE);
+                    }, 1000);
+                }
+            } catch (NumberFormatException e) {
+                resultText.setText("⚠️ 请输入有效数字");
+                resultText.setVisibility(View.VISIBLE);
+            }
+        });
+        
+        // 取消按钮
+        cancelButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            // 取消关闭监测，恢复开关状态
+            if (appCardAdapter != null) {
+                appCardAdapter.updateData(allApps);
+            }
+        });
+        
+        // 回车键提交答案
+        answerEdit.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE || 
+                (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
+                submitButton.performClick();
+                return true;
+            }
+            return false;
+        });
+        
+        dialog.show();
+        
+        // 让输入框获得焦点
+        answerEdit.requestFocus();
+    }
+
+    /**
+     * 生成算术题（复用现有逻辑）
+     */
+    private String generateMathQuestion() {
+        Random random = new Random();
+        int operationType = random.nextInt(3); // 0: 加, 1: 减, 2: 乘
+        int num1, num2;
+        String operator;
+        switch (operationType) {
+            case 0: // 加法 - 三位数
+                num1 = random.nextInt(99900) + 100; // 100-999
+                num2 = random.nextInt(99900) + 100; // 100-999
+                operator = "+";
+                break;
+            case 1: // 减法 - 三位数
+                num1 = random.nextInt(99800) + 200; // 200-999
+                num2 = random.nextInt(num1 - 200) + 100;
+                operator = "-";
+                break;
+            case 2: // 乘法 - 30以内
+                num1 = random.nextInt(999) + 100; // 11-19
+                num2 = random.nextInt(999) + 100; // 11-19
+                operator = "×";
+                break;
+            default:
+                num1 = random.nextInt(99900) + 100; // 100-999
+                num2 = random.nextInt(99900) + 100; // 100-999
+                operator = "+";
+        }
+        return num1 + " " + operator + " " + num2 + " = ?";
+    }
+
+    /**
+     * 计算算术题答案
+     */
+    private int getMathAnswer(String question) {
+        // 解析题目计算答案
+        String[] parts = question.replace(" = ?", "").split(" ");
+        int num1 = Integer.parseInt(parts[0]);
+        String operator = parts[1];
+        int num2 = Integer.parseInt(parts[2]);
+        
+        switch (operator) {
+            case "+":
+                return num1 + num2;
+            case "-":
+                return num1 - num2;
+            case "×":
+                return num1 * num2;
+            default:
+                return num1 + num2;
+        }
     }
 
     @Override
