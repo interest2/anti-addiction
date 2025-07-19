@@ -43,7 +43,7 @@ public class SettingsManager {
     // 休闲版时间间隔（秒）
 //    private static final int[] dailyIntervalArray = {3, 5};
 //    private static final int[] casualIntervalArray = {20, 90};
-    private static final int[] dailyIntervalArray = {10, 60};
+    private static final int[] dailyIntervalArray = {20, 60};
     private static final int[] casualIntervalArray = {600, 900};
 
     private SharedPreferences prefs;
@@ -749,7 +749,7 @@ public class SettingsManager {
         Boolean isEnabled = isAppMonitoringEnabled(packageName);
         if (isEnabled == null) {
             // 如果还没有设置过，使用默认值
-            return "com.xingin.xhs".equals(packageName); // 小红书默认开启
+            return Share.judgeEnabled(packageName); // 小红书默认开启
         }
         return isEnabled;
     }

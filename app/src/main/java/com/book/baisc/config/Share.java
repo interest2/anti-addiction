@@ -11,7 +11,12 @@ public class Share {
     public static Object currentApp = null; // 当前活跃的APP（支持预定义和自定义APP）
     public static boolean isFloatingWindowVisible = false; // 悬浮窗是否显示
     public static Map<String, Boolean> appManuallyHidden = new HashMap<>(); // 每个APP的手动隐藏状态（使用包名作为键）
-    
+
+    public static boolean judgeEnabled(String packageName){
+        return Const.SupportedApp.XHS.getPackageName().equals(packageName)
+                || Const.SupportedApp.ZHIHU.getPackageName().equals(packageName);
+    }
+
     /**
      * 获取指定APP的状态
      */

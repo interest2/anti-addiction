@@ -3,7 +3,6 @@ package com.book.baisc.ui;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
@@ -13,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.book.baisc.R;
 import com.book.baisc.config.Const;
 import com.book.baisc.config.SettingsManager;
+import com.book.baisc.config.Share;
 
 import java.util.List;
 
@@ -140,7 +140,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
                 Boolean isEnabled = settingsManager.isAppMonitoringEnabled(packageName);
                 if (isEnabled == null) {
                     // 如果还没有设置过，使用默认值
-                    isEnabled = "com.xingin.xhs".equals(packageName); // 小红书默认开启
+                    isEnabled = Share.judgeEnabled(packageName);
                 }
                 toggleMonitor.setChecked(isEnabled);
             }
@@ -171,4 +171,5 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             }
         }
     }
+
 } 

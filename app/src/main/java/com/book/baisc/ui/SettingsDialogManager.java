@@ -244,7 +244,7 @@ public class SettingsDialogManager {
      */
     public void showIntervalExplanation(int interval) {
         StringBuilder explanation = new StringBuilder();
-        explanation.append("新的时长，将在回答一次算术题后才会生效");
+        explanation.append("新的时长，将在下次成功关闭悬浮窗后生效");
 
         new android.app.AlertDialog.Builder(context)
                 .setTitle("解禁时长说明")
@@ -317,25 +317,20 @@ public class SettingsDialogManager {
             
             // 构建弹窗内容
             StringBuilder content = new StringBuilder();
-            content.append("• 本机当前版本：").append(versionName).append("\n\n");
-            content.append("• 下载页面（找到最新的 apk 文件下载）：\n");
-            content.append("https://gitee.com/interest2/anti-addiction/releases\n");
-            content.append("https://github.com/interest2/anti-addiction/releases\n\n");
+            content.append("• 本机当前安装的版本：").append(versionName).append("\n\n");
+            content.append("• 最新安装包下载地址（在网页上找到最新的 apk 文件下载，传到手机）：\n\n");
+            content.append("https://github.com/interest2/anti-addiction/releases\n（无需登录，但页面未必能打开）\n\n");
+            content.append("https://gitee.com/interest2/anti-addiction/releases\n（需登录，页面一般正常）");
 
-            content.append("备注：\n");
-            content.append("• gitee地址：需要登录\n");
-            content.append("• github地址：无需登录，但网络可能不稳定\n\n");
-            
             new android.app.AlertDialog.Builder(context)
-                .setTitle("最新安装包地址")
                 .setMessage(content.toString())
-                .setPositiveButton("复制gitee地址", (dialog, which) -> {
-                    copyToClipboard("https://gitee.com/interest2/anti-addiction/releases");
-                    Toast.makeText(context, "gitee地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("复制github地址", (dialog, which) -> {
+                .setPositiveButton("复制github地址", (dialog, which) -> {
                     copyToClipboard("https://github.com/interest2/anti-addiction/releases");
                     Toast.makeText(context, "gitHub地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("复制gitee地址", (dialog, which) -> {
+                    copyToClipboard("https://gitee.com/interest2/anti-addiction/releases");
+                    Toast.makeText(context, "gitee地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
                 })
                 .setNeutralButton("关闭", null)
                 .show();
