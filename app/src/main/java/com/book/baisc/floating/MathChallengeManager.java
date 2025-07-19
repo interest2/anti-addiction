@@ -15,6 +15,7 @@ import android.widget.TextView;
 import java.util.Random;
 
 import com.book.baisc.R;
+import com.book.baisc.config.Const;
 
 /**
  * 数学题验证管理器
@@ -30,6 +31,7 @@ public class MathChallengeManager {
     private WindowManager.LayoutParams layoutParams;
     private Handler handler;
     private FloatingAccessibilityService accessibilityService;
+    private Const.SupportedApp currentApp; // 当前APP
     
     // 数学题相关
     private Random random = new Random();
@@ -57,8 +59,19 @@ public class MathChallengeManager {
         initializeComponents();
     }
     
+    /**
+     * 设置当前APP
+     */
+    public void setCurrentApp(Const.SupportedApp app) {
+        this.currentApp = app;
+    }
+    
     public void setOnMathChallengeListener(OnMathChallengeListener listener) {
         this.listener = listener;
+    }
+    
+    public OnMathChallengeListener getOnMathChallengeListener() {
+        return listener;
     }
     
     public boolean isMathChallengeActive() {
@@ -82,9 +95,20 @@ public class MathChallengeManager {
         // 取消按钮
         cancelButton.setOnClickListener(v -> {
             Log.d(TAG, "用户取消关闭");
-            hideMathChallenge();
-            if (listener != null) {
-                listener.onChallengeCancel();
+            
+            // 针对微信APP的特殊处理：点击取消直接当作答题通过
+            if (currentApp == Const.SupportedApp.WECHAT) {
+                Log.d(TAG, "微信APP取消按钮被点击，直接当作答题通过");
+                hideMathChallenge();
+                if (listener != null) {
+                    listener.onAnswerCorrect();
+                }
+            } else {
+                // 其他APP正常处理
+                hideMathChallenge();
+                if (listener != null) {
+                    listener.onChallengeCancel();
+                }
             }
         });
         

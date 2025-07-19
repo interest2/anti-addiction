@@ -87,10 +87,10 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             String timeText;
             int timeColor;
             if (remainingTime == -1) {
-                timeText = "剩余时长: 可用";
+                timeText = "倒计时：00:00";
                 timeColor = 0xFF4CAF50; // 绿色
             } else {
-                timeText = "剩余时长: " + SettingsManager.formatRemainingTime(remainingTime);
+                timeText = "倒计时: " + SettingsManager.formatRemainingTime(remainingTime);
                 timeColor = 0xFFE91E63; // 红色
             }
             

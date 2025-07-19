@@ -354,6 +354,11 @@ public class FloatingAccessibilityService extends AccessibilityService
                 this, floatingView, windowManager, layoutParams, handler, this
             );
             
+            // 设置当前APP，用于微信APP的特殊处理
+            if (currentActiveApp != null) {
+                mathChallengeManager.setCurrentApp(currentActiveApp);
+            }
+            
             mathChallengeManager.setOnMathChallengeListener(new MathChallengeManager.OnMathChallengeListener() {
                 @Override
                 public void onAnswerCorrect() {
@@ -463,8 +468,18 @@ public class FloatingAccessibilityService extends AccessibilityService
             Button closeButton = floatingView.findViewById(R.id.btn_close);
             closeButton.setOnClickListener(v -> {
                 Log.d(TAG, "用户点击关闭按钮");
-                // 显示数学题验证界面
-                mathChallengeManager.showMathChallenge();
+                
+                // 微信APP直接当作答题通过，不显示数学题
+                if (currentActiveApp == Const.SupportedApp.WECHAT) {
+                    Log.d(TAG, "微信APP直接当作答题通过");
+                    // 直接调用答题成功的逻辑
+                    if (mathChallengeManager != null && mathChallengeManager.getOnMathChallengeListener() != null) {
+                        mathChallengeManager.getOnMathChallengeListener().onAnswerCorrect();
+                    }
+                } else {
+                    // 其他APP显示数学题验证界面
+                    mathChallengeManager.showMathChallenge();
+                }
             });
 
             // 更新悬浮窗内容，显示当前时间间隔设置

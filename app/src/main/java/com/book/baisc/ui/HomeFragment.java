@@ -51,7 +51,14 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         // 初始化APP卡片RecyclerView
         initAppCards(view);
         
-
+        // 设置HTML文本，让"功能"二字加粗
+        TextView tvDescription = view.findViewById(R.id.tv_description);
+        if (tvDescription != null) {
+            tvDescription.setText(android.text.Html.fromHtml(
+                "<b>功能</b>：打开支持的APP，悬浮窗会遮盖特定页面（如首页）。<br/>" +
+                "<b>所需权限</b>：显示在其他应用的上层、无障碍服务、允许后台运行。"
+            ));
+        }
         
         // 启动倒计时更新
         startCountdown();

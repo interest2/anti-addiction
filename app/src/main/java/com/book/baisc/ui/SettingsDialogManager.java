@@ -129,7 +129,7 @@ public class SettingsDialogManager {
                 showIntervalExplanation(selectedInterval);
                 
                 String modeText = isCasualMode ? "宽松模式" : "严格模式";
-                Toast.makeText(context, "已为" + appName + "设置为: " + intervalOptions[which] + " (" + modeText + ")", Toast.LENGTH_LONG).show();
+//                Toast.makeText(context, "已为" + appName + "设置为: " + intervalOptions[which] + " (" + modeText + ")", Toast.LENGTH_LONG).show();
                 dialog.dismiss();
                })
                .setNegativeButton("取消", null)
@@ -340,7 +340,7 @@ public class SettingsDialogManager {
         layout.addView(spacer2);
 
         android.widget.TextView hintText = new android.widget.TextView(context);
-        hintText.setText("说明：不同机型分辨率不同，因此悬浮窗边缘距离顶部底部的距离可能需手动调整，直到观察到APP遮挡区域合适为止。");
+        hintText.setText("说明：悬浮窗默认不遮挡顶部、底部，但可能出现遮挡过度、不足，您可手动调整。");
         hintText.setTextSize(14);
         hintText.setTextColor(0xFF666666);
         layout.addView(hintText);
