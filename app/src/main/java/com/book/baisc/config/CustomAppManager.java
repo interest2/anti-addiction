@@ -148,4 +148,11 @@ public class CustomAppManager {
             Log.e("CustomAppManager", "Error saving custom apps", e);
         }
     }
+    
+    /**
+     * 保存自定义APP的更改（公共方法）
+     */
+    public void saveCustomAppsChanges() {
+        saveCustomApps();
+    }
 } 

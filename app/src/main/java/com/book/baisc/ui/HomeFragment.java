@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -239,6 +240,8 @@ public class HomeFragment extends Fragment implements
         
         Button strictModeButton = dialogView.findViewById(R.id.btn_strict_mode);
         Button casualModeButton = dialogView.findViewById(R.id.btn_casual_mode);
+        EditText etCasualLimitCount = dialogView.findViewById(R.id.et_casual_limit_count);
+        Button btnSaveCasualLimit = dialogView.findViewById(R.id.btn_save_casual_limit);
         
         // 获取APP信息
         String appName;
@@ -247,7 +250,9 @@ public class HomeFragment extends Fragment implements
         if (app instanceof Const.SupportedApp) {
             Const.SupportedApp supportedApp = (Const.SupportedApp) app;
             appName = supportedApp.getAppName();
-            casualLimitCount = supportedApp.getCasualLimitCount();
+            // 优先使用自定义设置，如果没有则使用默认值
+            Integer customLimit = settingsManager.getCustomCasualLimitCount(supportedApp.getPackageName());
+            casualLimitCount = customLimit != null ? customLimit : supportedApp.getCasualLimitCount();
         } else if (app instanceof Const.CustomApp) {
             Const.CustomApp customApp = (Const.CustomApp) app;
             appName = customApp.getAppName();
@@ -255,6 +260,9 @@ public class HomeFragment extends Fragment implements
         } else {
             return;
         }
+        
+        // 设置输入框的当前值
+        etCasualLimitCount.setText(String.valueOf(casualLimitCount));
         
         // 检查宽松模式剩余次数
         int casualCount = settingsManager.getAppCasualCloseCount(app);
@@ -272,6 +280,45 @@ public class HomeFragment extends Fragment implements
             .setView(dialogView)
             .setNegativeButton("取消", null)
             .create();
+        
+        // 设置保存按钮点击事件
+        btnSaveCasualLimit.setOnClickListener(v -> {
+            String inputText = etCasualLimitCount.getText().toString().trim();
+            if (inputText.isEmpty()) {
+                Toast.makeText(requireContext(), "请输入数字", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            try {
+                int newLimitCount = Integer.parseInt(inputText);
+                if (newLimitCount < 1 || newLimitCount > 3) {
+                    Toast.makeText(requireContext(), "请输入1-3之间的数字", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                // 更新APP的casualLimitCount
+                if (app instanceof Const.SupportedApp) {
+                    // 对于预定义APP，保存自定义次数设置
+                    Const.SupportedApp supportedApp = (Const.SupportedApp) app;
+                    settingsManager.setCustomCasualLimitCount(supportedApp.getPackageName(), newLimitCount);
+                    Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
+                    
+                    // 更新APP列表显示
+                    updateAppCardsDisplay();
+                } else if (app instanceof Const.CustomApp) {
+                    Const.CustomApp customApp = (Const.CustomApp) app;
+                    customApp.setCasualLimitCount(newLimitCount);
+                    customAppManager.saveCustomAppsChanges(); // 保存到本地存储
+                    Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
+                    
+                    // 更新APP列表显示
+                    updateAppCardsDisplay();
+                }
+                
+            } catch (NumberFormatException e) {
+                Toast.makeText(requireContext(), "请输入有效的数字", Toast.LENGTH_SHORT).show();
+            }
+        });
         
         // 设置按钮点击事件
         strictModeButton.setOnClickListener(v -> {

@@ -15,6 +15,11 @@
 - **内边距**：从16dp减小到12dp
 - **按钮间距**：从12dp减小到8dp
 
+### 按钮布局优化
+- **并排展示**：严格模式和宽松模式按钮水平并排
+- **等宽布局**：两个按钮各占50%宽度
+- **间距优化**：按钮间4dp间距，整体16dp下边距
+
 ## 视觉效果对比
 
 ### 修改前
@@ -39,9 +44,13 @@
 │                         │
 │      单次解禁时长         │
 │                         │
-│      [严格模式]          │
+│  [严格模式] [宽松模式]    │ ← 按钮并排
 │                         │
-│      [宽松模式]          │
+│    ──────────────────    │
+│                         │
+│  宽松模式一天次数设置     │
+│                         │
+│  [输入框] [保存]         │
 │                         │
 │        [取消]            │
 └─────────────────────────┘
@@ -72,27 +81,40 @@ android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireCont
         android:textColor="#666666"
         android:layout_marginBottom="16dp" />
     
-    <!-- 优化后的按钮 -->
-    <Button 
-        android:id="@+id/btn_strict_mode"
+    <!-- 并排按钮布局 -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="严格模式"
-        android:textSize="14sp"
-        android:padding="12dp"
-        android:backgroundTint="#4CAF50"
-        android:textColor="#FFFFFF"
-        android:layout_marginBottom="8dp" />
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+
+        <Button 
+            android:id="@+id/btn_strict_mode"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="严格模式"
+            android:textSize="14sp"
+            android:padding="12dp"
+            android:backgroundTint="#4CAF50"
+            android:textColor="#FFFFFF"
+            android:layout_marginEnd="4dp" />
+        
+        <Button 
+            android:id="@+id/btn_casual_mode"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="宽松模式"
+            android:textSize="14sp"
+            android:padding="12dp"
+            android:backgroundTint="#FF9800"
+            android:textColor="#FFFFFF"
+            android:layout_marginStart="4dp" />
+
+    </LinearLayout>
     
-    <Button 
-        android:id="@+id/btn_casual_mode"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="宽松模式"
-        android:textSize="14sp"
-        android:padding="12dp"
-        android:backgroundTint="#FF9800"
-        android:textColor="#FFFFFF" />
+    <!-- 其他内容... -->
 </LinearLayout>
 ```
 
@@ -104,12 +126,14 @@ android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireCont
 3. **视觉平衡**：标题和内容分离，视觉更平衡
 4. **信息突出**：APP名称在标题中更加突出
 5. **按钮紧凑**：按钮大小适中，不会显得过于庞大
+6. **布局高效**：按钮并排展示，节省垂直空间
 
 ### 交互体验
 - **更直观**：用户一眼就能看出是哪个APP的设置
 - **更清晰**：功能说明独立显示，不会与标题混淆
 - **更现代**：符合当前移动应用的设计趋势
 - **更紧凑**：按钮大小合适，点击区域适中
+- **更高效**：并排布局节省空间，操作更便捷
 
 ## 功能保持
 

@@ -107,7 +107,7 @@ public class Const {
         private final String appName;
         private final String packageName;
         private final String targetWord;
-        private final int casualLimitCount;
+        private int casualLimitCount; // 改为非final，支持修改
         
         public CustomApp(String appName, String packageName, String targetWord, int casualLimitCount) {
             this.appName = appName;
@@ -130,6 +130,10 @@ public class Const {
         
         public int getCasualLimitCount() {
             return casualLimitCount;
+        }
+        
+        public void setCasualLimitCount(int casualLimitCount) {
+            this.casualLimitCount = casualLimitCount;
         }
     }
 }

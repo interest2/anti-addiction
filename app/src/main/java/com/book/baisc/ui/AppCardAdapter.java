@@ -116,7 +116,9 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             if (app instanceof Const.SupportedApp) {
                 Const.SupportedApp supportedApp = (Const.SupportedApp) app;
                 appName = supportedApp.getAppName();
-                casualLimitCount = supportedApp.getCasualLimitCount();
+                // 优先使用自定义设置，如果没有则使用默认值
+                Integer customLimit = settingsManager.getCustomCasualLimitCount(supportedApp.getPackageName());
+                casualLimitCount = customLimit != null ? customLimit : supportedApp.getCasualLimitCount();
                 packageName = supportedApp.getPackageName();
             } else if (app instanceof Const.CustomApp) {
                 Const.CustomApp customApp = (Const.CustomApp) app;

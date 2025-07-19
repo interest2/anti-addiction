@@ -493,17 +493,44 @@ public class SettingsManager {
         String packageName = getPackageName(app);
         if (packageName == null) return 0;
         
-        String currentDate = getCurrentDate();
-        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + packageName;
-        String dateKey = KEY_APP_LAST_CASUAL_CLOSE_DATE + packageName;
-        String lastDate = prefs.getString(dateKey, "");
+        String key = KEY_APP_CASUAL_CLOSE_COUNT + packageName;
+        return prefs.getInt(key, 0);
+    }
+
+    /**
+     * 设置APP的宽松模式关闭次数
+     */
+    public void setAppCasualCloseCount(Object app, int count) {
+        String packageName = getPackageName(app);
+        if (packageName == null) return;
         
-        if (currentDate.equals(lastDate)) {
-            return prefs.getInt(countKey, 0);
-        }
-        
-        // 如果不是同一天，返回0
-        return 0;
+        String key = KEY_APP_CASUAL_CLOSE_COUNT + packageName;
+        prefs.edit().putInt(key, count).apply();
+    }
+
+    /**
+     * 获取预定义APP的自定义次数设置
+     */
+    public Integer getCustomCasualLimitCount(String packageName) {
+        String key = "custom_casual_limit_" + packageName;
+        int value = prefs.getInt(key, -1);
+        return value == -1 ? null : value; // 返回null表示使用默认值
+    }
+
+    /**
+     * 设置预定义APP的自定义次数设置
+     */
+    public void setCustomCasualLimitCount(String packageName, int count) {
+        String key = "custom_casual_limit_" + packageName;
+        prefs.edit().putInt(key, count).apply();
+    }
+
+    /**
+     * 清除预定义APP的自定义次数设置（恢复默认值）
+     */
+    public void clearCustomCasualLimitCount(String packageName) {
+        String key = "custom_casual_limit_" + packageName;
+        prefs.edit().remove(key).apply();
     }
     
     /**

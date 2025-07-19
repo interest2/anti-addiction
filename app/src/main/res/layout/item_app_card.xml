@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
+    android:layout_margin="2dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?android:attr/selectableItemBackground"
@@ -15,13 +15,13 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="8dp">
+        android:padding="4dp">
 
         <!-- 监测开关 - 右上角 -->
         <ToggleButton
             android:id="@+id/toggle_monitor"
-            android:layout_width="24dp"
-            android:layout_height="12dp"
+            android:layout_width="28dp"
+            android:layout_height="14dp"
             android:layout_alignParentEnd="true"
             android:layout_alignParentTop="true"
             android:background="@drawable/toggle_switch_background"
@@ -36,8 +36,8 @@
             android:layout_centerInParent="true"
             android:orientation="vertical"
             android:gravity="center"
-            android:layout_marginStart="10dp"
-            android:layout_marginEnd="20dp">
+            android:layout_marginStart="0dp"
+            android:layout_marginEnd="26dp">
 
             <TextView
                 android:id="@+id/tv_app_name"
