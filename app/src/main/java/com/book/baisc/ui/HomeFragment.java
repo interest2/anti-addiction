@@ -51,13 +51,7 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         // 初始化APP卡片RecyclerView
         initAppCards(view);
         
-        // 设置按钮点击事件
-        setupTagSettingButton(view);
-        setupTargetDateSettingButton(view);
-        
-        // 更新UI状态
-        updateTagButtonText(view);
-        updateTargetDateButtonText(view);
+
         
         // 启动倒计时更新
         startCountdown();
@@ -70,7 +64,10 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         android.util.Log.d("HomeFragment", "RecyclerView找到: " + (rvAppCards != null));
         
         if (rvAppCards != null) {
-            rvAppCards.setLayoutManager(new LinearLayoutManager(requireContext()));
+            // 使用GridLayoutManager实现两列布局
+            androidx.recyclerview.widget.GridLayoutManager layoutManager = 
+                new androidx.recyclerview.widget.GridLayoutManager(requireContext(), 2);
+            rvAppCards.setLayoutManager(layoutManager);
             appCardAdapter = new AppCardAdapter(supportedApps, settingsManager, this);
             rvAppCards.setAdapter(appCardAdapter);
         }
@@ -88,49 +85,51 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
     }
 
     private void showTimeSettingDialogForApp(Const.SupportedApp app) {
-        // 创建弹窗显示"单次解禁时长"和两个按钮
-        new android.app.AlertDialog.Builder(requireContext())
+        // 创建自定义布局的弹窗
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_time_setting, null);
+        
+        Button strictModeButton = dialogView.findViewById(R.id.btn_strict_mode);
+        Button casualModeButton = dialogView.findViewById(R.id.btn_casual_mode);
+        
+        // 检查宽松模式剩余次数
+        int casualCount = settingsManager.getAppCasualCloseCount(app);
+        int remainingCount = Math.max(0, Const.CASUAL_LIMIT_COUNT - casualCount);
+        
+        // 如果宽松模式次数用完，置灰按钮
+        if (remainingCount <= 0) {
+            casualModeButton.setEnabled(false);
+            casualModeButton.setAlpha(0.5f);
+            casualModeButton.setText("宽松模式 (次数已用完)");
+        }
+        
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
             .setTitle(app.getAppName() + " - 单次解禁时长")
-            .setMessage("请选择解禁模式：")
-            .setPositiveButton("严格模式", (dialog, which) -> {
-                settingsDialogManager.showTimeSettingDialogForApp(app, true);
-            })
-            .setNegativeButton("宽松模式", (dialog, which) -> {
+            .setView(dialogView)
+            .setNegativeButton("取消", null)
+            .create();
+        
+        // 设置按钮点击事件
+        strictModeButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            settingsDialogManager.showTimeSettingDialogForApp(app, true);
+        });
+        
+        casualModeButton.setOnClickListener(v -> {
+            // 只有在按钮可用时才执行
+            if (casualModeButton.isEnabled()) {
+                dialog.dismiss();
                 settingsDialogManager.showTimeSettingDialogForApp(app, false);
-            })
-            .setNeutralButton("取消", null)
-            .show();
+            }
+        });
+        
+        dialog.show();
     }
 
-    private void setupTagSettingButton(View view) {
-        Button tagButton = view.findViewById(R.id.btn_tag_setting);
-        tagButton.setOnClickListener(v -> settingsDialogManager.showTagSettingDialog());
-    }
 
-    private void setupTargetDateSettingButton(View view) {
-        Button targetDateButton = view.findViewById(R.id.btn_target_date_setting);
-        targetDateButton.setOnClickListener(v -> settingsDialogManager.showTargetDateSettingDialog());
-    }
-
-    private void updateTagButtonText(View view) {
-        Button tagButton = view.findViewById(R.id.btn_tag_setting);
-        settingsDialogManager.updateTagButtonText(tagButton);
-    }
-
-    private void updateTargetDateButtonText(View view) {
-        Button targetDateButton = view.findViewById(R.id.btn_target_date_setting);
-        settingsDialogManager.updateDateButtonText(targetDateButton);
-    }
 
     @Override
     public void onResume() {
         super.onResume();
-        // 每次回到前台时更新UI状态
-        if (getView() != null) {
-            updateTagButtonText(getView());
-            updateTargetDateButtonText(getView());
-        }
-        
         // 更新APP卡片数据
         if (appCardAdapter != null) {
             appCardAdapter.updateData();
@@ -156,14 +155,7 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         countdownRunnable = null;
     }
     
-    /**
-     * 供外部调用的方法，用于更新目标日期按钮文本
-     */
-    public void updateTargetDateButtonText() {
-        if (getView() != null) {
-            updateTargetDateButtonText(getView());
-        }
-    }
+
     
     /**
      * 供外部调用的方法，用于更新APP卡片显示

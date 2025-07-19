@@ -259,9 +259,10 @@ public class SettingsDialogManager {
                 settingsManager.setTargetCompletionDate(selectedDate);
                 Toast.makeText(context, "目标完成日期已设置为: " + selectedDate, Toast.LENGTH_SHORT).show();
                 
-                // 通知MainActivity更新按钮文本
+                // 通知设置页面更新按钮文本（如果当前在设置页面）
                 if (context instanceof MainActivity) {
-                    ((MainActivity) context).updateTargetDateButtonText();
+                    // 可以通过广播或其他方式通知设置页面更新
+                    android.util.Log.d("SettingsDialogManager", "目标日期已更新，需要刷新设置页面");
                 }
             },
             java.util.Calendar.getInstance().get(java.util.Calendar.YEAR),

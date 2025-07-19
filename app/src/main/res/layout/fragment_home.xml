@@ -32,7 +32,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="功能：打开支持的APP首页显示悬浮窗遮盖内容。\n所需权限：显示在其他应用的上层、无障碍服务、允许后台运行。"
+            android:text="功能：打开支持的APP，仅在特定页面（主要是推荐内容）显示悬浮窗遮盖。\n所需权限：显示在其他应用的上层、无障碍服务、允许后台运行。"
             android:textAlignment="viewStart"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@+id/tv_apps_subtitle"
@@ -62,35 +62,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tv_apps_subtitle" />
 
-        <TextView
-            android:id="@+id/tv_ambition_subtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="设置您的目标"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/rv_app_cards" />
 
-        <Button
-            android:id="@+id/btn_tag_setting"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="选择或自定义目标"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_ambition_subtitle" />
-
-        <Button
-            android:id="@+id/btn_target_date_setting"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="完成日期"
-            android:backgroundTint="#FF9800"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/btn_tag_setting" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

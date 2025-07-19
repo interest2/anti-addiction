@@ -33,6 +33,12 @@ public class SettingsFragment extends Fragment {
         // 设置悬浮窗位置按钮
         setupFloatingPositionButton(view);
         
+        // 设置目标设置按钮
+        setupGoalSettingButtons(view);
+        
+        // 更新UI状态
+        updateGoalButtonTexts(view);
+        
         return view;
     }
 
@@ -48,5 +54,30 @@ public class SettingsFragment extends Fragment {
         floatingPositionButton.setOnClickListener(v -> {
             settingsDialogManager.showFloatingPositionDialog();
         });
+    }
+    
+    private void setupGoalSettingButtons(View view) {
+        Button tagButton = view.findViewById(R.id.btn_tag_setting);
+        tagButton.setOnClickListener(v -> settingsDialogManager.showTagSettingDialog());
+        
+        Button targetDateButton = view.findViewById(R.id.btn_target_date_setting);
+        targetDateButton.setOnClickListener(v -> settingsDialogManager.showTargetDateSettingDialog());
+    }
+    
+    private void updateGoalButtonTexts(View view) {
+        Button tagButton = view.findViewById(R.id.btn_tag_setting);
+        settingsDialogManager.updateTagButtonText(tagButton);
+        
+        Button targetDateButton = view.findViewById(R.id.btn_target_date_setting);
+        settingsDialogManager.updateDateButtonText(targetDateButton);
+    }
+    
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 每次回到前台时更新UI状态
+        if (getView() != null) {
+            updateGoalButtonTexts(getView());
+        }
     }
 } 

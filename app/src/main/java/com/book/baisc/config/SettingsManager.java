@@ -427,16 +427,16 @@ public class SettingsManager {
         long intervalMillis = intervalSeconds * 1000L;
         long nextAvailableTime = lastCloseTime + intervalMillis;
         
-        android.util.Log.d("SettingsManager", "APP " + app.name() + " 倒计时计算:");
-        android.util.Log.d("SettingsManager", "  上次关闭时间: " + formatTime(lastCloseTime));
-        android.util.Log.d("SettingsManager", "  当前时间: " + formatTime(currentTime));
-        android.util.Log.d("SettingsManager", "  记录的时间间隔: " + intervalSeconds + "秒");
-        android.util.Log.d("SettingsManager", "  下次可用时间: " + formatTime(nextAvailableTime));
-        android.util.Log.d("SettingsManager", "  当前设置的时间间隔: " + getAppAutoShowInterval(app) + "秒");
+//        android.util.Log.d("SettingsManager", "APP " + app.name() + " 倒计时计算:");
+//        android.util.Log.d("SettingsManager", "  上次关闭时间: " + formatTime(lastCloseTime));
+//        android.util.Log.d("SettingsManager", "  当前时间: " + formatTime(currentTime));
+//        android.util.Log.d("SettingsManager", "  记录的时间间隔: " + intervalSeconds + "秒");
+//        android.util.Log.d("SettingsManager", "  下次可用时间: " + formatTime(nextAvailableTime));
+//        android.util.Log.d("SettingsManager", "  当前设置的时间间隔: " + getAppAutoShowInterval(app) + "秒");
         
         if (currentTime >= nextAvailableTime) {
             // 已经超过等待时间，可以自由使用
-            android.util.Log.d("SettingsManager", "  结果: 可以自由使用");
+//            android.util.Log.d("SettingsManager", "  结果: 可以自由使用");
             return -1;
         } else {
             // 还在等待期间，返回剩余时间

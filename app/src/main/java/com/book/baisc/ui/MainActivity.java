@@ -177,14 +177,7 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "检测功能已启用，打开支持的APP时会显示悬浮窗", Toast.LENGTH_LONG).show();
     }
 
-    /**
-     * 供外部调用的方法，用于更新目标日期按钮文本
-     */
-    public void updateTargetDateButtonText() {
-        if (homeFragment != null) {
-            homeFragment.updateTargetDateButtonText();
-        }
-    }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {

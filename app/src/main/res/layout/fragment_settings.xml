@@ -26,6 +26,37 @@
             app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
+            android:id="@+id/tv_goal_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="目标设置"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_settings_title" />
+
+        <Button
+            android:id="@+id/btn_tag_setting"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="选择或自定义目标"
+            android:backgroundTint="#4CAF50"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tv_goal_subtitle" />
+
+        <Button
+            android:id="@+id/btn_target_date_setting"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="完成日期"
+            android:backgroundTint="#FF9800"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/btn_tag_setting" />
+
+        <TextView
             android:id="@+id/tv_app_info_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -34,7 +65,7 @@
             android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_settings_title" />
+            app:layout_constraintTop_toBottomOf="@id/btn_target_date_setting" />
 
         <Button
             android:id="@+id/btn_latest_apk"
