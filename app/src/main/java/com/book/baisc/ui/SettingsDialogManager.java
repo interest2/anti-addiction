@@ -431,7 +431,8 @@ public class SettingsDialogManager {
                 totalCloseCount = settingsManager.getCasualCloseCount();
             }
             
-            casualButton.setEnabled(totalCloseCount < Const.CASUAL_LIMIT_COUNT);
+            // 使用默认限制（保持兼容性）
+            casualButton.setEnabled(totalCloseCount < 3);
         }
     }
     
@@ -451,7 +452,8 @@ public class SettingsDialogManager {
                 totalCloseCount = settingsManager.getCasualCloseCount();
             }
             
-            int remainingCount = Math.max(0, Const.CASUAL_LIMIT_COUNT - totalCloseCount);
+            // 使用默认限制（保持兼容性）
+            int remainingCount = Math.max(0, 3 - totalCloseCount);
             countText.setText("总剩余: " + remainingCount + "次");
         }
     }
@@ -462,7 +464,7 @@ public class SettingsDialogManager {
     public void updateAppCasualCountDisplay(TextView countText, Const.SupportedApp app) {
         if (countText != null) {
             int closeCount = settingsManager.getAppCasualCloseCount(app);
-            int remainingCount = Math.max(0, Const.CASUAL_LIMIT_COUNT - closeCount);
+            int remainingCount = Math.max(0, app.getCasualLimitCount() - closeCount);
             countText.setText("宽松剩余: " + remainingCount + "次");
         }
     }

@@ -4,7 +4,6 @@ public class Const {
 
     public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
 
-    public final static int CASUAL_LIMIT_COUNT = 3;
     public static final long APP_STATE_CHECK_INTERVAL = 2000; // 2秒检查一次
 
     // 广播Action常量
@@ -13,21 +12,23 @@ public class Const {
 
     // 支持的APP枚举
     public enum SupportedApp {
-        XHS("小红书", "com.xingin.xhs", "发现"),
-        ALIPAY("支付宝", "com.eg.android.AlipayGphone", "股票,行情,持有"),
-        ZHIHU("知乎", "com.zhihu.android", "热榜"),
-        WECHAT("微信", "com.tencent.mm", "公众号"),
-        DOUYIN("抖音", "com.ss.android.ugc.aweme", "推荐"),
-        BILIBILI("哔哩哔哩", "tv.danmaku.bili", "推荐");
+        XHS("小红书", "com.xingin.xhs", "发现", 3),
+        ALIPAY("支付宝", "com.eg.android.AlipayGphone", "股票,行情,持有", 1),
+        ZHIHU("知乎", "com.zhihu.android", "热榜", 1),
+        WECHAT("微信", "com.tencent.mm", "公众号", 1),
+        DOUYIN("抖音", "com.ss.android.ugc.aweme", "推荐", 1),
+        BILIBILI("哔哩哔哩", "tv.danmaku.bili", "推荐", 1);
 
         private final String appName;
         private final String packageName;
         private final String targetWord;
+        private final int casualLimitCount;
         
-        SupportedApp(String appName, String packageName, String targetWord) {
+        SupportedApp(String appName, String packageName, String targetWord, int casualLimitCount) {
             this.appName = appName;
             this.packageName = packageName;
             this.targetWord = targetWord;
+            this.casualLimitCount = casualLimitCount;
         }
 
         public String getAppName() {
@@ -40,6 +41,10 @@ public class Const {
         
         public String getTargetWord() {
             return targetWord;
+        }
+        
+        public int getCasualLimitCount() {
+            return casualLimitCount;
         }
         
         /**

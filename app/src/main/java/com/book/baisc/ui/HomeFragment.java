@@ -93,7 +93,7 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         
         // 检查宽松模式剩余次数
         int casualCount = settingsManager.getAppCasualCloseCount(app);
-        int remainingCount = Math.max(0, Const.CASUAL_LIMIT_COUNT - casualCount);
+        int remainingCount = Math.max(0, app.getCasualLimitCount() - casualCount);
         
         // 如果宽松模式次数用完，置灰按钮
         if (remainingCount <= 0) {

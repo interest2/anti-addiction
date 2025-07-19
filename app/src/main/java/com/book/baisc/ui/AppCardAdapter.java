@@ -101,7 +101,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
 
             // 设置宽松模式剩余次数
             int casualCount = settingsManager.getAppCasualCloseCount(app);
-            int remainingCount = Math.max(0, Const.CASUAL_LIMIT_COUNT - casualCount);
+            int remainingCount = Math.max(0, app.getCasualLimitCount() - casualCount);
             
             if (tvCasualCount != null) {
                 tvCasualCount.setText("宽松剩余: " + remainingCount + "次");
