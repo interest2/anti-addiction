@@ -16,8 +16,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Button;
 import android.util.DisplayMetrics;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
@@ -251,8 +256,18 @@ public class FloatingAccessibilityService extends AccessibilityService
             Log.d(TAG, "当前有活跃的APP，开始文本检测");
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             if (rootNode != null) {
+
                 String targetWord = currentActiveApp.getTargetWord();
+
+                long start = System.currentTimeMillis();
                 boolean hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
+                if(currentActiveApp.getAppName().equals("微信")){
+                    hasTargetWord = true;
+                }
+
+                long end = System.currentTimeMillis();
+                double deltaSeconds = (end - start) / 1000.0;
+                Log.d(TAG, "检测耗时：" + String.format("%.3f", deltaSeconds));
 
                 // 简化界面判断逻辑：只检测目标词
                 String currentInterface = hasTargetWord ? "target" : "other";

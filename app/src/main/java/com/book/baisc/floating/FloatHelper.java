@@ -9,6 +9,7 @@ import com.book.baisc.config.Const;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Locale;
 
 
@@ -95,7 +96,7 @@ public class FloatHelper {
         return dateHint;
     }
 
-
+//    static boolean findTextInNode(AccessibilityNodeInfo node, HashSet targetText) {
     static boolean findTextInNode(AccessibilityNodeInfo node, String targetText) {
         if (node == null) return false;
 
