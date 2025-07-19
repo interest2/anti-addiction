@@ -256,9 +256,9 @@ public class MathChallengeManager {
                 operator = "-";
                 currentAnswer = num1 - num2;
                 break;
-            case 2: // 乘法 - 20以内
-                num1 = random.nextInt(9) + 11; // 11-19
-                num2 = random.nextInt(9) + 11; // 11-19
+            case 2: // 乘法 - 30以内
+                num1 = random.nextInt(19) + 11; // 11-19
+                num2 = random.nextInt(19) + 11; // 11-19
                 operator = "×";
                 currentAnswer = num1 * num2;
                 break;

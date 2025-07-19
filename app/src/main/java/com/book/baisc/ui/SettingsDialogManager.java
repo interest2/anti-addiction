@@ -73,7 +73,7 @@ public class SettingsDialogManager {
     /**
      * 为指定APP显示时间设置对话框
      */
-    private void showTimeSettingDialogForApp(Const.SupportedApp app, boolean isDaily) {
+    public void showTimeSettingDialogForApp(Const.SupportedApp app, boolean isDaily) {
         final int[] intervals = isDaily ? 
             SettingsManager.getDailyAvailableIntervals() : 
             SettingsManager.getCasualAvailableIntervals();

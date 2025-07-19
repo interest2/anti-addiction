@@ -8,8 +8,8 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:paddingTop="16dp"
         android:paddingBottom="16dp">
 
@@ -32,146 +32,35 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="功能：打开小红书首页显示悬浮窗遮盖内容。\n所需权限：显示在其他应用的上层、无障碍服务、允许后台运行。"
+            android:text="功能：打开支持的APP首页显示悬浮窗遮盖内容。\n所需权限：显示在其他应用的上层、无障碍服务、允许后台运行。"
             android:textAlignment="viewStart"
             android:textSize="16sp"
-            app:layout_constraintBottom_toTopOf="@+id/tv_countdown_subtitle"
+            app:layout_constraintBottom_toTopOf="@+id/tv_apps_subtitle"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tv_title" />
 
         <TextView
-            android:id="@+id/tv_countdown_subtitle"
+            android:id="@+id/tv_apps_subtitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="APP可用时间"
+            android:text="支持的APP"
             android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tv_description" />
 
-        <LinearLayout
-            android:id="@+id/ll_countdown_container"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_app_cards"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:orientation="vertical"
+            android:layout_marginBottom="8dp"
+            android:nestedScrollingEnabled="false"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_countdown_subtitle">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="8dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="小红书："
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tv_xhs_countdown"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="00:00"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="#4CAF50" />
-
-                <TextView
-                    android:id="@+id/tv_xhs_casual_count"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="宽松剩余: 3次"
-                    android:textSize="14sp"
-                    android:textColor="#666666" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="支付宝："
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/tv_alipay_countdown"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="00:00"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="#FF9800" />
-
-                <TextView
-                    android:id="@+id/tv_alipay_casual_count"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="宽松剩余: 3次"
-                    android:textSize="14sp"
-                    android:textColor="#666666" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/tv_duration_subtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="单次解禁时长设置"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/ll_countdown_container" />
-
-        <Button
-            android:id="@+id/btn_daily_time_setting"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:backgroundTint="#4CAF50"
-            android:text="严格模式"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_duration_subtitle" />
-
-        <Button
-            android:id="@+id/btn_casual_time_setting"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="宽松模式"
-            android:textColor="@color/casual_button_text_color"
-            app:backgroundTint="@color/casual_button_background_tint"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/btn_daily_time_setting" />
-
-        <TextView
-            android:id="@+id/tv_casual_count"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:text="总剩余: 6次"
-            android:textSize="16sp"
-            app:layout_constraintBottom_toBottomOf="@+id/btn_casual_time_setting"
-            app:layout_constraintStart_toEndOf="@+id/btn_casual_time_setting"
-            app:layout_constraintTop_toTopOf="@+id/btn_casual_time_setting" />
+            app:layout_constraintTop_toBottomOf="@+id/tv_apps_subtitle" />
 
         <TextView
             android:id="@+id/tv_ambition_subtitle"
@@ -182,7 +71,7 @@
             android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btn_casual_time_setting" />
+            app:layout_constraintTop_toBottomOf="@id/rv_app_cards" />
 
         <Button
             android:id="@+id/btn_tag_setting"

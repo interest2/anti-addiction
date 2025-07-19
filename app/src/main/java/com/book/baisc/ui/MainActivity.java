@@ -136,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
             // 没有无障碍服务权限，引导用户去设置
             Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             startActivityForResult(intent, REQUEST_ACCESSIBILITY_PERMISSION);
-            Toast.makeText(this, "请开启无障碍服务以检测小红书APP", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "请开启无障碍服务以检测支持的APP", Toast.LENGTH_LONG).show();
         } else {
             // 已有所有权限，初始化应用生命周期监听器
             initAppLifecycleObserver();
@@ -174,7 +174,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initAppLifecycleObserver() {
         appLifecycleObserver = new AppLifecycleObserver(this);
-        Toast.makeText(this, "检测功能已启用，打开小红书时会显示悬浮窗", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "检测功能已启用，打开支持的APP时会显示悬浮窗", Toast.LENGTH_LONG).show();
     }
 
     /**
@@ -203,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
                 // 获得无障碍服务权限，初始化应用生命周期监听器
                 initAppLifecycleObserver();
             } else {
-                Toast.makeText(this, "没有无障碍服务权限，无法检测小红书APP", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "没有无障碍服务权限，无法检测支持的APP", Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -227,10 +227,9 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (Const.ACTION_UPDATE_CASUAL_COUNT.equals(intent.getAction())) {
-                    // 通知HomeFragment更新宽松模式次数显示
-                    if (homeFragment != null && homeFragment.getView() != null) {
-                        homeFragment.updateCasualCountDisplay();
-                        homeFragment.updateAppCasualCountDisplay();
+                    // 通知HomeFragment更新APP卡片显示
+                    if (homeFragment != null) {
+                        homeFragment.updateAppCardsDisplay();
                     }
                 }
             }

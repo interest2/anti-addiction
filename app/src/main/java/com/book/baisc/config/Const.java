@@ -4,7 +4,7 @@ public class Const {
 
     public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
 
-    public final static int CASUAL_LIMIT_COUNT = 6;
+    public final static int CASUAL_LIMIT_COUNT = 3;
     public static final long APP_STATE_CHECK_INTERVAL = 2000; // 2秒检查一次
 
     // 广播Action常量

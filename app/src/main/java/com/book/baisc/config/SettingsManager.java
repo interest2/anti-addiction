@@ -27,9 +27,6 @@ public class SettingsManager {
     private static final String KEY_APP_LAST_CASUAL_CLOSE_DATE = "app_last_casual_close_date_";
     private static final String KEY_APP_LAST_CLOSE_TIME = "app_last_close_time_";
     private static final String KEY_APP_LAST_CLOSE_INTERVAL = "app_last_close_interval_";
-    
-    // 默认自动显示间隔（秒）
-    private static final int DEFAULT_AUTO_SHOW_INTERVAL = 5;
 
     // 激励语标签列表
     private static final String[] MOTIVATION_TAGS = {
@@ -44,10 +41,10 @@ public class SettingsManager {
 
     // 日常版时间间隔（秒）
     // 休闲版时间间隔（秒）
-//    private static final int[] dailyIntervalArray = {3, 5};
-//    private static final int[] casualIntervalArray = {10, 15};
-    private static final int[] dailyIntervalArray = {10, 60};
-    private static final int[] casualIntervalArray = {600, 900};
+    private static final int[] dailyIntervalArray = {3, 5};
+    private static final int[] casualIntervalArray = {20, 90};
+//    private static final int[] dailyIntervalArray = {10, 60};
+//    private static final int[] casualIntervalArray = {600, 900};
 
     private SharedPreferences prefs;
     
