@@ -7,7 +7,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,19 +20,21 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.book.baisc.R;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.config.Const;
+import com.book.baisc.config.CustomAppManager;
+import com.google.android.material.textfield.TextInputEditText;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardClickListener {
 
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
+    private CustomAppManager customAppManager;
     
     // APP卡片相关
     private RecyclerView rvAppCards;
     private AppCardAdapter appCardAdapter;
-    private List<Const.SupportedApp> supportedApps;
+    private List<Object> allApps; // 包含预定义APP和自定义APP
     
     // 倒计时相关
     private Handler countdownHandler;
@@ -44,12 +48,16 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         // 初始化设置管理器
         settingsManager = new SettingsManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
+        customAppManager = CustomAppManager.getInstance();
         
-        // 初始化支持的APP列表
-        supportedApps = Arrays.asList(Const.SupportedApp.values());
+        // 初始化APP列表
+        updateAppList();
         
         // 初始化APP卡片RecyclerView
         initAppCards(view);
+        
+        // 设置加号按钮点击事件
+        setupAddButton(view);
         
         // 设置HTML文本，让"功能"二字加粗
         TextView tvDescription = view.findViewById(R.id.tv_description);
@@ -66,6 +74,97 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         return view;
     }
 
+    private void setupAddButton(View view) {
+        ImageButton btnAddApp = view.findViewById(R.id.btn_add_app);
+        if (btnAddApp != null) {
+            btnAddApp.setOnClickListener(v -> showAddAppDialog());
+        }
+    }
+
+    private void showAddAppDialog() {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_app, null);
+        
+        TextInputEditText etAppName = dialogView.findViewById(R.id.et_app_name);
+        TextInputEditText etPackageName = dialogView.findViewById(R.id.et_package_name);
+        TextInputEditText etTargetWord = dialogView.findViewById(R.id.et_target_word);
+        TextInputEditText etCasualLimitCount = dialogView.findViewById(R.id.et_casual_limit_count);
+        Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
+        Button btnSave = dialogView.findViewById(R.id.btn_save);
+        
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .setCancelable(false)
+            .create();
+        
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        
+        btnSave.setOnClickListener(v -> {
+            String appName = etAppName.getText().toString().trim();
+            String packageName = etPackageName.getText().toString().trim();
+            String targetWord = etTargetWord.getText().toString().trim();
+            String casualLimitCountStr = etCasualLimitCount.getText().toString().trim();
+            
+            // 验证输入
+            if (appName.isEmpty()) {
+                Toast.makeText(requireContext(), "请输入APP名称", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            if (packageName.isEmpty()) {
+                Toast.makeText(requireContext(), "请输入包名", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            if (targetWord.isEmpty()) {
+                Toast.makeText(requireContext(), "请输入屏蔽关键词", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            int casualLimitCount = 1;
+            if (!casualLimitCountStr.isEmpty()) {
+                try {
+                    casualLimitCount = Integer.parseInt(casualLimitCountStr);
+                    if (casualLimitCount <= 0) {
+                        Toast.makeText(requireContext(), "宽松模式次数必须大于0", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    Toast.makeText(requireContext(), "请输入有效的数字", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+            
+            // 保存新APP
+            boolean success = customAppManager.addCustomApp(appName, packageName, targetWord, casualLimitCount);
+            if (success) {
+                Toast.makeText(requireContext(), "APP添加成功", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                // 更新APP列表和卡片显示
+                updateAppList();
+                if (appCardAdapter != null) {
+                    appCardAdapter.updateData(allApps);
+                }
+            } else {
+                Toast.makeText(requireContext(), "包名已存在，请使用其他包名", Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        dialog.show();
+    }
+
+    private void updateAppList() {
+        // 获取所有APP（预定义 + 自定义）
+        allApps = new java.util.ArrayList<>();
+        
+        // 添加预定义的APP
+        for (Const.SupportedApp app : Const.SupportedApp.values()) {
+            allApps.add(app);
+        }
+        
+        // 添加自定义APP
+        allApps.addAll(customAppManager.getCustomApps());
+    }
+
     private void initAppCards(View view) {
         rvAppCards = view.findViewById(R.id.rv_app_cards);
         android.util.Log.d("HomeFragment", "RecyclerView找到: " + (rvAppCards != null));
@@ -75,32 +174,48 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
             androidx.recyclerview.widget.GridLayoutManager layoutManager = 
                 new androidx.recyclerview.widget.GridLayoutManager(requireContext(), 2);
             rvAppCards.setLayoutManager(layoutManager);
-            appCardAdapter = new AppCardAdapter(supportedApps, settingsManager, this);
+            appCardAdapter = new AppCardAdapter(allApps, settingsManager, this);
             rvAppCards.setAdapter(appCardAdapter);
         }
     }
 
     @Override
-    public void onAppCardClick(Const.SupportedApp app) {
+    public void onAppCardClick(Object app) {
         // 显示APP设置弹窗
         showAppSettingsDialog(app);
     }
 
-    private void showAppSettingsDialog(Const.SupportedApp app) {
+    private void showAppSettingsDialog(Object app) {
         // 显示"单次解禁时长"弹窗
         showTimeSettingDialogForApp(app);
     }
 
-    private void showTimeSettingDialogForApp(Const.SupportedApp app) {
+    private void showTimeSettingDialogForApp(Object app) {
         // 创建自定义布局的弹窗
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_time_setting, null);
         
         Button strictModeButton = dialogView.findViewById(R.id.btn_strict_mode);
         Button casualModeButton = dialogView.findViewById(R.id.btn_casual_mode);
         
+        // 获取APP信息
+        String appName;
+        int casualLimitCount;
+        
+        if (app instanceof Const.SupportedApp) {
+            Const.SupportedApp supportedApp = (Const.SupportedApp) app;
+            appName = supportedApp.getAppName();
+            casualLimitCount = supportedApp.getCasualLimitCount();
+        } else if (app instanceof Const.CustomApp) {
+            Const.CustomApp customApp = (Const.CustomApp) app;
+            appName = customApp.getAppName();
+            casualLimitCount = customApp.getCasualLimitCount();
+        } else {
+            return;
+        }
+        
         // 检查宽松模式剩余次数
         int casualCount = settingsManager.getAppCasualCloseCount(app);
-        int remainingCount = Math.max(0, app.getCasualLimitCount() - casualCount);
+        int remainingCount = Math.max(0, casualLimitCount - casualCount);
         
         // 如果宽松模式次数用完，置灰按钮
         if (remainingCount <= 0) {
@@ -110,7 +225,7 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         }
         
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-            .setTitle(app.getAppName() + " - 单次解禁时长")
+            .setTitle(appName + " - 单次解禁时长")
             .setView(dialogView)
             .setNegativeButton("取消", null)
             .create();
@@ -132,14 +247,14 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         dialog.show();
     }
 
-
-
     @Override
     public void onResume() {
         super.onResume();
+        // 更新APP列表
+        updateAppList();
         // 更新APP卡片数据
         if (appCardAdapter != null) {
-            appCardAdapter.updateData();
+            appCardAdapter.updateData(allApps);
         }
         
         // 启动倒计时
@@ -162,14 +277,13 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         countdownRunnable = null;
     }
     
-
-    
     /**
      * 供外部调用的方法，用于更新APP卡片显示
      */
     public void updateAppCardsDisplay() {
+        updateAppList();
         if (appCardAdapter != null) {
-            appCardAdapter.updateData();
+            appCardAdapter.updateData(allApps);
         }
     }
     
@@ -187,7 +301,7 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
                 public void run() {
                     // 更新APP卡片数据
                     if (appCardAdapter != null) {
-                        appCardAdapter.updateData();
+                        appCardAdapter.updateData(allApps);
                     }
                     // 每秒更新一次
                     countdownHandler.postDelayed(this, 1000);
@@ -206,6 +320,4 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
             countdownHandler.removeCallbacks(countdownRunnable);
         }
     }
-    
-
 } 

@@ -17,7 +17,7 @@
             android:id="@+id/tv_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="防沉迷自由"
+            android:text="防沉迷屏蔽"
             android:layout_margin="16dp"
             android:textSize="24sp"
             android:textStyle="bold"
@@ -40,16 +40,36 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tv_title" />
 
-        <TextView
-            android:id="@+id/tv_apps_subtitle"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:id="@+id/ll_apps_header"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="支持的APP"
-            android:textSize="18sp"
-            android:textStyle="bold"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_description" />
+            app:layout_constraintTop_toBottomOf="@id/tv_description">
+
+            <TextView
+                android:id="@+id/tv_apps_subtitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="支持的APP"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btn_add_app"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_input_add"
+                android:contentDescription="添加APP"
+                android:scaleType="centerInside" />
+
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_app_cards"
@@ -60,9 +80,7 @@
             android:nestedScrollingEnabled="false"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_apps_subtitle" />
-
-
+            app:layout_constraintTop_toBottomOf="@+id/ll_apps_header" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

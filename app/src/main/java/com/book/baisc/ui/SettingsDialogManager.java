@@ -21,17 +21,25 @@ public class SettingsDialogManager {
     private final SettingsManager settingsManager;
 
     private static String[] appOptions;
-    private static Const.SupportedApp[] apps = Const.SupportedApp.values();
+    private static Object[] apps; // 改为Object类型以支持自定义APP
 
     public SettingsDialogManager(Context context, SettingsManager settingsManager) {
         this.context = context;
         this.settingsManager = settingsManager;
+        updateAppOptions(); // 动态更新APP选项
     }
 
-    static {
+    /**
+     * 更新APP选项列表
+     */
+    private void updateAppOptions() {
+        // 获取所有APP（预定义+自定义）
+        java.util.List<Const.App> allApps = Const.SupportedApp.getAllApps();
+        apps = allApps.toArray(new Object[0]);
+        
         appOptions = new String[apps.length];
         for (int i = 0; i < apps.length; i++) {
-            appOptions[i] = apps[i].getAppName();
+            appOptions[i] = getAppName(apps[i]);
         }
     }
 
@@ -40,7 +48,7 @@ public class SettingsDialogManager {
      */
     public void showTimeSettingDialog(boolean isDaily) {
         // 获取当前活跃APP
-        Const.SupportedApp currentApp = com.book.baisc.config.Share.currentApp;
+        Object currentApp = com.book.baisc.config.Share.currentApp;
         
         if (currentApp != null) {
             // 直接为当前活跃APP设置时间间隔
@@ -55,6 +63,9 @@ public class SettingsDialogManager {
      * 显示APP选择对话框
      */
     private void showAppSelectionDialog(boolean isDaily) {
+        // 重新更新APP选项以确保包含最新的自定义APP
+        updateAppOptions();
+        
         String dialogTitle = isDaily ? "严格模式 - 选择APP" : "宽松模式 - 选择APP";
 
         android.util.Log.d("SettingsDialog", "显示APP选择对话框: " + dialogTitle);
@@ -62,8 +73,9 @@ public class SettingsDialogManager {
         new android.app.AlertDialog.Builder(context)
             .setTitle(dialogTitle)
             .setItems(appOptions, (dialog, which) -> {
-                Const.SupportedApp selectedApp = apps[which];
-                android.util.Log.d("SettingsDialog", "用户选择APP: " + selectedApp.name());
+                Object selectedApp = apps[which];
+                String appName = getAppName(selectedApp);
+                android.util.Log.d("SettingsDialog", "用户选择APP: " + appName);
                 showTimeSettingDialogForApp(selectedApp, isDaily);
             })
             .setNegativeButton("取消", null)
@@ -134,6 +146,97 @@ public class SettingsDialogManager {
                })
                .setNegativeButton("取消", null)
                .show();
+    }
+    
+    /**
+     * 为指定APP显示时间设置对话框 - 支持自定义APP
+     */
+    public void showTimeSettingDialogForApp(Object app, boolean isDaily) {
+        final int[] intervals = isDaily ? 
+            SettingsManager.getDailyAvailableIntervals() : 
+            SettingsManager.getCasualAvailableIntervals();
+        
+        String[] intervalOptions = new String[intervals.length];
+        for (int i = 0; i < intervals.length; i++) {
+            intervalOptions[i] = SettingsManager.getIntervalDisplayText(intervals[i]);
+        }
+
+        // 获取指定APP的当前设置
+        int currentInterval = settingsManager.getAppAutoShowInterval(app);
+        
+        int checkedItem = -1;
+        for (int i = 0; i < intervals.length; i++) {
+            if (intervals[i] == currentInterval) {
+                checkedItem = i;
+                break;
+            }
+        }
+        
+        String dialogTitle = isDaily ? "严格模式" : "宽松模式";
+        String appName = getAppName(app);
+        String packageName = getPackageName(app);
+        String fullTitle = dialogTitle + " - " + appName;
+
+        android.util.Log.d("SettingsDialog", "显示时间设置对话框: " + fullTitle);
+        android.util.Log.d("SettingsDialog", "APP " + packageName + " 当前时间间隔: " + currentInterval + "秒");
+
+        new android.app.AlertDialog.Builder(context)
+            .setTitle(fullTitle)
+            .setSingleChoiceItems(intervalOptions, checkedItem, (dialog, which) -> {
+                int selectedInterval = intervals[which];
+                
+                // 为指定APP设置时间间隔
+                settingsManager.setAppAutoShowInterval(app, selectedInterval);
+                android.util.Log.d("SettingsDialog", "设置APP " + packageName + " 时间间隔为: " + selectedInterval + "秒");
+                
+                // 验证设置是否成功
+                int verifyInterval = settingsManager.getAppAutoShowInterval(app);
+                android.util.Log.d("SettingsDialog", "验证APP " + packageName + " 实际保存的时间间隔: " + verifyInterval + "秒");
+                
+                // 检查是否是宽松模式
+                boolean isCasualMode = settingsManager.isAppCasualMode(app);
+                android.util.Log.d("SettingsDialog", "APP " + packageName + " 是否宽松模式: " + isCasualMode);
+                
+                // 检查宽松模式的关闭次数
+                int casualCount = settingsManager.getAppCasualCloseCount(app);
+                android.util.Log.d("SettingsDialog", "APP " + packageName + " 今日宽松模式关闭次数: " + casualCount);
+                
+                // 通知服务配置已更改
+                FloatingAccessibilityService.notifyIntervalChanged();
+                       
+                // 显示提示信息
+                showIntervalExplanation(selectedInterval);
+                
+                String modeText = isCasualMode ? "宽松模式" : "严格模式";
+//                Toast.makeText(context, "已为" + appName + "设置为: " + intervalOptions[which] + " (" + modeText + ")", Toast.LENGTH_LONG).show();
+                dialog.dismiss();
+               })
+               .setNegativeButton("取消", null)
+               .show();
+    }
+    
+    /**
+     * 获取APP名称
+     */
+    private String getAppName(Object app) {
+        if (app instanceof Const.SupportedApp) {
+            return ((Const.SupportedApp) app).getAppName();
+        } else if (app instanceof Const.CustomApp) {
+            return ((Const.CustomApp) app).getAppName();
+        }
+        return "未知APP";
+    }
+    
+    /**
+     * 获取APP包名
+     */
+    private String getPackageName(Object app) {
+        if (app instanceof Const.SupportedApp) {
+            return ((Const.SupportedApp) app).getPackageName();
+        } else if (app instanceof Const.CustomApp) {
+            return ((Const.CustomApp) app).getPackageName();
+        }
+        return "unknown";
     }
     
     /**
@@ -422,8 +525,22 @@ public class SettingsDialogManager {
         if (casualButton != null) {
             // 计算所有支持APP的宽松模式次数总和
             int totalCloseCount = 0;
+            
+            // 计算预定义APP的宽松模式次数
             for (Const.SupportedApp app : Const.SupportedApp.values()) {
                 totalCloseCount += settingsManager.getAppCasualCloseCount(app);
+            }
+            
+            // 计算自定义APP的宽松模式次数
+            try {
+                com.book.baisc.config.CustomAppManager.getInstance();
+                java.util.List<Const.CustomApp> customApps = com.book.baisc.config.CustomAppManager.getInstance().getCustomApps();
+                
+                for (Const.CustomApp customApp : customApps) {
+                    totalCloseCount += settingsManager.getAppCasualCloseCount(customApp);
+                }
+            } catch (Exception e) {
+                android.util.Log.w("SettingsDialogManager", "获取自定义APP宽松模式次数失败", e);
             }
             
             // 如果所有APP都没有使用过，则使用全局次数（兼容性）
@@ -443,8 +560,22 @@ public class SettingsDialogManager {
         if (countText != null) {
             // 计算所有支持APP的宽松模式次数总和
             int totalCloseCount = 0;
+            
+            // 计算预定义APP的宽松模式次数
             for (Const.SupportedApp app : Const.SupportedApp.values()) {
                 totalCloseCount += settingsManager.getAppCasualCloseCount(app);
+            }
+            
+            // 计算自定义APP的宽松模式次数
+            try {
+                com.book.baisc.config.CustomAppManager.getInstance();
+                java.util.List<Const.CustomApp> customApps = com.book.baisc.config.CustomAppManager.getInstance().getCustomApps();
+                
+                for (Const.CustomApp customApp : customApps) {
+                    totalCloseCount += settingsManager.getAppCasualCloseCount(customApp);
+                }
+            } catch (Exception e) {
+                android.util.Log.w("SettingsDialogManager", "获取自定义APP宽松模式次数失败", e);
             }
             
             // 如果所有APP都没有使用过，则使用全局次数（兼容性）
@@ -465,6 +596,27 @@ public class SettingsDialogManager {
         if (countText != null) {
             int closeCount = settingsManager.getAppCasualCloseCount(app);
             int remainingCount = Math.max(0, app.getCasualLimitCount() - closeCount);
+            countText.setText("宽松剩余: " + remainingCount + "次");
+        }
+    }
+    
+    /**
+     * 更新特定APP的宽松模式剩余次数显示 - 支持自定义APP
+     */
+    public void updateAppCasualCountDisplay(TextView countText, Object app) {
+        if (countText != null) {
+            int closeCount = settingsManager.getAppCasualCloseCount(app);
+            int casualLimitCount;
+            
+            if (app instanceof Const.SupportedApp) {
+                casualLimitCount = ((Const.SupportedApp) app).getCasualLimitCount();
+            } else if (app instanceof Const.CustomApp) {
+                casualLimitCount = ((Const.CustomApp) app).getCasualLimitCount();
+            } else {
+                casualLimitCount = 1; // 默认值
+            }
+            
+            int remainingCount = Math.max(0, casualLimitCount - closeCount);
             countText.setText("宽松剩余: " + remainingCount + "次");
         }
     }

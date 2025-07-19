@@ -23,6 +23,7 @@ import java.util.List;
 
 import com.book.baisc.R;
 import com.book.baisc.config.Const;
+import com.book.baisc.config.CustomAppManager;
 import com.book.baisc.floating.FloatingAccessibilityService;
 import com.book.baisc.lifecycle.AppLifecycleObserver;
 import com.book.baisc.network.DeviceInfoReporter;
@@ -68,6 +69,9 @@ public class MainActivity extends AppCompatActivity {
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();
+
+        // 初始化自定义应用管理器
+        CustomAppManager.initialize(this);
 
         // 检查缓存并获取云端内容
         FloatingTextFetcher fetcher = new FloatingTextFetcher(this);

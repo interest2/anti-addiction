@@ -264,6 +264,17 @@ public class SettingsManager {
     }
     
     /**
+     * 获取指定APP的自动显示间隔（秒）- 支持自定义APP
+     */
+    public int getAppAutoShowInterval(Object app) {
+        String packageName = getPackageName(app);
+        if (packageName == null) return dailyIntervalArray[0];
+        
+        String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
+        return prefs.getInt(key, dailyIntervalArray[0]);
+    }
+    
+    /**
      * 设置指定APP的自动显示间隔（秒）
      */
     public void setAppAutoShowInterval(Const.SupportedApp app, int seconds) {
@@ -278,6 +289,41 @@ public class SettingsManager {
             boolean isSwitchingToStrictMode = (seconds < oldInterval) && wasInFreeMode;
             
             android.util.Log.d("SettingsManager", "APP " + app.name() + " 设置时间间隔: " + oldInterval + "秒 -> " + seconds + "秒");
+            android.util.Log.d("SettingsManager", "  当前是否自由使用: " + wasInFreeMode);
+            android.util.Log.d("SettingsManager", "  是否切换到严格模式: " + isSwitchingToStrictMode);
+            
+            // 更新设置
+            prefs.edit().putInt(key, seconds).apply();
+            
+            // 如果是从自由使用状态切换到更严格的模式，立即生效
+            if (isSwitchingToStrictMode) {
+                recordAppCloseTime(app, seconds);
+                android.util.Log.d("SettingsManager", "  立即生效: 记录新的关闭时间和时间间隔");
+                
+                // 通知无障碍服务立即检查是否需要显示悬浮窗
+                triggerImmediateFloatingWindowCheck(app);
+            }
+        }
+    }
+    
+    /**
+     * 设置指定APP的自动显示间隔（秒）- 支持自定义APP
+     */
+    public void setAppAutoShowInterval(Object app, int seconds) {
+        String packageName = getPackageName(app);
+        if (packageName == null) return;
+        
+        int minInterval = dailyIntervalArray[0];
+        int maxInterval = casualIntervalArray[casualIntervalArray.length - 1];
+        if (seconds >= minInterval && seconds <= maxInterval) {
+            String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
+            
+            // 检查是否需要立即生效
+            int oldInterval = getAppAutoShowInterval(app);
+            boolean wasInFreeMode = (getAppRemainingTime(app) == -1);
+            boolean isSwitchingToStrictMode = (seconds < oldInterval) && wasInFreeMode;
+            
+            android.util.Log.d("SettingsManager", "APP " + packageName + " 设置时间间隔: " + oldInterval + "秒 -> " + seconds + "秒");
             android.util.Log.d("SettingsManager", "  当前是否自由使用: " + wasInFreeMode);
             android.util.Log.d("SettingsManager", "  是否切换到严格模式: " + isSwitchingToStrictMode);
             
@@ -311,6 +357,22 @@ public class SettingsManager {
     }
     
     /**
+     * 触发立即检查是否需要显示悬浮窗 - 支持自定义APP
+     */
+    private void triggerImmediateFloatingWindowCheck(Object app) {
+        try {
+            // 通过静态方法通知无障碍服务
+            Class<?> serviceClass = Class.forName("com.book.baisc.floating.FloatingAccessibilityService");
+            java.lang.reflect.Method method = serviceClass.getMethod("triggerImmediateCheck", Object.class);
+            method.invoke(null, app);
+            String packageName = getPackageName(app);
+            android.util.Log.d("SettingsManager", "  已通知无障碍服务立即检查APP " + packageName);
+        } catch (Exception e) {
+            android.util.Log.w("SettingsManager", "  无法通知无障碍服务: " + e.getMessage());
+        }
+    }
+    
+    /**
      * 获取指定APP的自动显示间隔（毫秒）
      */
     public long getAppAutoShowIntervalMillis(Const.SupportedApp app) {
@@ -318,9 +380,29 @@ public class SettingsManager {
     }
     
     /**
+     * 获取指定APP的自动显示间隔（毫秒）- 支持自定义APP
+     */
+    public long getAppAutoShowIntervalMillis(Object app) {
+        return getAppAutoShowInterval(app) * 1000L;
+    }
+    
+    /**
      * 判断指定APP当前是否是休闲版模式
      */
     public boolean isAppCasualMode(Const.SupportedApp app) {
+        int currentInterval = getAppAutoShowInterval(app);
+        for (int interval : casualIntervalArray) {
+            if (interval == currentInterval) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * 判断指定APP当前是否是休闲版模式 - 支持自定义APP
+     */
+    public boolean isAppCasualMode(Object app) {
         int currentInterval = getAppAutoShowInterval(app);
         for (int interval : casualIntervalArray) {
             if (interval == currentInterval) {
@@ -358,12 +440,62 @@ public class SettingsManager {
     }
     
     /**
+     * 增加指定APP的休闲版关闭次数，并处理每日重置 - 支持自定义APP
+     */
+    public void incrementAppCasualCloseCount(Object app) {
+        String packageName = getPackageName(app);
+        if (packageName == null) return;
+        
+        String currentDate = getCurrentDate();
+        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + packageName;
+        String dateKey = KEY_APP_LAST_CASUAL_CLOSE_DATE + packageName;
+        String lastDate = prefs.getString(dateKey, "");
+        
+        int count = prefs.getInt(countKey, 0);
+
+        if (currentDate.equals(lastDate)) {
+            // 是同一天，计数+1
+            count++;
+        } else {
+            // 是新的一天，重置为1
+            count = 1;
+        }
+
+        prefs.edit()
+             .putInt(countKey, count)
+             .putString(dateKey, currentDate)
+             .apply();
+        
+        android.util.Log.d("SettingsManager", "APP " + packageName + " 休闲版关闭次数增加. 当前次数: " + count + " 日期: " + currentDate);
+    }
+    
+    /**
      * 获取指定APP今天的休闲版关闭次数
      */
     public int getAppCasualCloseCount(Const.SupportedApp app) {
         String currentDate = getCurrentDate();
         String countKey = KEY_APP_CASUAL_CLOSE_COUNT + app.name();
         String dateKey = KEY_APP_LAST_CASUAL_CLOSE_DATE + app.name();
+        String lastDate = prefs.getString(dateKey, "");
+        
+        if (currentDate.equals(lastDate)) {
+            return prefs.getInt(countKey, 0);
+        }
+        
+        // 如果不是同一天，返回0
+        return 0;
+    }
+    
+    /**
+     * 获取指定APP今天的休闲版关闭次数 - 支持自定义APP
+     */
+    public int getAppCasualCloseCount(Object app) {
+        String packageName = getPackageName(app);
+        if (packageName == null) return 0;
+        
+        String currentDate = getCurrentDate();
+        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + packageName;
+        String dateKey = KEY_APP_LAST_CASUAL_CLOSE_DATE + packageName;
         String lastDate = prefs.getString(dateKey, "");
         
         if (currentDate.equals(lastDate)) {
@@ -389,6 +521,23 @@ public class SettingsManager {
     }
     
     /**
+     * 记录指定APP的悬浮窗关闭时间和使用的时间间隔 - 支持自定义APP
+     */
+    public void recordAppCloseTime(Object app, int intervalSeconds) {
+        String packageName = getPackageName(app);
+        if (packageName == null) return;
+        
+        String timeKey = KEY_APP_LAST_CLOSE_TIME + packageName;
+        String intervalKey = KEY_APP_LAST_CLOSE_INTERVAL + packageName;
+        long currentTime = System.currentTimeMillis();
+        prefs.edit()
+            .putLong(timeKey, currentTime)
+            .putInt(intervalKey, intervalSeconds)
+            .apply();
+        android.util.Log.d("SettingsManager", "记录APP " + packageName + " 关闭时间: " + formatTime(currentTime) + ", 使用间隔: " + intervalSeconds + "秒");
+    }
+    
+    /**
      * 获取指定APP的上次关闭时间
      */
     public long getAppLastCloseTime(Const.SupportedApp app) {
@@ -397,10 +546,32 @@ public class SettingsManager {
     }
     
     /**
+     * 获取指定APP的上次关闭时间 - 支持自定义APP
+     */
+    public long getAppLastCloseTime(Object app) {
+        String packageName = getPackageName(app);
+        if (packageName == null) return 0;
+        
+        String key = KEY_APP_LAST_CLOSE_TIME + packageName;
+        return prefs.getLong(key, 0);
+    }
+    
+    /**
      * 获取指定APP上次关闭时使用的时间间隔（秒）
      */
     public int getAppLastCloseInterval(Const.SupportedApp app) {
         String key = KEY_APP_LAST_CLOSE_INTERVAL + app.name();
+        return prefs.getInt(key, dailyIntervalArray[0]);
+    }
+    
+    /**
+     * 获取指定APP上次关闭时使用的时间间隔（秒）- 支持自定义APP
+     */
+    public int getAppLastCloseInterval(Object app) {
+        String packageName = getPackageName(app);
+        if (packageName == null) return dailyIntervalArray[0];
+        
+        String key = KEY_APP_LAST_CLOSE_INTERVAL + packageName;
         return prefs.getInt(key, dailyIntervalArray[0]);
     }
     
@@ -447,10 +618,66 @@ public class SettingsManager {
     }
     
     /**
+     * 计算指定APP的剩余可用时间（毫秒）- 支持自定义APP
+     * @param app 指定的APP
+     * @return 剩余时间（毫秒），如果可以自由使用则返回-1
+     */
+    public long getAppRemainingTime(Object app) {
+        String packageName = getPackageName(app);
+        if (packageName == null) return -1;
+        
+        // 如果悬浮窗正在显示，且是当前APP，则不可用
+        if (Share.isFloatingWindowVisible && packageName.equals(getPackageName(Share.currentApp))) {
+            return 0;
+        }
+        
+        long lastCloseTime = getAppLastCloseTime(app);
+        if (lastCloseTime == 0) {
+            // 从未关闭过，可以自由使用
+            return -1;
+        }
+        
+        long currentTime = System.currentTimeMillis();
+        // 使用上次关闭时记录的时间间隔，而不是当前设置的时间间隔
+        int intervalSeconds = getAppLastCloseInterval(app);
+        long intervalMillis = intervalSeconds * 1000L;
+        long nextAvailableTime = lastCloseTime + intervalMillis;
+        
+        if (currentTime >= nextAvailableTime) {
+            // 已经超过等待时间，可以自由使用
+            return -1;
+        } else {
+            // 还在等待期间，返回剩余时间
+            long remainingTime = nextAvailableTime - currentTime;
+            android.util.Log.d("SettingsManager", "APP " + packageName + " 剩余时间: " + remainingTime + "毫秒 (" + (remainingTime/1000) + "秒)");
+            return remainingTime;
+        }
+    }
+    
+    /**
      * 判断指定APP是否可以自由使用
      */
     public boolean isAppFreeToUse(Const.SupportedApp app) {
         return getAppRemainingTime(app) == -1;
+    }
+    
+    /**
+     * 判断指定APP是否可以自由使用 - 支持自定义APP
+     */
+    public boolean isAppFreeToUse(Object app) {
+        return getAppRemainingTime(app) == -1;
+    }
+    
+    /**
+     * 获取APP的包名
+     */
+    private String getPackageName(Object app) {
+        if (app instanceof Const.SupportedApp) {
+            return ((Const.SupportedApp) app).getPackageName();
+        } else if (app instanceof Const.CustomApp) {
+            return ((Const.CustomApp) app).getPackageName();
+        }
+        return null;
     }
     
     /**

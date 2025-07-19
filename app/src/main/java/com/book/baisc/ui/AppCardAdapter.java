@@ -16,15 +16,15 @@ import java.util.List;
 
 public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardViewHolder> {
 
-    private List<Const.SupportedApp> apps;
+    private List<Object> apps; // 包含预定义APP和自定义APP
     private SettingsManager settingsManager;
     private OnAppCardClickListener listener;
 
     public interface OnAppCardClickListener {
-        void onAppCardClick(Const.SupportedApp app);
+        void onAppCardClick(Object app);
     }
 
-    public AppCardAdapter(List<Const.SupportedApp> apps, SettingsManager settingsManager, OnAppCardClickListener listener) {
+    public AppCardAdapter(List<Object> apps, SettingsManager settingsManager, OnAppCardClickListener listener) {
         this.apps = apps;
         this.settingsManager = settingsManager;
         this.listener = listener;
@@ -40,7 +40,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
 
     @Override
     public void onBindViewHolder(@NonNull AppCardViewHolder holder, int position) {
-        Const.SupportedApp app = apps.get(position);
+        Object app = apps.get(position);
         holder.bind(app);
     }
 
@@ -49,7 +49,8 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         return apps.size();
     }
 
-    public void updateData() {
+    public void updateData(List<Object> newApps) {
+        this.apps = newApps;
         notifyDataSetChanged();
     }
 
@@ -72,14 +73,30 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             });
         }
 
-        public void bind(Const.SupportedApp app) {
+        public void bind(Object app) {
             if (app == null || settingsManager == null) {
+                return;
+            }
+            
+            String appName;
+            int casualLimitCount;
+            
+            // 根据APP类型获取信息
+            if (app instanceof Const.SupportedApp) {
+                Const.SupportedApp supportedApp = (Const.SupportedApp) app;
+                appName = supportedApp.getAppName();
+                casualLimitCount = supportedApp.getCasualLimitCount();
+            } else if (app instanceof Const.CustomApp) {
+                Const.CustomApp customApp = (Const.CustomApp) app;
+                appName = customApp.getAppName();
+                casualLimitCount = customApp.getCasualLimitCount();
+            } else {
                 return;
             }
             
             // 设置APP名称
             if (tvAppName != null) {
-                tvAppName.setText(app.getAppName());
+                tvAppName.setText(appName);
             }
 
             // 设置剩余时长
@@ -101,7 +118,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
 
             // 设置宽松模式剩余次数
             int casualCount = settingsManager.getAppCasualCloseCount(app);
-            int remainingCount = Math.max(0, app.getCasualLimitCount() - casualCount);
+            int remainingCount = Math.max(0, casualLimitCount - casualCount);
             
             if (tvCasualCount != null) {
                 tvCasualCount.setText("宽松剩余: " + remainingCount + "次");

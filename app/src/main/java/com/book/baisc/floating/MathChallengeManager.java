@@ -31,7 +31,7 @@ public class MathChallengeManager {
     private WindowManager.LayoutParams layoutParams;
     private Handler handler;
     private FloatingAccessibilityService accessibilityService;
-    private Const.SupportedApp currentApp; // 当前APP
+    private Object currentApp; // 当前APP（支持预定义和自定义APP）
     
     // 数学题相关
     private Random random = new Random();
@@ -66,6 +66,13 @@ public class MathChallengeManager {
         this.currentApp = app;
     }
     
+    /**
+     * 设置当前APP - 支持自定义APP
+     */
+    public void setCurrentApp(Object app) {
+        this.currentApp = app;
+    }
+    
     public void setOnMathChallengeListener(OnMathChallengeListener listener) {
         this.listener = listener;
     }
@@ -97,7 +104,7 @@ public class MathChallengeManager {
             Log.d(TAG, "用户取消关闭");
             
             // 针对微信APP的特殊处理：点击取消直接当作答题通过
-            if (currentApp == Const.SupportedApp.WECHAT) {
+            if (currentApp instanceof Const.SupportedApp && currentApp == Const.SupportedApp.WECHAT) {
                 Log.d(TAG, "微信APP取消按钮被点击，直接当作答题通过");
                 hideMathChallenge();
                 if (listener != null) {
