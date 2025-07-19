@@ -694,4 +694,36 @@ public class SettingsManager {
         
         return String.format("%02d:%02d", minutes, seconds);
     }
+
+    /**
+     * 获取APP监测开关状态
+     */
+    public Boolean isAppMonitoringEnabled(String packageName) {
+        String key = "app_monitoring_enabled_" + packageName;
+        if (!prefs.contains(key)) {
+            return null; // 还没有设置过
+        }
+        return prefs.getBoolean(key, false);
+    }
+
+    /**
+     * 设置APP监测开关状态
+     */
+    public void setAppMonitoringEnabled(String packageName, boolean enabled) {
+        String key = "app_monitoring_enabled_" + packageName;
+        prefs.edit().putBoolean(key, enabled).apply();
+        android.util.Log.d("SettingsManager", "设置APP监测状态: " + packageName + " = " + enabled);
+    }
+
+    /**
+     * 检查APP是否应该被监测
+     */
+    public boolean shouldMonitorApp(String packageName) {
+        Boolean isEnabled = isAppMonitoringEnabled(packageName);
+        if (isEnabled == null) {
+            // 如果还没有设置过，使用默认值
+            return "com.xingin.xhs".equals(packageName); // 小红书默认开启
+        }
+        return isEnabled;
+    }
 } 

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 开启状态 - 绿色背景，右端白色圆点 -->
+    <item android:state_checked="true">
+        <layer-list>
+            <!-- 绿色背景 -->
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="#4CAF50" />
+                    <corners android:radius="12dp" />
+                </shape>
+            </item>
+            <!-- 右端白色圆点 -->
+            <item android:gravity="end" android:right="2dp">
+                <shape android:shape="oval">
+                    <solid android:color="#FFFFFF" />
+                    <size android:width="10dp" android:height="10dp" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    
+    <!-- 关闭状态 - 白色背景，左端灰色圆点 -->
+    <item android:state_checked="false">
+        <layer-list>
+            <!-- 白色背景 -->
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="#FFFFFF" />
+                    <stroke android:width="1dp" android:color="#CCCCCC" />
+                    <corners android:radius="12dp" />
+                </shape>
+            </item>
+            <!-- 左端灰色圆点 -->
+            <item android:gravity="start" android:left="2dp">
+                <shape android:shape="oval">
+                    <solid android:color="#CCCCCC" />
+                    <size android:width="10dp" android:height="10dp" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+</selector> 

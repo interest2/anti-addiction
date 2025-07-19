@@ -3,7 +3,9 @@ package com.book.baisc.ui;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -19,15 +21,29 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
     private List<Object> apps; // 包含预定义APP和自定义APP
     private SettingsManager settingsManager;
     private OnAppCardClickListener listener;
+    private OnMonitorToggleListener monitorListener;
+    private OnEditClickListener editListener;
 
     public interface OnAppCardClickListener {
         void onAppCardClick(Object app);
     }
 
-    public AppCardAdapter(List<Object> apps, SettingsManager settingsManager, OnAppCardClickListener listener) {
+    public interface OnMonitorToggleListener {
+        void onMonitorToggle(Object app, boolean isEnabled);
+    }
+
+    public interface OnEditClickListener {
+        void onEditClick(Object app);
+    }
+
+    public AppCardAdapter(List<Object> apps, SettingsManager settingsManager, 
+                         OnAppCardClickListener listener, OnMonitorToggleListener monitorListener,
+                         OnEditClickListener editListener) {
         this.apps = apps;
         this.settingsManager = settingsManager;
         this.listener = listener;
+        this.monitorListener = monitorListener;
+        this.editListener = editListener;
     }
 
     @NonNull
@@ -58,19 +74,33 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         private TextView tvAppName;
         private TextView tvRemainingTime;
         private TextView tvCasualCount;
+        private ToggleButton toggleMonitor;
 
         public AppCardViewHolder(@NonNull View itemView) {
             super(itemView);
             tvAppName = itemView.findViewById(R.id.tv_app_name);
             tvRemainingTime = itemView.findViewById(R.id.tv_remaining_time);
             tvCasualCount = itemView.findViewById(R.id.tv_casual_count);
+            toggleMonitor = itemView.findViewById(R.id.toggle_monitor);
 
+            // 卡片点击事件
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION && listener != null) {
                     listener.onAppCardClick(apps.get(position));
                 }
             });
+
+            // 监测开关点击事件
+            toggleMonitor.setOnClickListener(v -> {
+                int position = getAdapterPosition();
+                if (position != RecyclerView.NO_POSITION && monitorListener != null) {
+                    Object app = apps.get(position);
+                    boolean isEnabled = toggleMonitor.isChecked();
+                    monitorListener.onMonitorToggle(app, isEnabled);
+                }
+            });
+
         }
 
         public void bind(Object app) {
@@ -80,16 +110,19 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             
             String appName;
             int casualLimitCount;
+            String packageName;
             
             // 根据APP类型获取信息
             if (app instanceof Const.SupportedApp) {
                 Const.SupportedApp supportedApp = (Const.SupportedApp) app;
                 appName = supportedApp.getAppName();
                 casualLimitCount = supportedApp.getCasualLimitCount();
+                packageName = supportedApp.getPackageName();
             } else if (app instanceof Const.CustomApp) {
                 Const.CustomApp customApp = (Const.CustomApp) app;
                 appName = customApp.getAppName();
                 casualLimitCount = customApp.getCasualLimitCount();
+                packageName = customApp.getPackageName();
             } else {
                 return;
             }
@@ -97,6 +130,17 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             // 设置APP名称
             if (tvAppName != null) {
                 tvAppName.setText(appName);
+            }
+
+            // 设置监测开关状态
+            if (toggleMonitor != null) {
+                // 小红书默认开启，其他默认关闭
+                Boolean isEnabled = settingsManager.isAppMonitoringEnabled(packageName);
+                if (isEnabled == null) {
+                    // 如果还没有设置过，使用默认值
+                    isEnabled = "com.xingin.xhs".equals(packageName); // 小红书默认开启
+                }
+                toggleMonitor.setChecked(isEnabled);
             }
 
             // 设置剩余时长
@@ -121,7 +165,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             int remainingCount = Math.max(0, casualLimitCount - casualCount);
             
             if (tvCasualCount != null) {
-                tvCasualCount.setText("宽松剩余: " + remainingCount + "次");
+                tvCasualCount.setText("宽松模式剩余: " + remainingCount + "次");
             }
         }
     }

@@ -1004,6 +1004,11 @@ public class FloatingAccessibilityService extends AccessibilityService
         // 首先检查预定义的APP
         Const.SupportedApp supportedApp = Const.SupportedApp.getByPackageName(packageName);
         if (supportedApp != null) {
+            // 检查该APP的监测开关状态
+            if (!settingsManager.shouldMonitorApp(packageName)) {
+                Log.d(TAG, "APP " + supportedApp.getAppName() + " 监测已关闭，跳过检测");
+                return null;
+            }
             return supportedApp;
         }
         
@@ -1015,6 +1020,11 @@ public class FloatingAccessibilityService extends AccessibilityService
             
             for (Const.CustomApp customApp : customApps) {
                 if (customApp.getPackageName().equals(packageName)) {
+                    // 检查该APP的监测开关状态
+                    if (!settingsManager.shouldMonitorApp(packageName)) {
+                        Log.d(TAG, "自定义APP " + customApp.getAppName() + " 监测已关闭，跳过检测");
+                        return null;
+                    }
                     return customApp;
                 }
             }

@@ -25,7 +25,10 @@ import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.List;
 
-public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardClickListener {
+public class HomeFragment extends Fragment implements 
+    AppCardAdapter.OnAppCardClickListener,
+    AppCardAdapter.OnMonitorToggleListener,
+    AppCardAdapter.OnEditClickListener {
 
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
@@ -174,7 +177,7 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
             androidx.recyclerview.widget.GridLayoutManager layoutManager = 
                 new androidx.recyclerview.widget.GridLayoutManager(requireContext(), 2);
             rvAppCards.setLayoutManager(layoutManager);
-            appCardAdapter = new AppCardAdapter(allApps, settingsManager, this);
+            appCardAdapter = new AppCardAdapter(allApps, settingsManager, this, this, this);
             rvAppCards.setAdapter(appCardAdapter);
         }
     }
@@ -183,6 +186,46 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
     public void onAppCardClick(Object app) {
         // 显示APP设置弹窗
         showAppSettingsDialog(app);
+    }
+
+    @Override
+    public void onMonitorToggle(Object app, boolean isEnabled) {
+        // 处理监测开关状态变化
+        String packageName = getPackageName(app);
+        if (packageName != null) {
+            settingsManager.setAppMonitoringEnabled(packageName, isEnabled);
+            android.util.Log.d("HomeFragment", "监测开关状态改变: " + packageName + " = " + isEnabled);
+            
+            // 显示提示
+            String status = isEnabled ? "已开启监测" : "已关闭监测";
+            Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onEditClick(Object app) {
+        // 处理编辑图标点击
+        String appName = getAppName(app);
+        Toast.makeText(requireContext(), "编辑 " + appName, Toast.LENGTH_SHORT).show();
+        // TODO: 实现编辑功能
+    }
+
+    private String getPackageName(Object app) {
+        if (app instanceof Const.SupportedApp) {
+            return ((Const.SupportedApp) app).getPackageName();
+        } else if (app instanceof Const.CustomApp) {
+            return ((Const.CustomApp) app).getPackageName();
+        }
+        return null;
+    }
+
+    private String getAppName(Object app) {
+        if (app instanceof Const.SupportedApp) {
+            return ((Const.SupportedApp) app).getAppName();
+        } else if (app instanceof Const.CustomApp) {
+            return ((Const.CustomApp) app).getAppName();
+        }
+        return "未知APP";
     }
 
     private void showAppSettingsDialog(Object app) {
@@ -225,7 +268,7 @@ public class HomeFragment extends Fragment implements AppCardAdapter.OnAppCardCl
         }
         
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-            .setTitle(appName + " - 单次解禁时长")
+            .setTitle(appName)
             .setView(dialogView)
             .setNegativeButton("取消", null)
             .create();

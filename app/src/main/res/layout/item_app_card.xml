@@ -12,51 +12,65 @@
     app:cardUseCompatPadding="true"
     app:cardBackgroundColor="#FFFFFF">
 
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp"
-        android:gravity="center">
+        android:padding="8dp">
 
-        <TextView
-            android:id="@+id/tv_app_name"
-            android:layout_width="wrap_content"
+        <!-- 监测开关 - 右上角 -->
+        <ToggleButton
+            android:id="@+id/toggle_monitor"
+            android:layout_width="24dp"
+            android:layout_height="12dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentTop="true"
+            android:background="@drawable/toggle_switch_background"
+            android:textOff=""
+            android:textOn=""
+            android:checked="false" />
+
+        <!-- 主要内容区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="APP名称"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#333333"
-            android:gravity="center" />
+            android:layout_centerInParent="true"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="20dp">
 
-        <TextView
-            android:id="@+id/tv_remaining_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="剩余时长: 00:00"
-            android:textSize="12sp"
-            android:textColor="#666666"
-            android:gravity="center" />
+            <TextView
+                android:id="@+id/tv_app_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="APP名称"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#333333"
+                android:gravity="center" />
 
-        <TextView
-            android:id="@+id/tv_casual_count"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="宽松剩余: 3次"
-            android:textSize="12sp"
-            android:textColor="#666666"
-            android:gravity="center" />
+            <TextView
+                android:id="@+id/tv_remaining_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="剩余时长: 00:00"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:gravity="center" />
 
-        <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_marginTop="8dp"
-            android:src="@android:drawable/ic_menu_edit"
-            android:contentDescription="设置"
-            android:alpha="0.6" />
+            <TextView
+                android:id="@+id/tv_casual_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="宽松模式剩余: 3次"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:gravity="center" />
 
-    </LinearLayout>
+        </LinearLayout>
+
+    </RelativeLayout>
 
 </androidx.cardview.widget.CardView> 

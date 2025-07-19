@@ -596,7 +596,7 @@ public class SettingsDialogManager {
         if (countText != null) {
             int closeCount = settingsManager.getAppCasualCloseCount(app);
             int remainingCount = Math.max(0, app.getCasualLimitCount() - closeCount);
-            countText.setText("宽松剩余: " + remainingCount + "次");
+            countText.setText("宽松模式剩余: " + remainingCount + "次");
         }
     }
     
@@ -617,7 +617,7 @@ public class SettingsDialogManager {
             }
             
             int remainingCount = Math.max(0, casualLimitCount - closeCount);
-            countText.setText("宽松剩余: " + remainingCount + "次");
+            countText.setText("宽松模式剩余: " + remainingCount + "次");
         }
     }
 } 
