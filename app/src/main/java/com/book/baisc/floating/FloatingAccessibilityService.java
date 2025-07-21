@@ -252,12 +252,21 @@ public class FloatingAccessibilityService extends AccessibilityService
                 return;
             }
 
+            // 检查当前APP是否被手动隐藏
+            boolean appManuallyHidden = currentActiveApp != null ?
+                    Share.isAppManuallyHidden(currentActiveApp) : false;
+            String appName = getAppName(currentActiveApp);
+
+            if (appManuallyHidden) {
+                Log.d(TAG, "APP " + appName + " 被手动隐藏，跳过显示悬浮窗");
+                return;
+            }
+
             Log.d(TAG, "当前有活跃的APP，开始文本检测");
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             if (rootNode != null) {
 
                 String targetWord = getAppTargetWord(currentActiveApp);
-                String appName = getAppName(currentActiveApp);
 
                 long start = System.currentTimeMillis();
                 boolean hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
@@ -288,22 +297,14 @@ public class FloatingAccessibilityService extends AccessibilityService
                     }
 
                     if ("target".equals(currentInterface)) {
-                        // 检查当前APP是否被手动隐藏
-                        boolean appManuallyHidden = currentActiveApp != null ? 
-                            Share.isAppManuallyHidden(currentActiveApp) : false;
-                        
-                        Log.d(TAG, "检测到目标界面 - APP: " + appName + 
+                        Log.d(TAG, "检测到目标界面 - APP: " + appName +
                             ", 手动隐藏状态: " + appManuallyHidden + 
                             ", 悬浮窗可见: " + isFloatingWindowVisible + 
                             ", 强制检查: " + forceCheck);
                         
-                        if (!isFloatingWindowVisible && !appManuallyHidden) {
-                            Log.d(TAG, "显示悬浮窗 - APP: " + appName + 
-                                ", 手动隐藏: " + appManuallyHidden);
+                        if (!isFloatingWindowVisible) {
+                            Log.d(TAG, "显示悬浮窗 - APP: " + appName);
                             showFloatingWindow();
-                        } else if (appManuallyHidden) {
-                            Log.d(TAG, "APP " + appName + 
-                                " 被手动隐藏，跳过显示悬浮窗");
                         } else if (isFloatingWindowVisible) {
                             Log.d(TAG, "悬浮窗已显示，跳过重复显示");
                         }
@@ -385,7 +386,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                         boolean isCasualMode = settingsManager.isAppCasualMode(currentActiveApp);
                         Log.d(TAG, "APP " + appName + " 当前是否宽松模式: " + isCasualMode);
                         
-                        // 如果是宽松模式，使用一次后切换到严格模式
+                        // 如果是宽松模式，使用次数+1。
                         if (isCasualMode) {
                             int currentCount = settingsManager.getAppCasualCloseCount(currentActiveApp);
                             settingsManager.incrementAppCasualCloseCount(currentActiveApp);
@@ -400,7 +401,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                         }
                         hideFloatingWindow();
 
-                        // 根据当前APP的用户设置时间间隔自动重新显示
+                        // 根据当前APP的用户设置时间间隔 自动重新显示
                         if (appTimers.get(currentActiveApp) != null) {
                             autoShowHandler.removeCallbacks(appTimers.get(currentActiveApp));
                         }
@@ -408,8 +409,8 @@ public class FloatingAccessibilityService extends AccessibilityService
                         // 保存当前APP的引用，用于定时器回调
                         Object appForTimer = currentActiveApp;
 
-                        Runnable newAutoShowRunnable = () -> {
-                            Log.d(TAG, "自动重新显示悬浮窗");
+                        Runnable nextShowTask = () -> {
+                            Log.d(TAG, appForTimer + " 到达预期时间");
                             if (appForTimer != null) {
                                 boolean beforeState = Share.isAppManuallyHidden(appForTimer);
                                 String timerAppName = getAppName(appForTimer);
@@ -421,17 +422,16 @@ public class FloatingAccessibilityService extends AccessibilityService
                                 boolean afterState = Share.isAppManuallyHidden(appForTimer);
                                 Log.d(TAG, "解除APP " + timerAppName + " 的手动隐藏状态 - 设置后状态: " + afterState);
 
+                                // 如果是宽松模式，现在切换到严格模式
+                                if (settingsManager.isAppCasualMode(appForTimer)) {
+                                    settingsManager.setAppAutoShowInterval(appForTimer, settingsManager.getMaxDailyInterval());
+                                    Log.d(TAG, "APP " + timerAppName + " 宽松模式已切换到严格模式");
+                                }
+
                                 // 检查当前是否在该APP中，如果是则尝试显示悬浮窗
                                 if (currentActiveApp == appForTimer) {
                                     // 重新检测内容并显示悬浮窗
                                     Log.d(TAG, "开始重新检测内容 - APP: " + timerAppName);
-
-                                    // 如果是宽松模式，现在切换到严格模式
-                                    if (settingsManager.isAppCasualMode(appForTimer)) {
-                                        settingsManager.setAppAutoShowInterval(appForTimer, settingsManager.getMaxDailyInterval());
-                                        Log.d(TAG, "APP " + timerAppName + " 宽松模式已切换到严格模式");
-                                    }
-
                                     checkTextContentOptimized(true); // 使用强制检查模式
                                     Log.d(TAG, "自动重新显示悬浮窗 - 重新检测内容完成 - APP: " + timerAppName);
                                 } else {
@@ -444,8 +444,8 @@ public class FloatingAccessibilityService extends AccessibilityService
                         };
 
                         // 使用当前（宽松模式）的时间间隔安排下次显示
-                        autoShowHandler.postDelayed(newAutoShowRunnable, interval);
-                        appTimers.put(currentActiveApp, newAutoShowRunnable);
+                        autoShowHandler.postDelayed(nextShowTask, interval);
+                        appTimers.put(currentActiveApp, nextShowTask);
 
                         String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
                         Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗 (APP: " + appName + ")");

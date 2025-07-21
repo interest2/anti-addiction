@@ -1,6 +1,7 @@
 package com.book.baisc.ui;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -86,6 +87,42 @@ public class MainActivity extends AppCompatActivity {
                 android.util.Log.w("MainActivity", "云端文字获取失败: " + error);
             }
         });
+
+        resetCasualCount();
+    }
+
+    private void resetCasualCount() {
+        // 1. 获取当前日期
+        String currentDate = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(new java.util.Date());
+        SharedPreferences prefs = getSharedPreferences("casual_count_reset", MODE_PRIVATE);
+        String lastResetDate = prefs.getString("last_reset_date", "");
+
+// 2. 如果不是同一天，重置所有APP的宽松关闭次数为各自的最大值
+        if (!currentDate.equals(lastResetDate)) {
+            SettingsManager settingsManager = new SettingsManager(this);
+
+            // 预定义APP
+            for (Const.SupportedApp app : Const.SupportedApp.values()) {
+                int limitCount;
+                Integer customLimit = settingsManager.getCustomCasualLimitCount(app.getPackageName());
+                if (customLimit != null) {
+                    limitCount = customLimit;
+                } else {
+                    limitCount = app.getCasualLimitCount();
+                }
+                settingsManager.setAppCasualCloseCount(app, 0); // 这里应设置为0，见下说明
+                // 说明：set为0，UI显示剩余次数时用 limitCount - usedCount
+            }
+            // 自定义APP
+            CustomAppManager customAppManager = CustomAppManager.getInstance();
+            for (Const.CustomApp app : customAppManager.getCustomApps()) {
+                int limitCount = app.getCasualLimitCount();
+                settingsManager.setAppCasualCloseCount(app, 0); // 这里同理
+            }
+
+            // 记录本次重置日期
+            prefs.edit().putString("last_reset_date", currentDate).apply();
+        }
     }
 
     private void setupBottomNavigation() {
