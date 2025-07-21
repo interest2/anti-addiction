@@ -73,22 +73,12 @@ public class DeviceInfoReporter {
         // 基本设备信息
         deviceInfo.put("brand", Build.BRAND); // 品牌
         deviceInfo.put("model", Build.MODEL); // 型号
-        deviceInfo.put("manufacturer", Build.MANUFACTURER); // 制造商
         deviceInfo.put("device", Build.DEVICE); // 设备代号
 
         // 系统版本信息
         deviceInfo.put("androidVersion", Build.VERSION.RELEASE); // Android版本
         deviceInfo.put("sdkVersion", Build.VERSION.SDK_INT); // SDK版本
-        deviceInfo.put("buildId", Build.ID); // 构建ID
-        deviceInfo.put("buildTime", Build.TIME); // 构建时间
-        
-        // 硬件信息
-        deviceInfo.put("hardware", Build.HARDWARE); // 硬件信息
         deviceInfo.put("cpuAbi", Build.CPU_ABI); // CPU架构
-        
-        // 序列号（处理权限问题）
-        String serialNumber = getSerialNumber();
-        deviceInfo.put("serialNumber", serialNumber);
         
         // 唯一标识符
         String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);

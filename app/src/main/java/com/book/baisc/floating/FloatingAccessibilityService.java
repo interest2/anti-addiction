@@ -17,12 +17,8 @@ import android.widget.Toast;
 import android.widget.Button;
 import android.util.DisplayMetrics;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
@@ -560,7 +556,7 @@ public class FloatingAccessibilityService extends AccessibilityService
                 }
             }
             String targetDateStr = settingsManager.getTargetCompletionDate();
-            content = FloatHelper.calcDate(targetDateStr) + "\n" + content;
+            content = FloatHelper.hintDate(targetDateStr) + content;
             contentText.setText(content);
             Log.d(TAG, "悬浮窗内容已更新");
         }

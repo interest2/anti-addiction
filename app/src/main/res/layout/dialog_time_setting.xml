@@ -67,6 +67,7 @@
         android:textStyle="bold"
         android:layout_marginBottom="8dp" />
 
+    <!-- 宽松模式次数显示和编辑区域 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -74,28 +75,73 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="12dp">
 
-        <EditText
-            android:id="@+id/et_casual_limit_count"
+        <!-- 正常文本显示 -->
+        <LinearLayout
+            android:id="@+id/layout_casual_count_display"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp"
+            android:background="@android:drawable/edit_text">
+
+            <TextView
+                android:id="@+id/tv_casual_count_display"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="1"
+                android:textSize="14sp"
+                android:textColor="#333333" />
+
+            <ImageView
+                android:id="@+id/iv_edit_casual_count"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_menu_edit"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:padding="2dp"
+                android:contentDescription="编辑" />
+
+        </LinearLayout>
+
+        <!-- 输入框和保存按钮（默认隐藏） -->
+        <LinearLayout
+            android:id="@+id/layout_casual_count_edit"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="输入1-3的数字"
-            android:inputType="number"
-            android:maxLength="1"
-            android:padding="8dp"
-            android:textSize="14sp"
-            android:background="@android:drawable/edit_text"
-            android:layout_marginEnd="8dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
 
-        <Button
-            android:id="@+id/btn_save_casual_limit"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="保存"
-            android:textSize="12sp"
-            android:padding="8dp"
-            android:backgroundTint="#2196F3"
-            android:textColor="#FFFFFF" />
+            <EditText
+                android:id="@+id/et_casual_limit_count"
+                android:layout_width="40dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.6"
+                android:hint="输入1~3的数字"
+                android:inputType="number"
+                android:maxLength="1"
+                android:padding="8dp"
+                android:textSize="16sp"
+                android:background="@android:drawable/edit_text"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/iv_save_casual_count"
+                android:layout_width="40dp"
+                android:layout_height="24dp"
+                android:text="✅"
+                android:textSize="18sp"
+                android:textColor="#4CAF50"
+                android:gravity="center"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:padding="2dp"
+                android:contentDescription="保存" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

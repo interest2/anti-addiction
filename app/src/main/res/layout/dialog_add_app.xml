@@ -18,7 +18,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="添加后未必能成功，取决于目标APP是否支持文本检测。当然也可不管关键词，全局屏蔽，这有待后续版本优化"
+        android:text="少部分APP添加后未必成功，取决于目标APP是否支持文本检测。当然也可不检测关键词，直接全局屏蔽，这有待后续版本优化"
         android:textSize="14sp"
         android:textColor="#999999"
         android:gravity="start"

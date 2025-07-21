@@ -18,10 +18,7 @@ public class ExampleUnitTest {
     }
     @Test
     public void test(){
-        Random random = new Random();
-        for (int j = 0; j < 100; j++) {
-            System.out.println(random.nextInt(11));
-
-        }
+        String aa=null;
+        System.out.println(aa.isEmpty());
     }
 }

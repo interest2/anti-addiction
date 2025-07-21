@@ -11,7 +11,10 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.view.inputmethod.EditorInfo;
+import android.content.Context;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -248,8 +251,14 @@ public class HomeFragment extends Fragment implements
         
         Button strictModeButton = dialogView.findViewById(R.id.btn_strict_mode);
         Button casualModeButton = dialogView.findViewById(R.id.btn_casual_mode);
+        
+        // 新的UI组件
+        LinearLayout layoutCasualCountDisplay = dialogView.findViewById(R.id.layout_casual_count_display);
+        LinearLayout layoutCasualCountEdit = dialogView.findViewById(R.id.layout_casual_count_edit);
+        TextView tvCasualCountDisplay = dialogView.findViewById(R.id.tv_casual_count_display);
+        ImageView ivEditCasualCount = dialogView.findViewById(R.id.iv_edit_casual_count);
         EditText etCasualLimitCount = dialogView.findViewById(R.id.et_casual_limit_count);
-        Button btnSaveCasualLimit = dialogView.findViewById(R.id.btn_save_casual_limit);
+        TextView ivSaveCasualCount = dialogView.findViewById(R.id.iv_save_casual_count);
         
         // 获取APP信息
         String appName;
@@ -269,8 +278,8 @@ public class HomeFragment extends Fragment implements
             return;
         }
         
-        // 设置输入框的当前值
-        etCasualLimitCount.setText(String.valueOf(casualLimitCount));
+        // 设置显示文本的当前值
+        tvCasualCountDisplay.setText(String.valueOf(casualLimitCount));
         
         // 检查宽松模式剩余次数
         int casualCount = settingsManager.getAppCasualCloseCount(app);
@@ -289,8 +298,26 @@ public class HomeFragment extends Fragment implements
             .setNegativeButton("取消", null)
             .create();
         
-        // 设置保存按钮点击事件
-        btnSaveCasualLimit.setOnClickListener(v -> {
+        // 编辑图标点击事件
+        ivEditCasualCount.setOnClickListener(v -> {
+            // 隐藏显示布局，显示编辑布局
+            layoutCasualCountDisplay.setVisibility(View.GONE);
+            layoutCasualCountEdit.setVisibility(View.VISIBLE);
+            
+            // 设置输入框的当前值
+            etCasualLimitCount.setText(tvCasualCountDisplay.getText().toString());
+            etCasualLimitCount.requestFocus();
+            
+            // 显示软键盘
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
+                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.showSoftInput(etCasualLimitCount, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+            }
+        });
+        
+        // 保存图标点击事件
+        ivSaveCasualCount.setOnClickListener(v -> {
             String inputText = etCasualLimitCount.getText().toString().trim();
             if (inputText.isEmpty()) {
                 Toast.makeText(requireContext(), "请输入数字", Toast.LENGTH_SHORT).show();
@@ -303,6 +330,9 @@ public class HomeFragment extends Fragment implements
                     Toast.makeText(requireContext(), "请输入1-3之间的数字", Toast.LENGTH_SHORT).show();
                     return;
                 }
+                
+                // 更新显示文本
+                tvCasualCountDisplay.setText(String.valueOf(newLimitCount));
                 
                 // 更新APP的casualLimitCount
                 if (app instanceof Const.SupportedApp) {
@@ -323,9 +353,30 @@ public class HomeFragment extends Fragment implements
                     updateAppCardsDisplay();
                 }
                 
+                // 隐藏编辑布局，显示正常布局
+                layoutCasualCountEdit.setVisibility(View.GONE);
+                layoutCasualCountDisplay.setVisibility(View.VISIBLE);
+                
+                // 隐藏软键盘
+                android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
+                    requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(etCasualLimitCount.getWindowToken(), 0);
+                }
+                
             } catch (NumberFormatException e) {
                 Toast.makeText(requireContext(), "请输入有效的数字", Toast.LENGTH_SHORT).show();
             }
+        });
+        
+        // 输入框回车键保存
+        etCasualLimitCount.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || 
+                (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
+                ivSaveCasualCount.performClick();
+                return true;
+            }
+            return false;
         });
         
         // 设置按钮点击事件

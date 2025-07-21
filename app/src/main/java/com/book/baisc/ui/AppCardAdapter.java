@@ -167,7 +167,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             int remainingCount = Math.max(0, casualLimitCount - casualCount);
             
             if (tvCasualCount != null) {
-                tvCasualCount.setText("宽松模式剩余: " + remainingCount + "次");
+                tvCasualCount.setText("宽松剩余: " + remainingCount + "次");
             }
         }
     }

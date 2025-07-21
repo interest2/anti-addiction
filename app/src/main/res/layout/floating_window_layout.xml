@@ -22,9 +22,9 @@
             android:id="@+id/tv_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="防沉迷屏蔽"
+            android:text="防沉迷提醒"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:textSize="24sp"
             android:textStyle="bold" />
 
         <TextView
@@ -33,8 +33,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="小红书应用正在运行"
-            android:textColor="#CCCCCC"
-            android:textSize="14sp" />
+            android:textColor="#EEEEEE"
+            android:textSize="18sp" />
 
     </LinearLayout>
 

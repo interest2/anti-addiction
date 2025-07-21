@@ -318,7 +318,7 @@ public class SettingsDialogManager {
             // 构建弹窗内容
             StringBuilder content = new StringBuilder();
             content.append("• 本机当前安装的版本：").append(versionName).append("\n\n");
-            content.append("• 最新安装包下载地址（在网页上找到最新的 apk 文件下载，传到手机）：\n\n");
+            content.append("• 最新安装包下载地址（网页上选择最新的 app-release.apk 文件下载）：\n\n");
             content.append("https://github.com/interest2/anti-addiction/releases\n（无需登录，但页面未必能打开）\n\n");
             content.append("https://gitee.com/interest2/anti-addiction/releases\n（需登录，页面一般正常）");
 
@@ -591,7 +591,7 @@ public class SettingsDialogManager {
         if (countText != null) {
             int closeCount = settingsManager.getAppCasualCloseCount(app);
             int remainingCount = Math.max(0, app.getCasualLimitCount() - closeCount);
-            countText.setText("宽松模式剩余: " + remainingCount + "次");
+            countText.setText("宽松剩余: " + remainingCount + "次");
         }
     }
     
@@ -612,7 +612,7 @@ public class SettingsDialogManager {
             }
             
             int remainingCount = Math.max(0, casualLimitCount - closeCount);
-            countText.setText("宽松模式剩余: " + remainingCount + "次");
+            countText.setText("宽松剩余: " + remainingCount + "次");
         }
     }
 } 

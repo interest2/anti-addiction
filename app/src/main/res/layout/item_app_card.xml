@@ -64,7 +64,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="宽松模式剩余: 3次"
+                android:text="宽松剩余: 3次"
                 android:textSize="12sp"
                 android:textColor="#666666"
                 android:gravity="center" />

@@ -1,15 +1,11 @@
 package com.book.baisc.floating;
 
-import android.content.Intent;
 import android.util.Log;
 import android.view.accessibility.AccessibilityNodeInfo;
-
-import com.book.baisc.config.Const;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Locale;
 
 
@@ -45,7 +41,7 @@ public class FloatHelper {
         return false;
     }
 
-    static String calcDate(String targetDateStr){
+    static String hintDate(String targetDateStr){
         String dateHint = "";
         // 获取目标完成日期
 
@@ -92,6 +88,9 @@ public class FloatHelper {
             } catch (Exception e) {
                 Log.e(TAG, "计算剩余天数失败", e);
             }
+        }
+        if(!dateHint.isEmpty()){
+            dateHint = dateHint + "\n";
         }
         return dateHint;
     }
