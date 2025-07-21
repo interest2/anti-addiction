@@ -16,6 +16,7 @@ import java.util.Random;
 
 import com.book.baisc.R;
 import com.book.baisc.config.Const;
+import com.book.baisc.util.ContentUtils;
 
 /**
  * 数学题验证管理器
@@ -276,26 +277,26 @@ public class MathChallengeManager {
         
         switch (operationType) {
             case 0: // 加法 - 三位数
-                num1 = random.nextInt(900) + 100; // 100-999
-                num2 = random.nextInt(900) + 100; // 100-999
+                num1 = ContentUtils.customRandom(900) + 100; // 100-999
+                num2 = ContentUtils.customRandom(900) + 100; // 100-999
                 operator = "+";
                 currentAnswer = num1 + num2;
                 break;
             case 1: // 减法 - 三位数
-                num1 = random.nextInt(800) + 200; // 200-999
-                num2 = random.nextInt(num1 - 200) + 100;
+                num1 = ContentUtils.customRandom(800) + 200; // 200-999
+                num2 = ContentUtils.customRandom(num1 - 200) + 100;
                 operator = "-";
                 currentAnswer = num1 - num2;
                 break;
             case 2: // 乘法 - 30以内
-                num1 = random.nextInt(19) + 11; // 11-19
-                num2 = random.nextInt(19) + 11; // 11-19
+                num1 = ContentUtils.customRandom(19) + 11; // 11-19
+                num2 = ContentUtils.customRandom(19) + 11; // 11-19
                 operator = "×";
                 currentAnswer = num1 * num2;
                 break;
             default:
-                num1 = random.nextInt(900) + 100; // 100-999
-                num2 = random.nextInt(900) + 100; // 100-999
+                num1 = ContentUtils.customRandom(900) + 100; // 100-999
+                num2 = ContentUtils.customRandom(900) + 100; // 100-999
                 operator = "+";
                 currentAnswer = num1 + num2;
         }

@@ -26,6 +26,7 @@ import com.book.baisc.R;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.config.Const;
 import com.book.baisc.config.CustomAppManager;
+import com.book.baisc.util.ContentUtils;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.List;
@@ -503,44 +504,32 @@ public class HomeFragment extends Fragment implements
     private String generateMathQuestion() {
         Random random = new Random();
         int operationType = random.nextInt(3); // 0: 加, 1: 减, 2: 乘
+
         int num1, num2;
         String operator;
         switch (operationType) {
             case 0: // 加法 - 三位数
-                num1 = customRandom(99900) + 10000; // 100-999
-                num2 = customRandom(99900) + 10000; // 100-999
+                num1 = ContentUtils.customRandom(90000) + 10000; // 100-999
+                num2 = ContentUtils.customRandom(90000) + 10000; // 100-999
                 operator = "+";
                 break;
             case 1: // 减法 - 三位数
-                num1 = customRandom(99800) + 10000; // 200-999
-                num2 = customRandom(num1 - 200) + 10000;
+                num1 = ContentUtils.customRandom(90000) + 10000; // 200-999
+                num2 = ContentUtils.customRandom(num1 - 10000) + 10000;
                 operator = "-";
                 break;
             case 2: // 乘法 - 30以内
-                num1 = customRandom(9999) + 1000; // 11-19
-                num2 = customRandom(9999) + 1000; // 11-19
+                num1 = ContentUtils.customRandom(9999) + 1000; // 11-19
+                num2 = ContentUtils.customRandom(9999) + 1000; // 11-19
                 operator = "×";
                 break;
             default:
-                num1 = customRandom(99900) + 100; // 100-999
-                num2 = customRandom(99900) + 100; // 100-999
+                num1 = ContentUtils.customRandom(90000) + 10000; // 100-999
+                num2 = ContentUtils.customRandom(90000) + 10000; // 100-999
                 operator = "+";
         }
         return num1 + " " + operator + " " + num2 + " = ?";
     }
-
-    private int customRandom(int bound){
-        Random random = new Random();
-        int i = random.nextInt(bound);
-        if(i % 10 == 0){
-            i = random.nextInt(bound);
-            if(i % 10 == 0){
-                i = random.nextInt(bound);
-            }
-        }
-        return i;
-    }
-
 
     /**
      * 计算算术题答案

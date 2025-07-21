@@ -40,7 +40,7 @@
             android:hint="输入答案"
             android:inputType="numberSigned"
             android:imeOptions="actionDone"
-            android:maxLength="6"
+            android:maxLength="10"
             android:padding="12dp"
             android:textSize="16sp"
             android:background="@android:drawable/edit_text"
