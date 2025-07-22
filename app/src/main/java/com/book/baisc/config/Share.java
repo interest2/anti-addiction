@@ -72,13 +72,6 @@ public class Share {
     }
     
     /**
-     * 设置指定APP的手动隐藏状态
-     */
-    public static void setAppManuallyHidden(Const.SupportedApp app, boolean hidden) {
-        appManuallyHidden.put(app.getPackageName(), hidden);
-    }
-    
-    /**
      * 设置指定APP的手动隐藏状态 - 支持自定义APP
      */
     public static void setAppManuallyHidden(Object app, boolean hidden) {

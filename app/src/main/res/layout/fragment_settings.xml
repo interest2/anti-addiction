@@ -109,7 +109,7 @@
             android:id="@+id/btn_reset_floating_state"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="重置所有APP悬浮窗状态"
+            android:text="重置所有APP悬浮窗的显隐状态"
             android:backgroundTint="#E91E63"
             android:textColor="#FFFFFF"
             android:layout_margin="16dp"
