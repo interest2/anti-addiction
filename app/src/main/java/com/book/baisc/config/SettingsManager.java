@@ -27,6 +27,10 @@ public class SettingsManager {
     private static final String KEY_APP_LAST_CASUAL_CLOSE_DATE = "app_last_casual_close_date_";
     private static final String KEY_APP_LAST_CLOSE_TIME = "app_last_close_time_";
     private static final String KEY_APP_LAST_CLOSE_INTERVAL = "app_last_close_interval_";
+    
+    // 每个APP独立的悬浮窗警示文字来源相关
+    private static final String KEY_APP_HINT_SOURCE = "app_hint_source_";
+    private static final String KEY_APP_HINT_CUSTOM = "app_hint_custom_";
 
     // 激励语标签列表
     private static final String[] MOTIVATION_TAGS = {
@@ -752,5 +756,50 @@ public class SettingsManager {
             return Share.judgeEnabled(packageName); // 小红书默认开启
         }
         return isEnabled;
+    }
+
+    // ===== 悬浮窗警示文字来源相关方法 =====
+    
+    /**
+     * 设置指定APP的悬浮窗警示文字来源
+     */
+    public void setAppHintSource(String packageName, String source) {
+        prefs.edit().putString(KEY_APP_HINT_SOURCE + packageName, source).apply();
+        android.util.Log.d("SettingsManager", "设置APP " + packageName + " 悬浮窗警示文字来源: " + source);
+    }
+    
+    /**
+     * 获取指定APP的悬浮窗警示文字来源
+     */
+    public String getAppHintSource(String packageName) {
+        return prefs.getString(KEY_APP_HINT_SOURCE + packageName, Const.DEFAULT_HINT_SOURCE);
+    }
+    
+    /**
+     * 设置指定APP的自定义悬浮窗警示文字
+     */
+    public void setAppHintCustomText(String packageName, String customText) {
+        prefs.edit().putString(KEY_APP_HINT_CUSTOM + packageName, customText).apply();
+        android.util.Log.d("SettingsManager", "设置APP " + packageName + " 自定义悬浮窗警示文字: " + customText);
+    }
+    
+    /**
+     * 获取指定APP的自定义悬浮窗警示文字
+     */
+    public String getAppHintCustomText(String packageName) {
+        return prefs.getString(KEY_APP_HINT_CUSTOM + packageName, "");
+    }
+    
+    /**
+     * 获取指定APP当前应该使用的悬浮窗警示文字
+     */
+    public String getAppHintText(String packageName) {
+        String source = getAppHintSource(packageName);
+        if (Const.CUSTOM_HINT_SOURCE.equals(source)) {
+            return getAppHintCustomText(packageName);
+        } else {
+            // 大模型或其他来源，返回空字符串，由其他逻辑处理
+            return "";
+        }
     }
 } 

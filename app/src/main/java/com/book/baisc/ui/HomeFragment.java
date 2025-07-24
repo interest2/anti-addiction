@@ -19,7 +19,6 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.book.baisc.R;
@@ -393,8 +392,106 @@ public class HomeFragment extends Fragment implements
                 settingsDialogManager.showTimeSettingDialogForApp(app, false);
             }
         });
+
+        // 设置更换悬浮窗警示文字来源按钮点击事件
+        Button changeFloatingTextSourceButton = dialogView.findViewById(R.id.btn_change_floating_text_source);
+        changeFloatingTextSourceButton.setOnClickListener(v -> {
+            showFloatingTextSourceDialog(app);
+        });
         
         dialog.show();
+    }
+
+    /**
+     * 显示悬浮窗警示文字来源选择对话框（单选列表风格）
+     */
+    private void showFloatingTextSourceDialog(Object app) {
+        String packageName = getPackageName(app);
+        String currentSource = settingsManager.getAppHintSource(packageName);
+
+        String[] options = {Const.CUSTOM_HINT_SOURCE, Const.DEFAULT_HINT_SOURCE};
+        int checkedItem = 0;
+        for (int i = 0; i < options.length; i++) {
+            if (options[i].equals(currentSource)) {
+                checkedItem = i;
+                break;
+            }
+        }
+
+        new android.app.AlertDialog.Builder(requireContext())
+            .setTitle("选择悬浮窗警示文字来源")
+            .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
+                if (which == 0) {
+                    showCustomTextInputDialog(app);
+                } else if (which == 1) {
+                    recordFloatingTextSource(Const.DEFAULT_HINT_SOURCE, app);
+                    Toast.makeText(requireContext(), "已选择大模型作为悬浮窗警示文字来源", Toast.LENGTH_SHORT).show();
+                }
+                dialog.dismiss();
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+    
+    /**
+     * 显示自定义文字输入对话框
+     */
+    private void showCustomTextInputDialog(Object app) {
+        EditText input = new EditText(requireContext());
+        input.setHint("请输入自定义警示文字（不超过100字）");
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(100)});
+        
+        new android.app.AlertDialog.Builder(requireContext())
+            .setTitle("输入自定义警示文字")
+            .setView(input)
+            .setPositiveButton("确定", (dialog, which) -> {
+                String customText = input.getText().toString().trim();
+                if (!customText.isEmpty()) {
+                    // 记录到变量
+                    recordFloatingTextSource(Const.CUSTOM_HINT_SOURCE, customText, app);
+                    Toast.makeText(requireContext(), "自定义警示文字设置成功", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(requireContext(), "请输入内容", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
+    /**
+     * 记录悬浮窗警示文字来源
+     */
+    private void recordFloatingTextSource(String source, String customText, Object app) {
+        // 获取当前选中的APP包名
+        String currentAppPackage = getPackageName(app);
+        if (currentAppPackage == null) {
+            android.util.Log.e("HomeFragment", "无法获取当前选中的APP包名");
+            return;
+        }
+        
+        // 使用SettingsManager存储，为每个APP独立存储
+        settingsManager.setAppHintSource(currentAppPackage, source);
+        if (customText != null && !customText.isEmpty()) {
+            settingsManager.setAppHintCustomText(currentAppPackage, customText);
+        }
+        android.util.Log.d("HomeFragment", "APP " + currentAppPackage + " 悬浮窗警示文字来源已保存: " + source + ", 自定义文字: " + customText);
+    }
+    
+    /**
+     * 记录悬浮窗警示文字来源（重载方法，用于只有source参数的情况）
+     */
+    private void recordFloatingTextSource(String source, Object app) {
+        recordFloatingTextSource(source, null, app);
+    }
+
+    /**
+     * 获取当前选中的APP包名
+     */
+    private String getCurrentSelectedAppPackage() {
+        // 这里需要根据你的实际逻辑获取当前选中的APP包名
+        // 可能需要从全局变量、SharedPreferences或其他地方获取
+        // 暂时返回null，需要你补充具体的获取逻辑
+        return null;
     }
 
     /**

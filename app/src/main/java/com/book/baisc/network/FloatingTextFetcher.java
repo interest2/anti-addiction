@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.book.baisc.config.Const;
 import com.book.baisc.config.SettingsManager;
 
 public class FloatingTextFetcher {

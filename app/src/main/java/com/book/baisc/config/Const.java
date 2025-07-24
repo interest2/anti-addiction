@@ -9,6 +9,10 @@ public class Const {
 
     public static final long APP_STATE_CHECK_INTERVAL = 2000; // 2秒检查一次
 
+    public static final String DEFAULT_HINT_SOURCE = "大模型";
+    public static final String CUSTOM_HINT_SOURCE = "自定义";
+
+
     // 广播Action常量
     public static final String ACTION_UPDATE_CASUAL_COUNT = "com.book.baisc.ACTION_UPDATE_CASUAL_COUNT";
 

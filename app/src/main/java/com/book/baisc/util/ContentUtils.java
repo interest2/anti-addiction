@@ -8,10 +8,8 @@ public class ContentUtils {
         Random random = new Random();
         int i = random.nextInt(bound);
         if(i % 10 == 0){
-            i = random.nextInt(bound);
-            if(i % 10 == 0){
-                i = random.nextInt(bound);
-            }
+            // 逢 10 则加一个 [1, 9] 的随机数
+            i = i + 1 + random.nextInt(9);
         }
         return i;
     }

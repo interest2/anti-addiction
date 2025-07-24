@@ -497,7 +497,12 @@ public class FloatingAccessibilityService extends AccessibilityService
                 Share.isFloatingWindowVisible = false; // 同步状态
             }
             // 获取下次的文字
-            fetchNew();
+            String packageName = getAppPackageName(currentActiveApp);
+            String source = settingsManager.getAppHintSource(packageName);
+            // 自定义来源
+            if (Const.DEFAULT_HINT_SOURCE.equals(source)){
+                fetchNew();
+            }
         }
     }
 
@@ -528,8 +533,18 @@ public class FloatingAccessibilityService extends AccessibilityService
         if (contentText != null) {
             // 获取缓存的动态文字内容
             String dynamicText = "";
-            if (floatingTextFetcher != null) {
-                dynamicText = floatingTextFetcher.getCachedText();
+
+            String packageName = getAppPackageName(currentActiveApp);
+            String source = settingsManager.getAppHintSource(packageName);
+
+            // 自定义来源
+            if (Const.CUSTOM_HINT_SOURCE.equals(source)) {
+                dynamicText =  settingsManager.getAppHintCustomText(packageName);
+            } else {
+            // 大模型来源
+                if (floatingTextFetcher != null) {
+                    dynamicText = floatingTextFetcher.getCachedText();
+                }
             }
 
             // 显示动态文字和时间间隔信息
