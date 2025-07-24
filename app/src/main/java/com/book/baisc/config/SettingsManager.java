@@ -36,9 +36,7 @@ public class SettingsManager {
     private static final String[] MOTIVATION_TAGS = {
             "高考", "考研", "保研", "出国升学", "跳槽", "找工作", "考公务员"
     };
-    private static final String DEFAULT_MOTIVATION_TAG = "待设置";
-    private static final String DEFAULT_TARGET_DATE = "待设置";
-    
+
     // 悬浮窗位置默认值（像素）
     private static final int DEFAULT_TOP_OFFSET = 130;
     private static final int DEFAULT_BOTTOM_OFFSET = 230;
@@ -104,7 +102,7 @@ public class SettingsManager {
      * 获取激励语标签
      */
     public String getMotivationTag() {
-        return prefs.getString(KEY_MOTIVATION_TAG, DEFAULT_MOTIVATION_TAG);
+        return prefs.getString(KEY_MOTIVATION_TAG, Const.TARGET_TO_BE_SET);
     }
 
     /**
@@ -119,7 +117,7 @@ public class SettingsManager {
      * 获取目标完成日期
      */
     public String getTargetCompletionDate() {
-        return prefs.getString(KEY_TARGET_COMPLETION_DATE, DEFAULT_TARGET_DATE);
+        return prefs.getString(KEY_TARGET_COMPLETION_DATE, Const.TARGET_TO_BE_SET);
     }
 
     /**

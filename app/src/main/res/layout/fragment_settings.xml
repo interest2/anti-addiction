@@ -109,7 +109,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="悬浮窗未显示问题的解决"
+            android:text="悬浮窗到时间未显示问题，可尝试修复的按钮"
             android:textSize="18sp"
             android:textStyle="bold"
             android:layout_marginLeft="16dp"

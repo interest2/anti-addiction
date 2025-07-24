@@ -11,6 +11,7 @@ public class Const {
 
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";
+    public static final String TARGET_TO_BE_SET = "待设置";
 
 
     // 广播Action常量

@@ -307,7 +307,7 @@ public class SettingsDialogManager {
         datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis());
         
         // 如果当前有设置日期，解析并设置为当前选择
-        if (!"待设置".equals(currentDate) && !currentDate.isEmpty()) {
+        if (!Const.TARGET_TO_BE_SET.equals(currentDate) && !currentDate.isEmpty()) {
             try {
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault());
                 java.util.Date date = sdf.parse(currentDate);

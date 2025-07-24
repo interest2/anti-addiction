@@ -148,8 +148,7 @@ public class FloatingTextFetcher {
                     }
                     
                     String responseBody = response.toString();
-                    Log.d(TAG, "HTTP响应内容: " + responseBody);
-                    
+
                     // 解析响应
                     JSONObject jsonResponse = new JSONObject(responseBody);
                     

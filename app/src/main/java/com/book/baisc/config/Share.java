@@ -14,7 +14,8 @@ public class Share {
 
     public static boolean judgeEnabled(String packageName){
         return Const.SupportedApp.XHS.getPackageName().equals(packageName)
-                || Const.SupportedApp.ZHIHU.getPackageName().equals(packageName);
+                || Const.SupportedApp.ZHIHU.getPackageName().equals(packageName)
+                || Const.SupportedApp.DOUYIN.getPackageName().equals(packageName);
     }
 
     /**

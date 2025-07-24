@@ -3,6 +3,8 @@ package com.book.baisc.floating;
 import android.util.Log;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import com.book.baisc.config.Const;
+
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -46,7 +48,7 @@ public class FloatHelper {
         // 获取目标完成日期
 
         // 如果不是默认值，则计算剩余天数
-        if (!"待设置".equals(targetDateStr) && !targetDateStr.isEmpty()) {
+        if (!Const.TARGET_TO_BE_SET.equals(targetDateStr) && !targetDateStr.isEmpty()) {
             try {
                 // 解析目标日期
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
