@@ -29,7 +29,7 @@ import com.book.baisc.config.Share;
 import com.book.baisc.lifecycle.ServiceKeepAliveManager;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.network.DeviceInfoReporter;
-import com.book.baisc.network.FloatingTextFetcher;
+import com.book.baisc.network.TextFetcher;
 import android.content.Intent;
 
 /**
@@ -79,7 +79,7 @@ public class FloatingAccessibilityService extends AccessibilityService
     private DeviceInfoReporter deviceInfoReporter;
     
     // 悬浮窗文字获取器
-    private FloatingTextFetcher floatingTextFetcher;
+    private TextFetcher textFetcher;
 
     // 悬浮窗管理相关
     private WindowManager windowManager;
@@ -126,7 +126,7 @@ public class FloatingAccessibilityService extends AccessibilityService
         deviceInfoReporter.reportDeviceInfo();
         
         // 初始化悬浮窗文字获取器
-        floatingTextFetcher = new FloatingTextFetcher(this);
+        textFetcher = new TextFetcher(this);
         
         Log.d(TAG, "AccessibilityService 配置完成");
     }
@@ -513,8 +513,8 @@ public class FloatingAccessibilityService extends AccessibilityService
 
     private void fetchNew() {
         // 异步获取最新的动态文字内容
-        if (floatingTextFetcher != null) {
-            floatingTextFetcher.fetchLatestText(new FloatingTextFetcher.OnTextFetchListener() {
+        if (textFetcher != null) {
+            textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
                 @Override
                 public void onTextFetched(String text) {
                     Log.d(TAG, "获取到新的动态文字");
@@ -547,8 +547,8 @@ public class FloatingAccessibilityService extends AccessibilityService
                 dynamicText =  settingsManager.getAppHintCustomText(packageName);
             } else {
             // 大模型来源
-                if (floatingTextFetcher != null) {
-                    dynamicText = floatingTextFetcher.getCachedText();
+                if (textFetcher != null) {
+                    dynamicText = textFetcher.getCachedText();
                 }
             }
 
@@ -937,9 +937,9 @@ public class FloatingAccessibilityService extends AccessibilityService
         }
         
         // 清理悬浮窗文字获取器
-        if (floatingTextFetcher != null) {
-            floatingTextFetcher.cleanup();
-            floatingTextFetcher = null;
+        if (textFetcher != null) {
+            textFetcher.cleanup();
+            textFetcher = null;
         }
         
         // 清理多APP状态

@@ -20,16 +20,14 @@ import java.util.concurrent.Executors;
 
 import com.book.baisc.config.Const;
 import com.book.baisc.config.SettingsManager;
+import com.book.baisc.util.ContentUtils;
 
-public class FloatingTextFetcher {
+public class TextFetcher {
     
-    private static final String TAG = "FloatingTextFetcher";
+    private static final String TAG = "TextFetcher";
     private static final String PREF_NAME = "floating_text_cache";
     private static final String PREF_KEY_CACHED_TEXT = "cached_text";
     private static final String PREF_KEY_LAST_UPDATE = "last_update";
-    
-    // 配置接口地址
-    private static final String API_URL = "https://www.ratetend.com:5001/antiAddict/llm";
     
     private Context context;
     private ExecutorService executorService;
@@ -42,7 +40,7 @@ public class FloatingTextFetcher {
         void onFetchError(String error);
     }
     
-    public FloatingTextFetcher(Context context) {
+    public TextFetcher(Context context) {
         this.context = context;
         this.executorService = Executors.newSingleThreadExecutor();
         this.mainHandler = new Handler(Looper.getMainLooper());
@@ -111,79 +109,37 @@ public class FloatingTextFetcher {
      * 执行HTTP请求
      */
     private String performHttpRequest() {
-        HttpURLConnection connection = null;
         try {
             String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
             PackageManager pm = context.getPackageManager();
             PackageInfo packageInfo = pm.getPackageInfo(context.getPackageName(), 0);
-
-            Log.d(TAG, "信息："+packageInfo.versionName);
-
             String tag = settingsManager.getMotivationTag();
-            String encodedTag = URLEncoder.encode(tag, StandardCharsets.UTF_8.name());
-            URL url = new URL(API_URL + "?tag=" + encodedTag + "&devId=" + androidId + "&version=" + packageInfo.versionName);
-            connection = (HttpURLConnection) url.openConnection();
-            
-            // 设置请求方法和属性
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Accept", "application/json");
-            connection.setDoInput(true);
-            connection.setConnectTimeout(5000);
-            connection.setReadTimeout(10000);
-            
-            // GET请求不需要发送请求体，参数已在URL中
-            
-            // 获取响应
-            int responseCode = connection.getResponseCode();
-            Log.d(TAG, "HTTP响应码: " + responseCode);
-            
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                try (BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
-                    
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    
-                    String responseBody = response.toString();
+            String encodedTag = java.net.URLEncoder.encode(tag, java.nio.charset.StandardCharsets.UTF_8.name());
+            String url = Const.DOMAIN_URL + Const.LLM_PATH + "?tag=" + encodedTag + "&devId=" + androidId + "&version=" + packageInfo.versionName;
 
-                    // 解析响应
-                    JSONObject jsonResponse = new JSONObject(responseBody);
-                    
-                    // 检查status状态
-                    if (jsonResponse.has("status")) {
-                        int status = jsonResponse.getInt("status");
-                        if (status == 0) {
-                            // 从data字段提取文字内容
-                            String text = jsonResponse.optString("data", "");
-                            if (!text.isEmpty()) {
-                                return text;
-                            }
-                        } else {
-                            String msg = jsonResponse.optString("msg", "未知错误");
-                            Log.w(TAG, "服务器返回错误状态: " + status + ", 消息: " + msg);
-                        }
-                    } else {
-                        Log.w(TAG, "响应中缺少status字段");
+            String response = ContentUtils.doHttpPost(url, null, java.util.Collections.singletonMap("Accept", "application/json"));
+
+            if (response == null) return null;
+            org.json.JSONObject jsonResponse = new org.json.JSONObject(response);
+            if (jsonResponse.has("status")) {
+                int status = jsonResponse.getInt("status");
+                if (status == 0) {
+                    String text = jsonResponse.optString("data", "");
+                    if (!text.isEmpty()) {
+                        return text;
                     }
-                    
-                    Log.w(TAG, "响应格式无效或无文字内容");
-                    return null;
+                } else {
+                    String msg = jsonResponse.optString("msg", "未知错误");
+                    Log.w(TAG, "服务器返回错误状态: " + status + ", 消息: " + msg);
                 }
             } else {
-                Log.w(TAG, "HTTP请求失败，响应码: " + responseCode);
-                return null;
+                Log.w(TAG, "响应中缺少status字段");
             }
-            
+            Log.w(TAG, "响应格式无效或无文字内容");
+            return null;
         } catch (Exception e) {
             Log.e(TAG, "HTTP请求异常", e);
             return null;
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
     }
     

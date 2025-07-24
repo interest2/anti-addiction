@@ -13,6 +13,12 @@ public class Const {
     public static final String CUSTOM_HINT_SOURCE = "自定义";
     public static final String TARGET_TO_BE_SET = "待设置";
 
+    // 云端接口配置
+    public static final String DOMAIN_URL = "https://www.ratetend.com:5001/antiAddict"; // 请替换为实际的地址
+    public static final String LLM_PATH = "/llm";
+    public static final String REPORT_PATH = "/report";
+    public static final String LATEST_VERSION_PATH = "/latestAppVersion";
+    public static final String CONTENT_TYPE = "application/json";
 
     // 广播Action常量
     public static final String ACTION_UPDATE_CASUAL_COUNT = "com.book.baisc.ACTION_UPDATE_CASUAL_COUNT";

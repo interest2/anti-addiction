@@ -3,6 +3,7 @@ package com.book.baisc.ui;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,16 +26,19 @@ import com.book.baisc.R;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.config.Const;
 import com.book.baisc.config.CustomAppManager;
+import com.book.baisc.config.Share;
 import com.book.baisc.util.ContentUtils;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 
-public class HomeFragment extends Fragment implements 
+public class HomeNav extends Fragment implements
     AppCardAdapter.OnAppCardClickListener,
     AppCardAdapter.OnMonitorToggleListener,
     AppCardAdapter.OnEditClickListener {
+    private static final String TAG = "HomeNav";
 
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
@@ -58,7 +62,24 @@ public class HomeFragment extends Fragment implements
         settingsManager = new SettingsManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
         customAppManager = CustomAppManager.getInstance();
-        
+
+        // 设置页的云端最新版本获取
+        new Thread(() -> {
+            try {
+                String versionUrl = Const.DOMAIN_URL + Const.LATEST_VERSION_PATH;
+                String response = ContentUtils.doHttpPost(
+                        versionUrl,
+                        null,
+                        java.util.Collections.singletonMap("Content-Type", Const.CONTENT_TYPE)
+                );
+                Share.latestVersion = response;
+                Log.d(TAG, "版本接口响应: " + response);
+            } catch (IOException e) {
+                Log.e(TAG, "网络请求失败", e);
+                Share.latestVersion = "获取失败";
+            }
+        }).start();
+
         // 初始化APP列表
         updateAppList();
         
@@ -72,7 +93,7 @@ public class HomeFragment extends Fragment implements
         TextView tvDescription = view.findViewById(R.id.tv_description);
         if (tvDescription != null) {
             tvDescription.setText(android.text.Html.fromHtml(
-                "<b>功能</b>：打开支持的APP，悬浮窗会遮盖特定页面（如首页）。<br/>" +
+                "<b>功能</b>：悬浮窗遮盖APP推荐内容，但保留搜索等功能。<br/>" +
                 "<b>所需权限</b>：显示在其他应用的上层、无障碍服务、允许后台运行。"
             ));
         }

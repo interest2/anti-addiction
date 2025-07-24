@@ -249,13 +249,9 @@ public class SettingsDialogManager {
      */
     public void showLatestApkDialog() {
         try {
-            // 获取当前版本信息
-            String versionName = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName;
-            
             // 构建弹窗内容
             StringBuilder content = new StringBuilder();
-            content.append("• 本机当前安装的版本：").append(versionName).append("\n\n");
-            content.append("• 最新安装包下载地址（网页上选择最新的 app-release.apk 文件下载）：\n\n");
+            content.append("下面链接的网页上，选最新的 app-release.apk 文件下载：\n\n");
             content.append("https://github.com/interest2/anti-addiction/releases\n（无需登录，但页面未必能打开）\n\n");
             content.append("https://gitee.com/interest2/anti-addiction/releases\n（需登录，页面一般正常）");
 
@@ -276,6 +272,17 @@ public class SettingsDialogManager {
             android.util.Log.e("SettingsDialogManager", "获取版本信息失败", e);
             Toast.makeText(context, "获取版本信息失败", Toast.LENGTH_SHORT).show();
         }
+    }
+    
+    /**
+     * 显示版本信息弹窗（支持自定义两行小字）
+     */
+    public void showVersion(String statusText, String detailText) {
+        android.view.View dialogView = android.view.LayoutInflater.from(context).inflate(com.book.baisc.R.layout.dialog_version_info, null);
+        android.widget.TextView tvStatus = dialogView.findViewById(com.book.baisc.R.id.tv_version_status);
+        android.widget.TextView tvDetail = dialogView.findViewById(com.book.baisc.R.id.tv_version_detail);
+        tvStatus.setText(statusText);
+        tvDetail.setText(detailText);
     }
     
     /**

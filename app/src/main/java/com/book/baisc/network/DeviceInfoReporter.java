@@ -10,6 +10,9 @@ import android.util.Log;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
 
+import com.book.baisc.config.Const;
+import com.book.baisc.util.ContentUtils;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -31,9 +34,6 @@ public class DeviceInfoReporter {
     
     private static final String TAG = "DeviceInfoReporter";
     
-    // 云端接口配置
-    private static final String REPORT_URL = "https://www.ratetend.com:5001/antiAddict/report"; // 请替换为实际的接口地址
-    private static final String CONTENT_TYPE = "application/json";
     private static final int TIMEOUT_CONNECT = 10000; // 10秒连接超时
     private static final int TIMEOUT_READ = 15000; // 15秒读取超时
     
@@ -145,61 +145,18 @@ public class DeviceInfoReporter {
      * 发送设备信息到云端
      */
     private void sendDeviceInfo(JSONObject deviceInfo) throws IOException {
-        HttpURLConnection connection = null;
-        BufferedWriter writer = null;
-        BufferedReader reader = null;
-        
         try {
-            // 创建连接
-            URL url = new URL(REPORT_URL);
-            connection = (HttpURLConnection) url.openConnection();
-            
-            // 设置请求方法和属性
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", CONTENT_TYPE);
-            connection.setRequestProperty("User-Agent", "AndroidApp/" + getAppVersion());
-            connection.setConnectTimeout(TIMEOUT_CONNECT);
-            connection.setReadTimeout(TIMEOUT_READ);
-            connection.setDoOutput(true);
-            connection.setDoInput(true);
-            
-            // 发送数据
-            writer = new BufferedWriter(new OutputStreamWriter(connection.getOutputStream(), "UTF-8"));
-            writer.write(deviceInfo.toString());
-            writer.flush();
-            
-            // 读取响应
-            int responseCode = connection.getResponseCode();
-            Log.d(TAG, "HTTP响应码: " + responseCode);
-            
-            if (responseCode == HttpURLConnection.HTTP_OK) {
-                reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
-                StringBuilder response = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    response.append(line);
-                }
-                
-                Log.d(TAG, "设备信息上报成功: " + response.toString());
-                onReportSuccess(response.toString());
-            } else {
-                Log.w(TAG, "设备信息上报失败，响应码: " + responseCode);
-                onReportFailure("HTTP错误: " + responseCode);
-            }
-            
+            String response = ContentUtils.doHttpPost(
+                Const.DOMAIN_URL + Const.REPORT_PATH,
+                deviceInfo.toString(),
+                java.util.Collections.singletonMap("Content-Type", Const.CONTENT_TYPE)
+            );
+            Log.d(TAG, "设备信息上报响应: " + response);
+            onReportSuccess(response);
         } catch (IOException e) {
             Log.e(TAG, "网络请求失败", e);
             onReportFailure("网络异常: " + e.getMessage());
             throw e;
-        } finally {
-            // 关闭资源
-            try {
-                if (writer != null) writer.close();
-                if (reader != null) reader.close();
-                if (connection != null) connection.disconnect();
-            } catch (IOException e) {
-                Log.w(TAG, "关闭连接资源失败", e);
-            }
         }
     }
     

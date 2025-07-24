@@ -29,8 +29,7 @@ import com.book.baisc.floating.FloatingAccessibilityService;
 import com.book.baisc.lifecycle.AppLifecycleObserver;
 import com.book.baisc.network.DeviceInfoReporter;
 import com.book.baisc.config.SettingsManager;
-import com.book.baisc.network.FloatingTextFetcher;
-import com.book.baisc.ui.SettingsDialogManager;
+import com.book.baisc.network.TextFetcher;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
@@ -41,9 +40,9 @@ public class MainActivity extends AppCompatActivity {
     private DeviceInfoReporter deviceInfoReporter;
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
-    private HomeFragment homeFragment;
-    private GoalFragment goalFragment;
-    private SettingsFragment settingsFragment;
+    private HomeNav homeNav;
+    private GoalNav goalNav;
+    private SettingsNav settingsNav;
     private BroadcastReceiver casualCountUpdateReceiver;
 
     @Override
@@ -77,8 +76,8 @@ public class MainActivity extends AppCompatActivity {
         CustomAppManager.initialize(this);
 
         // 检查缓存并获取云端内容
-        FloatingTextFetcher fetcher = new FloatingTextFetcher(this);
-        fetcher.fetchLatestText(new FloatingTextFetcher.OnTextFetchListener() {
+        TextFetcher fetcher = new TextFetcher(this);
+        fetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
             @Override
             public void onTextFetched(String text) {
                 android.util.Log.d("MainActivity", "云端文字获取成功: " + text);
@@ -132,14 +131,14 @@ public class MainActivity extends AppCompatActivity {
         bottomNav.setOnNavigationItemSelectedListener(item -> {
             Fragment selectedFragment = null;
             if (item.getItemId() == R.id.navigation_home) {
-                if (homeFragment == null) homeFragment = new HomeFragment();
-                selectedFragment = homeFragment;
+                if (homeNav == null) homeNav = new HomeNav();
+                selectedFragment = homeNav;
             } else if (item.getItemId() == R.id.navigation_goal) {
-                if (goalFragment == null) goalFragment = new GoalFragment();
-                selectedFragment = goalFragment;
+                if (goalNav == null) goalNav = new GoalNav();
+                selectedFragment = goalNav;
             } else if (item.getItemId() == R.id.navigation_settings) {
-                if (settingsFragment == null) settingsFragment = new SettingsFragment();
-                selectedFragment = settingsFragment;
+                if (settingsNav == null) settingsNav = new SettingsNav();
+                selectedFragment = settingsNav;
             }
             if (selectedFragment != null) {
                 getSupportFragmentManager().beginTransaction()
@@ -149,9 +148,9 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
         // 默认显示首页
-        if (homeFragment == null) homeFragment = new HomeFragment();
+        if (homeNav == null) homeNav = new HomeNav();
         getSupportFragmentManager().beginTransaction()
-            .replace(R.id.fragment_container, homeFragment)
+            .replace(R.id.fragment_container, homeNav)
             .commit();
         bottomNav.setSelectedItemId(R.id.navigation_home);
     }
@@ -264,8 +263,8 @@ public class MainActivity extends AppCompatActivity {
             public void onReceive(Context context, Intent intent) {
                 if (Const.ACTION_UPDATE_CASUAL_COUNT.equals(intent.getAction())) {
                     // 通知HomeFragment更新APP卡片显示
-                    if (homeFragment != null) {
-                        homeFragment.updateAppCardsDisplay();
+                    if (homeNav != null) {
+                        homeNav.updateAppCardsDisplay();
                     }
                 }
             }

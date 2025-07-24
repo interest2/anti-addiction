@@ -1,19 +1,27 @@
 package com.book.baisc.ui;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.book.baisc.R;
+import com.book.baisc.config.Const;
 import com.book.baisc.config.SettingsManager;
+import com.book.baisc.config.Share;
+import com.book.baisc.util.ContentUtils;
 
-public class SettingsFragment extends Fragment {
+import java.io.IOException;
+
+public class SettingsNav extends Fragment {
+    private static final String TAG = "SettingsNav";
 
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
@@ -26,7 +34,33 @@ public class SettingsFragment extends Fragment {
         // 初始化设置管理器
         settingsManager = new SettingsManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
-        
+        settingsDialogManager.showVersion("aa", "bb");
+        setupLatestApkButton(view);
+
+        // 设置版本信息小字
+        TextView tvVersionStatus = view.findViewById(R.id.tv_version_status);
+        TextView tvVersionDetail = view.findViewById(R.id.tv_version_detail);
+
+        // 获取当前版本信息
+        String localVer = "";
+        try {
+            localVer = requireContext()
+                    .getPackageManager()
+                    .getPackageInfo(requireContext().getPackageName(), 0)
+                    .versionName;
+        } catch (Exception e) {
+            localVer = "未成功获取";
+        }
+
+        String remoteVer = Share.latestVersion;
+        boolean isLatest = localVer.equals(remoteVer);
+
+        String hintPrefix = "当前是否最新：";
+        String status = hintPrefix + (isLatest ? "是" : "否");
+        String detail = "本机当前：" + localVer + "，最新发布：" + remoteVer;
+        tvVersionStatus.setText(status);
+        tvVersionDetail.setText(detail);
+
         // 设置悬浮窗位置按钮
         setupFloatingPositionButton(view);
         // 设置重置所有APP悬浮窗状态按钮

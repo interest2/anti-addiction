@@ -15,7 +15,7 @@ import com.book.baisc.R;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.floating.FloatHelper;
 
-public class GoalFragment extends Fragment {
+public class GoalNav extends Fragment {
 
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;

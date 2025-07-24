@@ -8,83 +8,78 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="24dp">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <!-- 版本更新区域 -->
+        <TextView
+            android:id="@+id/tv_version_update_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="版本更新"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:id="@+id/tv_version_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="当前已是最新版本"
+            android:textSize="16sp"
+            android:layout_marginBottom="2dp"/>
+
+        <TextView
+            android:id="@+id/tv_version_detail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="本机当前1.0.0，云端最新1.0.1"
+            android:textSize="16sp"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btn_latest_apk"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingStart="32dp"
-            android:paddingEnd="32dp"
-            android:paddingTop="16dp"
-            android:paddingBottom="16dp">
+            android:text="最新安装包地址"
+            android:backgroundTint="#7C4DFF"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:layout_marginBottom="24dp" />
 
-            <TextView
-                android:id="@+id/tv_settings_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="设置"
-                android:layout_margin="16dp"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
 
-            <TextView
-                android:id="@+id/tv_app_info_subtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="应用信息"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tv_settings_title" />
+        <!-- 悬浮窗设置标题 -->
+        <TextView
+            android:id="@+id/tv_settings_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="悬浮窗设置"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
 
-            <Button
-                android:id="@+id/btn_latest_apk"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="最新安装包地址"
-                android:backgroundTint="#2196F3"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tv_app_info_subtitle" />
+        <!-- 悬浮窗设置按钮 -->
+        <Button
+            android:id="@+id/btn_floating_position"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="调整悬浮窗边缘位置"
+            android:backgroundTint="#FFA000"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:layout_marginBottom="32dp" />
 
-            <TextView
-                android:id="@+id/tv_floating_subtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="悬浮窗设置"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/btn_latest_apk" />
-
-            <Button
-                android:id="@+id/btn_floating_position"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="调整悬浮窗边缘位置"
-                android:backgroundTint="#FF9800"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tv_floating_subtitle" />
-
-        </androidx.constraintlayout.widget.ConstraintLayout>
-
+        <!-- 其它说明 -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="若悬浮窗到时间未显示，可尝试点击如下按钮"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginLeft="16dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/btn_latest_apk" />
+            android:text="若悬浮窗到时间未显示，可尝试点击下面的按钮"
+            android:textSize="14sp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
 
+        <!-- 重置按钮 -->
         <Button
             android:id="@+id/btn_reset_floating_state"
             android:layout_width="match_parent"
@@ -92,8 +87,8 @@
             android:text="重置所有APP悬浮窗状态"
             android:backgroundTint="#E91E63"
             android:textColor="#FFFFFF"
-            android:layout_margin="16dp"
-            android:layout_gravity="bottom" />
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp" />
 
     </LinearLayout>
 </ScrollView> 
