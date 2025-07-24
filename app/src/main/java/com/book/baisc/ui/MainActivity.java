@@ -42,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
     private HomeFragment homeFragment;
+    private GoalFragment goalFragment;
+    private SettingsFragment settingsFragment;
     private BroadcastReceiver casualCountUpdateReceiver;
 
     @Override
@@ -129,15 +131,16 @@ public class MainActivity extends AppCompatActivity {
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.setOnNavigationItemSelectedListener(item -> {
             Fragment selectedFragment = null;
-            if (item.getItemId() == R.id.nav_home) {
-                if (homeFragment == null) {
-                    homeFragment = new HomeFragment();
-                }
+            if (item.getItemId() == R.id.navigation_home) {
+                if (homeFragment == null) homeFragment = new HomeFragment();
                 selectedFragment = homeFragment;
-            } else if (item.getItemId() == R.id.nav_settings) {
-                selectedFragment = new SettingsFragment();
+            } else if (item.getItemId() == R.id.navigation_goal) {
+                if (goalFragment == null) goalFragment = new GoalFragment();
+                selectedFragment = goalFragment;
+            } else if (item.getItemId() == R.id.navigation_settings) {
+                if (settingsFragment == null) settingsFragment = new SettingsFragment();
+                selectedFragment = settingsFragment;
             }
-            
             if (selectedFragment != null) {
                 getSupportFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container, selectedFragment)
@@ -145,13 +148,12 @@ public class MainActivity extends AppCompatActivity {
             }
             return true;
         });
-        
         // 默认显示首页
-        homeFragment = new HomeFragment();
+        if (homeFragment == null) homeFragment = new HomeFragment();
         getSupportFragmentManager().beginTransaction()
             .replace(R.id.fragment_container, homeFragment)
             .commit();
-        bottomNav.setSelectedItemId(R.id.nav_home);
+        bottomNav.setSelectedItemId(R.id.navigation_home);
     }
 
     private void checkAndRequestPermissions() {

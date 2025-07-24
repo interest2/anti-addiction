@@ -43,7 +43,7 @@ public class FloatHelper {
         return false;
     }
 
-    static String hintDate(String targetDateStr){
+    public static String hintDate(String targetDateStr){
         String dateHint = "";
         // 获取目标完成日期
 

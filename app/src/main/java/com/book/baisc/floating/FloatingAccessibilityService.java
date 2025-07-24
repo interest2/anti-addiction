@@ -838,7 +838,8 @@ public class FloatingAccessibilityService extends AccessibilityService
                 
                 // 检测当前是否是支持的APP（包括预定义和自定义）
                 Object detectedApp = detectSupportedApp(currentPackage);
-                
+                Log.d(TAG, "detectedApp 包名： " + currentPackage);
+
                 // 多APP状态检测
                 if (detectedApp != null) {
                     if (detectedApp != currentActiveApp) {

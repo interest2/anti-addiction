@@ -27,29 +27,17 @@ public class SettingsFragment extends Fragment {
         settingsManager = new SettingsManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
         
-        // 设置最新安装包地址按钮
-        setupLatestApkButton(view);
-        
         // 设置悬浮窗位置按钮
         setupFloatingPositionButton(view);
-        
-        // 设置目标设置按钮
-        setupGoalSettingButtons(view);
-        
-        // 更新UI状态
-        updateGoalButtonTexts(view);
-
         // 设置重置所有APP悬浮窗状态按钮
         Button resetFloatingStateButton = view.findViewById(R.id.btn_reset_floating_state);
         resetFloatingStateButton.setOnClickListener(v -> {
-            // 将Share.appManuallyHidden所有key的value设为false
             java.util.Set<String> keys = com.book.baisc.config.Share.appManuallyHidden.keySet();
             for (String key : keys) {
                 com.book.baisc.config.Share.appManuallyHidden.put(key, false);
             }
             android.widget.Toast.makeText(requireContext(), "所有APP悬浮窗状态已重置", android.widget.Toast.LENGTH_SHORT).show();
         });
-        
         return view;
     }
 

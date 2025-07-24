@@ -31,37 +31,6 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
-                android:id="@+id/tv_goal_subtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:text="目标设置"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tv_settings_title" />
-
-            <Button
-                android:id="@+id/btn_tag_setting"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="选择或自定义目标"
-                android:backgroundTint="#4CAF50"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tv_goal_subtitle" />
-
-            <Button
-                android:id="@+id/btn_target_date_setting"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="完成日期"
-                android:backgroundTint="#FF9800"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/btn_tag_setting" />
-
-            <TextView
                 android:id="@+id/tv_app_info_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -70,7 +39,7 @@
                 android:textSize="18sp"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/btn_target_date_setting" />
+                app:layout_constraintTop_toBottomOf="@id/tv_settings_title" />
 
             <Button
                 android:id="@+id/btn_latest_apk"
@@ -105,27 +74,15 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="悬浮窗到时间未显示问题，可尝试修复的按钮"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginLeft="16dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/btn_latest_apk" />
-
         <Button
             android:id="@+id/btn_reset_floating_state"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="重置所有APP悬浮窗的显隐状态"
+            android:text="重置所有APP悬浮窗状态"
             android:backgroundTint="#E91E63"
             android:textColor="#FFFFFF"
             android:layout_margin="16dp"
             android:layout_gravity="bottom" />
 
     </LinearLayout>
-
 </ScrollView> 
