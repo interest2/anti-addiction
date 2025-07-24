@@ -270,10 +270,11 @@ public class SettingsManager {
      */
     public int getAppAutoShowInterval(Object app) {
         String packageName = getPackageName(app);
-        if (packageName == null) return dailyIntervalArray[0];
+        int defaultIndex = 1;
+        if (packageName == null) return dailyIntervalArray[defaultIndex];
         
         String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
-        return prefs.getInt(key, dailyIntervalArray[0]);
+        return prefs.getInt(key, dailyIntervalArray[defaultIndex]);
     }
     
     /**
