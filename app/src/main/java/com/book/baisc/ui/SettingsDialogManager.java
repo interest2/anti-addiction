@@ -191,7 +191,7 @@ public class SettingsDialogManager {
     /**
      * 显示标签设置对话框
      */
-    public void showTagSettingDialog() {
+    public void showTagSettingDialog(Runnable onSettingChanged) {
         final String[] predefinedTags = SettingsManager.getAvailableTags();
         final String customTagOption = "自定义...";
 
@@ -205,13 +205,14 @@ public class SettingsDialogManager {
                 .setItems(dialogOptions, (dialog, which) -> {
                     if (which == predefinedTags.length) {
                         // 点击了"自定义..."
-                        showCustomTagInputDialog();
+                        showCustomTagInputDialog(onSettingChanged);
                     } else {
                         // 点击了预设标签
                         String selectedTag = dialogOptions[which];
                         settingsManager.setMotivationTag(selectedTag);
                         Toast.makeText(context, "已设置为: " + selectedTag, Toast.LENGTH_SHORT).show();
                     }
+                    if (onSettingChanged != null) onSettingChanged.run();
                 })
                 .setNegativeButton("取消", null)
                 .show();
@@ -220,7 +221,7 @@ public class SettingsDialogManager {
     /**
      * 显示自定义标签输入对话框
      */
-    public void showCustomTagInputDialog() {
+    public void showCustomTagInputDialog(Runnable onSettingChanged) {
         final EditText input = new EditText(context);
         // 设置输入长度限制为8
         input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(10) });
@@ -237,6 +238,7 @@ public class SettingsDialogManager {
                     settingsManager.setMotivationTag(customTag);
                     Toast.makeText(context, "已设置为: " + customTag, Toast.LENGTH_SHORT).show();
                 }
+                if (onSettingChanged != null) onSettingChanged.run();
             })
             .setNegativeButton("取消", null)
                .show();
@@ -279,7 +281,7 @@ public class SettingsDialogManager {
     /**
      * 显示目标完成日期选择对话框
      */
-    public void showTargetDateSettingDialog() {
+    public void showTargetDateSettingDialog(Runnable onSettingChanged) {
         // 获取当前设置的日期
         String currentDate = settingsManager.getTargetCompletionDate();
         
@@ -294,8 +296,7 @@ public class SettingsDialogManager {
                 
                 // 通知设置页面更新按钮文本（如果当前在设置页面）
                 if (context instanceof MainActivity) {
-                    // 可以通过广播或其他方式通知设置页面更新
-                    android.util.Log.d("SettingsDialogManager", "目标日期已更新，需要刷新设置页面");
+                    if (onSettingChanged != null) onSettingChanged.run();
                 }
             },
             java.util.Calendar.getInstance().get(java.util.Calendar.YEAR),

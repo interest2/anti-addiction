@@ -55,14 +55,6 @@ public class SettingsFragment extends Fragment {
         });
     }
     
-    private void setupGoalSettingButtons(View view) {
-        Button tagButton = view.findViewById(R.id.btn_tag_setting);
-        tagButton.setOnClickListener(v -> settingsDialogManager.showTagSettingDialog());
-        
-        Button targetDateButton = view.findViewById(R.id.btn_target_date_setting);
-        targetDateButton.setOnClickListener(v -> settingsDialogManager.showTargetDateSettingDialog());
-    }
-    
     private void updateGoalButtonTexts(View view) {
         Button tagButton = view.findViewById(R.id.btn_tag_setting);
         settingsDialogManager.updateTagButtonText(tagButton);

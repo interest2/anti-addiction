@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">防沉迷提醒</string>
-    <string name="accessibility_service_description">用于检测小红书应用状态的无障碍服务</string>
+    <string name="accessibility_service_description">用于检测APP是否在首页状态的无障碍服务</string>
 </resources>

@@ -19,7 +19,7 @@ public class GoalFragment extends Fragment {
 
     private SettingsManager settingsManager;
     private SettingsDialogManager settingsDialogManager;
-    private TextView tvGoalCountdown, tvGoalMotivation;
+    private TextView tvGoalCountdown;
     private Button btnTagSetting, btnTargetDateSetting;
 
     @Nullable
@@ -30,14 +30,15 @@ public class GoalFragment extends Fragment {
         settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
 
         tvGoalCountdown = view.findViewById(R.id.tv_goal_countdown);
-        tvGoalMotivation = view.findViewById(R.id.tv_goal_motivation);
         btnTagSetting = view.findViewById(R.id.btn_tag_setting);
         btnTargetDateSetting = view.findViewById(R.id.btn_target_date_setting);
 
-        btnTagSetting.setOnClickListener(v -> settingsDialogManager.showTagSettingDialog());
-        btnTargetDateSetting.setOnClickListener(v -> settingsDialogManager.showTargetDateSettingDialog());
-
-        updateGoalInfo();
+        btnTagSetting.setOnClickListener(v -> {
+            settingsDialogManager.showTagSettingDialog(this::updateGoalInfo);
+        });
+        btnTargetDateSetting.setOnClickListener(v -> {
+            settingsDialogManager.showTargetDateSettingDialog(this::updateGoalInfo);
+        });
         return view;
     }
 
@@ -48,12 +49,14 @@ public class GoalFragment extends Fragment {
     }
 
     private void updateGoalInfo() {
+        // 目标标签
+        String tag = settingsManager.getMotivationTag();
+        btnTagSetting.setText(tag == null || tag.isEmpty() ? "目标标签设置" : tag);
+        // 目标日期
+        String date = settingsManager.getTargetCompletionDate();
+        btnTargetDateSetting.setText((date == null || date.isEmpty() || "待设置".equals(date)) ? "目标日期" : date);
         // 倒计时
-        String targetDate = settingsManager.getTargetCompletionDate();
-        String countdown = FloatHelper.hintDate(targetDate);
+        String countdown = FloatHelper.hintDate(date);
         tvGoalCountdown.setText(countdown.isEmpty() ? "距离目标：--天" : countdown);
-        // 激励语
-        String motivation = settingsManager.getMotivationTag();
-        tvGoalMotivation.setText("激励语：" + (motivation == null ? "--" : motivation));
     }
 } 

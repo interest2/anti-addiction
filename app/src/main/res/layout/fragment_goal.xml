@@ -12,8 +12,9 @@
 
         <TextView
             android:id="@+id/tv_goal_title"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center"
             android:text="目标设置"
             android:textSize="22sp"
             android:textStyle="bold"
@@ -23,13 +24,15 @@
             android:id="@+id/btn_tag_setting"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="目标标签设置" />
+            android:backgroundTint="#FF9800"
+            android:text="目标设置" />
 
         <Button
             android:id="@+id/btn_target_date_setting"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="目标日期设置"
+            android:backgroundTint="#2196F3"
+            android:text="目标日期"
             android:layout_marginTop="12dp" />
 
         <TextView
@@ -40,15 +43,6 @@
             android:textSize="18sp"
             android:textColor="#E91E63"
             android:layout_marginTop="24dp"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:id="@+id/tv_goal_motivation"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="激励语：--"
-            android:textSize="16sp"
-            android:textColor="#333333"
             android:layout_marginBottom="8dp" />
 
     </LinearLayout>

@@ -136,7 +136,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
 
             // 设置监测开关状态
             if (toggleMonitor != null) {
-                // 小红书默认开启，其他默认关闭
+                // 部分默认开启，其他默认关闭
                 Boolean isEnabled = settingsManager.isAppMonitoringEnabled(packageName);
                 if (isEnabled == null) {
                     // 如果还没有设置过，使用默认值
