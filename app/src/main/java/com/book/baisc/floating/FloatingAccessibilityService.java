@@ -252,6 +252,11 @@ public class FloatingAccessibilityService extends AccessibilityService
                 return;
             }
 
+            if(mathChallengeManager != null && mathChallengeManager.isMathChallengeActive()){
+                Log.d(TAG, "数学题正展示，停止检测");
+                return;
+            }
+
             // 检查当前APP是否被手动隐藏
             boolean appManuallyHidden = currentActiveApp != null ?
                     Share.isAppManuallyHidden(currentActiveApp) : false;
