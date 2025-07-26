@@ -31,7 +31,7 @@ public class MathChallengeManager {
     private WindowManager windowManager;
     private WindowManager.LayoutParams layoutParams;
     private Handler handler;
-    private FloatingAccessibilityService accessibilityService;
+    private FloatService accessibilityService;
     private Object currentApp; // 当前APP（支持预定义和自定义APP）
     
     // 数学题相关
@@ -49,7 +49,7 @@ public class MathChallengeManager {
     
     public MathChallengeManager(Context context, View floatingView, 
                                WindowManager windowManager, WindowManager.LayoutParams layoutParams,
-                               Handler handler, FloatingAccessibilityService accessibilityService) {
+                               Handler handler, FloatService accessibilityService) {
         this.context = context;
         this.floatingView = floatingView;
         this.windowManager = windowManager;

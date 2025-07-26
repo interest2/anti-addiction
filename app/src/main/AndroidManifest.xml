@@ -39,7 +39,7 @@
         
         <!-- 无障碍服务 (已集成悬浮窗管理) -->
         <service
-            android:name=".floating.FloatingAccessibilityService"
+            android:name=".floating.FloatService"
             android:exported="false"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>

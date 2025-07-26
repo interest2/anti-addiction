@@ -25,7 +25,7 @@ import java.util.List;
 import com.book.baisc.R;
 import com.book.baisc.config.Const;
 import com.book.baisc.config.CustomAppManager;
-import com.book.baisc.floating.FloatingAccessibilityService;
+import com.book.baisc.floating.FloatService;
 import com.book.baisc.lifecycle.AppLifecycleObserver;
 import com.book.baisc.network.DeviceInfoReporter;
 import com.book.baisc.config.SettingsManager;
@@ -190,7 +190,7 @@ public class MainActivity extends AppCompatActivity {
         List<AccessibilityServiceInfo> accessibilityServices = accessibilityManager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
         
         for (AccessibilityServiceInfo info : accessibilityServices) {
-            if (info.getId().equals(getPackageName() + "/" + FloatingAccessibilityService.class.getName())) {
+            if (info.getId().equals(getPackageName() + "/" + FloatService.class.getName())) {
                 return true;
             }
         }
@@ -202,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
             android.util.Log.d("MainActivity", "系统启用的无障碍服务: " + enabledServices);
             
             if (enabledServices != null) {
-                String ourService = getPackageName() + "/" + FloatingAccessibilityService.class.getName();
+                String ourService = getPackageName() + "/" + FloatService.class.getName();
                 boolean found = enabledServices.contains(ourService);
                 android.util.Log.d("MainActivity", "在系统设置中查找 " + ourService + ": " + found);
                 return found;

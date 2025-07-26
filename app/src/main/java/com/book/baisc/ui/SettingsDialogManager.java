@@ -9,7 +9,7 @@ import android.widget.Toast;
 
 import com.book.baisc.config.Const;
 import com.book.baisc.config.SettingsManager;
-import com.book.baisc.floating.FloatingAccessibilityService;
+import com.book.baisc.floating.FloatService;
 
 /**
  * 设置对话框管理器
@@ -137,7 +137,7 @@ public class SettingsDialogManager {
                 android.util.Log.d("SettingsDialog", "APP " + packageName + " 今日宽松模式关闭次数: " + casualCount);
                 
                 // 通知服务配置已更改
-                FloatingAccessibilityService.notifyIntervalChanged();
+                FloatService.notifyIntervalChanged();
                        
                 // 显示提示信息
                 showIntervalExplanation(selectedInterval);
@@ -273,18 +273,7 @@ public class SettingsDialogManager {
             Toast.makeText(context, "获取版本信息失败", Toast.LENGTH_SHORT).show();
         }
     }
-    
-    /**
-     * 显示版本信息弹窗（支持自定义两行小字）
-     */
-    public void showVersion(String statusText, String detailText) {
-        android.view.View dialogView = android.view.LayoutInflater.from(context).inflate(com.book.baisc.R.layout.dialog_version_info, null);
-        android.widget.TextView tvStatus = dialogView.findViewById(com.book.baisc.R.id.tv_version_status);
-        android.widget.TextView tvDetail = dialogView.findViewById(com.book.baisc.R.id.tv_version_detail);
-        tvStatus.setText(statusText);
-        tvDetail.setText(detailText);
-    }
-    
+
     /**
      * 显示目标完成日期选择对话框
      */

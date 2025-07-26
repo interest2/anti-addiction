@@ -9,7 +9,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.book.baisc.config.Const;
-import com.book.baisc.floating.FloatingAccessibilityService;
+import com.book.baisc.floating.FloatService;
 
 public class ServiceKeepAliveManager {
     
@@ -85,7 +85,7 @@ public class ServiceKeepAliveManager {
     
     private void handleUserPresent() {
         handler.postDelayed(() -> {
-            if (!FloatingAccessibilityService.isServiceRunning()) {
+            if (!FloatService.isServiceRunning()) {
                 Log.w(TAG, "检测到AccessibilityService未运行，尝试恢复");
                 if (listener != null) {
                     listener.onServiceNeedRestart();
@@ -110,7 +110,7 @@ public class ServiceKeepAliveManager {
         Runnable checkRunnable = new Runnable() {
             @Override
             public void run() {
-                if (!FloatingAccessibilityService.isServiceRunning()) {
+                if (!FloatService.isServiceRunning()) {
                     Log.w(TAG, "定期检查发现AccessibilityService未运行");
                     if (listener != null) {
                         listener.onServiceNeedRestart();

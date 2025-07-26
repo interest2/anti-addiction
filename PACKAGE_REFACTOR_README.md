@@ -66,7 +66,7 @@ mkdir -p app/src/main/java/com/book/baisc/{ui,accessibility,service,settings,net
 ```java
 // MainActivity 中的 import 更新
 
-import com.book.baisc.floating.FloatingAccessibilityService;
+import com.book.baisc.floating.FloatService;
 import com.book.baisc.lifecycle.AppLifecycleObserver;
 
 // FloatingAccessibilityService 中的 import 更新
@@ -134,7 +134,7 @@ graph TD
 // 正确方式
 
 import com.book.baisc.config.SettingsManager;
-import com.book.baisc.floating.FloatingAccessibilityService;
+import com.book.baisc.floating.FloatService;
 
 // 避免使用 * 导入
 import com.book.baisc.floating.*;

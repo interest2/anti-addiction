@@ -350,7 +350,7 @@ public class SettingsManager {
     private void triggerImmediateFloatingWindowCheck(Const.SupportedApp app) {
         try {
             // 通过静态方法通知无障碍服务
-            Class<?> serviceClass = Class.forName("com.book.baisc.floating.FloatingAccessibilityService");
+            Class<?> serviceClass = Class.forName("com.book.baisc.floating.FloatService");
             java.lang.reflect.Method method = serviceClass.getMethod("triggerImmediateCheck", Const.SupportedApp.class);
             method.invoke(null, app);
             android.util.Log.d("SettingsManager", "  已通知无障碍服务立即检查APP " + app.name());
@@ -365,7 +365,7 @@ public class SettingsManager {
     private void triggerImmediateFloatingWindowCheck(Object app) {
         try {
             // 通过静态方法通知无障碍服务
-            Class<?> serviceClass = Class.forName("com.book.baisc.floating.FloatingAccessibilityService");
+            Class<?> serviceClass = Class.forName("com.book.baisc.floating.FloatService");
             java.lang.reflect.Method method = serviceClass.getMethod("triggerImmediateCheck", Object.class);
             method.invoke(null, app);
             String packageName = getPackageName(app);
