@@ -313,21 +313,6 @@ public class SettingsManager {
     }
     
     /**
-     * 触发立即检查是否需要显示悬浮窗
-     */
-    private void triggerImmediateFloatingWindowCheck(Const.SupportedApp app) {
-        try {
-            // 通过静态方法通知无障碍服务
-            Class<?> serviceClass = Class.forName("com.book.baisc.floating.FloatService");
-            java.lang.reflect.Method method = serviceClass.getMethod("triggerImmediateCheck", Const.SupportedApp.class);
-            method.invoke(null, app);
-            android.util.Log.d("SettingsManager", "  已通知无障碍服务立即检查APP " + app.name());
-        } catch (Exception e) {
-            android.util.Log.w("SettingsManager", "  无法通知无障碍服务: " + e.getMessage());
-        }
-    }
-    
-    /**
      * 触发立即检查是否需要显示悬浮窗 - 支持自定义APP
      */
     private void triggerImmediateFloatingWindowCheck(Object app) {
@@ -344,32 +329,12 @@ public class SettingsManager {
     }
     
     /**
-     * 获取指定APP的自动显示间隔（毫秒）
-     */
-    public long getAppAutoShowIntervalMillis(Const.SupportedApp app) {
-        return getAppAutoShowInterval(app) * 1000L;
-    }
-    
-    /**
      * 获取指定APP的自动显示间隔（毫秒）- 支持自定义APP
      */
     public long getAppAutoShowIntervalMillis(Object app) {
         return getAppAutoShowInterval(app) * 1000L;
     }
-    
-    /**
-     * 判断指定APP当前是否是休闲版模式
-     */
-    public boolean isAppCasualMode(Const.SupportedApp app) {
-        int currentInterval = getAppAutoShowInterval(app);
-        for (int interval : casualIntervalArray) {
-            if (interval == currentInterval) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
+
     /**
      * 判断指定APP当前是否是休闲版模式 - 支持自定义APP
      */
@@ -382,34 +347,7 @@ public class SettingsManager {
         }
         return false;
     }
-    
-    /**
-     * 增加指定APP的休闲版关闭次数，并处理每日重置
-     */
-    public void incrementAppCasualCloseCount(Const.SupportedApp app) {
-        String currentDate = getCurrentDate();
-        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + app.name();
-        String dateKey = KEY_APP_LAST_CASUAL_CLOSE_DATE + app.name();
-        String lastDate = prefs.getString(dateKey, "");
-        
-        int count = prefs.getInt(countKey, 0);
 
-        if (currentDate.equals(lastDate)) {
-            // 是同一天，计数+1
-            count++;
-        } else {
-            // 是新的一天，重置为1
-            count = 1;
-        }
-
-        prefs.edit()
-             .putInt(countKey, count)
-             .putString(dateKey, currentDate)
-             .apply();
-        
-        android.util.Log.d("SettingsManager", "APP " + app.name() + " 休闲版关闭次数增加. 当前次数: " + count + " 日期: " + currentDate);
-    }
-    
     /**
      * 增加指定APP的休闲版关闭次数，并处理每日重置 - 支持自定义APP
      */
@@ -497,28 +435,6 @@ public class SettingsManager {
     }
 
     /**
-     * 清除预定义APP的自定义次数设置（恢复默认值）
-     */
-    public void clearCustomCasualLimitCount(String packageName) {
-        String key = "custom_casual_limit_" + packageName;
-        prefs.edit().remove(key).apply();
-    }
-    
-    /**
-     * 记录指定APP的悬浮窗关闭时间和使用的时间间隔
-     */
-    public void recordAppCloseTime(Const.SupportedApp app, int intervalSeconds) {
-        String timeKey = KEY_APP_LAST_CLOSE_TIME + app.name();
-        String intervalKey = KEY_APP_LAST_CLOSE_INTERVAL + app.name();
-        long currentTime = System.currentTimeMillis();
-        prefs.edit()
-            .putLong(timeKey, currentTime)
-            .putInt(intervalKey, intervalSeconds)
-            .apply();
-        android.util.Log.d("SettingsManager", "记录APP " + app.name() + " 关闭时间: " + formatTime(currentTime) + ", 使用间隔: " + intervalSeconds + "秒");
-    }
-    
-    /**
      * 记录指定APP的悬浮窗关闭时间和使用的时间间隔 - 支持自定义APP
      */
     public void recordAppCloseTime(Object app, int intervalSeconds) {
@@ -595,14 +511,7 @@ public class SettingsManager {
         int intervalSeconds = getAppLastCloseInterval(app);
         long intervalMillis = intervalSeconds * 1000L;
         long nextAvailableTime = lastCloseTime + intervalMillis;
-        
-//        android.util.Log.d("SettingsManager", "APP " + app.name() + " 倒计时计算:");
-//        android.util.Log.d("SettingsManager", "  上次关闭时间: " + formatTime(lastCloseTime));
-//        android.util.Log.d("SettingsManager", "  当前时间: " + formatTime(currentTime));
-//        android.util.Log.d("SettingsManager", "  记录的时间间隔: " + intervalSeconds + "秒");
-//        android.util.Log.d("SettingsManager", "  下次可用时间: " + formatTime(nextAvailableTime));
-//        android.util.Log.d("SettingsManager", "  当前设置的时间间隔: " + getAppAutoShowInterval(app) + "秒");
-        
+
         if (currentTime >= nextAvailableTime) {
             // 已经超过等待时间，可以自由使用
 //            android.util.Log.d("SettingsManager", "  结果: 可以自由使用");
@@ -650,20 +559,6 @@ public class SettingsManager {
             android.util.Log.d("SettingsManager", "APP " + packageName + " 剩余时间: " + remainingTime + "毫秒 (" + (remainingTime/1000) + "秒)");
             return remainingTime;
         }
-    }
-    
-    /**
-     * 判断指定APP是否可以自由使用
-     */
-    public boolean isAppFreeToUse(Const.SupportedApp app) {
-        return getAppRemainingTime(app) == -1;
-    }
-    
-    /**
-     * 判断指定APP是否可以自由使用 - 支持自定义APP
-     */
-    public boolean isAppFreeToUse(Object app) {
-        return getAppRemainingTime(app) == -1;
     }
     
     /**
@@ -757,24 +652,10 @@ public class SettingsManager {
         return prefs.getString(KEY_APP_HINT_CUSTOM + packageName, "");
     }
     
-    /**
-     * 获取指定APP当前应该使用的悬浮窗警示文字
-     */
-    public String getAppHintText(String packageName) {
-        String source = getAppHintSource(packageName);
-        if (Const.CUSTOM_HINT_SOURCE.equals(source)) {
-            return getAppHintCustomText(packageName);
-        } else {
-            // 大模型或其他来源，返回空字符串，由其他逻辑处理
-            return "";
-        }
-    }
-
     // 算术题难度设置相关常量
     private static final String KEY_MATH_DIFFICULTY_MODE = "math_difficulty_mode";
     private static final String KEY_MATH_ADDITION_DIGITS = "math_addition_digits";
     private static final String KEY_MATH_SUBTRACTION_DIGITS = "math_subtraction_digits";
-    private static final String KEY_MATH_MULTIPLICATION_DIGITS = "math_multiplication_digits";
     private static final String KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS = "math_multiplication_multiplier_digits";
     private static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS = "math_multiplication_multiplicand_digits";
     

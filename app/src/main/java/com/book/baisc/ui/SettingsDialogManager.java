@@ -257,7 +257,7 @@ public class SettingsDialogManager {
             StringBuilder content = new StringBuilder();
             content.append("下面链接的网页上，选最新的 app-release.apk 文件下载：\n\n");
             content.append("https://github.com/interest2/anti-addiction/releases\n（无需登录，但页面未必能打开）\n\n");
-            content.append("https://gitee.com/interest2/anti-addiction/releases\n（需登录，页面一般正常）");
+            content.append("https://gitee.com/interest2/anti-addiction/releases\n（可能需登录，但页面稳定）");
 
             new android.app.AlertDialog.Builder(context)
                 .setMessage(content.toString())

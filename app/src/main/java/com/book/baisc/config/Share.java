@@ -33,14 +33,7 @@ public class Share {
         String packageName = getPackageName(app);
         return appStates.get(packageName);
     }
-    
-    /**
-     * 设置指定APP的状态
-     */
-    public static void setAppState(Const.SupportedApp app, String state) {
-        appStates.put(app.getPackageName(), state);
-    }
-    
+
     /**
      * 设置指定APP的状态 - 支持自定义APP
      */
@@ -48,14 +41,7 @@ public class Share {
         String packageName = getPackageName(app);
         appStates.put(packageName, state);
     }
-    
-    /**
-     * 清除指定APP的状态
-     */
-    public static void clearAppState(Const.SupportedApp app) {
-        appStates.remove(app.getPackageName());
-    }
-    
+
     /**
      * 清除指定APP的状态 - 支持自定义APP
      */
