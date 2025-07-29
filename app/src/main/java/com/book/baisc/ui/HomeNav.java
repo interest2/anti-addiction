@@ -28,11 +28,11 @@ import com.book.baisc.config.Const;
 import com.book.baisc.config.CustomAppManager;
 import com.book.baisc.config.Share;
 import com.book.baisc.util.ContentUtils;
+import com.book.baisc.util.ArithmeticUtils;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Random;
 
 public class HomeNav extends Fragment implements
     AppCardAdapter.OnAppCardClickListener,
@@ -529,8 +529,8 @@ public class HomeNav extends Fragment implements
         Button cancelButton = dialogView.findViewById(R.id.btn_cancel_close);
         
         // 生成算术题
-        String question = generateMathQuestion();
-        final int[] correctAnswer = {getMathAnswer(question)};
+        String question = ArithmeticUtils.customArithmetic(6, 6, 4, 4);
+        final int[] correctAnswer = {ArithmeticUtils.getMathAnswer(question)};
         questionText.setText(question);
         
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
@@ -578,8 +578,8 @@ public class HomeNav extends Fragment implements
                     
                     // 3秒后生成新题目
                     new Handler().postDelayed(() -> {
-                        String newQuestion = generateMathQuestion();
-                        correctAnswer[0] = getMathAnswer(newQuestion);
+                        String newQuestion = ArithmeticUtils.customArithmetic(6, 6, 4, 4);
+                        correctAnswer[0] = ArithmeticUtils.getMathAnswer(newQuestion);
                         questionText.setText(newQuestion);
                         answerEdit.setText("");
                         resultText.setVisibility(View.GONE);
@@ -614,61 +614,6 @@ public class HomeNav extends Fragment implements
         
         // 让输入框获得焦点
         answerEdit.requestFocus();
-    }
-
-    /**
-     * 生成算术题（复用现有逻辑）
-     */
-    private String generateMathQuestion() {
-        Random random = new Random();
-        int operationType = random.nextInt(3); // 0: 加, 1: 减, 2: 乘
-
-        int num1, num2;
-        String operator;
-        switch (operationType) {
-            case 0: // 加法 - 三位数
-                num1 = ContentUtils.customRandom(90000) + 10000; // 100-999
-                num2 = ContentUtils.customRandom(90000) + 10000; // 100-999
-                operator = "+";
-                break;
-            case 1: // 减法 - 三位数
-                num1 = ContentUtils.customRandom(90000) + 10000; // 200-999
-                num2 = ContentUtils.customRandom(num1 - 10000) + 10000;
-                operator = "-";
-                break;
-            case 2: // 乘法 - 30以内
-                num1 = ContentUtils.customRandom(9999) + 1000; // 11-19
-                num2 = ContentUtils.customRandom(9999) + 1000; // 11-19
-                operator = "×";
-                break;
-            default:
-                num1 = ContentUtils.customRandom(90000) + 10000; // 100-999
-                num2 = ContentUtils.customRandom(90000) + 10000; // 100-999
-                operator = "+";
-        }
-        return num1 + " " + operator + " " + num2 + " = ?";
-    }
-
-    /**
-     * 计算算术题答案
-     */
-    private int getMathAnswer(String question) {
-        // 解析题目计算答案
-        String[] parts = question.replace(" = ?", "").split(" ");
-        int num1 = Integer.parseInt(parts[0]);
-        String operator = parts[1];
-        int num2 = Integer.parseInt(parts[2]);
-        
-        switch (operator) {
-            case "+":
-                return num1 + num2;
-            case "-":
-                return num1 - num2;
-            case "×":
-                return num1 * num2;
-            default:
-                return num1 + num2;
-        }
     }
 
     @Override

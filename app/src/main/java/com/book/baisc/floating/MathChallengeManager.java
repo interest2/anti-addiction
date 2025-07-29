@@ -16,7 +16,7 @@ import java.util.Random;
 
 import com.book.baisc.R;
 import com.book.baisc.config.Const;
-import com.book.baisc.util.ContentUtils;
+import com.book.baisc.util.ArithmeticUtils;
 
 /**
  * 数学题验证管理器
@@ -164,7 +164,9 @@ public class MathChallengeManager {
         TextView resultText = floatingView.findViewById(R.id.tv_math_result);
         
         // 生成新的数学题
-        String question = generateMathQuestion();
+        String question = ArithmeticUtils.customArithmetic(3, 4, 2, 2);
+        currentAnswer = ArithmeticUtils.getMathAnswer(question);
+
         questionText.setText(question);
         
         // 清空输入框和结果
@@ -266,45 +268,6 @@ public class MathChallengeManager {
         
         Log.d(TAG, "隐藏数学题验证界面，输入法已隐藏");
     }
-    
-    /**
-     * 生成随机数学题
-     */
-    private String generateMathQuestion() {
-        int operationType = random.nextInt(3); // 0: 加, 1: 减, 2: 乘（移除除法）
-        int num1, num2;
-        String operator;
-        
-        switch (operationType) {
-            case 0: // 加法 - 三位数
-                num1 = ContentUtils.customRandom(900) + 100; // 100-999
-                num2 = ContentUtils.customRandom(900) + 100; // 100-999
-                operator = "+";
-                currentAnswer = num1 + num2;
-                break;
-            case 1: // 减法 - 三位数
-                num1 = ContentUtils.customRandom(800) + 200; // 200-999
-                num2 = ContentUtils.customRandom(num1 - 200) + 100;
-                operator = "-";
-                currentAnswer = num1 - num2;
-                break;
-            case 2: // 乘法 - 30以内
-                num1 = ContentUtils.customRandom(19) + 11; // 11-19
-                num2 = ContentUtils.customRandom(19) + 11; // 11-19
-                operator = "×";
-                currentAnswer = num1 * num2;
-                break;
-            default:
-                num1 = ContentUtils.customRandom(900) + 100; // 100-999
-                num2 = ContentUtils.customRandom(900) + 100; // 100-999
-                operator = "+";
-                currentAnswer = num1 + num2;
-        }
-        
-        String question = num1 + " " + operator + " " + num2 + " = ?";
-        Log.d(TAG, "生成数学题: " + question + " (答案: " + currentAnswer + ")");
-        return question;
-    }
 
     /**
      * 处理提交答案
@@ -352,11 +315,12 @@ public class MathChallengeManager {
                 // 清空输入框
                 answerEdit.setText("");
                 
-                // 3秒后生成新题目，保持输入法显示
+                // 1 秒后生成新题目，保持输入法显示
                 handler.postDelayed(() -> {
                     // 生成新题目，但不重新初始化悬浮窗参数
                     TextView questionText = floatingView.findViewById(R.id.tv_math_question);
-                    String question = generateMathQuestion();
+                    String question = ArithmeticUtils.customArithmetic(3, 4, 2, 2);
+                    currentAnswer = ArithmeticUtils.getMathAnswer(question);
                     questionText.setText(question);
                     
                     // 清空输入框但保持焦点

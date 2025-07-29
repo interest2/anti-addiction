@@ -15,7 +15,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="目标设置"
+            android:text="个性化设置"
             android:textSize="22sp"
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />

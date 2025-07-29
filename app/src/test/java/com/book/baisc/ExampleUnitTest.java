@@ -4,7 +4,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-import java.util.Random;
+import com.book.baisc.util.ArithmeticUtils;
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -21,4 +21,14 @@ public class ExampleUnitTest {
         String aa=null;
         System.out.println(aa.isEmpty());
     }
+
+    @Test
+    public void t2(){
+        for (int i = 0; i < 100; i++) {
+            String s = ArithmeticUtils.customArithmetic(5, 6, 2, 2);
+            System.out.println(s);
+        }
+
+    }
+
 }
