@@ -529,7 +529,7 @@ public class HomeNav extends Fragment implements
         Button cancelButton = dialogView.findViewById(R.id.btn_cancel_close);
         
         // 生成算术题
-        String question = ArithmeticUtils.customArithmetic(6, 6, 4, 4);
+        String question = ArithmeticUtils.customArithmetic(7, 7, 4, 4);
         final int[] correctAnswer = {ArithmeticUtils.getMathAnswer(question)};
         questionText.setText(question);
         
@@ -578,7 +578,8 @@ public class HomeNav extends Fragment implements
                     
                     // 3秒后生成新题目
                     new Handler().postDelayed(() -> {
-                        String newQuestion = ArithmeticUtils.customArithmetic(6, 6, 4, 4);
+                        String newQuestion = ArithmeticUtils.customArithmetic(
+                                Const.MAX_ADD_LEN, Const.MAX_ADD_LEN, Const.MAX_MULTIPLE_LEN, Const.MAX_MULTIPLE_LEN);
                         correctAnswer[0] = ArithmeticUtils.getMathAnswer(newQuestion);
                         questionText.setText(newQuestion);
                         answerEdit.setText("");

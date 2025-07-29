@@ -58,7 +58,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="2、悬浮窗算术题修改难度"
+            android:text="2、算术题修改难度"
             android:textSize="18sp"
             android:textColor="#333333"
             android:textStyle="bold"

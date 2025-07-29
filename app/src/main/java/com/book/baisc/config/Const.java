@@ -4,6 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Const {
+    public static final int MIN_ADD_LEN = 3;
+    public static final int MAX_ADD_LEN = 7;
+    public static final int MIN_MULTIPLE_LEN = 2;
+    public static final int MAX_MULTIPLE_LEN = 4;
 
     public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
 

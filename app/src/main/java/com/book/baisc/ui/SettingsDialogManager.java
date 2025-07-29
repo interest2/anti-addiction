@@ -635,23 +635,20 @@ public class SettingsDialogManager {
                     int multiplicandDigits = Integer.parseInt(multiplicandInput);
                     
                     // 验证范围
-                    int maxAddLen = 8;
-                    int minAddLen = 3;
-                    int maxMultipleLen = 4;
-                    int minMultipleLen = 2;
-                    if (additionDigits < minAddLen || additionDigits > maxAddLen) {
-                        android.widget.Toast.makeText(context, "加法位数请输入3-8之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+
+                    if (additionDigits < Const.MIN_ADD_LEN || additionDigits > Const.MAX_ADD_LEN) {
+                        android.widget.Toast.makeText(context, "加法位数请输入3-7之间的数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (subtractionDigits < minAddLen || subtractionDigits > maxAddLen) {
-                        android.widget.Toast.makeText(context, "减法位数请输入3-8之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+                    if (subtractionDigits < Const.MIN_ADD_LEN || subtractionDigits > Const.MAX_ADD_LEN) {
+                        android.widget.Toast.makeText(context, "减法位数请输入3-7之间的数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (multiplierDigits < minMultipleLen || multiplierDigits > maxMultipleLen) {
+                    if (multiplierDigits < Const.MIN_MULTIPLE_LEN || multiplierDigits > Const.MAX_MULTIPLE_LEN) {
                         android.widget.Toast.makeText(context, "乘数位数请输入2-4之间的数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (multiplicandDigits < minMultipleLen || multiplicandDigits > maxMultipleLen) {
+                    if (multiplicandDigits < Const.MIN_MULTIPLE_LEN || multiplicandDigits > Const.MAX_MULTIPLE_LEN) {
                         android.widget.Toast.makeText(context, "被乘数位数请输入2-4之间的数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
