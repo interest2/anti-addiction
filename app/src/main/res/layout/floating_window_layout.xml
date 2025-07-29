@@ -88,7 +88,7 @@
                 android:hint="答案"
                 android:inputType="numberSigned"
                 android:imeOptions="actionDone"
-                android:maxLength="4"
+                android:maxLength="8"
                 android:textColor="#000000"
                 android:textSize="16sp" />
 

@@ -20,6 +20,15 @@
             android:textStyle="bold"
             android:layout_marginBottom="16dp" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1、目标设置"
+            android:textSize="18sp"
+            android:textColor="#333333"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
         <Button
             android:id="@+id/btn_tag_setting"
             android:layout_width="match_parent"
@@ -45,5 +54,25 @@
             android:layout_marginTop="24dp"
             android:layout_marginBottom="8dp" />
 
+        <!-- 算术题修改难度设置 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2、悬浮窗算术题修改难度"
+            android:textSize="18sp"
+            android:textColor="#333333"
+            android:textStyle="bold"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btn_math_difficulty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#4CAF50"
+            android:text="设置难度"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
     </LinearLayout>
-</ScrollView> 
+</ScrollView>

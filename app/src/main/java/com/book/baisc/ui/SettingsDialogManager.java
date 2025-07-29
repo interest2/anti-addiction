@@ -10,6 +10,7 @@ import android.widget.Toast;
 import com.book.baisc.config.Const;
 import com.book.baisc.config.SettingsManager;
 import com.book.baisc.floating.FloatService;
+import com.book.baisc.R;
 
 /**
  * 设置对话框管理器
@@ -146,7 +147,10 @@ public class SettingsDialogManager {
 //                Toast.makeText(context, "已为" + appName + "设置为: " + intervalOptions[which] + " (" + modeText + ")", Toast.LENGTH_LONG).show();
                 dialog.dismiss();
                })
-               .setNegativeButton("取消", null)
+               .setNegativeButton("取消", (dialog, which) -> {
+                   // 用户取消时，不调用回调，因为没有设置被更改
+                   // 移除这里的 onSettingChanged.run() 调用
+               })
                .show();
     }
     
@@ -547,4 +551,124 @@ public class SettingsDialogManager {
             countText.setText("宽松剩余: " + remainingCount + "次");
         }
     }
-} 
+
+    /**
+     * 显示算术题难度设置对话框
+     */
+    public void showMathDifficultyDialog() {
+        String[] difficultyOptions = {"默认难度", "自定义难度"};
+        String currentMode = settingsManager.getMathDifficultyMode();
+        int checkedItem = "custom".equals(currentMode) ? 1 : 0;
+
+        new android.app.AlertDialog.Builder(context)
+            .setTitle("算术题修改难度")
+            .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
+                if (which == 0) {
+                    // 选择默认难度
+                    settingsManager.setMathDifficultyMode("default");
+                    android.widget.Toast.makeText(context, "已设置为默认难度", android.widget.Toast.LENGTH_SHORT).show();
+                } else if (which == 1) {
+                    // 选择自定义难度
+                    settingsManager.setMathDifficultyMode("custom");
+                    showCustomMathDifficultyDialog();
+                }
+                dialog.dismiss();
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
+    /**
+     * 显示自定义算术题难度设置对话框
+     */
+    private void showCustomMathDifficultyDialog() {
+        // 创建自定义布局的弹窗
+        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(context);
+        android.view.View dialogView = inflater.inflate(R.layout.dialog_math_difficulty_custom, null);
+        
+        // 获取输入框
+        android.widget.EditText etAdditionDigits = dialogView.findViewById(R.id.et_addition_digits);
+        android.widget.EditText etSubtractionDigits = dialogView.findViewById(R.id.et_subtraction_digits);
+        android.widget.EditText etMultiplicationMultiplierDigits = dialogView.findViewById(R.id.et_multiplication_multiplier_digits);
+        android.widget.EditText etMultiplicationMultiplicandDigits = dialogView.findViewById(R.id.et_multiplication_multiplicand_digits);
+        
+        // 设置当前值
+        etAdditionDigits.setText(String.valueOf(settingsManager.getMathAdditionDigits()));
+        etSubtractionDigits.setText(String.valueOf(settingsManager.getMathSubtractionDigits()));
+        etMultiplicationMultiplierDigits.setText(String.valueOf(settingsManager.getMathMultiplicationMultiplierDigits()));
+        etMultiplicationMultiplicandDigits.setText(String.valueOf(settingsManager.getMathMultiplicationMultiplicandDigits()));
+
+        new android.app.AlertDialog.Builder(context)
+            .setTitle("数字位数设置")
+            .setView(dialogView)
+            .setPositiveButton("保存", (dialog, which) -> {
+                // 验证并保存加法位数
+                String additionInput = etAdditionDigits.getText().toString().trim();
+                if (additionInput.isEmpty()) {
+                    android.widget.Toast.makeText(context, "请输入加法位数", android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                // 验证并保存减法位数
+                String subtractionInput = etSubtractionDigits.getText().toString().trim();
+                if (subtractionInput.isEmpty()) {
+                    android.widget.Toast.makeText(context, "请输入减法位数", android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                // 验证并保存乘法位数
+                String multiplierInput = etMultiplicationMultiplierDigits.getText().toString().trim();
+                String multiplicandInput = etMultiplicationMultiplicandDigits.getText().toString().trim();
+                if (multiplierInput.isEmpty()) {
+                    android.widget.Toast.makeText(context, "请输入乘数位数", android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (multiplicandInput.isEmpty()) {
+                    android.widget.Toast.makeText(context, "请输入被乘数位数", android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                try {
+                    int additionDigits = Integer.parseInt(additionInput);
+                    int subtractionDigits = Integer.parseInt(subtractionInput);
+                    int multiplierDigits = Integer.parseInt(multiplierInput);
+                    int multiplicandDigits = Integer.parseInt(multiplicandInput);
+                    
+                    // 验证范围
+                    int maxAddLen = 8;
+                    int minAddLen = 3;
+                    int maxMultipleLen = 4;
+                    int minMultipleLen = 2;
+                    if (additionDigits < minAddLen || additionDigits > maxAddLen) {
+                        android.widget.Toast.makeText(context, "加法位数请输入3-8之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (subtractionDigits < minAddLen || subtractionDigits > maxAddLen) {
+                        android.widget.Toast.makeText(context, "减法位数请输入3-8之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (multiplierDigits < minMultipleLen || multiplierDigits > maxMultipleLen) {
+                        android.widget.Toast.makeText(context, "乘数位数请输入2-4之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (multiplicandDigits < minMultipleLen || multiplicandDigits > maxMultipleLen) {
+                        android.widget.Toast.makeText(context, "被乘数位数请输入2-4之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    // 保存设置
+                    settingsManager.setMathAdditionDigits(additionDigits);
+                    settingsManager.setMathSubtractionDigits(subtractionDigits);
+                    settingsManager.setMathMultiplicationMultiplierDigits(multiplierDigits);
+                    settingsManager.setMathMultiplicationMultiplicandDigits(multiplicandDigits);
+                    
+                    android.widget.Toast.makeText(context, "已保存自定义难度设置", android.widget.Toast.LENGTH_SHORT).show();
+                } catch (NumberFormatException e) {
+                    android.widget.Toast.makeText(context, "请输入有效的数字", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
+}

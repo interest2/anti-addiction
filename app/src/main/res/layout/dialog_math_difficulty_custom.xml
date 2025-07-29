@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- 加法设置 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="加法："
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:layout_marginEnd="1dp" />
+
+        <EditText
+            android:id="@+id/et_addition_digits"
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:hint="3~8"
+            android:inputType="number"
+            android:maxLength="1"
+            android:padding="8dp"
+            android:textSize="16sp"
+            android:background="@android:drawable/edit_text" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="位"
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+    <!-- 减法设置 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="减法："
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:layout_marginEnd="1dp" />
+
+        <EditText
+            android:id="@+id/et_subtraction_digits"
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:hint="3~8"
+            android:inputType="number"
+            android:maxLength="1"
+            android:padding="8dp"
+            android:textSize="16sp"
+            android:background="@android:drawable/edit_text" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="位"
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+    <!-- 乘法设置 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="乘法："
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:layout_marginEnd="1dp" />
+
+        <EditText
+            android:id="@+id/et_multiplication_multiplier_digits"
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:hint="2~4"
+            android:inputType="number"
+            android:maxLength="1"
+            android:padding="8dp"
+            android:textSize="16sp"
+            android:background="@android:drawable/edit_text"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="位"
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="×"
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:layout_marginEnd="8dp" />
+
+        <EditText
+            android:id="@+id/et_multiplication_multiplicand_digits"
+            android:layout_width="60dp"
+            android:layout_height="wrap_content"
+            android:hint="2~4"
+            android:inputType="number"
+            android:maxLength="1"
+            android:padding="8dp"
+            android:textSize="16sp"
+            android:background="@android:drawable/edit_text" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="位"
+            android:textSize="16sp"
+            android:textColor="#333333"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+</LinearLayout> 

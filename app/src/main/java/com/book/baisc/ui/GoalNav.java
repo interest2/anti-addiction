@@ -29,16 +29,25 @@ public class GoalNav extends Fragment {
         settingsManager = new SettingsManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
 
+        // 初始化控件
         tvGoalCountdown = view.findViewById(R.id.tv_goal_countdown);
         btnTagSetting = view.findViewById(R.id.btn_tag_setting);
         btnTargetDateSetting = view.findViewById(R.id.btn_target_date_setting);
 
+        // 设置按钮点击事件
         btnTagSetting.setOnClickListener(v -> {
             settingsDialogManager.showTagSettingDialog(this::updateGoalInfo);
         });
         btnTargetDateSetting.setOnClickListener(v -> {
             settingsDialogManager.showTargetDateSettingDialog(this::updateGoalInfo);
         });
+
+        // 设置算术题难度设置按钮
+        Button btnMathDifficulty = view.findViewById(R.id.btn_math_difficulty);
+        btnMathDifficulty.setOnClickListener(v -> {
+            settingsDialogManager.showMathDifficultyDialog();
+        });
+        
         return view;
     }
 
@@ -59,4 +68,4 @@ public class GoalNav extends Fragment {
         String countdown = FloatHelper.hintDate(date);
         tvGoalCountdown.setText(countdown.isEmpty() ? "距离目标：--天" : countdown);
     }
-} 
+}

@@ -276,39 +276,7 @@ public class SettingsManager {
         String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
         return prefs.getInt(key, dailyIntervalArray[defaultIndex]);
     }
-    
-    /**
-     * 设置指定APP的自动显示间隔（秒）
-     */
-    public void setAppAutoShowInterval(Const.SupportedApp app, int seconds) {
-        int minInterval = dailyIntervalArray[0];
-        int maxInterval = casualIntervalArray[casualIntervalArray.length - 1];
-        if (seconds >= minInterval && seconds <= maxInterval) {
-            String key = KEY_APP_AUTO_SHOW_INTERVAL + app.name();
-            
-            // 检查是否需要立即生效
-            int oldInterval = getAppAutoShowInterval(app);
-            boolean wasInFreeMode = (getAppRemainingTime(app) == -1);
-            boolean isSwitchingToStrictMode = (seconds < oldInterval) && wasInFreeMode;
-            
-            android.util.Log.d("SettingsManager", "APP " + app.name() + " 设置时间间隔: " + oldInterval + "秒 -> " + seconds + "秒");
-            android.util.Log.d("SettingsManager", "  当前是否自由使用: " + wasInFreeMode);
-            android.util.Log.d("SettingsManager", "  是否切换到严格模式: " + isSwitchingToStrictMode);
-            
-            // 更新设置
-            prefs.edit().putInt(key, seconds).apply();
-            
-            // 如果是从自由使用状态切换到更严格的模式，立即生效
-            if (isSwitchingToStrictMode) {
-                recordAppCloseTime(app, seconds);
-                android.util.Log.d("SettingsManager", "  立即生效: 记录新的关闭时间和时间间隔");
-                
-                // 通知无障碍服务立即检查是否需要显示悬浮窗
-                triggerImmediateFloatingWindowCheck(app);
-            }
-        }
-    }
-    
+
     /**
      * 设置指定APP的自动显示间隔（秒）- 支持自定义APP
      */
@@ -801,4 +769,92 @@ public class SettingsManager {
             return "";
         }
     }
-} 
+
+    // 算术题难度设置相关常量
+    private static final String KEY_MATH_DIFFICULTY_MODE = "math_difficulty_mode";
+    private static final String KEY_MATH_ADDITION_DIGITS = "math_addition_digits";
+    private static final String KEY_MATH_SUBTRACTION_DIGITS = "math_subtraction_digits";
+    private static final String KEY_MATH_MULTIPLICATION_DIGITS = "math_multiplication_digits";
+    private static final String KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS = "math_multiplication_multiplier_digits";
+    private static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS = "math_multiplication_multiplicand_digits";
+    
+    // 默认数字位数
+    public static final int DEFAULT_ADD_DIGITS = 4;
+    public static final int DEFAULT_SUBTRACT_DIGITS = 4;
+    public static final int DEFAULT_MULTIPLIER_FIRST_DIGITS = 2;
+    public static final int DEFAULT_MULTIPLIER_SECOND_DIGITS = 2;
+
+    /**
+     * 设置算术题难度模式
+     * @param mode "default" 或 "custom"
+     */
+    public void setMathDifficultyMode(String mode) {
+        android.util.Log.d("SettingsManager", "设置难度模式: " + mode);
+        prefs.edit().putString(KEY_MATH_DIFFICULTY_MODE, mode).apply();
+        android.util.Log.d("SettingsManager", "难度模式设置完成");
+    }
+
+    public String getMathDifficultyMode() {
+        String mode = prefs.getString(KEY_MATH_DIFFICULTY_MODE, "default");
+        android.util.Log.d("SettingsManager", "获取难度模式: " + mode);
+        return mode;
+    }
+
+    /**
+     * 设置加法数字位数
+     */
+    public void setMathAdditionDigits(int digits) {
+        prefs.edit().putInt(KEY_MATH_ADDITION_DIGITS, digits).apply();
+    }
+
+    /**
+     * 获取加法数字位数
+     */
+    public int getMathAdditionDigits() {
+        return prefs.getInt(KEY_MATH_ADDITION_DIGITS, DEFAULT_ADD_DIGITS);
+    }
+
+    /**
+     * 设置减法数字位数
+     */
+    public void setMathSubtractionDigits(int digits) {
+        prefs.edit().putInt(KEY_MATH_SUBTRACTION_DIGITS, digits).apply();
+    }
+
+    /**
+     * 获取减法数字位数
+     */
+    public int getMathSubtractionDigits() {
+        return prefs.getInt(KEY_MATH_SUBTRACTION_DIGITS, DEFAULT_SUBTRACT_DIGITS);
+    }
+
+    /**
+     * 设置乘法乘数位数
+     */
+    public void setMathMultiplicationMultiplierDigits(int digits) {
+        prefs.edit().putInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, digits).apply();
+    }
+
+    /**
+     * 获取乘法乘数位数
+     */
+    public int getMathMultiplicationMultiplierDigits() {
+        return prefs.getInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, DEFAULT_MULTIPLIER_FIRST_DIGITS);
+    }
+
+    /**
+     * 设置乘法被乘数位数
+     */
+    public void setMathMultiplicationMultiplicandDigits(int digits) {
+        prefs.edit().putInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, digits).apply();
+    }
+
+    /**
+     * 获取乘法被乘数位数
+     */
+    public int getMathMultiplicationMultiplicandDigits() {
+        return prefs.getInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, DEFAULT_MULTIPLIER_SECOND_DIGITS);
+    }
+
+
+}

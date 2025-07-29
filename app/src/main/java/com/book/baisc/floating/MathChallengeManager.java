@@ -16,6 +16,7 @@ import java.util.Random;
 
 import com.book.baisc.R;
 import com.book.baisc.config.Const;
+import com.book.baisc.config.SettingsManager;
 import com.book.baisc.util.ArithmeticUtils;
 
 /**
@@ -33,6 +34,7 @@ public class MathChallengeManager {
     private Handler handler;
     private FloatService accessibilityService;
     private Object currentApp; // 当前APP（支持预定义和自定义APP）
+    private SettingsManager settingsManager;
     
     // 数学题相关
     private Random random = new Random();
@@ -56,6 +58,7 @@ public class MathChallengeManager {
         this.layoutParams = layoutParams;
         this.handler = handler;
         this.accessibilityService = accessibilityService;
+        this.settingsManager = new SettingsManager(context);
         
         initializeComponents();
     }
@@ -164,7 +167,7 @@ public class MathChallengeManager {
         TextView resultText = floatingView.findViewById(R.id.tv_math_result);
         
         // 生成新的数学题
-        String question = ArithmeticUtils.customArithmetic(3, 4, 2, 2);
+        String question = generateMathQuestion();
         currentAnswer = ArithmeticUtils.getMathAnswer(question);
 
         questionText.setText(question);
@@ -319,7 +322,7 @@ public class MathChallengeManager {
                 handler.postDelayed(() -> {
                     // 生成新题目，但不重新初始化悬浮窗参数
                     TextView questionText = floatingView.findViewById(R.id.tv_math_question);
-                    String question = ArithmeticUtils.customArithmetic(3, 4, 2, 2);
+                    String question = generateMathQuestion();
                     currentAnswer = ArithmeticUtils.getMathAnswer(question);
                     questionText.setText(question);
                     
@@ -338,4 +341,29 @@ public class MathChallengeManager {
             resultText.setVisibility(View.VISIBLE);
         }
     }
-} 
+
+
+    /**
+     * 根据设置获取数学题参数
+     */
+    private String generateMathQuestion() {
+        String difficultyMode = settingsManager.getMathDifficultyMode();
+
+        if ("custom".equals(difficultyMode)) {
+            // 使用自定义难度设置
+            int additionDigits = settingsManager.getMathAdditionDigits();
+            int subtractionDigits = settingsManager.getMathSubtractionDigits();
+            int multiplierDigits = settingsManager.getMathMultiplicationMultiplierDigits();
+            int multiplicandDigits = settingsManager.getMathMultiplicationMultiplicandDigits();
+
+            return ArithmeticUtils.customArithmetic(additionDigits, subtractionDigits, multiplierDigits, multiplicandDigits);
+        } else {
+            // 使用默认难度
+            return ArithmeticUtils.customArithmetic(
+                    settingsManager.DEFAULT_ADD_DIGITS,
+                    settingsManager.DEFAULT_SUBTRACT_DIGITS,
+                    settingsManager.DEFAULT_MULTIPLIER_FIRST_DIGITS,
+                    settingsManager.DEFAULT_MULTIPLIER_SECOND_DIGITS);
+        }
+    }
+}
