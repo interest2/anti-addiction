@@ -41,7 +41,7 @@ public class Const {
     public enum SupportedApp implements App {
         XHS("小红书", "com.xingin.xhs", "发现", 3),
         ZHIHU("知乎", "com.zhihu.android", "热榜", 2),
-        DOUYIN("抖音", "com.ss.android.ugc.aweme", "推荐", 2),
+        DOUYIN("抖音", "com.ss.android.ugc.aweme", "推荐,精选,热点", 2),
         BILIBILI("哔哩哔哩", "tv.danmaku.bili", "推荐", 1),
         ALIPAY("支付宝", "com.eg.android.AlipayGphone", "股票,行情,持有", 3),
         WECHAT("微信", "com.tencent.mm", "公众号", 3),
