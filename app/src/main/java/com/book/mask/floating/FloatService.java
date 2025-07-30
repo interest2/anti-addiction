@@ -1,4 +1,4 @@
-package com.book.baisc.floating;
+package com.book.mask.floating;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
@@ -23,13 +23,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
 
-import com.book.baisc.R;
-import com.book.baisc.config.Const;
-import com.book.baisc.config.Share;
-import com.book.baisc.lifecycle.ServiceKeepAliveManager;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.network.DeviceInfoReporter;
-import com.book.baisc.network.TextFetcher;
+import com.book.mask.R;
+import com.book.mask.config.Const;
+import com.book.mask.config.Share;
+import com.book.mask.lifecycle.ServiceKeepAliveManager;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.network.DeviceInfoReporter;
+import com.book.mask.network.TextFetcher;
 import android.content.Intent;
 
 import androidx.annotation.NonNull;
@@ -1039,8 +1039,8 @@ public class FloatService extends AccessibilityService
         
         // 然后检查自定义APP
         try {
-            com.book.baisc.config.CustomAppManager customAppManager = 
-                com.book.baisc.config.CustomAppManager.getInstance();
+            com.book.mask.config.CustomAppManager customAppManager = 
+                com.book.mask.config.CustomAppManager.getInstance();
             java.util.List<Const.CustomApp> customApps = customAppManager.getCustomApps();
             
             for (Const.CustomApp customApp : customApps) {

@@ -1,4 +1,4 @@
-package com.book.baisc.ui;
+package com.book.mask.ui;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -22,14 +22,14 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.view.accessibility.AccessibilityManager;
 import java.util.List;
 
-import com.book.baisc.R;
-import com.book.baisc.config.Const;
-import com.book.baisc.config.CustomAppManager;
-import com.book.baisc.floating.FloatService;
-import com.book.baisc.lifecycle.AppLifecycleObserver;
-import com.book.baisc.network.DeviceInfoReporter;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.network.TextFetcher;
+import com.book.mask.R;
+import com.book.mask.config.Const;
+import com.book.mask.config.CustomAppManager;
+import com.book.mask.floating.FloatService;
+import com.book.mask.lifecycle.AppLifecycleObserver;
+import com.book.mask.network.DeviceInfoReporter;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.network.TextFetcher;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {

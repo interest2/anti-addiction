@@ -1,9 +1,9 @@
-package com.book.baisc.floating;
+package com.book.mask.floating;
 
 import android.util.Log;
 import android.view.accessibility.AccessibilityNodeInfo;
 
-import com.book.baisc.config.Const;
+import com.book.mask.config.Const;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;

@@ -1,4 +1,4 @@
-package com.book.baisc.ui;
+package com.book.mask.ui;
 
 import android.content.Context;
 import android.text.InputFilter;
@@ -7,10 +7,10 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.book.baisc.config.Const;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.floating.FloatService;
-import com.book.baisc.R;
+import com.book.mask.config.Const;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.floating.FloatService;
+import com.book.mask.R;
 
 /**
  * 设置对话框管理器
@@ -49,7 +49,7 @@ public class SettingsDialogManager {
      */
     public void showTimeSettingDialog(boolean isDaily) {
         // 获取当前活跃APP
-        Object currentApp = com.book.baisc.config.Share.currentApp;
+        Object currentApp = com.book.mask.config.Share.currentApp;
         
         if (currentApp != null) {
             // 直接为当前活跃APP设置时间间隔
@@ -464,8 +464,8 @@ public class SettingsDialogManager {
             
             // 计算自定义APP的宽松模式次数
             try {
-                com.book.baisc.config.CustomAppManager.getInstance();
-                java.util.List<Const.CustomApp> customApps = com.book.baisc.config.CustomAppManager.getInstance().getCustomApps();
+                com.book.mask.config.CustomAppManager.getInstance();
+                java.util.List<Const.CustomApp> customApps = com.book.mask.config.CustomAppManager.getInstance().getCustomApps();
                 
                 for (Const.CustomApp customApp : customApps) {
                     totalCloseCount += settingsManager.getAppCasualCloseCount(customApp);
@@ -499,8 +499,8 @@ public class SettingsDialogManager {
             
             // 计算自定义APP的宽松模式次数
             try {
-                com.book.baisc.config.CustomAppManager.getInstance();
-                java.util.List<Const.CustomApp> customApps = com.book.baisc.config.CustomAppManager.getInstance().getCustomApps();
+                com.book.mask.config.CustomAppManager.getInstance();
+                java.util.List<Const.CustomApp> customApps = com.book.mask.config.CustomAppManager.getInstance().getCustomApps();
                 
                 for (Const.CustomApp customApp : customApps) {
                     totalCloseCount += settingsManager.getAppCasualCloseCount(customApp);

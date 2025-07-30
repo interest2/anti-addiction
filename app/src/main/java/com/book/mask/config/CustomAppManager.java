@@ -1,4 +1,4 @@
-package com.book.baisc.config;
+package com.book.mask.config;
 
 import android.content.Context;
 import android.content.SharedPreferences;

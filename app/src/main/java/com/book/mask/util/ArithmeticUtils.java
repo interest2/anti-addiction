@@ -1,4 +1,4 @@
-package com.book.baisc.util;
+package com.book.mask.util;
 
 import java.util.Random;
 

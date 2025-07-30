@@ -1,4 +1,4 @@
-package com.book.baisc.network;
+package com.book.mask.network;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -18,9 +18,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.book.baisc.config.Const;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.util.ContentUtils;
+import com.book.mask.config.Const;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.util.ContentUtils;
 
 public class TextFetcher {
     

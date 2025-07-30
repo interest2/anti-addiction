@@ -2,12 +2,12 @@
 
 ## 🎯 重构目标
 
-将原来所有类文件都在同一个包 `com.book.baisc` 中的结构，重构为按功能模块划分的清晰包结构。
+将原来所有类文件都在同一个包 `com.book.mask` 中的结构，重构为按功能模块划分的清晰包结构。
 
 ## 📂 新的包结构
 
 ```
-com.book.baisc/
+com.book.mask/
 ├── ui/                     # 用户界面模块
 │   └── MainActivity.java
 ├── accessibility/          # 无障碍服务模块
@@ -66,13 +66,13 @@ mkdir -p app/src/main/java/com/book/baisc/{ui,accessibility,service,settings,net
 ```java
 // MainActivity 中的 import 更新
 
-import com.book.baisc.floating.FloatService;
-import com.book.baisc.lifecycle.AppLifecycleObserver;
+import com.book.mask.floating.FloatService;
+import com.book.mask.lifecycle.AppLifecycleObserver;
 
 // FloatingAccessibilityService 中的 import 更新
-import com.book.baisc.lifecycle.ServiceKeepAliveManager;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.network.DeviceInfoReporter;
+import com.book.mask.lifecycle.ServiceKeepAliveManager;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.network.DeviceInfoReporter;
 
 // ServiceKeepAliveManager 中的 import 更新
 
@@ -133,11 +133,11 @@ graph TD
 ```java
 // 正确方式
 
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.floating.FloatService;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.floating.FloatService;
 
 // 避免使用 * 导入
-import com.book.baisc.floating.*;
+import com.book.mask.floating.*;
 ```
 
 ### 2. 新增功能时选择合适的包

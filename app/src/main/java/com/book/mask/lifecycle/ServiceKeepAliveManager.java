@@ -1,4 +1,4 @@
-package com.book.baisc.lifecycle;
+package com.book.mask.lifecycle;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -8,8 +8,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.book.baisc.config.Const;
-import com.book.baisc.floating.FloatService;
+import com.book.mask.config.Const;
+import com.book.mask.floating.FloatService;
 
 public class ServiceKeepAliveManager {
     

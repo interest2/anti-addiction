@@ -1,10 +1,10 @@
-package com.book.baisc;
+package com.book.mask;
 
 import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-import com.book.baisc.util.ArithmeticUtils;
+import com.book.mask.util.ArithmeticUtils;
 
 /**
  * Example local unit test, which will execute on the development machine (host).

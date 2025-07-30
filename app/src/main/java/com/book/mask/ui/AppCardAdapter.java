@@ -1,4 +1,4 @@
-package com.book.baisc.ui;
+package com.book.mask.ui;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,10 +9,10 @@ import android.widget.ToggleButton;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.book.baisc.R;
-import com.book.baisc.config.Const;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.config.Share;
+import com.book.mask.R;
+import com.book.mask.config.Const;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.config.Share;
 
 import java.util.List;
 

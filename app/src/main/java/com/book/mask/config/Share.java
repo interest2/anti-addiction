@@ -1,4 +1,4 @@
-package com.book.baisc.config;
+package com.book.mask.config;
 
 import java.util.HashMap;
 import java.util.Map;

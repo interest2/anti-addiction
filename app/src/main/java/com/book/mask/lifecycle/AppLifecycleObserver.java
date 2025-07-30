@@ -1,4 +1,4 @@
-package com.book.baisc.lifecycle;
+package com.book.mask.lifecycle;
 
 import android.app.Application;
 import android.content.Context;

@@ -1,4 +1,4 @@
-package com.book.baisc.config;
+package com.book.mask.config;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -318,7 +318,7 @@ public class SettingsManager {
     private void triggerImmediateFloatingWindowCheck(Object app) {
         try {
             // 通过静态方法通知无障碍服务
-            Class<?> serviceClass = Class.forName("com.book.baisc.floating.FloatService");
+            Class<?> serviceClass = Class.forName("com.book.mask.floating.FloatService");
             java.lang.reflect.Method method = serviceClass.getMethod("triggerImmediateCheck", Object.class);
             method.invoke(null, app);
             String packageName = getPackageName(app);

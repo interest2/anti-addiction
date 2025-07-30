@@ -1,4 +1,4 @@
-package com.book.baisc.config;
+package com.book.mask.config;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +25,7 @@ public class Const {
     public static final String CONTENT_TYPE = "application/json";
 
     // 广播Action常量
-    public static final String ACTION_UPDATE_CASUAL_COUNT = "com.book.baisc.ACTION_UPDATE_CASUAL_COUNT";
+    public static final String ACTION_UPDATE_CASUAL_COUNT = "com.book.mask.ACTION_UPDATE_CASUAL_COUNT";
 
     /**
      * APP接口，统一SupportedApp和CustomApp的行为

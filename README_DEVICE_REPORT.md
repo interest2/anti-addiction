@@ -115,7 +115,7 @@ private void onReportFailure(String error) {
   "android_id": "a1b2c3d4e5f6g7h8",
   "app_version": "1.0",
   "app_version_code": 1,
-  "app_package": "com.book.baisc",
+  "app_package": "com.book.mask",
   "network_type": "WIFI",
   "network_connected": true,
   "timestamp": 1673856000000

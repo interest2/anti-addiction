@@ -1,4 +1,4 @@
-package com.book.baisc.ui;
+package com.book.mask.ui;
 
 import android.os.Bundle;
 import android.os.Handler;
@@ -22,13 +22,13 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.book.baisc.R;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.config.Const;
-import com.book.baisc.config.CustomAppManager;
-import com.book.baisc.config.Share;
-import com.book.baisc.util.ContentUtils;
-import com.book.baisc.util.ArithmeticUtils;
+import com.book.mask.R;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.config.Const;
+import com.book.mask.config.CustomAppManager;
+import com.book.mask.config.Share;
+import com.book.mask.util.ContentUtils;
+import com.book.mask.util.ArithmeticUtils;
 import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.IOException;

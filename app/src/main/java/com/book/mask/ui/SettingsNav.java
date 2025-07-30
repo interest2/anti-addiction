@@ -1,4 +1,4 @@
-package com.book.baisc.ui;
+package com.book.mask.ui;
 
 import android.os.Bundle;
 import android.util.Log;
@@ -12,11 +12,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.book.baisc.R;
-import com.book.baisc.config.Const;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.config.Share;
-import com.book.baisc.util.ContentUtils;
+import com.book.mask.R;
+import com.book.mask.config.Const;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.config.Share;
+import com.book.mask.util.ContentUtils;
 
 import java.io.IOException;
 
@@ -67,9 +67,9 @@ public class SettingsNav extends Fragment {
         // 设置重置所有APP悬浮窗状态按钮
         Button resetFloatingStateButton = view.findViewById(R.id.btn_reset_floating_state);
         resetFloatingStateButton.setOnClickListener(v -> {
-            java.util.Set<String> keys = com.book.baisc.config.Share.appManuallyHidden.keySet();
+            java.util.Set<String> keys = com.book.mask.config.Share.appManuallyHidden.keySet();
             for (String key : keys) {
-                com.book.baisc.config.Share.appManuallyHidden.put(key, false);
+                com.book.mask.config.Share.appManuallyHidden.put(key, false);
             }
             android.widget.Toast.makeText(requireContext(), "所有APP悬浮窗状态已重置", android.widget.Toast.LENGTH_SHORT).show();
         });

@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.book.baisc'
+    namespace 'com.book.mask'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.book.baisc"
+        applicationId "com.book.mask"
         minSdk 24
         targetSdk 35
         versionCode 16

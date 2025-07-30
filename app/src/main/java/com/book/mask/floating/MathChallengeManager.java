@@ -1,4 +1,4 @@
-package com.book.baisc.floating;
+package com.book.mask.floating;
 
 import android.content.Context;
 import android.os.Handler;
@@ -14,10 +14,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.util.Random;
 
-import com.book.baisc.R;
-import com.book.baisc.config.Const;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.util.ArithmeticUtils;
+import com.book.mask.R;
+import com.book.mask.config.Const;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.util.ArithmeticUtils;
 
 /**
  * 数学题验证管理器

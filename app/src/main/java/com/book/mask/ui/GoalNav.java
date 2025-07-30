@@ -1,4 +1,4 @@
-package com.book.baisc.ui;
+package com.book.mask.ui;
 
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -11,9 +11,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.book.baisc.R;
-import com.book.baisc.config.SettingsManager;
-import com.book.baisc.floating.FloatHelper;
+import com.book.mask.R;
+import com.book.mask.config.SettingsManager;
+import com.book.mask.floating.FloatHelper;
 
 public class GoalNav extends Fragment {
 
