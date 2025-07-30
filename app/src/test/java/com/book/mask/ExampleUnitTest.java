@@ -25,7 +25,7 @@ public class ExampleUnitTest {
     @Test
     public void t2(){
         for (int i = 0; i < 100; i++) {
-            String s = ArithmeticUtils.customArithmetic(5, 6, 2, 2);
+            String s = ArithmeticUtils.customArithmetic(5, 4, 2, 2);
             System.out.println(s);
         }
 

@@ -32,7 +32,7 @@ public class ArithmeticUtils {
                 operator = "+";
                 break;
             case 1: // 减法
-                num1 = customRandom(subtractMax) + subtractMin;
+                num1 = customRandom(subtractMax - subtractMin) + subtractMin * 2;
                 num2 = customRandom(num1 - subtractMin) + subtractMin;
                 operator = "-";
                 break;
