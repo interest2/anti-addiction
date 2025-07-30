@@ -6,6 +6,8 @@ import static org.junit.Assert.*;
 
 import com.book.mask.util.ArithmeticUtils;
 
+import javax.xml.transform.Source;
+
 /**
  * Example local unit test, which will execute on the development machine (host).
  *
@@ -24,9 +26,11 @@ public class ExampleUnitTest {
 
     @Test
     public void t2(){
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             String s = ArithmeticUtils.customArithmetic(5, 4, 2, 2);
-            System.out.println(s);
+            if(s.contains("-") && !s.startsWith("9") && !s.startsWith("8") && !s.startsWith("7") && !s.startsWith("6") && !s.startsWith("5")) {
+                System.out.println(s);
+            };
         }
 
     }

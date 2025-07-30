@@ -14,36 +14,41 @@ public class ArithmeticUtils {
         int addMin = (int) Math.pow(10, addendLen - 1);
         int addMax = (int) Math.pow(10, addendLen) - addMin;
 
-        int subtractMin = (int) Math.pow(10, subtrahendLen - 1);
-        int subtractMax = (int) Math.pow(10, subtrahendLen) - subtractMin;
+        // 举例：len = 4, 则分别为：1000、10000
+        int littlePower = (int) Math.pow(10, subtrahendLen - 1);
+        int bigPower = (int) Math.pow(10, subtrahendLen);
 
-        int multipleMin1 = (int) Math.pow(10, multiplierLen1 - 1);
-        int multipleMax1 = (int) Math.pow(10, multiplierLen1) - multipleMin1;
+        // 乘数
+        int mulMin1 = (int) Math.pow(10, multiplierLen1 - 1);
+        int mulMax1 = (int) Math.pow(10, multiplierLen1) - mulMin1;
 
-        int multipleMin2 = (int) Math.pow(10, multiplierLen2 - 1);
-        int multipleMax2 = (int) Math.pow(10, multiplierLen2) - multipleMin2;
+        // 被乘数
+        int mulMin2 = (int) Math.pow(10, multiplierLen2 - 1);
+        int mulMax2 = (int) Math.pow(10, multiplierLen2) - mulMin2;
 
         int num1, num2;
         String operator;
         switch (operationType) {
             case 0: // 加法
-                num1 = customRandom(addMax) + addMin;
-                num2 = customRandom(addMax) + addMin;
+                num1 = cRandom(addMax) + addMin;
+                num2 = cRandom(addMax) + addMin;
                 operator = "+";
                 break;
-            case 1: // 减法
-                num1 = customRandom(subtractMax - subtractMin) + subtractMin * 2;
-                num2 = customRandom(num1 - subtractMin) + subtractMin;
+            case 1: // 减法，下式等价于（注意，cRandom方法结果最小是 0）
+                // num1 = [little * 2, big)
+                // num2 = [little, num1 - little)
+                num1 = cRandom(bigPower - littlePower * 2) + littlePower * 2;
+                num2 = cRandom(num1 - littlePower * 2) + littlePower;
                 operator = "-";
                 break;
             case 2: // 乘法
-                num1 = customRandom(multipleMax1) + multipleMin1;
-                num2 = customRandom(multipleMax2) + multipleMin2;
+                num1 = cRandom(mulMax1) + mulMin1;
+                num2 = cRandom(mulMax2) + mulMin2;
                 operator = "×";
                 break;
             default:
-                num1 = customRandom(addMax) + addMin;
-                num2 = customRandom(addMax) + addMin;
+                num1 = cRandom(addMax) + addMin;
+                num2 = cRandom(addMax) + addMin;
                 operator = "+";
         }
         return num1 + " " + operator + " " + num2 + " = ?";
@@ -72,7 +77,7 @@ public class ArithmeticUtils {
     }
 
 
-    public static int customRandom(int bound){
+    public static int cRandom(int bound){
         Random random = new Random();
         int i = random.nextInt(bound);
         if(i % 10 == 0){
