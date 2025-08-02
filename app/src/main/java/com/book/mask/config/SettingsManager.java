@@ -41,10 +41,12 @@ public class SettingsManager {
     private static final int DEFAULT_TOP_OFFSET = 130;
     private static final int DEFAULT_BOTTOM_OFFSET = 230;
 
-    // 日常版时间间隔（秒）
-    // 休闲版时间间隔（秒）
 //    private static final int[] dailyIntervalArray = {3, 5};
 //    private static final int[] casualIntervalArray = {20, 30};
+
+    // 严格模式默认的 interval 在数组的索引
+    private static final int DEFAULT_DAILY_INDEX = 2;
+    // 严格、宽松模式的各选项
     private static final int[] dailyIntervalArray = {30, 60, 120};
     private static final int[] casualIntervalArray = {600, 900};
 
@@ -71,27 +73,9 @@ public class SettingsManager {
     public int getAutoShowInterval() {
         return prefs.getInt(KEY_AUTO_SHOW_INTERVAL, dailyIntervalArray[0]);
     }
-    
+
     /**
-     * 设置自动显示间隔（秒）
-     */
-    public void setAutoShowInterval(int seconds) {
-        int minInterval = dailyIntervalArray[0];
-        int maxInterval = casualIntervalArray[casualIntervalArray.length - 1];
-        if (seconds >= minInterval && seconds <= maxInterval) {
-            prefs.edit().putInt(KEY_AUTO_SHOW_INTERVAL, seconds).apply();
-        }
-    }
-    
-    /**
-     * 获取自动显示间隔（毫秒）
-     */
-    public long getAutoShowIntervalMillis() {
-        return getAutoShowInterval() * 1000L;
-    }
-    
-    /**
-     * 设置激励语标签
+     * 设置激励语标签（目标）
      */
     public void setMotivationTag(String tag) {
         prefs.edit().putString(KEY_MOTIVATION_TAG, tag).apply();
@@ -270,11 +254,10 @@ public class SettingsManager {
      */
     public int getAppAutoShowInterval(Object app) {
         String packageName = getPackageName(app);
-        int defaultIndex = 1;
-        if (packageName == null) return dailyIntervalArray[defaultIndex];
+        if (packageName == null) return dailyIntervalArray[DEFAULT_DAILY_INDEX];
         
         String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
-        return prefs.getInt(key, dailyIntervalArray[defaultIndex]);
+        return prefs.getInt(key, dailyIntervalArray[DEFAULT_DAILY_INDEX]);
     }
 
     /**
