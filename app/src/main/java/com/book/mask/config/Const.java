@@ -4,10 +4,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Const {
-    public static final int MIN_ADD_LEN = 3;
-    public static final int MAX_ADD_LEN = 7;
-    public static final int MIN_MULTIPLE_LEN = 2;
-    public static final int MAX_MULTIPLE_LEN = 4;
+
+    // 算术题-悬浮窗：默认数字位数
+    public static final int ADD_LEN_DEFAULT = 5;
+    public static final int SUB_LEN_DEFAULT = 5;
+    public static final int MUL_FIRST_LEN_DEFAULT = 2;
+    public static final int MUL_SECOND_LEN_DEFAULT = 2;
+
+    // 算术题-设置：自定义难度 位数范围
+    public static final int ADD_LEN_MIN = 3;
+    public static final int ADD_LEN_MAX = 7;
+    public static final int MUL_LEN_MIN = 2;
+    public static final int MUL_LEN_MAX = 4;
+
+//    算术题-卡片难度
+    public static final int ADD_LEN_CARD = 7;
+    public static final int SUB_LEN_CARD = 7;
+    public static final int MUL_FIRST_CARD = 4;
+    public static final int MUL_SECOND_CARD = 4;
 
     public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
 

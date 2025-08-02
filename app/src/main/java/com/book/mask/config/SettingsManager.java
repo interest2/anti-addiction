@@ -45,7 +45,7 @@ public class SettingsManager {
     // 休闲版时间间隔（秒）
 //    private static final int[] dailyIntervalArray = {3, 5};
 //    private static final int[] casualIntervalArray = {20, 30};
-    private static final int[] dailyIntervalArray = {20, 60};
+    private static final int[] dailyIntervalArray = {30, 60, 120};
     private static final int[] casualIntervalArray = {600, 900};
 
     private SharedPreferences prefs;
@@ -658,12 +658,7 @@ public class SettingsManager {
     private static final String KEY_MATH_SUBTRACTION_DIGITS = "math_subtraction_digits";
     private static final String KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS = "math_multiplication_multiplier_digits";
     private static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS = "math_multiplication_multiplicand_digits";
-    
-    // 默认数字位数
-    public static final int DEFAULT_ADD_DIGITS = 4;
-    public static final int DEFAULT_SUBTRACT_DIGITS = 4;
-    public static final int DEFAULT_MULTIPLIER_FIRST_DIGITS = 2;
-    public static final int DEFAULT_MULTIPLIER_SECOND_DIGITS = 2;
+
 
     /**
      * 设置算术题难度模式
@@ -692,7 +687,7 @@ public class SettingsManager {
      * 获取加法数字位数
      */
     public int getMathAdditionDigits() {
-        return prefs.getInt(KEY_MATH_ADDITION_DIGITS, DEFAULT_ADD_DIGITS);
+        return prefs.getInt(KEY_MATH_ADDITION_DIGITS, Const.ADD_LEN_DEFAULT);
     }
 
     /**
@@ -706,7 +701,7 @@ public class SettingsManager {
      * 获取减法数字位数
      */
     public int getMathSubtractionDigits() {
-        return prefs.getInt(KEY_MATH_SUBTRACTION_DIGITS, DEFAULT_SUBTRACT_DIGITS);
+        return prefs.getInt(KEY_MATH_SUBTRACTION_DIGITS, Const.SUB_LEN_DEFAULT);
     }
 
     /**
@@ -720,7 +715,7 @@ public class SettingsManager {
      * 获取乘法乘数位数
      */
     public int getMathMultiplicationMultiplierDigits() {
-        return prefs.getInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, DEFAULT_MULTIPLIER_FIRST_DIGITS);
+        return prefs.getInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, Const.MUL_FIRST_LEN_DEFAULT);
     }
 
     /**
@@ -734,7 +729,7 @@ public class SettingsManager {
      * 获取乘法被乘数位数
      */
     public int getMathMultiplicationMultiplicandDigits() {
-        return prefs.getInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, DEFAULT_MULTIPLIER_SECOND_DIGITS);
+        return prefs.getInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, Const.MUL_SECOND_LEN_DEFAULT);
     }
 
 

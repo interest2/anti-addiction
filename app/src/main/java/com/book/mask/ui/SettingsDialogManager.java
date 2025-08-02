@@ -232,12 +232,12 @@ public class SettingsDialogManager {
         input.setHint("不超过 10 个字");
 
         new android.app.AlertDialog.Builder(context)
-            .setTitle("自定义激励语标签")
+            .setTitle("定个目标")
             .setView(input)
             .setPositiveButton("确定", (dialog, which) -> {
                 String customTag = input.getText().toString().trim();
                 if (customTag.isEmpty()) {
-                    Toast.makeText(context, "标签不能为空", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "目标不能为空", Toast.LENGTH_SHORT).show();
                 } else {
                     settingsManager.setMotivationTag(customTag);
                     Toast.makeText(context, "已设置为: " + customTag, Toast.LENGTH_SHORT).show();
@@ -635,21 +635,20 @@ public class SettingsDialogManager {
                     int multiplicandDigits = Integer.parseInt(multiplicandInput);
                     
                     // 验证范围
-
-                    if (additionDigits < Const.MIN_ADD_LEN || additionDigits > Const.MAX_ADD_LEN) {
-                        android.widget.Toast.makeText(context, "加法位数请输入3-7之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+                    if (additionDigits < Const.ADD_LEN_MIN || additionDigits > Const.ADD_LEN_MAX) {
+                        android.widget.Toast.makeText(context, "加法位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (subtractionDigits < Const.MIN_ADD_LEN || subtractionDigits > Const.MAX_ADD_LEN) {
-                        android.widget.Toast.makeText(context, "减法位数请输入3-7之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+                    if (subtractionDigits < Const.ADD_LEN_MIN || subtractionDigits > Const.ADD_LEN_MAX) {
+                        android.widget.Toast.makeText(context, "减法位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (multiplierDigits < Const.MIN_MULTIPLE_LEN || multiplierDigits > Const.MAX_MULTIPLE_LEN) {
-                        android.widget.Toast.makeText(context, "乘数位数请输入2-4之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+                    if (multiplierDigits < Const.MUL_LEN_MIN || multiplierDigits > Const.MUL_LEN_MAX) {
+                        android.widget.Toast.makeText(context, "乘数位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (multiplicandDigits < Const.MIN_MULTIPLE_LEN || multiplicandDigits > Const.MAX_MULTIPLE_LEN) {
-                        android.widget.Toast.makeText(context, "被乘数位数请输入2-4之间的数字", android.widget.Toast.LENGTH_SHORT).show();
+                    if (multiplicandDigits < Const.MUL_LEN_MIN || multiplicandDigits > Const.MUL_LEN_MAX) {
+                        android.widget.Toast.makeText(context, "被乘数位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
                     

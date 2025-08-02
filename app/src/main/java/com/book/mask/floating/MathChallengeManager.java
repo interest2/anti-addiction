@@ -360,10 +360,10 @@ public class MathChallengeManager {
         } else {
             // 使用默认难度
             return ArithmeticUtils.customArithmetic(
-                    settingsManager.DEFAULT_ADD_DIGITS,
-                    settingsManager.DEFAULT_SUBTRACT_DIGITS,
-                    settingsManager.DEFAULT_MULTIPLIER_FIRST_DIGITS,
-                    settingsManager.DEFAULT_MULTIPLIER_SECOND_DIGITS);
+                    Const.ADD_LEN_DEFAULT,
+                    Const.SUB_LEN_DEFAULT,
+                    Const.MUL_FIRST_LEN_DEFAULT,
+                    Const.MUL_SECOND_LEN_DEFAULT);
         }
     }
 }
