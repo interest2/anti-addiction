@@ -67,9 +67,9 @@ public class SettingsNav extends Fragment {
         // 设置重置所有APP悬浮窗状态按钮
         Button resetFloatingStateButton = view.findViewById(R.id.btn_reset_floating_state);
         resetFloatingStateButton.setOnClickListener(v -> {
-            java.util.Set<String> keys = com.book.mask.config.Share.appManuallyHidden.keySet();
+            java.util.Set<String> keys = Share.appManuallyHidden.keySet();
             for (String key : keys) {
-                com.book.mask.config.Share.appManuallyHidden.put(key, false);
+                Share.appManuallyHidden.put(key, false);
             }
             android.widget.Toast.makeText(requireContext(), "所有APP悬浮窗状态已重置", android.widget.Toast.LENGTH_SHORT).show();
         });

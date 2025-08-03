@@ -12,6 +12,7 @@ public class Share {
     public static CustomApp currentApp = null; // 当前活跃的APP（统一使用CustomApp）
     public static boolean isFloatingWindowVisible = false; // 悬浮窗是否显示
     public static Map<String, Boolean> appManuallyHidden = new HashMap<>(); // 每个APP的手动隐藏状态（使用包名作为键）
+    public static Map<String, Long> hiddenTimestamp = new HashMap<>();
 
     public static boolean judgeEnabled(String packageName){
         return "com.xingin.xhs".equals(packageName)
@@ -26,14 +27,13 @@ public class Share {
         return appStates.get(app.getPackageName());
     }
     
-
-    
     /**
      * 清除所有APP状态
      */
     public static void clearAllAppStates() {
         appStates.clear();
         appManuallyHidden.clear();
+        hiddenTimestamp.clear();
         currentApp = null;
     }
     
@@ -49,6 +49,14 @@ public class Share {
      */
     public static boolean isAppManuallyHidden(CustomApp app) {
         return appManuallyHidden.getOrDefault(app.getPackageName(), false);
+    }
+
+    public static void setHiddenTimestamp(String packageName, long hiddenTime) {
+        hiddenTimestamp.put(packageName, hiddenTime);
+    }
+
+    public static Long getHiddenTimestamp(String packageName) {
+        return hiddenTimestamp.get(packageName);
     }
     
     /**

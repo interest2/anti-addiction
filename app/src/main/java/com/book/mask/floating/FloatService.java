@@ -101,15 +101,17 @@ public class FloatService extends AccessibilityService
         instance = this;
         Log.d(TAG, "AccessibilityService 已连接！");
         Toast.makeText(this, "无障碍服务已启动", Toast.LENGTH_LONG).show();
+
+        Log.d(TAG, "AccessibilityService 开始连接");
         
-        // 初始化Handler
+        // 初始化处理器
         handler = new Handler(Looper.getMainLooper());
         autoShowHandler = new Handler(Looper.getMainLooper());
-        
+
         // 初始化悬浮窗管理器
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         
-        // 配置服务参数
+        // 配置无障碍服务
         AccessibilityServiceInfo info = new AccessibilityServiceInfo();
         info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC;
@@ -117,10 +119,22 @@ public class FloatService extends AccessibilityService
         setServiceInfo(info);
         
         // 初始化保活管理器
-        initKeepAliveManager();
+        try {
+            Log.d(TAG, "开始初始化保活管理器");
+            initKeepAliveManager();
+            Log.d(TAG, "保活管理器初始化完成");
+        } catch (Exception e) {
+            Log.e(TAG, "保活管理器初始化失败", e);
+        }
         
         // 初始化应用状态检测增强机制
-        initAppStateEnhancement();
+        try {
+            Log.d(TAG, "开始初始化应用状态检测增强机制");
+            initAppStateEnhancement();
+            Log.d(TAG, "应用状态检测增强机制初始化完成");
+        } catch (Exception e) {
+            Log.e(TAG, "应用状态检测增强机制初始化失败", e);
+        }
         
         // 初始化设置管理器
         settingsManager = new SettingsManager(this);
@@ -183,11 +197,11 @@ public class FloatService extends AccessibilityService
                     currentActiveApp = detectedApp;
                     Share.currentApp = currentActiveApp;
                     Log.d(TAG, "进入APP: " + appName);
-                    
-                    // 检查当前APP是否被手动隐藏
-                    boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
-                    Log.d(TAG, "APP " + appName + " 手动隐藏状态: " + appManuallyHidden);
-                    
+
+//                    // 检查当前APP是否被手动隐藏
+//                    boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
+//                    Log.d(TAG, "APP " + appName + " 手动隐藏状态: " + appManuallyHidden);
+
                     // 立即开始检测文本内容
                     checkTextContentOptimized();
                 }
@@ -268,8 +282,10 @@ public class FloatService extends AccessibilityService
             String appName = currentActiveApp.getAppName();
 
             if (appManuallyHidden) {
-                Log.d(TAG, "APP " + appName + " 被手动隐藏，跳过显示悬浮窗");
-                return;
+                boolean shouldHide = stillInHidePeriod();
+                if(shouldHide){
+                    return;
+                }
             }
 
             Log.d(TAG, "当前有活跃的APP，开始文本检测");
@@ -329,6 +345,19 @@ public class FloatService extends AccessibilityService
             }
         } catch (Exception e) {
             Log.e(TAG, "优化版文本检测失败", e);
+        }
+    }
+
+    private boolean stillInHidePeriod() {
+        Long timestamp= Share.getHiddenTimestamp(currentActiveApp.getPackageName());
+        long currentInterval = settingsManager.getAppAutoShowIntervalMillis(currentActiveApp);
+
+        if(System.currentTimeMillis() - timestamp < currentInterval){
+            Log.d(TAG, "APP " + currentActiveApp.getAppName() + " 被手动隐藏，跳过显示悬浮窗。当前配的使用时长（ms）为" + currentInterval);
+            return true;
+        }else{
+            Share.setAppManuallyHidden(currentActiveApp, false);
+            return false;
         }
     }
 
@@ -434,6 +463,8 @@ public class FloatService extends AccessibilityService
                                 settingsManager.getAppAutoShowInterval(currentActiveApp) :
                                 settingsManager.getAutoShowInterval();
                         Log.d(TAG, "下次时长：" + nextIntervalSeconds + "秒 (APP: " + appName + ")");
+
+                        Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
                     }
 
                 }
@@ -612,7 +643,7 @@ public class FloatService extends AccessibilityService
             
             // 如果用户没有设置过提醒文字，显示默认文字
             if (dailyReminder.isEmpty()) {
-                dailyReminderText.setText("玩手机？不如去喝水");
+                dailyReminderText.setText("玩手机？不如——\n多喝水、多起身活动");
                 dailyReminderLayout.setVisibility(android.view.View.VISIBLE);
                 
                 // 如果用户没有点击过设置按钮，显示小字提示
@@ -749,8 +780,6 @@ public class FloatService extends AccessibilityService
         }
     }
     
-
-    
     /**
      * 初始化保活管理器
      */
@@ -803,7 +832,7 @@ public class FloatService extends AccessibilityService
         
         Log.d(TAG, "保活管理器已初始化");
     }
-    
+
     /**
      * 初始化应用状态检测增强机制
      */

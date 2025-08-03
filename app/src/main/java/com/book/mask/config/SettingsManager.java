@@ -45,14 +45,14 @@ public class SettingsManager {
     private static final int DEFAULT_TOP_OFFSET = 130;
     private static final int DEFAULT_BOTTOM_OFFSET = 230;
 
-//    private static final int[] dailyIntervalArray = {3, 5, 8};
-//    private static final int[] casualIntervalArray = {20, 30};
+//    private static final int[] dailyIntervalArray = {5, 10, 20};
+//    private static final int[] casualIntervalArray = {60, 90, 120};
 
     // 严格模式默认的 interval 在数组的索引
     private static final int DEFAULT_DAILY_INDEX = 2;
     // 严格、宽松模式的各选项
     private static final int[] dailyIntervalArray = {30, 60, 120};
-    private static final int[] casualIntervalArray = {600, 900};
+    private static final int[] casualIntervalArray = {600, 720, 900};
 
     private SharedPreferences prefs;
     
@@ -378,7 +378,6 @@ public class SettingsManager {
         String key = KEY_APP_LAST_CLOSE_TIME + app.getPackageName();
         return prefs.getLong(key, 0);
     }
-    
 
     
     /**
