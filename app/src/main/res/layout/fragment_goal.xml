@@ -74,5 +74,25 @@
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
 
+        <!-- 悬浮窗额外显示日常提醒设置 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3、悬浮窗-良好习惯提醒"
+            android:textSize="18sp"
+            android:textColor="#333333"
+            android:textStyle="bold"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="12dp" />
+
+        <Button
+            android:id="@+id/btn_floating_daily_reminder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#9C27B0"
+            android:text="设置良好习惯提醒"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
     </LinearLayout>
 </ScrollView>

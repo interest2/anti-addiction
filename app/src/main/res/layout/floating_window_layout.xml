@@ -124,6 +124,43 @@
 
     </LinearLayout>
 
+    <!-- 日常提醒区域 -->
+    <LinearLayout
+        android:id="@+id/daily_reminder_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/math_challenge_layout"
+        android:layout_marginTop="64dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:background="#E8F5E8"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:gravity="center"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_daily_reminder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="玩手机？不如去喝水"
+            android:textColor="#2E7D32"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <TextView
+            android:id="@+id/tv_daily_reminder_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="此内容的设置路径：个性设置-悬浮窗良好习惯提醒"
+            android:textColor="#4CAF50"
+            android:textSize="14sp"
+            android:layout_marginTop="4dp"
+            android:gravity="center" />
+
+    </LinearLayout>
+
     <!-- 关闭按钮 - 右上角 -->
     <Button
         android:id="@+id/btn_close"

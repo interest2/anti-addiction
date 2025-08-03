@@ -23,7 +23,7 @@ public class SettingsDialogManager {
     private final SettingsManager settingsManager;
 
     private static String[] appOptions;
-    private static Object[] apps; // 改为Object类型以支持自定义APP
+    private static CustomApp[] apps; // 改为CustomApp类型
 
     public SettingsDialogManager(Context context, SettingsManager settingsManager) {
         this.context = context;
@@ -37,30 +37,14 @@ public class SettingsDialogManager {
     private void updateAppOptions() {
         // 获取所有APP（预定义+自定义）
         java.util.List<CustomApp> allApps = CustomApp.getAllApps();
-        apps = allApps.toArray(new Object[0]);
+        apps = allApps.toArray(new CustomApp[0]);
         
         appOptions = new String[apps.length];
         for (int i = 0; i < apps.length; i++) {
-            appOptions[i] = getAppName(apps[i]);
+            appOptions[i] = apps[i].getAppName();
         }
     }
 
-    /**
-     * 显示时间设置对话框
-     */
-    public void showTimeSettingDialog(boolean isDaily) {
-        // 获取当前活跃APP
-        Object currentApp = com.book.mask.config.Share.currentApp;
-        
-        if (currentApp != null) {
-            // 直接为当前活跃APP设置时间间隔
-            showTimeSettingDialogForApp(currentApp, isDaily);
-        } else {
-            // 没有活跃APP，让用户选择为哪个APP设置
-            showAppSelectionDialog(isDaily);
-        }
-    }
-    
     /**
      * 显示APP选择对话框
      */
@@ -75,8 +59,8 @@ public class SettingsDialogManager {
         new android.app.AlertDialog.Builder(context)
             .setTitle(dialogTitle)
             .setItems(appOptions, (dialog, which) -> {
-                Object selectedApp = apps[which];
-                String appName = getAppName(selectedApp);
+                CustomApp selectedApp = apps[which];
+                String appName = selectedApp.getAppName();
                 android.util.Log.d("SettingsDialog", "用户选择APP: " + appName);
                 showTimeSettingDialogForApp(selectedApp, isDaily);
             })
@@ -88,7 +72,7 @@ public class SettingsDialogManager {
     /**
      * 为指定APP显示时间设置对话框 - 支持自定义APP
      */
-    public void showTimeSettingDialogForApp(Object app, boolean isDaily) {
+    public void showTimeSettingDialogForApp(CustomApp app, boolean isDaily) {
         final int[] intervals = isDaily ? 
             SettingsManager.getDailyAvailableIntervals() : 
             SettingsManager.getCasualAvailableIntervals();
@@ -110,9 +94,8 @@ public class SettingsDialogManager {
         }
         
         String dialogTitle = isDaily ? "严格模式" : "宽松模式";
-        String appName = getAppName(app);
-        String packageName = getPackageName(app);
-        String fullTitle = dialogTitle + " - " + appName;
+        String packageName = app.getPackageName();
+        String fullTitle = dialogTitle + " - " + app.getAppName();
 
         android.util.Log.d("SettingsDialog", "显示时间设置对话框: " + fullTitle);
         android.util.Log.d("SettingsDialog", "APP " + packageName + " 当前时间间隔: " + currentInterval + "秒");
@@ -153,20 +136,6 @@ public class SettingsDialogManager {
                    // 移除这里的 onSettingChanged.run() 调用
                })
                .show();
-    }
-    
-    /**
-     * 获取APP名称
-     */
-    private String getAppName(Object app) {
-        return ((CustomApp) app).getAppName();
-    }
-    
-    /**
-     * 获取APP包名
-     */
-    private String getPackageName(Object app) {
-        return ((CustomApp) app).getPackageName();
     }
     
     /**
@@ -504,18 +473,12 @@ public class SettingsDialogManager {
     /**
      * 更新特定APP的宽松模式剩余次数显示
      */
-    public void updateAppCasualCountDisplay(TextView countText, CustomApp app) {
-        if (countText != null) {
-            int closeCount = settingsManager.getAppCasualCloseCount(app);
-            int remainingCount = Math.max(0, app.getCasualLimitCount() - closeCount);
-            countText.setText("宽松剩余: " + remainingCount + "次");
-        }
-    }
+
     
     /**
      * 更新特定APP的宽松模式剩余次数显示 - 支持自定义APP
      */
-    public void updateAppCasualCountDisplay(TextView countText, Object app) {
+    public void updateAppCasualCountDisplay(TextView countText, CustomApp app) {
         if (countText != null) {
             int closeCount = settingsManager.getAppCasualCloseCount(app);
             int casualLimitCount = ((CustomApp) app).getCasualLimitCount();
@@ -634,6 +597,66 @@ public class SettingsDialogManager {
                     android.widget.Toast.makeText(context, "已保存自定义难度设置", android.widget.Toast.LENGTH_SHORT).show();
                 } catch (NumberFormatException e) {
                     android.widget.Toast.makeText(context, "请输入有效的数字", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
+    /**
+     * 显示悬浮窗额外显示日常提醒设置对话框
+     */
+    public void showFloatingDailyReminderDialog() {
+        // 记录用户点击了设置按钮
+        settingsManager.setFloatingDailyReminderSettingsClicked(true);
+        
+        // 创建自定义布局
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(context);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(50, 30, 50, 30);
+
+        // 添加说明文字
+        android.widget.TextView messageText = new android.widget.TextView(context);
+        messageText.setText("设置的文字将在悬浮窗上额外显示");
+        messageText.setTextSize(14);
+        messageText.setTextColor(0xFF666666);
+        messageText.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+        layout.addView(messageText);
+
+        // 添加小间距
+        android.view.View spacer = new android.view.View(context);
+        spacer.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 16));
+        layout.addView(spacer);
+
+        // 添加输入框
+        final EditText input = new EditText(context);
+        // 设置输入长度限制为50
+        input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(50) });
+        input.setHint("例如：玩手机？不如去喝水");
+        input.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+        
+        // 设置当前已保存的文字
+        String currentReminder = settingsManager.getFloatingDailyReminder();
+        if (!currentReminder.isEmpty()) {
+            input.setText(currentReminder);
+        }
+        layout.addView(input);
+
+        new android.app.AlertDialog.Builder(context)
+            .setTitle("良好习惯提醒")
+            .setView(layout)
+            .setPositiveButton("保存", (dialog, which) -> {
+                String reminder = input.getText().toString().trim();
+                settingsManager.setFloatingDailyReminder(reminder);
+                if (reminder.isEmpty()) {
+                    Toast.makeText(context, "已清除日常提醒", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(context, "已保存日常提醒: " + reminder, Toast.LENGTH_SHORT).show();
                 }
             })
             .setNegativeButton("取消", null)

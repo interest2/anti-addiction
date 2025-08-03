@@ -26,29 +26,7 @@ public class Share {
         return appStates.get(app.getPackageName());
     }
     
-    /**
-     * 获取指定APP的状态 - 支持自定义APP
-     */
-    public static String getAppState(Object app) {
-        String packageName = getPackageName(app);
-        return appStates.get(packageName);
-    }
 
-    /**
-     * 设置指定APP的状态 - 支持自定义APP
-     */
-    public static void setAppState(Object app, String state) {
-        String packageName = getPackageName(app);
-        appStates.put(packageName, state);
-    }
-
-    /**
-     * 清除指定APP的状态 - 支持自定义APP
-     */
-    public static void clearAppState(Object app) {
-        String packageName = getPackageName(app);
-        appStates.remove(packageName);
-    }
     
     /**
      * 清除所有APP状态
@@ -60,32 +38,30 @@ public class Share {
     }
     
     /**
-     * 设置指定APP的手动隐藏状态 - 支持自定义APP
+     * 设置指定APP的手动隐藏状态
      */
-    public static void setAppManuallyHidden(Object app, boolean hidden) {
-        String packageName = getPackageName(app);
-        appManuallyHidden.put(packageName, hidden);
+    public static void setAppManuallyHidden(CustomApp app, boolean hidden) {
+        appManuallyHidden.put(app.getPackageName(), hidden);
     }
     
     /**
-     * 获取指定APP的手动隐藏状态 - 统一使用CustomApp
+     * 获取指定APP的手动隐藏状态
      */
     public static boolean isAppManuallyHidden(CustomApp app) {
         return appManuallyHidden.getOrDefault(app.getPackageName(), false);
     }
     
     /**
-     * 获取指定APP的手动隐藏状态 - 支持自定义APP
+     * 设置指定APP的状态
      */
-    public static boolean isAppManuallyHidden(Object app) {
-        String packageName = getPackageName(app);
-        return appManuallyHidden.getOrDefault(packageName, false);
+    public static void setAppState(CustomApp app, String state) {
+        appStates.put(app.getPackageName(), state);
     }
     
     /**
-     * 获取APP的包名
+     * 清除指定APP的状态
      */
-    private static String getPackageName(Object app) {
-        return ((CustomApp) app).getPackageName();
+    public static void clearAppState(CustomApp app) {
+        appStates.remove(app.getPackageName());
     }
 }

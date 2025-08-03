@@ -72,12 +72,7 @@ public class MathChallengeManager {
         this.currentApp = app;
     }
     
-    /**
-     * 设置当前APP - 支持自定义APP
-     */
-    public void setCurrentApp(Object app) {
-        this.currentApp = (CustomApp) app;
-    }
+
     
     public void setOnMathChallengeListener(OnMathChallengeListener listener) {
         this.listener = listener;

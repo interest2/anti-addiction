@@ -168,13 +168,13 @@ public class FloatService extends AccessibilityService
             CustomApp detectedApp = detectSupportedApp(packageName);
             
             if (detectedApp != null) {
-                String appName = getAppName(detectedApp);
+                String appName = detectedApp.getAppName();
                 Log.d(TAG, "检测到支持的APP: " + appName + " (包名: " + packageName + ")");
                 
                 if (detectedApp != currentActiveApp) {
                     // 切换到新的APP
                     if (currentActiveApp != null) {
-                        String oldAppName = getAppName(currentActiveApp);
+                        String oldAppName = currentActiveApp.getAppName();
                         Log.d(TAG, "离开APP: " + oldAppName);
                         Share.clearAppState(currentActiveApp);
                         // 不清理手动隐藏状态，保持到下次自动解除
@@ -194,7 +194,7 @@ public class FloatService extends AccessibilityService
             } else {
                 // 离开所有支持的APP
                 if (currentActiveApp != null) {
-                    String oldAppName = getAppName(currentActiveApp);
+                    String oldAppName = currentActiveApp.getAppName();
                     Log.d(TAG, "离开APP: " + oldAppName);
                     Share.clearAppState(currentActiveApp);
                     // 不清理手动隐藏状态，保持到下次自动解除
@@ -210,7 +210,7 @@ public class FloatService extends AccessibilityService
         // 只在支持的APP中检测文本内容
         if (currentActiveApp != null && event.getPackageName() != null) {
             String packageName = event.getPackageName().toString();
-            if (getAppPackageName(currentActiveApp).equals(packageName)) {
+            if (currentActiveApp.getPackageName().equals(packageName)) {
                 
                 // 防抖机制：避免频繁检测
                 long currentTime = System.currentTimeMillis();
@@ -258,14 +258,14 @@ public class FloatService extends AccessibilityService
             }
 
             if(mathChallengeManager != null && mathChallengeManager.isMathChallengeActive()){
-                Log.d(TAG, "数学题正展示，停止检测");
+                Log.d(TAG, "数学题正展示，暂停检测");
                 return;
             }
 
             // 检查当前APP是否被手动隐藏
             boolean appManuallyHidden = currentActiveApp != null ?
                     Share.isAppManuallyHidden(currentActiveApp) : false;
-            String appName = getAppName(currentActiveApp);
+            String appName = currentActiveApp.getAppName();
 
             if (appManuallyHidden) {
                 Log.d(TAG, "APP " + appName + " 被手动隐藏，跳过显示悬浮窗");
@@ -276,7 +276,7 @@ public class FloatService extends AccessibilityService
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             if (rootNode != null) {
 
-                String targetWord = getAppTargetWord(currentActiveApp);
+                String targetWord = currentActiveApp.getTargetWord();
 
                 long start = System.currentTimeMillis();
                 boolean hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
@@ -368,6 +368,9 @@ public class FloatService extends AccessibilityService
                 mathChallengeManager.setCurrentApp(currentActiveApp);
             }
             
+            // 更新悬浮窗内容（包括日常提醒）
+            updateFloatingWindowContent();
+            
             mathChallengeManager.setOnMathChallengeListener(new MathChallengeManager.OnMathChallengeListener() {
                 @Override
                 public void onAnswerCorrect() {
@@ -382,7 +385,7 @@ public class FloatService extends AccessibilityService
                         interval = settingsManager.getAppAutoShowIntervalMillis(currentActiveApp);
                         intervalSeconds = settingsManager.getAppAutoShowInterval(currentActiveApp);
                         
-                        String appName = getAppName(currentActiveApp);
+                        String appName = currentActiveApp.getAppName();
                         Log.d(TAG, "APP " + appName + " 当前设置的时间间隔: " + intervalSeconds + "秒");
                         
                         // 记录关闭时间和当前使用的时间间隔
@@ -490,7 +493,7 @@ public class FloatService extends AccessibilityService
             Log.d(TAG, appForTimer + " 到达预期时间");
             if (appForTimer != null) {
                 boolean beforeState = Share.isAppManuallyHidden(appForTimer);
-                String timerAppName = getAppName(appForTimer);
+                String timerAppName = appForTimer.getAppName();
                 Log.d(TAG, "定时器触发 - APP: " + timerAppName + ", 设置前手动隐藏状态: " + beforeState);
 
                 Share.setAppManuallyHidden(appForTimer, false);
@@ -511,7 +514,7 @@ public class FloatService extends AccessibilityService
                     checkTextContentOptimized(true); // 使用强制检查模式
                     Log.d(TAG, "自动重新显示悬浮窗 - 重新检测内容完成 - APP: " + timerAppName);
                 } else {
-                    String currentAppName = currentActiveApp != null ? getAppName(currentActiveApp) : "null";
+                    String currentAppName = currentActiveApp != null ? currentActiveApp.getAppName() : "null";
                     Log.d(TAG, "自动重新显示条件不满足 - 当前APP: " + currentAppName + ", 定时器APP: " + timerAppName + " (用户可能已离开该APP)");
                 }
             }
@@ -547,7 +550,7 @@ public class FloatService extends AccessibilityService
             // 获取缓存的动态文字内容
             String dynamicText = "";
 
-            String packageName = getAppPackageName(currentActiveApp);
+            String packageName = currentActiveApp.getPackageName();
             String source = settingsManager.getAppHintSource(packageName);
 
             // 自定义来源
@@ -568,7 +571,7 @@ public class FloatService extends AccessibilityService
                 String appName = "";
                 if (currentActiveApp != null) {
                     intervalSeconds = settingsManager.getAppAutoShowInterval(currentActiveApp);
-                    appName = getAppName(currentActiveApp);
+                    appName = currentActiveApp.getAppName();
                     Log.d(TAG, "悬浮窗显示APP " + appName + " 的时间间隔: " + intervalSeconds + "秒");
                 } else {
                     intervalSeconds = settingsManager.getAutoShowInterval();
@@ -587,6 +590,47 @@ public class FloatService extends AccessibilityService
             content = FloatHelper.hintDate(targetDateStr) + content;
             contentText.setText(content);
             Log.d(TAG, "悬浮窗内容已更新");
+        }
+        
+        // 更新日常提醒显示
+        updateDailyReminderDisplay();
+    }
+
+    /**
+     * 更新日常提醒显示
+     */
+    private void updateDailyReminderDisplay() {
+        if (floatingView == null) return;
+        
+        android.view.View dailyReminderLayout = floatingView.findViewById(R.id.daily_reminder_layout);
+        android.widget.TextView dailyReminderText = floatingView.findViewById(R.id.tv_daily_reminder);
+        android.widget.TextView dailyReminderHint = floatingView.findViewById(R.id.tv_daily_reminder_hint);
+        
+        if (dailyReminderLayout != null && dailyReminderText != null && dailyReminderHint != null) {
+            String dailyReminder = settingsManager.getFloatingDailyReminder();
+            boolean hasClickedSettings = settingsManager.getFloatingDailyReminderSettingsClicked();
+            
+            // 如果用户没有设置过提醒文字，显示默认文字
+            if (dailyReminder.isEmpty()) {
+                dailyReminderText.setText("玩手机？不如去喝水");
+                dailyReminderLayout.setVisibility(android.view.View.VISIBLE);
+                
+                // 如果用户没有点击过设置按钮，显示小字提示
+                if (!hasClickedSettings) {
+                    dailyReminderHint.setVisibility(android.view.View.VISIBLE);
+                    Log.d(TAG, "显示默认日常提醒和小字提示");
+                } else {
+                    // 用户点击过设置按钮，只隐藏小字提示
+                    dailyReminderHint.setVisibility(android.view.View.GONE);
+                    Log.d(TAG, "显示默认日常提醒，隐藏小字提示");
+                }
+            } else {
+                // 用户设置了自定义提醒文字
+                dailyReminderText.setText(dailyReminder);
+                dailyReminderHint.setVisibility(android.view.View.GONE);
+                dailyReminderLayout.setVisibility(android.view.View.VISIBLE);
+                Log.d(TAG, "显示自定义日常提醒: " + dailyReminder);
+            }
         }
     }
 
@@ -641,7 +685,7 @@ public class FloatService extends AccessibilityService
                         
                         int intervalSeconds = instance.settingsManager.getAppAutoShowInterval(entry.getKey());
                         String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
-                        String appName = instance.getAppName(entry.getKey());
+                        String appName = entry.getKey().getAppName();
                         Log.d(instance.TAG, "时间间隔设置已更新，立即应用新间隔: " + intervalText + " (APP: " + appName + ")");
                         
                         // 显示提示
@@ -721,12 +765,12 @@ public class FloatService extends AccessibilityService
                     boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
                     if (!isFloatingWindowVisible && !appManuallyHidden) {
                         handler.postDelayed(() -> {
-                            String appName = getAppName(currentActiveApp);
+                            String appName = currentActiveApp.getAppName();
                             Log.d(TAG, "屏幕解锁后恢复悬浮窗显示 (APP: " + appName + ")");
                             showFloatingWindow();
                         }, 1000);
                     } else if (appManuallyHidden) {
-                        String appName = getAppName(currentActiveApp);
+                        String appName = currentActiveApp.getAppName();
                         Log.d(TAG, "APP " + appName + " 被手动隐藏，屏幕解锁后不恢复悬浮窗");
                     }
                 }
@@ -738,7 +782,7 @@ public class FloatService extends AccessibilityService
                 // 用户解锁后，重新检测当前是否在支持的APP
                 handler.postDelayed(() -> {
                     if (currentActiveApp != null) {
-                        String appName = getAppName(currentActiveApp);
+                        String appName = currentActiveApp.getAppName();
                         Log.d(TAG, "用户解锁后重新检测APP: " + appName);
                         checkTextContentOptimized();
                     }
@@ -820,7 +864,7 @@ public class FloatService extends AccessibilityService
                 // 多APP状态检测
                 if (detectedApp != null) {
                     if (detectedApp != currentActiveApp) {
-                        String appName = getAppName(detectedApp);
+                        String appName = detectedApp.getAppName();
                         Log.d(TAG, "应用状态检测：发现支持的APP - " + appName);
                         currentActiveApp = detectedApp;
                         Share.currentApp = currentActiveApp;
@@ -833,7 +877,7 @@ public class FloatService extends AccessibilityService
                     }
                 } else {
                     if (currentActiveApp != null) {
-                        String appName = getAppName(currentActiveApp);
+                        String appName = currentActiveApp.getAppName();
                         Log.d(TAG, "应用状态检测：离开支持的APP - " + appName);
                         Share.clearAppState(currentActiveApp);
                         // 不清理手动隐藏状态，保持到下次自动解除
@@ -934,7 +978,7 @@ public class FloatService extends AccessibilityService
         try {
             // 通过广播通知MainActivity更新HomeFragment
             Intent intent = new Intent(Const.ACTION_UPDATE_CASUAL_COUNT);
-            String appName = getAppName(app);
+            String appName = app.getAppName();
             intent.putExtra("app_name", appName);
             sendBroadcast(intent);
             Log.d(TAG, "已发送更新APP " + appName + " 宽松模式次数的广播");
@@ -1001,24 +1045,4 @@ public class FloatService extends AccessibilityService
         return null;
     }
     
-    /**
-     * 获取APP名称
-     */
-    private String getAppName(Object app) {
-        return ((CustomApp) app).getAppName();
-    }
-    
-    /**
-     * 获取APP包名
-     */
-    private String getAppPackageName(Object app) {
-        return ((CustomApp) app).getPackageName();
-    }
-    
-    /**
-     * 获取APP目标词
-     */
-    private String getAppTargetWord(Object app) {
-        return ((CustomApp) app).getTargetWord();
-    }
-} 
+}

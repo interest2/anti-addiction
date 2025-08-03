@@ -32,7 +32,11 @@ public class SettingsManager {
     private static final String KEY_APP_HINT_SOURCE = "app_hint_source_";
     private static final String KEY_APP_HINT_CUSTOM = "app_hint_custom_";
 
-    // 激励语标签列表
+    // 悬浮窗额外显示日常提醒
+    private static final String KEY_FLOATING_DAILY_REMINDER = "floating_daily_reminder";
+    private static final String KEY_FLOATING_DAILY_REMINDER_SETTINGS_CLICKED = "floating_daily_reminder_settings_clicked";
+
+    // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
             "高考", "考研", "保研", "出国升学", "跳槽", "找工作", "考公务员"
     };
@@ -41,7 +45,7 @@ public class SettingsManager {
     private static final int DEFAULT_TOP_OFFSET = 130;
     private static final int DEFAULT_BOTTOM_OFFSET = 230;
 
-//    private static final int[] dailyIntervalArray = {3, 5};
+//    private static final int[] dailyIntervalArray = {3, 5, 8};
 //    private static final int[] casualIntervalArray = {20, 30};
 
     // 严格模式默认的 interval 在数组的索引
@@ -71,11 +75,11 @@ public class SettingsManager {
      * 获取自动显示间隔（秒）
      */
     public int getAutoShowInterval() {
-        return prefs.getInt(KEY_AUTO_SHOW_INTERVAL, dailyIntervalArray[0]);
+        return prefs.getInt(KEY_AUTO_SHOW_INTERVAL, dailyIntervalArray[DEFAULT_DAILY_INDEX]);
     }
 
     /**
-     * 设置激励语标签（目标）
+     * 设置个人目标标签
      */
     public void setMotivationTag(String tag) {
         prefs.edit().putString(KEY_MOTIVATION_TAG, tag).apply();
@@ -83,7 +87,7 @@ public class SettingsManager {
     }
 
     /**
-     * 获取激励语标签
+     * 获取个人目标标签
      */
     public String getMotivationTag() {
         return prefs.getString(KEY_MOTIVATION_TAG, Const.TARGET_TO_BE_SET);
@@ -133,23 +137,10 @@ public class SettingsManager {
     }
 
     /**
-     * 获取可选的激励语标签列表
+     * 获取可选的个人目标标签列表
      */
     public static String[] getAvailableTags() {
         return MOTIVATION_TAGS;
-    }
-    
-    /**
-     * 判断当前是否是休闲版模式
-     */
-    public boolean isCasualMode() {
-        int currentInterval = getAutoShowInterval();
-        for (int interval : casualIntervalArray) {
-            if (interval == currentInterval) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
@@ -246,25 +237,14 @@ public class SettingsManager {
      */
     public int getAppAutoShowInterval(CustomApp app) {
         String key = KEY_APP_AUTO_SHOW_INTERVAL + app.getPackageName();
-        return prefs.getInt(key, dailyIntervalArray[0]);
-    }
-    
-    /**
-     * 获取指定APP的自动显示间隔（秒）- 支持自定义APP
-     */
-    public int getAppAutoShowInterval(Object app) {
-        String packageName = getPackageName(app);
-        if (packageName == null) return dailyIntervalArray[DEFAULT_DAILY_INDEX];
-        
-        String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
         return prefs.getInt(key, dailyIntervalArray[DEFAULT_DAILY_INDEX]);
     }
 
     /**
-     * 设置指定APP的自动显示间隔（秒）- 支持自定义APP
+     * 设置指定APP的自动显示间隔（秒）
      */
-    public void setAppAutoShowInterval(Object app, int seconds) {
-        String packageName = getPackageName(app);
+    public void setAppAutoShowInterval(CustomApp app, int seconds) {
+        String packageName = app.getPackageName();
         if (packageName == null) return;
         
         int minInterval = dailyIntervalArray[0];
@@ -272,56 +252,25 @@ public class SettingsManager {
         if (seconds >= minInterval && seconds <= maxInterval) {
             String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
             
-            // 检查是否需要立即生效
-            int oldInterval = getAppAutoShowInterval(app);
-            boolean wasInFreeMode = (getAppRemainingTime(app) == -1);
-            boolean isSwitchingToStrictMode = (seconds < oldInterval) && wasInFreeMode;
-            
-            android.util.Log.d("SettingsManager", "APP " + packageName + " 设置时间间隔: " + oldInterval + "秒 -> " + seconds + "秒");
-            android.util.Log.d("SettingsManager", "  当前是否自由使用: " + wasInFreeMode);
-            android.util.Log.d("SettingsManager", "  是否切换到严格模式: " + isSwitchingToStrictMode);
-            
-            // 更新设置
+            // 只保存设置，不立即生效
             prefs.edit().putInt(key, seconds).apply();
             
-            // 如果是从自由使用状态切换到更严格的模式，立即生效
-            if (isSwitchingToStrictMode) {
-                recordAppCloseTime(app, seconds);
-                android.util.Log.d("SettingsManager", "  立即生效: 记录新的关闭时间和时间间隔");
-                
-                // 通知无障碍服务立即检查是否需要显示悬浮窗
-                triggerImmediateFloatingWindowCheck(app);
-            }
+            android.util.Log.d("SettingsManager", "APP " + packageName + " 设置时间间隔为: " + seconds + "秒");
+            android.util.Log.d("SettingsManager", "  新设置将在下次关闭悬浮窗后生效");
         }
     }
     
     /**
-     * 触发立即检查是否需要显示悬浮窗 - 支持自定义APP
+     * 获取指定APP的自动显示间隔（毫秒）
      */
-    private void triggerImmediateFloatingWindowCheck(Object app) {
-        try {
-            // 通过静态方法通知无障碍服务
-            Class<?> serviceClass = Class.forName("com.book.mask.floating.FloatService");
-            java.lang.reflect.Method method = serviceClass.getMethod("triggerImmediateCheck", Object.class);
-            method.invoke(null, app);
-            String packageName = getPackageName(app);
-            android.util.Log.d("SettingsManager", "  已通知无障碍服务立即检查APP " + packageName);
-        } catch (Exception e) {
-            android.util.Log.w("SettingsManager", "  无法通知无障碍服务: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * 获取指定APP的自动显示间隔（毫秒）- 支持自定义APP
-     */
-    public long getAppAutoShowIntervalMillis(Object app) {
+    public long getAppAutoShowIntervalMillis(CustomApp app) {
         return getAppAutoShowInterval(app) * 1000L;
     }
 
     /**
-     * 判断指定APP当前是否是休闲版模式 - 支持自定义APP
+     * 判断指定APP当前是否是休闲版模式
      */
-    public boolean isAppCasualMode(Object app) {
+    public boolean isAppCasualMode(CustomApp app) {
         int currentInterval = getAppAutoShowInterval(app);
         for (int interval : casualIntervalArray) {
             if (interval == currentInterval) {
@@ -332,10 +281,10 @@ public class SettingsManager {
     }
 
     /**
-     * 增加指定APP的休闲版关闭次数，并处理每日重置 - 支持自定义APP
+     * 增加指定APP的休闲版关闭次数，并处理每日重置
      */
-    public void incrementAppCasualCloseCount(Object app) {
-        String packageName = getPackageName(app);
+    public void incrementAppCasualCloseCount(CustomApp app) {
+        String packageName = app.getPackageName();
         if (packageName == null) return;
         
         String currentDate = getCurrentDate();
@@ -379,26 +328,14 @@ public class SettingsManager {
     }
     
     /**
-     * 获取指定APP今天的休闲版关闭次数 - 支持自定义APP
+     * 设置指定APP的休闲版关闭次数
      */
-    public int getAppCasualCloseCount(Object app) {
-        String packageName = getPackageName(app);
-        if (packageName == null) return 0;
-        
-        String key = KEY_APP_CASUAL_CLOSE_COUNT + packageName;
-        return prefs.getInt(key, 0);
+    public void setAppCasualCloseCount(CustomApp app, int count) {
+        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + app.getPackageName();
+        prefs.edit().putInt(countKey, count).apply();
     }
+    
 
-    /**
-     * 设置APP的宽松模式关闭次数
-     */
-    public void setAppCasualCloseCount(Object app, int count) {
-        String packageName = getPackageName(app);
-        if (packageName == null) return;
-        
-        String key = KEY_APP_CASUAL_CLOSE_COUNT + packageName;
-        prefs.edit().putInt(key, count).apply();
-    }
 
     /**
      * 获取预定义APP的自定义次数设置
@@ -418,10 +355,10 @@ public class SettingsManager {
     }
 
     /**
-     * 记录指定APP的悬浮窗关闭时间和使用的时间间隔 - 支持自定义APP
+     * 记录指定APP的悬浮窗关闭时间和使用的时间间隔
      */
-    public void recordAppCloseTime(Object app, int intervalSeconds) {
-        String packageName = getPackageName(app);
+    public void recordAppCloseTime(CustomApp app, int intervalSeconds) {
+        String packageName = app.getPackageName();
         if (packageName == null) return;
         
         String timeKey = KEY_APP_LAST_CLOSE_TIME + packageName;
@@ -442,35 +379,17 @@ public class SettingsManager {
         return prefs.getLong(key, 0);
     }
     
-    /**
-     * 获取指定APP的上次关闭时间 - 支持自定义APP
-     */
-    public long getAppLastCloseTime(Object app) {
-        String packageName = getPackageName(app);
-        if (packageName == null) return 0;
-        
-        String key = KEY_APP_LAST_CLOSE_TIME + packageName;
-        return prefs.getLong(key, 0);
-    }
+
     
     /**
      * 获取指定APP上次关闭时使用的时间间隔（秒）
      */
     public int getAppLastCloseInterval(CustomApp app) {
         String key = KEY_APP_LAST_CLOSE_INTERVAL + app.getPackageName();
-        return prefs.getInt(key, dailyIntervalArray[0]);
+        return prefs.getInt(key, dailyIntervalArray[DEFAULT_DAILY_INDEX]);
     }
     
-    /**
-     * 获取指定APP上次关闭时使用的时间间隔（秒）- 支持自定义APP
-     */
-    public int getAppLastCloseInterval(Object app) {
-        String packageName = getPackageName(app);
-        if (packageName == null) return dailyIntervalArray[0];
-        
-        String key = KEY_APP_LAST_CLOSE_INTERVAL + packageName;
-        return prefs.getInt(key, dailyIntervalArray[0]);
-    }
+
     
     /**
      * 计算指定APP的剩余可用时间（毫秒）
@@ -507,49 +426,9 @@ public class SettingsManager {
         }
     }
     
-    /**
-     * 计算指定APP的剩余可用时间（毫秒）- 支持自定义APP
-     * @param app 指定的APP
-     * @return 剩余时间（毫秒），如果可以自由使用则返回-1
-     */
-    public long getAppRemainingTime(Object app) {
-        String packageName = getPackageName(app);
-        if (packageName == null) return -1;
-        
-        // 如果悬浮窗正在显示，且是当前APP，则不可用
-        if (Share.isFloatingWindowVisible && packageName.equals(getPackageName(Share.currentApp))) {
-            return 0;
-        }
-        
-        long lastCloseTime = getAppLastCloseTime(app);
-        if (lastCloseTime == 0) {
-            // 从未关闭过，可以自由使用
-            return -1;
-        }
-        
-        long currentTime = System.currentTimeMillis();
-        // 使用上次关闭时记录的时间间隔，而不是当前设置的时间间隔
-        int intervalSeconds = getAppLastCloseInterval(app);
-        long intervalMillis = intervalSeconds * 1000L;
-        long nextAvailableTime = lastCloseTime + intervalMillis;
-        
-        if (currentTime >= nextAvailableTime) {
-            // 已经超过等待时间，可以自由使用
-            return -1;
-        } else {
-            // 还在等待期间，返回剩余时间
-            long remainingTime = nextAvailableTime - currentTime;
-            android.util.Log.d("SettingsManager", "APP " + packageName + " 剩余时间: " + remainingTime + "毫秒 (" + (remainingTime/1000) + "秒)");
-            return remainingTime;
-        }
-    }
+
     
-    /**
-     * 获取APP的包名
-     */
-    private String getPackageName(Object app) {
-        return ((CustomApp) app).getPackageName();
-    }
+
     
     /**
      * 格式化剩余时间为MM:SS格式
@@ -710,5 +589,36 @@ public class SettingsManager {
         return prefs.getInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, Const.MUL_SECOND_LEN_DEFAULT);
     }
 
+    // ===== 悬浮窗额外显示日常提醒相关方法 =====
+    
+    /**
+     * 设置悬浮窗额外显示日常提醒文字
+     */
+    public void setFloatingDailyReminder(String reminder) {
+        prefs.edit().putString(KEY_FLOATING_DAILY_REMINDER, reminder).apply();
+        android.util.Log.d("SettingsManager", "设置悬浮窗日常提醒: " + reminder);
+    }
+    
+    /**
+     * 获取悬浮窗额外显示日常提醒文字
+     */
+    public String getFloatingDailyReminder() {
+        return prefs.getString(KEY_FLOATING_DAILY_REMINDER, "");
+    }
+
+    /**
+     * 记录用户是否点击过设置按钮
+     */
+    public void setFloatingDailyReminderSettingsClicked(boolean clicked) {
+        prefs.edit().putBoolean(KEY_FLOATING_DAILY_REMINDER_SETTINGS_CLICKED, clicked).apply();
+        android.util.Log.d("SettingsManager", "设置悬浮窗日常提醒设置按钮点击状态: " + clicked);
+    }
+
+    /**
+     * 获取用户是否点击过设置按钮
+     */
+    public boolean getFloatingDailyReminderSettingsClicked() {
+        return prefs.getBoolean(KEY_FLOATING_DAILY_REMINDER_SETTINGS_CLICKED, false);
+    }
 
 }
