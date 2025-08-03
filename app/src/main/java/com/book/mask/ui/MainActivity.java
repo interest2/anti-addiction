@@ -25,6 +25,7 @@ import java.util.List;
 import com.book.mask.R;
 import com.book.mask.config.Const;
 import com.book.mask.config.CustomAppManager;
+import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.lifecycle.AppLifecycleObserver;
 import com.book.mask.network.DeviceInfoReporter;
@@ -102,23 +103,12 @@ public class MainActivity extends AppCompatActivity {
         if (!currentDate.equals(lastResetDate)) {
             SettingsManager settingsManager = new SettingsManager(this);
 
-            // 预定义APP
-            for (Const.SupportedApp app : Const.SupportedApp.values()) {
-                int limitCount;
-                Integer customLimit = settingsManager.getCustomCasualLimitCount(app.getPackageName());
-                if (customLimit != null) {
-                    limitCount = customLimit;
-                } else {
-                    limitCount = app.getCasualLimitCount();
-                }
+            // 所有APP（包括预定义和自定义）
+            CustomAppManager customAppManager = CustomAppManager.getInstance();
+            for (CustomApp app : customAppManager.getAllApps()) {
+                int limitCount = app.getCasualLimitCount();
                 settingsManager.setAppCasualCloseCount(app, 0); // 这里应设置为0，见下说明
                 // 说明：set为0，UI显示剩余次数时用 limitCount - usedCount
-            }
-            // 自定义APP
-            CustomAppManager customAppManager = CustomAppManager.getInstance();
-            for (Const.CustomApp app : customAppManager.getCustomApps()) {
-                int limitCount = app.getCasualLimitCount();
-                settingsManager.setAppCasualCloseCount(app, 0); // 这里同理
             }
 
             // 记录本次重置日期

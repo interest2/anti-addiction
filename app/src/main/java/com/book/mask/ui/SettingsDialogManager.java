@@ -9,6 +9,7 @@ import android.widget.Toast;
 
 import com.book.mask.config.Const;
 import com.book.mask.config.SettingsManager;
+import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.R;
 
@@ -35,7 +36,7 @@ public class SettingsDialogManager {
      */
     private void updateAppOptions() {
         // 获取所有APP（预定义+自定义）
-        java.util.List<Const.App> allApps = Const.SupportedApp.getAllApps();
+        java.util.List<CustomApp> allApps = CustomApp.getAllApps();
         apps = allApps.toArray(new Object[0]);
         
         appOptions = new String[apps.length];
@@ -158,24 +159,14 @@ public class SettingsDialogManager {
      * 获取APP名称
      */
     private String getAppName(Object app) {
-        if (app instanceof Const.SupportedApp) {
-            return ((Const.SupportedApp) app).getAppName();
-        } else if (app instanceof Const.CustomApp) {
-            return ((Const.CustomApp) app).getAppName();
-        }
-        return "未知APP";
+        return ((CustomApp) app).getAppName();
     }
     
     /**
      * 获取APP包名
      */
     private String getPackageName(Object app) {
-        if (app instanceof Const.SupportedApp) {
-            return ((Const.SupportedApp) app).getPackageName();
-        } else if (app instanceof Const.CustomApp) {
-            return ((Const.CustomApp) app).getPackageName();
-        }
-        return "unknown";
+        return ((CustomApp) app).getPackageName();
     }
     
     /**
@@ -457,21 +448,16 @@ public class SettingsDialogManager {
             // 计算所有支持APP的宽松模式次数总和
             int totalCloseCount = 0;
             
-            // 计算预定义APP的宽松模式次数
-            for (Const.SupportedApp app : Const.SupportedApp.values()) {
-                totalCloseCount += settingsManager.getAppCasualCloseCount(app);
-            }
-            
-            // 计算自定义APP的宽松模式次数
+            // 计算所有APP的宽松模式次数
             try {
-                com.book.mask.config.CustomAppManager.getInstance();
-                java.util.List<Const.CustomApp> customApps = com.book.mask.config.CustomAppManager.getInstance().getCustomApps();
+                com.book.mask.config.CustomAppManager customAppManager = com.book.mask.config.CustomAppManager.getInstance();
+                java.util.List<CustomApp> allApps = customAppManager.getAllApps();
                 
-                for (Const.CustomApp customApp : customApps) {
-                    totalCloseCount += settingsManager.getAppCasualCloseCount(customApp);
+                for (CustomApp app : allApps) {
+                    totalCloseCount += settingsManager.getAppCasualCloseCount(app);
                 }
             } catch (Exception e) {
-                android.util.Log.w("SettingsDialogManager", "获取自定义APP宽松模式次数失败", e);
+                android.util.Log.w("SettingsDialogManager", "获取APP宽松模式次数失败", e);
             }
             
             // 如果所有APP都没有使用过，则使用全局次数（兼容性）
@@ -492,21 +478,16 @@ public class SettingsDialogManager {
             // 计算所有支持APP的宽松模式次数总和
             int totalCloseCount = 0;
             
-            // 计算预定义APP的宽松模式次数
-            for (Const.SupportedApp app : Const.SupportedApp.values()) {
-                totalCloseCount += settingsManager.getAppCasualCloseCount(app);
-            }
-            
-            // 计算自定义APP的宽松模式次数
+            // 计算所有APP的宽松模式次数
             try {
-                com.book.mask.config.CustomAppManager.getInstance();
-                java.util.List<Const.CustomApp> customApps = com.book.mask.config.CustomAppManager.getInstance().getCustomApps();
+                com.book.mask.config.CustomAppManager customAppManager = com.book.mask.config.CustomAppManager.getInstance();
+                java.util.List<CustomApp> allApps = customAppManager.getAllApps();
                 
-                for (Const.CustomApp customApp : customApps) {
-                    totalCloseCount += settingsManager.getAppCasualCloseCount(customApp);
+                for (CustomApp app : allApps) {
+                    totalCloseCount += settingsManager.getAppCasualCloseCount(app);
                 }
             } catch (Exception e) {
-                android.util.Log.w("SettingsDialogManager", "获取自定义APP宽松模式次数失败", e);
+                android.util.Log.w("SettingsDialogManager", "获取APP宽松模式次数失败", e);
             }
             
             // 如果所有APP都没有使用过，则使用全局次数（兼容性）
@@ -523,7 +504,7 @@ public class SettingsDialogManager {
     /**
      * 更新特定APP的宽松模式剩余次数显示
      */
-    public void updateAppCasualCountDisplay(TextView countText, Const.SupportedApp app) {
+    public void updateAppCasualCountDisplay(TextView countText, CustomApp app) {
         if (countText != null) {
             int closeCount = settingsManager.getAppCasualCloseCount(app);
             int remainingCount = Math.max(0, app.getCasualLimitCount() - closeCount);
@@ -537,15 +518,7 @@ public class SettingsDialogManager {
     public void updateAppCasualCountDisplay(TextView countText, Object app) {
         if (countText != null) {
             int closeCount = settingsManager.getAppCasualCloseCount(app);
-            int casualLimitCount;
-            
-            if (app instanceof Const.SupportedApp) {
-                casualLimitCount = ((Const.SupportedApp) app).getCasualLimitCount();
-            } else if (app instanceof Const.CustomApp) {
-                casualLimitCount = ((Const.CustomApp) app).getCasualLimitCount();
-            } else {
-                casualLimitCount = 1; // 默认值
-            }
+            int casualLimitCount = ((CustomApp) app).getCasualLimitCount();
             
             int remainingCount = Math.max(0, casualLimitCount - closeCount);
             countText.setText("宽松剩余: " + remainingCount + "次");

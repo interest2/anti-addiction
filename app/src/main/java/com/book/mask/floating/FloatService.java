@@ -25,9 +25,11 @@ import java.util.HashMap;
 
 import com.book.mask.R;
 import com.book.mask.config.Const;
+import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
 import com.book.mask.config.SettingsManager;
+import com.book.mask.config.CustomApp;
 import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.network.TextFetcher;
 import android.content.Intent;
@@ -44,7 +46,7 @@ public class FloatService extends AccessibilityService
     private static final String TAG = "FloatingAccessibility";
     private static FloatService instance;
     private boolean isFloatingWindowVisible = false;
-    private Object currentActiveApp = null; // 当前活跃的APP（支持预定义和自定义APP）
+    private CustomApp currentActiveApp = null; // 当前活跃的APP（统一使用CustomApp）
     
     // 时间格式化器
     private static final SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
@@ -91,7 +93,7 @@ public class FloatService extends AccessibilityService
     private Runnable autoShowRunnable;
     
     // 为每个APP维护独立的定时器
-    private Map<Object, Runnable> appTimers = new HashMap<>();
+    private Map<CustomApp, Runnable> appTimers = new HashMap<>();
 
     @Override
     public void onServiceConnected() {
@@ -163,7 +165,7 @@ public class FloatService extends AccessibilityService
             }
             
             // 检测当前是否是支持的APP（包括预定义和自定义）
-            Object detectedApp = detectSupportedApp(packageName);
+            CustomApp detectedApp = detectSupportedApp(packageName);
             
             if (detectedApp != null) {
                 String appName = getAppName(detectedApp);
@@ -305,10 +307,8 @@ public class FloatService extends AccessibilityService
                     }
 
                     if ("target".equals(currentInterface)) {
-                        Log.d(TAG, "检测到目标界面 - APP: " + appName +
-                            ", 手动隐藏状态: " + appManuallyHidden + 
-                            ", 悬浮窗可见: " + isFloatingWindowVisible + 
-                            ", 强制检查: " + forceCheck);
+                        Log.d(TAG, "检测到目标界面 - APP: " + appName + ", 手动隐藏状态: " + appManuallyHidden +
+                            ", 悬浮窗可见: " + isFloatingWindowVisible + ", 强制检查: " + forceCheck);
                         
                         if (!isFloatingWindowVisible) {
                             Log.d(TAG, "显示悬浮窗 - APP: " + appName);
@@ -446,7 +446,7 @@ public class FloatService extends AccessibilityService
                 Log.d(TAG, "用户点击关闭按钮");
                 
                 // 微信APP直接当作答题通过，不显示数学题
-                if (currentActiveApp instanceof Const.SupportedApp && currentActiveApp == Const.SupportedApp.WECHAT) {
+                if (CustomAppManager.WECHAT_PACKAGE.equals(currentActiveApp.getPackageName())) {
                     Log.d(TAG, "微信APP直接当作答题通过");
                     // 直接调用答题成功的逻辑
                     if (mathChallengeManager != null && mathChallengeManager.getOnMathChallengeListener() != null) {
@@ -473,7 +473,7 @@ public class FloatService extends AccessibilityService
                 Share.isFloatingWindowVisible = false; // 同步状态
             }
             // 获取下次的文字
-            String packageName = getAppPackageName(currentActiveApp);
+            String packageName = currentActiveApp.getPackageName();
             String source = settingsManager.getAppHintSource(packageName);
             // 自定义来源
             if (Const.DEFAULT_HINT_SOURCE.equals(source)){
@@ -484,7 +484,7 @@ public class FloatService extends AccessibilityService
 
     @NonNull
     private Runnable getRunnable() {
-        Object appForTimer = currentActiveApp;
+        CustomApp appForTimer = currentActiveApp;
 
         Runnable nextShowTask = () -> {
             Log.d(TAG, appForTimer + " 到达预期时间");
@@ -629,7 +629,7 @@ public class FloatService extends AccessibilityService
             
             // 如果当前有正在运行的自动显示定时器，重新启动它
             if (instance.appTimers.size() > 0) {
-                for (Map.Entry<Object, Runnable> entry : instance.appTimers.entrySet()) {
+                for (Map.Entry<CustomApp, Runnable> entry : instance.appTimers.entrySet()) {
                     boolean appManuallyHidden = Share.isAppManuallyHidden(entry.getKey());
                     if (appManuallyHidden) {
                         // 取消当前的定时器
@@ -676,9 +676,9 @@ public class FloatService extends AccessibilityService
      * 触发立即检查是否需要显示悬浮窗
      * 当用户从宽松模式切换到严格模式时调用
      */
-    public static void triggerImmediateCheck(Const.SupportedApp app) {
+    public static void triggerImmediateCheck(CustomApp app) {
         if (instance != null) {
-            Log.d(TAG, "收到立即检查请求，目标APP: " + app.name());
+            Log.d(TAG, "收到立即检查请求，目标APP: " + app.getAppName());
             
             // 检查当前是否在目标APP中
             if (app == instance.currentActiveApp) {
@@ -688,7 +688,7 @@ public class FloatService extends AccessibilityService
                 String appState = Share.getAppState(app);
                 boolean isManuallyHidden = Share.isAppManuallyHidden(app);
                 
-                Log.d(TAG, "APP " + app.name() + " 状态: " + appState + ", 手动隐藏: " + isManuallyHidden);
+                Log.d(TAG, "APP " + app.getAppName() + " 状态: " + appState + ", 手动隐藏: " + isManuallyHidden);
                 
                 // 如果APP状态是target且没有手动隐藏，立即显示悬浮窗
                 if ("target".equals(appState) && !isManuallyHidden) {
@@ -705,38 +705,7 @@ public class FloatService extends AccessibilityService
         }
     }
     
-    /**
-     * 触发立即检查是否需要显示悬浮窗 - 支持自定义APP
-     */
-    public static void triggerImmediateCheck(Object app) {
-        if (instance != null) {
-            String appName = instance.getAppName(app);
-            Log.d(TAG, "收到立即检查请求，目标APP: " + appName);
-            
-            // 检查当前是否在目标APP中
-            if (app == instance.currentActiveApp) {
-                Log.d(TAG, "当前正在目标APP中，检查是否需要显示悬浮窗");
-                
-                // 检查APP状态
-                String appState = Share.getAppState(app);
-                boolean isManuallyHidden = Share.isAppManuallyHidden(app);
-                
-                Log.d(TAG, "APP " + appName + " 状态: " + appState + ", 手动隐藏: " + isManuallyHidden);
-                
-                // 如果APP状态是target且没有手动隐藏，立即显示悬浮窗
-                if ("target".equals(appState) && !isManuallyHidden) {
-                    Log.d(TAG, "立即显示悬浮窗");
-                    instance.showFloatingWindow();
-                } else {
-                    Log.d(TAG, "不满足显示条件，不显示悬浮窗");
-                }
-            } else {
-                Log.d(TAG, "当前不在目标APP中，无需显示悬浮窗");
-            }
-        } else {
-            Log.w(TAG, "无障碍服务实例不存在，无法立即检查");
-        }
-    }
+
     
     /**
      * 初始化保活管理器
@@ -845,7 +814,7 @@ public class FloatService extends AccessibilityService
                     rootNode.getPackageName().toString() : "";
                 
                 // 检测当前是否是支持的APP（包括预定义和自定义）
-                Object detectedApp = detectSupportedApp(currentPackage);
+                CustomApp detectedApp = detectSupportedApp(currentPackage);
                 Log.d(TAG, "detectedApp 包名： " + currentPackage);
 
                 // 多APP状态检测
@@ -959,24 +928,9 @@ public class FloatService extends AccessibilityService
     }
 
     /**
-     * 通知HomeFragment更新特定APP的UI显示
-     */
-    private void notifyHomeFragmentUpdate(Const.SupportedApp app) {
-        try {
-            // 通过广播通知MainActivity更新HomeFragment
-            Intent intent = new Intent(Const.ACTION_UPDATE_CASUAL_COUNT);
-            intent.putExtra("app_name", app.name());
-            sendBroadcast(intent);
-            Log.d(TAG, "已发送更新APP " + app.name() + " 宽松模式次数的广播");
-        } catch (Exception e) {
-            Log.w(TAG, "发送更新广播失败: " + e.getMessage());
-        }
-    }
-    
-    /**
      * 通知HomeFragment更新特定APP的UI显示 - 支持自定义APP
      */
-    private void notifyHomeFragmentUpdate(Object app) {
+    private void notifyHomeFragmentUpdate(CustomApp app) {
         try {
             // 通过广播通知MainActivity更新HomeFragment
             Intent intent = new Intent(Const.ACTION_UPDATE_CASUAL_COUNT);
@@ -1023,38 +977,25 @@ public class FloatService extends AccessibilityService
     }
 
     /**
-     * 检测包名对应的支持APP（包括预定义和自定义）
+     * 检测包名对应的支持APP（统一使用CustomApp）
      */
-    private Object detectSupportedApp(String packageName) {
-        // 首先检查预定义的APP
-        Const.SupportedApp supportedApp = Const.SupportedApp.getByPackageName(packageName);
-        if (supportedApp != null) {
-            // 检查该APP的监测开关状态
-            if (!settingsManager.shouldMonitorApp(packageName)) {
-                Log.d(TAG, "APP " + supportedApp.getAppName() + " 监测已关闭，跳过检测");
-                return null;
-            }
-            return supportedApp;
-        }
-        
-        // 然后检查自定义APP
+    private CustomApp detectSupportedApp(String packageName) {
+        // 检查所有APP（包括预定义和自定义）
         try {
             com.book.mask.config.CustomAppManager customAppManager = 
                 com.book.mask.config.CustomAppManager.getInstance();
-            java.util.List<Const.CustomApp> customApps = customAppManager.getCustomApps();
+            CustomApp app = customAppManager.getAppByPackageName(packageName);
             
-            for (Const.CustomApp customApp : customApps) {
-                if (customApp.getPackageName().equals(packageName)) {
-                    // 检查该APP的监测开关状态
-                    if (!settingsManager.shouldMonitorApp(packageName)) {
-                        Log.d(TAG, "自定义APP " + customApp.getAppName() + " 监测已关闭，跳过检测");
-                        return null;
-                    }
-                    return customApp;
+            if (app != null) {
+                // 检查该APP的监测开关状态
+                if (!settingsManager.shouldMonitorApp(packageName)) {
+                    Log.d(TAG, "APP " + app.getAppName() + " 监测已关闭，跳过检测");
+                    return null;
                 }
+                return app;
             }
         } catch (Exception e) {
-            Log.w(TAG, "检查自定义APP时出错", e);
+            Log.w(TAG, "检查APP时出错", e);
         }
         
         return null;
@@ -1064,35 +1005,20 @@ public class FloatService extends AccessibilityService
      * 获取APP名称
      */
     private String getAppName(Object app) {
-        if (app instanceof Const.SupportedApp) {
-            return ((Const.SupportedApp) app).getAppName();
-        } else if (app instanceof Const.CustomApp) {
-            return ((Const.CustomApp) app).getAppName();
-        }
-        return "未知APP";
+        return ((CustomApp) app).getAppName();
     }
     
     /**
      * 获取APP包名
      */
     private String getAppPackageName(Object app) {
-        if (app instanceof Const.SupportedApp) {
-            return ((Const.SupportedApp) app).getPackageName();
-        } else if (app instanceof Const.CustomApp) {
-            return ((Const.CustomApp) app).getPackageName();
-        }
-        return "unknown";
+        return ((CustomApp) app).getPackageName();
     }
     
     /**
      * 获取APP目标词
      */
     private String getAppTargetWord(Object app) {
-        if (app instanceof Const.SupportedApp) {
-            return ((Const.SupportedApp) app).getTargetWord();
-        } else if (app instanceof Const.CustomApp) {
-            return ((Const.CustomApp) app).getTargetWord();
-        }
-        return "";
+        return ((CustomApp) app).getTargetWord();
     }
 } 

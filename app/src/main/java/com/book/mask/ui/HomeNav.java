@@ -27,6 +27,7 @@ import com.book.mask.config.SettingsManager;
 import com.book.mask.config.Const;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
+import com.book.mask.config.CustomApp;
 import com.book.mask.util.ContentUtils;
 import com.book.mask.util.ArithmeticUtils;
 import com.google.android.material.textfield.TextInputEditText;
@@ -47,7 +48,7 @@ public class HomeNav extends Fragment implements
     // APP卡片相关
     private RecyclerView rvAppCards;
     private AppCardAdapter appCardAdapter;
-    private List<Object> allApps; // 包含预定义APP和自定义APP
+    private List<CustomApp> allApps; // 包含预定义APP和自定义APP
     
     // 倒计时相关
     private Handler countdownHandler;
@@ -186,13 +187,8 @@ public class HomeNav extends Fragment implements
         // 获取所有APP（预定义 + 自定义）
         allApps = new java.util.ArrayList<>();
         
-        // 添加预定义的APP
-        for (Const.SupportedApp app : Const.SupportedApp.values()) {
-            allApps.add(app);
-        }
-        
-        // 添加自定义APP
-        allApps.addAll(customAppManager.getCustomApps());
+        // 添加所有APP（包括预定义和自定义）
+        allApps.addAll(customAppManager.getAllApps());
     }
 
     private void initAppCards(View view) {
@@ -210,13 +206,13 @@ public class HomeNav extends Fragment implements
     }
 
     @Override
-    public void onAppCardClick(Object app) {
+    public void onAppCardClick(CustomApp app) {
         // 显示APP设置弹窗
         showAppSettingsDialog(app);
     }
 
     @Override
-    public void onMonitorToggle(Object app, boolean isEnabled) {
+    public void onMonitorToggle(CustomApp app, boolean isEnabled) {
         // 处理监测开关状态变化
         String packageName = getPackageName(app);
         if (packageName != null) {
@@ -236,37 +232,27 @@ public class HomeNav extends Fragment implements
     }
 
     @Override
-    public void onEditClick(Object app) {
+    public void onEditClick(CustomApp app) {
         // 处理编辑图标点击
         String appName = getAppName(app);
         Toast.makeText(requireContext(), "编辑 " + appName, Toast.LENGTH_SHORT).show();
         // TODO: 实现编辑功能
     }
 
-    private String getPackageName(Object app) {
-        if (app instanceof Const.SupportedApp) {
-            return ((Const.SupportedApp) app).getPackageName();
-        } else if (app instanceof Const.CustomApp) {
-            return ((Const.CustomApp) app).getPackageName();
-        }
-        return null;
+    private String getPackageName(CustomApp app) {
+        return app.getPackageName();
     }
 
-    private String getAppName(Object app) {
-        if (app instanceof Const.SupportedApp) {
-            return ((Const.SupportedApp) app).getAppName();
-        } else if (app instanceof Const.CustomApp) {
-            return ((Const.CustomApp) app).getAppName();
-        }
-        return "未知APP";
+    private String getAppName(CustomApp app) {
+        return app.getAppName();
     }
 
-    private void showAppSettingsDialog(Object app) {
+    private void showAppSettingsDialog(CustomApp app) {
         // 显示"单次解禁时长"弹窗
         showTimeSettingDialogForApp(app);
     }
 
-    private void showTimeSettingDialogForApp(Object app) {
+    private void showTimeSettingDialogForApp(CustomApp app) {
         // 创建自定义布局的弹窗
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_time_setting, null);
         
@@ -285,19 +271,8 @@ public class HomeNav extends Fragment implements
         String appName;
         int casualLimitCount;
         
-        if (app instanceof Const.SupportedApp) {
-            Const.SupportedApp supportedApp = (Const.SupportedApp) app;
-            appName = supportedApp.getAppName();
-            // 优先使用自定义设置，如果没有则使用默认值
-            Integer customLimit = settingsManager.getCustomCasualLimitCount(supportedApp.getPackageName());
-            casualLimitCount = customLimit != null ? customLimit : supportedApp.getCasualLimitCount();
-        } else if (app instanceof Const.CustomApp) {
-            Const.CustomApp customApp = (Const.CustomApp) app;
-            appName = customApp.getAppName();
-            casualLimitCount = customApp.getCasualLimitCount();
-        } else {
-            return;
-        }
+        appName = app.getAppName();
+        casualLimitCount = app.getCasualLimitCount();
         
         // 设置显示文本的当前值
         tvCasualCountDisplay.setText(String.valueOf(casualLimitCount));
@@ -356,23 +331,12 @@ public class HomeNav extends Fragment implements
                 tvCasualCountDisplay.setText(String.valueOf(newLimitCount));
                 
                 // 更新APP的casualLimitCount
-                if (app instanceof Const.SupportedApp) {
-                    // 对于预定义APP，保存自定义次数设置
-                    Const.SupportedApp supportedApp = (Const.SupportedApp) app;
-                    settingsManager.setCustomCasualLimitCount(supportedApp.getPackageName(), newLimitCount);
-                    Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
-                    
-                    // 更新APP列表显示
-                    updateAppCardsDisplay();
-                } else if (app instanceof Const.CustomApp) {
-                    Const.CustomApp customApp = (Const.CustomApp) app;
-                    customApp.setCasualLimitCount(newLimitCount);
-                    customAppManager.saveCustomAppsChanges(); // 保存到本地存储
-                    Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
-                    
-                    // 更新APP列表显示
-                    updateAppCardsDisplay();
-                }
+                app.setCasualLimitCount(newLimitCount);
+                customAppManager.saveCustomAppsChanges(); // 保存到本地存储
+                Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
+                
+                // 更新APP列表显示
+                updateAppCardsDisplay();
                 
                 // 隐藏编辑布局，显示正常布局
                 layoutCasualCountEdit.setVisibility(View.GONE);
@@ -426,7 +390,7 @@ public class HomeNav extends Fragment implements
     /**
      * 显示悬浮窗警示文字来源选择对话框（单选列表风格）
      */
-    private void showFloatingTextSourceDialog(Object app) {
+    private void showFloatingTextSourceDialog(CustomApp app) {
         String packageName = getPackageName(app);
         String currentSource = settingsManager.getAppHintSource(packageName);
 
@@ -457,7 +421,7 @@ public class HomeNav extends Fragment implements
     /**
      * 显示自定义文字输入对话框
      */
-    private void showCustomTextInputDialog(Object app) {
+    private void showCustomTextInputDialog(CustomApp app) {
         EditText input = new EditText(requireContext());
         input.setHint("请输入自定义警示文字（不超过100字）");
         input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(100)});
@@ -482,7 +446,7 @@ public class HomeNav extends Fragment implements
     /**
      * 记录悬浮窗警示文字来源
      */
-    private void recordFloatingTextSource(String source, String customText, Object app) {
+    private void recordFloatingTextSource(String source, String customText, CustomApp app) {
         // 获取当前选中的APP包名
         String currentAppPackage = getPackageName(app);
         if (currentAppPackage == null) {
@@ -501,7 +465,7 @@ public class HomeNav extends Fragment implements
     /**
      * 记录悬浮窗警示文字来源（重载方法，用于只有source参数的情况）
      */
-    private void recordFloatingTextSource(String source, Object app) {
+    private void recordFloatingTextSource(String source, CustomApp app) {
         recordFloatingTextSource(source, null, app);
     }
 
@@ -518,7 +482,7 @@ public class HomeNav extends Fragment implements
     /**
      * 显示算术题验证弹窗用于关闭屏蔽
      */
-    private void showMathChallengeForMonitorToggle(Object app, String packageName) {
+    private void showMathChallengeForMonitorToggle(CustomApp app, String packageName) {
         // 创建算术题验证弹窗
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_math_challenge, null);
         

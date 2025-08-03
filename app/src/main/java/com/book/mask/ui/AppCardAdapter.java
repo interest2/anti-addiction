@@ -12,31 +12,32 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.book.mask.R;
 import com.book.mask.config.Const;
 import com.book.mask.config.SettingsManager;
+import com.book.mask.config.CustomApp;
 import com.book.mask.config.Share;
 
 import java.util.List;
 
 public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardViewHolder> {
 
-    private List<Object> apps; // 包含预定义APP和自定义APP
+    private List<CustomApp> apps; // 包含预定义APP和自定义APP
     private SettingsManager settingsManager;
     private OnAppCardClickListener listener;
     private OnMonitorToggleListener monitorListener;
     private OnEditClickListener editListener;
 
-    public interface OnAppCardClickListener {
-        void onAppCardClick(Object app);
+        public interface OnAppCardClickListener {
+        void onAppCardClick(CustomApp app);
     }
-
+    
     public interface OnMonitorToggleListener {
-        void onMonitorToggle(Object app, boolean isEnabled);
+        void onMonitorToggle(CustomApp app, boolean isEnabled);
     }
-
+    
     public interface OnEditClickListener {
-        void onEditClick(Object app);
+        void onEditClick(CustomApp app);
     }
 
-    public AppCardAdapter(List<Object> apps, SettingsManager settingsManager, 
+    public AppCardAdapter(List<CustomApp> apps, SettingsManager settingsManager, 
                          OnAppCardClickListener listener, OnMonitorToggleListener monitorListener,
                          OnEditClickListener editListener) {
         this.apps = apps;
@@ -56,7 +57,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
 
     @Override
     public void onBindViewHolder(@NonNull AppCardViewHolder holder, int position) {
-        Object app = apps.get(position);
+        CustomApp app = apps.get(position);
         holder.bind(app);
     }
 
@@ -65,7 +66,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         return apps.size();
     }
 
-    public void updateData(List<Object> newApps) {
+    public void updateData(List<CustomApp> newApps) {
         this.apps = newApps;
         notifyDataSetChanged();
     }
@@ -95,7 +96,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             toggleMonitor.setOnClickListener(v -> {
                 int position = getAdapterPosition();
                 if (position != RecyclerView.NO_POSITION && monitorListener != null) {
-                    Object app = apps.get(position);
+                    CustomApp app = apps.get(position);
                     boolean isEnabled = toggleMonitor.isChecked();
                     monitorListener.onMonitorToggle(app, isEnabled);
                 }
@@ -103,7 +104,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
 
         }
 
-        public void bind(Object app) {
+        public void bind(CustomApp app) {
             if (app == null || settingsManager == null) {
                 return;
             }
@@ -112,22 +113,10 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             int casualLimitCount;
             String packageName;
             
-            // 根据APP类型获取信息
-            if (app instanceof Const.SupportedApp) {
-                Const.SupportedApp supportedApp = (Const.SupportedApp) app;
-                appName = supportedApp.getAppName();
-                // 优先使用自定义设置，如果没有则使用默认值
-                Integer customLimit = settingsManager.getCustomCasualLimitCount(supportedApp.getPackageName());
-                casualLimitCount = customLimit != null ? customLimit : supportedApp.getCasualLimitCount();
-                packageName = supportedApp.getPackageName();
-            } else if (app instanceof Const.CustomApp) {
-                Const.CustomApp customApp = (Const.CustomApp) app;
-                appName = customApp.getAppName();
-                casualLimitCount = customApp.getCasualLimitCount();
-                packageName = customApp.getPackageName();
-            } else {
-                return;
-            }
+            // 获取APP信息
+            appName = app.getAppName();
+            casualLimitCount = app.getCasualLimitCount();
+            packageName = app.getPackageName();
             
             // 设置APP名称
             if (tvAppName != null) {

@@ -244,8 +244,8 @@ public class SettingsManager {
     /**
      * 获取指定APP的自动显示间隔（秒）
      */
-    public int getAppAutoShowInterval(Const.SupportedApp app) {
-        String key = KEY_APP_AUTO_SHOW_INTERVAL + app.name();
+    public int getAppAutoShowInterval(CustomApp app) {
+        String key = KEY_APP_AUTO_SHOW_INTERVAL + app.getPackageName();
         return prefs.getInt(key, dailyIntervalArray[0]);
     }
     
@@ -364,10 +364,10 @@ public class SettingsManager {
     /**
      * 获取指定APP今天的休闲版关闭次数
      */
-    public int getAppCasualCloseCount(Const.SupportedApp app) {
+    public int getAppCasualCloseCount(CustomApp app) {
         String currentDate = getCurrentDate();
-        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + app.name();
-        String dateKey = KEY_APP_LAST_CASUAL_CLOSE_DATE + app.name();
+        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + app.getPackageName();
+        String dateKey = KEY_APP_LAST_CASUAL_CLOSE_DATE + app.getPackageName();
         String lastDate = prefs.getString(dateKey, "");
         
         if (currentDate.equals(lastDate)) {
@@ -437,8 +437,8 @@ public class SettingsManager {
     /**
      * 获取指定APP的上次关闭时间
      */
-    public long getAppLastCloseTime(Const.SupportedApp app) {
-        String key = KEY_APP_LAST_CLOSE_TIME + app.name();
+    public long getAppLastCloseTime(CustomApp app) {
+        String key = KEY_APP_LAST_CLOSE_TIME + app.getPackageName();
         return prefs.getLong(key, 0);
     }
     
@@ -456,8 +456,8 @@ public class SettingsManager {
     /**
      * 获取指定APP上次关闭时使用的时间间隔（秒）
      */
-    public int getAppLastCloseInterval(Const.SupportedApp app) {
-        String key = KEY_APP_LAST_CLOSE_INTERVAL + app.name();
+    public int getAppLastCloseInterval(CustomApp app) {
+        String key = KEY_APP_LAST_CLOSE_INTERVAL + app.getPackageName();
         return prefs.getInt(key, dailyIntervalArray[0]);
     }
     
@@ -477,7 +477,7 @@ public class SettingsManager {
      * @param app 指定的APP
      * @return 剩余时间（毫秒），如果可以自由使用则返回-1
      */
-    public long getAppRemainingTime(Const.SupportedApp app) {
+    public long getAppRemainingTime(CustomApp app) {
         // 如果悬浮窗正在显示，且是当前APP，则不可用
         if (Share.isFloatingWindowVisible && app == Share.currentApp) {
             return 0;
@@ -548,12 +548,7 @@ public class SettingsManager {
      * 获取APP的包名
      */
     private String getPackageName(Object app) {
-        if (app instanceof Const.SupportedApp) {
-            return ((Const.SupportedApp) app).getPackageName();
-        } else if (app instanceof Const.CustomApp) {
-            return ((Const.CustomApp) app).getPackageName();
-        }
-        return null;
+        return ((CustomApp) app).getPackageName();
     }
     
     /**

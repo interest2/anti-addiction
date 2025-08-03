@@ -14,11 +14,25 @@ import java.util.List;
 public class CustomAppManager {
     private static final String PREF_NAME = "custom_apps";
     private static final String KEY_CUSTOM_APPS = "custom_apps_list";
+    public static final String WECHAT_PACKAGE = "com.tencent.mm";
     private static CustomAppManager instance;
     private final Context context;
     private final SharedPreferences sharedPreferences;
     private final Gson gson;
-    private List<Const.CustomApp> customApps;
+    private List<CustomApp> customApps;
+    
+    // 预定义的应用列表
+    private static final List<CustomApp> PREDEFINED_APPS = new ArrayList<>();
+    
+    static {
+        // 初始化预定义应用
+        PREDEFINED_APPS.add(new CustomApp("小红书", "com.xingin.xhs", "发现", 3));
+        PREDEFINED_APPS.add(new CustomApp("知乎", "com.zhihu.android", "热榜", 2));
+        PREDEFINED_APPS.add(new CustomApp("抖音", "com.ss.android.ugc.aweme", "推荐,精选,热点", 2));
+        PREDEFINED_APPS.add(new CustomApp("哔哩哔哩", "tv.danmaku.bili", "推荐", 1));
+        PREDEFINED_APPS.add(new CustomApp("支付宝", "com.eg.android.AlipayGphone", "股票,行情,持有", 3));
+        PREDEFINED_APPS.add(new CustomApp("微信", WECHAT_PACKAGE, "公众号", 3));
+    }
 
     private CustomAppManager(Context context) {
         if (context != null) {
@@ -58,13 +72,13 @@ public class CustomAppManager {
      */
     public boolean addCustomApp(String appName, String packageName, String targetWord, int casualLimitCount) {
         // 检查包名是否已存在
-        if (Const.SupportedApp.isPackageNameExists(packageName)) {
+        if (isPackageNameExists(packageName)) {
             Log.w("CustomAppManager", "Package name already exists: " + packageName);
             return false;
         }
 
         // 创建新的自定义APP
-        Const.CustomApp newApp = new Const.CustomApp(appName, packageName, targetWord, casualLimitCount);
+        CustomApp newApp = new CustomApp(appName, packageName, targetWord, casualLimitCount);
         customApps.add(newApp);
         
         // 保存到SharedPreferences
@@ -73,35 +87,51 @@ public class CustomAppManager {
         Log.d("CustomAppManager", "Added custom app: " + appName + " (" + packageName + ")");
         return true;
     }
-
+    
     /**
-     * 获取所有自定义APP
+     * 获取所有APP（包括预定义和自定义）
      */
-    public List<Const.CustomApp> getCustomApps() {
-        return new ArrayList<>(customApps);
+    public List<CustomApp> getAllApps() {
+        List<CustomApp> allApps = new ArrayList<>();
+        // 添加预定义应用
+        allApps.addAll(PREDEFINED_APPS);
+        // 添加自定义应用
+        allApps.addAll(customApps);
+        return allApps;
+    }
+    
+    /**
+     * 根据包名获取APP
+     */
+    public CustomApp getAppByPackageName(String packageName) {
+        // 先检查预定义应用
+        for (CustomApp app : PREDEFINED_APPS) {
+            if (app.getPackageName().equals(packageName)) {
+                return app;
+            }
+        }
+        // 再检查自定义应用
+        for (CustomApp app : customApps) {
+            if (app.getPackageName().equals(packageName)) {
+                return app;
+            }
+        }
+        return null;
     }
 
     /**
-     * 检查包名是否已存在（仅检查自定义APP）
+     * 检查包名是否已存在（包括预定义和自定义APP）
      */
     public boolean isPackageNameExists(String packageName) {
-        for (Const.CustomApp app : customApps) {
+        // 检查预定义应用
+        for (CustomApp app : PREDEFINED_APPS) {
             if (app.getPackageName().equals(packageName)) {
                 return true;
             }
         }
-        return false;
-    }
-
-    /**
-     * 删除自定义APP
-     */
-    public boolean removeCustomApp(String packageName) {
-        for (int i = 0; i < customApps.size(); i++) {
-            if (customApps.get(i).getPackageName().equals(packageName)) {
-                customApps.remove(i);
-                saveCustomApps();
-                Log.d("CustomAppManager", "Removed custom app: " + packageName);
+        // 检查自定义应用
+        for (CustomApp app : customApps) {
+            if (app.getPackageName().equals(packageName)) {
                 return true;
             }
         }
@@ -120,7 +150,7 @@ public class CustomAppManager {
         
         String json = sharedPreferences.getString(KEY_CUSTOM_APPS, "[]");
         try {
-            Type type = new TypeToken<List<Const.CustomApp>>(){}.getType();
+            Type type = new TypeToken<List<CustomApp>>(){}.getType();
             customApps = gson.fromJson(json, type);
             if (customApps == null) {
                 customApps = new ArrayList<>();
