@@ -106,9 +106,7 @@ public class MainActivity extends AppCompatActivity {
             // 所有APP（包括预定义和自定义）
             CustomAppManager customAppManager = CustomAppManager.getInstance();
             for (CustomApp app : customAppManager.getAllApps()) {
-                int limitCount = app.getCasualLimitCount();
-                settingsManager.setAppCasualCloseCount(app, 0); // 这里应设置为0，见下说明
-                // 说明：set为0，UI显示剩余次数时用 limitCount - usedCount
+                settingsManager.setAppCasualCloseCount(app, 0); // 这里应设置为0
             }
 
             // 记录本次重置日期

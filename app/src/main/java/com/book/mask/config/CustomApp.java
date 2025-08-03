@@ -8,7 +8,7 @@ import java.util.List;
 public class CustomApp {
     private final String appName;
     private final String packageName;
-    private final String targetWord;
+    private String targetWord; // 改为非final，支持修改
     private int casualLimitCount; // 改为非final，支持修改
     
     public CustomApp(String appName, String packageName, String targetWord, int casualLimitCount) {
@@ -36,6 +36,10 @@ public class CustomApp {
     
     public void setCasualLimitCount(int casualLimitCount) {
         this.casualLimitCount = casualLimitCount;
+    }
+    
+    public void setTargetWord(String targetWord) {
+        this.targetWord = targetWord;
     }
     
     /**

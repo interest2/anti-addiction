@@ -267,15 +267,26 @@ public class HomeNav extends Fragment implements
         EditText etCasualLimitCount = dialogView.findViewById(R.id.et_casual_limit_count);
         TextView ivSaveCasualCount = dialogView.findViewById(R.id.iv_save_casual_count);
         
+        // targetWord编辑组件
+        LinearLayout layoutTargetWordDisplay = dialogView.findViewById(R.id.layout_target_word_display);
+        LinearLayout layoutTargetWordEdit = dialogView.findViewById(R.id.layout_target_word_edit);
+        TextView tvTargetWordDisplay = dialogView.findViewById(R.id.tv_target_word_display);
+        ImageView ivEditTargetWord = dialogView.findViewById(R.id.iv_edit_target_word);
+        EditText etTargetWord = dialogView.findViewById(R.id.et_target_word);
+        TextView ivSaveTargetWord = dialogView.findViewById(R.id.iv_save_target_word);
+        
         // 获取APP信息
         String appName;
         int casualLimitCount;
+        String targetWord;
         
         appName = app.getAppName();
         casualLimitCount = app.getCasualLimitCount();
+        targetWord = app.getTargetWord();
         
         // 设置显示文本的当前值
         tvCasualCountDisplay.setText(String.valueOf(casualLimitCount));
+        tvTargetWordDisplay.setText(targetWord);
         
         // 检查宽松模式剩余次数
         int casualCount = settingsManager.getAppCasualCloseCount(app);
@@ -359,6 +370,68 @@ public class HomeNav extends Fragment implements
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || 
                 (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
                 ivSaveCasualCount.performClick();
+                return true;
+            }
+            return false;
+        });
+        
+        // targetWord编辑图标点击事件
+        ivEditTargetWord.setOnClickListener(v -> {
+            // 隐藏显示布局，显示编辑布局
+            layoutTargetWordDisplay.setVisibility(View.GONE);
+            layoutTargetWordEdit.setVisibility(View.VISIBLE);
+            
+            // 设置输入框的当前值
+            etTargetWord.setText(tvTargetWordDisplay.getText().toString());
+            etTargetWord.requestFocus();
+            
+            // 显示软键盘
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
+                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.showSoftInput(etTargetWord, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+            }
+        });
+        
+        // targetWord保存图标点击事件
+        ivSaveTargetWord.setOnClickListener(v -> {
+            String inputText = etTargetWord.getText().toString().trim();
+            if (inputText.isEmpty()) {
+                Toast.makeText(requireContext(), "请输入关键词", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // 更新显示文本
+            tvTargetWordDisplay.setText(inputText);
+            
+            // 更新APP的targetWord
+            app.setTargetWord(inputText);
+            
+            // 统一使用updatePredefinedApp方法，它会自动判断是否是预定义APP
+            customAppManager.updatePredefinedApp(app);
+            
+            Toast.makeText(requireContext(), "关键词保存成功", Toast.LENGTH_SHORT).show();
+            
+            // 更新APP列表显示
+            updateAppCardsDisplay();
+            
+            // 隐藏编辑布局，显示正常布局
+            layoutTargetWordEdit.setVisibility(View.GONE);
+            layoutTargetWordDisplay.setVisibility(View.VISIBLE);
+            
+            // 隐藏软键盘
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
+                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(etTargetWord.getWindowToken(), 0);
+            }
+        });
+        
+        // targetWord输入框回车键保存
+        etTargetWord.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || 
+                (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
+                ivSaveTargetWord.performClick();
                 return true;
             }
             return false;

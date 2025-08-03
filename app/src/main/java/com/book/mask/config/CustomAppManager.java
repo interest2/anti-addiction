@@ -14,6 +14,7 @@ import java.util.List;
 public class CustomAppManager {
     private static final String PREF_NAME = "custom_apps";
     private static final String KEY_CUSTOM_APPS = "custom_apps_list";
+    private static final String KEY_DEFAULT_APP_MODIFY = "predefined_apps_modifications";
     public static final String WECHAT_PACKAGE = "com.tencent.mm";
     private static CustomAppManager instance;
     private final Context context;
@@ -23,14 +24,16 @@ public class CustomAppManager {
     
     // 预定义的应用列表
     private static final List<CustomApp> PREDEFINED_APPS = new ArrayList<>();
+    // 预定义APP的修改记录
+    private List<CustomApp> predefinedAppModifications;
     
     static {
         // 初始化预定义应用
         PREDEFINED_APPS.add(new CustomApp("小红书", "com.xingin.xhs", "发现", 3));
         PREDEFINED_APPS.add(new CustomApp("知乎", "com.zhihu.android", "热榜", 2));
-        PREDEFINED_APPS.add(new CustomApp("抖音", "com.ss.android.ugc.aweme", "推荐,精选,热点", 2));
+        PREDEFINED_APPS.add(new CustomApp("抖音", "com.ss.android.ugc.aweme", "推荐 精选 热点", 2));
         PREDEFINED_APPS.add(new CustomApp("哔哩哔哩", "tv.danmaku.bili", "推荐", 1));
-        PREDEFINED_APPS.add(new CustomApp("支付宝", "com.eg.android.AlipayGphone", "股票,行情,持有", 3));
+        PREDEFINED_APPS.add(new CustomApp("支付宝", "com.eg.android.AlipayGphone", "股票 行情 持有", 3));
         PREDEFINED_APPS.add(new CustomApp("微信", WECHAT_PACKAGE, "公众号", 3));
     }
 
@@ -40,12 +43,14 @@ public class CustomAppManager {
             this.sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
             this.gson = new Gson();
             loadCustomApps();
+            loadPredefinedAppModifications();
         } else {
             // 只读模式，用于静态上下文
             this.context = null;
             this.sharedPreferences = null;
             this.gson = new Gson();
             this.customApps = new ArrayList<>();
+            this.predefinedAppModifications = new ArrayList<>();
         }
     }
 
@@ -93,8 +98,11 @@ public class CustomAppManager {
      */
     public List<CustomApp> getAllApps() {
         List<CustomApp> allApps = new ArrayList<>();
-        // 添加预定义应用
-        allApps.addAll(PREDEFINED_APPS);
+        // 添加预定义应用（优先使用修改后的版本）
+        for (CustomApp predefinedApp : PREDEFINED_APPS) {
+            CustomApp modifiedApp = getModifiedPredefinedApp(predefinedApp.getPackageName());
+            allApps.add(modifiedApp != null ? modifiedApp : predefinedApp);
+        }
         // 添加自定义应用
         allApps.addAll(customApps);
         return allApps;
@@ -104,13 +112,20 @@ public class CustomAppManager {
      * 根据包名获取APP
      */
     public CustomApp getAppByPackageName(String packageName) {
-        // 先检查预定义应用
+        // 先检查预定义应用的修改版本
+        CustomApp modifiedApp = getModifiedPredefinedApp(packageName);
+        if (modifiedApp != null) {
+            return modifiedApp;
+        }
+        
+        // 再检查原始预定义应用
         for (CustomApp app : PREDEFINED_APPS) {
             if (app.getPackageName().equals(packageName)) {
                 return app;
             }
         }
-        // 再检查自定义应用
+        
+        // 最后检查自定义应用
         for (CustomApp app : customApps) {
             if (app.getPackageName().equals(packageName)) {
                 return app;
@@ -184,5 +199,89 @@ public class CustomAppManager {
      */
     public void saveCustomAppsChanges() {
         saveCustomApps();
+    }
+    
+    /**
+     * 更新预定义APP（保存修改）
+     */
+    public void updatePredefinedApp(CustomApp modifiedApp) {
+        // 检查是否是预定义APP
+        boolean isPredefined = false;
+        for (CustomApp predefinedApp : PREDEFINED_APPS) {
+            if (predefinedApp.getPackageName().equals(modifiedApp.getPackageName())) {
+                isPredefined = true;
+                break;
+            }
+        }
+        
+        if (isPredefined) {
+            // 更新或添加修改记录
+            boolean found = false;
+            for (int i = 0; i < predefinedAppModifications.size(); i++) {
+                if (predefinedAppModifications.get(i).getPackageName().equals(modifiedApp.getPackageName())) {
+                    predefinedAppModifications.set(i, modifiedApp);
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found) {
+                predefinedAppModifications.add(modifiedApp);
+            }
+            
+            // 保存修改
+            savePredefinedAppModifications();
+        }
+    }
+    
+    /**
+     * 获取修改后的预定义APP
+     */
+    private CustomApp getModifiedPredefinedApp(String packageName) {
+        for (CustomApp modifiedApp : predefinedAppModifications) {
+            if (modifiedApp.getPackageName().equals(packageName)) {
+                return modifiedApp;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 加载预定义APP的修改记录
+     */
+    private void loadPredefinedAppModifications() {
+        if (sharedPreferences == null) {
+            predefinedAppModifications = new ArrayList<>();
+            return;
+        }
+        
+        String json = sharedPreferences.getString(KEY_DEFAULT_APP_MODIFY, "[]");
+        try {
+            Type type = new TypeToken<List<CustomApp>>(){}.getType();
+            predefinedAppModifications = gson.fromJson(json, type);
+            if (predefinedAppModifications == null) {
+                predefinedAppModifications = new ArrayList<>();
+            }
+        } catch (Exception e) {
+            Log.e("CustomAppManager", "Error loading predefined app modifications", e);
+            predefinedAppModifications = new ArrayList<>();
+        }
+    }
+    
+    /**
+     * 保存预定义APP的修改记录
+     */
+    private void savePredefinedAppModifications() {
+        if (sharedPreferences == null) {
+            Log.w("CustomAppManager", "Cannot save predefined app modifications in read-only mode");
+            return;
+        }
+        
+        try {
+            String json = gson.toJson(predefinedAppModifications);
+            sharedPreferences.edit().putString(KEY_DEFAULT_APP_MODIFY, json).apply();
+        } catch (Exception e) {
+            Log.e("CustomAppManager", "Error saving predefined app modifications", e);
+        }
     }
 } 

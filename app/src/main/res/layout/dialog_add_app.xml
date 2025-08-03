@@ -84,7 +84,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="屏蔽关键词（若输入多个则需用英文逗号分隔）"
+        android:text="屏蔽关键词（若输入多个则空格分隔）"
         android:textSize="14sp"
         android:textColor="@android:color/black"
         android:layout_marginBottom="8dp" />

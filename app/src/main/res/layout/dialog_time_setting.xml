@@ -75,36 +75,37 @@
         android:gravity="center_vertical"
         android:layout_marginBottom="12dp">
 
-        <!-- 正常文本显示 -->
-        <LinearLayout
-            android:id="@+id/layout_casual_count_display"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="start"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="8dp"
-            android:background="@android:drawable/edit_text">
+                 <!-- 正常文本显示 -->
+         <LinearLayout
+             android:id="@+id/layout_casual_count_display"
+             android:layout_width="match_parent"
+             android:layout_height="wrap_content"
+             android:layout_gravity="start"
+             android:orientation="horizontal"
+             android:gravity="center_vertical"
+             android:padding="8dp"
+             android:background="@android:drawable/edit_text">
 
-            <TextView
-                android:id="@+id/tv_casual_count_display"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="1"
-                android:textSize="14sp"
-                android:textColor="#333333" />
+             <TextView
+                 android:id="@+id/tv_casual_count_display"
+                 android:layout_width="0dp"
+                 android:layout_height="wrap_content"
+                 android:layout_weight="1"
+                 android:layout_marginEnd="8dp"
+                 android:text="1"
+                 android:textSize="14sp"
+                 android:textColor="#333333" />
 
-            <ImageView
-                android:id="@+id/iv_edit_casual_count"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@android:drawable/ic_menu_edit"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:padding="2dp"
-                android:contentDescription="编辑" />
+             <ImageView
+                 android:id="@+id/iv_edit_casual_count"
+                 android:layout_width="24dp"
+                 android:layout_height="24dp"
+                 android:src="@android:drawable/ic_menu_edit"
+                 android:background="?android:attr/selectableItemBackgroundBorderless"
+                 android:padding="2dp"
+                 android:contentDescription="编辑" />
 
-        </LinearLayout>
+         </LinearLayout>
 
         <!-- 输入框和保存按钮（默认隐藏） -->
         <LinearLayout
@@ -131,6 +132,105 @@
 
             <TextView
                 android:id="@+id/iv_save_casual_count"
+                android:layout_width="40dp"
+                android:layout_height="24dp"
+                android:text="✅"
+                android:textSize="18sp"
+                android:textColor="#4CAF50"
+                android:gravity="center"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:padding="2dp"
+                android:contentDescription="保存" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 分隔线 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#E0E0E0"
+        android:layout_marginBottom="16dp" />
+
+    <!-- 屏蔽关键词设置 -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:text="屏蔽关键词设置"
+        android:textSize="16sp"
+        android:textColor="#333333"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <!-- 屏蔽关键词显示和编辑区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="12dp">
+
+                 <!-- 正常文本显示 -->
+         <LinearLayout
+             android:id="@+id/layout_target_word_display"
+             android:layout_width="match_parent"
+             android:layout_height="wrap_content"
+             android:layout_gravity="start"
+             android:orientation="horizontal"
+             android:gravity="center_vertical"
+             android:padding="8dp"
+             android:background="@android:drawable/edit_text">
+
+             <TextView
+                 android:id="@+id/tv_target_word_display"
+                 android:layout_width="0dp"
+                 android:layout_height="wrap_content"
+                 android:layout_weight="1"
+                 android:layout_marginEnd="8dp"
+                 android:text="关键词"
+                 android:textSize="14sp"
+                 android:textColor="#333333"
+                 android:ellipsize="end"
+                 android:maxLines="2" />
+
+             <ImageView
+                 android:id="@+id/iv_edit_target_word"
+                 android:layout_width="24dp"
+                 android:layout_height="24dp"
+                 android:src="@android:drawable/ic_menu_edit"
+                 android:background="?android:attr/selectableItemBackgroundBorderless"
+                 android:padding="2dp"
+                 android:contentDescription="编辑" />
+
+         </LinearLayout>
+
+        <!-- 输入框和保存按钮（默认隐藏） -->
+        <LinearLayout
+            android:id="@+id/layout_target_word_edit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/et_target_word"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="若多个关键词需空格分隔"
+                android:inputType="text"
+                android:maxLength="50"
+                android:padding="8dp"
+                android:textSize="16sp"
+                android:background="@android:drawable/edit_text"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/iv_save_target_word"
                 android:layout_width="40dp"
                 android:layout_height="24dp"
                 android:text="✅"
