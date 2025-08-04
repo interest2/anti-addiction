@@ -35,6 +35,7 @@ public class Const {
     public static final String DOMAIN_URL = "https://www.ratetend.com:5001/antiAddict"; // 请替换为实际的地址
     public static final String LLM_PATH = "/llm";
     public static final String REPORT_PATH = "/report";
+    public static final String DEBUG_PATH = "/runLog"; // 调试信息上报接口
     public static final String LATEST_VERSION_PATH = "/latestAppVersion";
     public static final String CONTENT_TYPE = "application/json";
 

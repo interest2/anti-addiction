@@ -17,6 +17,7 @@ import com.book.mask.config.Const;
 import com.book.mask.config.SettingsManager;
 import com.book.mask.config.Share;
 import com.book.mask.util.ContentUtils;
+import com.book.mask.floating.DebugFloatingWindowManager;
 
 import java.io.IOException;
 
@@ -73,6 +74,18 @@ public class SettingsNav extends Fragment {
             }
             android.widget.Toast.makeText(requireContext(), "所有APP悬浮窗状态已重置", android.widget.Toast.LENGTH_SHORT).show();
         });
+
+        // 设置调试悬浮窗按钮
+        Button toggleDebugWindowButton = view.findViewById(R.id.btn_toggle_debug_window);
+        toggleDebugWindowButton.setOnClickListener(v -> {
+            DebugFloatingWindowManager debugManager = DebugFloatingWindowManager.getInstance(requireContext());
+            debugManager.toggleDebugWindow();
+            
+            String message = debugManager.isDebugWindowVisible() ? 
+                "调试悬浮窗已显示" : "调试悬浮窗已隐藏";
+            android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_SHORT).show();
+        });
+        
         return view;
     }
 

@@ -30,6 +30,7 @@ import com.book.mask.config.Share;
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
 import com.book.mask.config.SettingsManager;
 import com.book.mask.config.CustomApp;
+import com.book.mask.network.DebugInfoReporter;
 import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.network.TextFetcher;
 import android.content.Intent;
@@ -82,16 +83,21 @@ public class FloatService extends AccessibilityService
     // 设备信息上报器
     private DeviceInfoReporter deviceInfoReporter;
     
+    // 调试信息上报器
+    private DebugInfoReporter debugInfoReporter;
+    
     // 悬浮窗文字获取器
     private TextFetcher textFetcher;
+
+    // 调试悬浮窗管理器
+    private DebugFloatingWindowManager debugFloatingWindowManager;
 
     // 悬浮窗管理相关
     private WindowManager windowManager;
     private View floatingView;
     private WindowManager.LayoutParams layoutParams;
     private Handler autoShowHandler;
-    private Runnable autoShowRunnable;
-    
+
     // 为每个APP维护独立的定时器
     private Map<CustomApp, Runnable> appTimers = new HashMap<>();
 
@@ -143,8 +149,15 @@ public class FloatService extends AccessibilityService
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();
         
+        // 初始化调试信息上报器并开始定期上报
+        debugInfoReporter = new DebugInfoReporter(this);
+        debugInfoReporter.startPeriodicReporting(2); // 每2秒上报一次
+        
         // 初始化悬浮窗文字获取器
         textFetcher = new TextFetcher(this);
+        
+        // 初始化调试悬浮窗管理器
+        debugFloatingWindowManager = DebugFloatingWindowManager.getInstance(this);
         
         Log.d(TAG, "AccessibilityService 配置完成");
     }
@@ -152,7 +165,15 @@ public class FloatService extends AccessibilityService
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
 //        Log.d(TAG, "onAccessibilityEvent 被调用，事件类型: " + event.getEventType());
-//        Log.d(TAG, "类名：" + event.getClassName());
+        Log.d(TAG, "类名：" + event.getClassName());
+        Log.d(TAG, "包名：" + event.getPackageName());
+
+        // 更新调试信息中的事件类型和时间戳
+        Share.className = (String) event.getClassName();
+        Share.packageName = (String) event.getPackageName();
+        Share.lastEventType = event.getEventType();
+        Share.lastEventTime = System.currentTimeMillis();
+        Share.h0 = System.currentTimeMillis();
 
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             handleWindowStateChanged(event);
@@ -163,6 +184,8 @@ public class FloatService extends AccessibilityService
 
     private void handleWindowStateChanged(AccessibilityEvent event) {
         if (event.getPackageName() != null) {
+            Share.h1 = System.currentTimeMillis();
+
             String packageName = event.getPackageName().toString();
             Log.d(TAG, "窗口状态改变，当前应用: " + packageName);
             
@@ -182,10 +205,12 @@ public class FloatService extends AccessibilityService
             CustomApp detectedApp = detectSupportedApp(packageName);
             
             if (detectedApp != null) {
+
                 String appName = detectedApp.getAppName();
                 Log.d(TAG, "检测到支持的APP: " + appName + " (包名: " + packageName + ")");
                 
                 if (detectedApp != currentActiveApp) {
+
                     // 切换到新的APP
                     if (currentActiveApp != null) {
                         String oldAppName = currentActiveApp.getAppName();
@@ -232,7 +257,7 @@ public class FloatService extends AccessibilityService
                     return; // 200ms内的重复事件直接忽略
                 }
                 lastContentCheckTime = currentTime;
-                
+
                 // 使用Handler延迟执行，进一步防抖
                 if (contentCheckRunnable == null) {
                     contentCheckRunnable = new Runnable() {
@@ -265,6 +290,8 @@ public class FloatService extends AccessibilityService
      * @param forceCheck 是否强制检查（用于定时器触发的情况）
      */
     void checkTextContentOptimized(boolean forceCheck) {
+        Share.forceCheck = forceCheck; // 更新调试变量
+
         try {
             if (currentActiveApp == null) {
                 Log.d(TAG, "当前没有活跃的APP，跳过文本检测");
@@ -281,67 +308,76 @@ public class FloatService extends AccessibilityService
                     Share.isAppManuallyHidden(currentActiveApp) : false;
             String appName = currentActiveApp.getAppName();
 
+            Toast.makeText(this, String.valueOf(appManuallyHidden), Toast.LENGTH_SHORT).show();
+
             if (appManuallyHidden) {
                 boolean shouldHide = stillInHidePeriod();
                 if(shouldHide){
                     return;
                 }
             }
-
+            Share.h7 = System.currentTimeMillis();
             Log.d(TAG, "当前有活跃的APP，开始文本检测");
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
+
+            String targetWord = currentActiveApp.getTargetWord();
+            boolean hasTargetWord = false;
             if (rootNode != null) {
-
-                String targetWord = currentActiveApp.getTargetWord();
-
                 long start = System.currentTimeMillis();
-                boolean hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
+                Share.findTextInNodeTime = start;
+                hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
                 if(appName.equals("微信")){
                     hasTargetWord = true;
                 }
-
                 long end = System.currentTimeMillis();
                 double deltaSeconds = (end - start) / 1000.0;
                 Log.d(TAG, "检测耗时：" + String.format("%.3f", deltaSeconds));
 
-                // 简化界面判断逻辑：只检测目标词
-                String currentInterface = hasTargetWord ? "target" : "other";
+                rootNode.recycle();
+            }else{
+                Log.d(TAG, "rootNode 为空");
+                if(appName.equals("微信")){
+                    hasTargetWord = true;
+                }
+            }
+            // 简化界面判断逻辑：只检测目标词
+            String currentInterface = hasTargetWord ? "target" : "not target";
+            Share.currentInterface = currentInterface; // 更新调试变量
+            Share.h8 = System.currentTimeMillis();
 
-                // 添加详细调试信息
-                Log.d(TAG, "文本检测结果: " + targetWord + "=" + hasTargetWord + ", 当前界面=" + currentInterface + ", APP=" + appName);
+            // 添加详细调试信息
+            Log.d(TAG, "文本检测结果: " + targetWord + "=" + hasTargetWord + ", 当前界面=" + currentInterface + ", APP=" + appName);
 
-                // 获取当前APP的状态
-                String lastAppState = Share.getAppState(currentActiveApp);
-                
-                // 如果是强制检查或者界面状态发生变化时才执行操作
-                if (forceCheck || !currentInterface.equals(lastAppState)) {
-                    if (!forceCheck) {
-                        Share.setAppState(currentActiveApp, currentInterface);
-                        Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: " + appName + ")");
-                    } else {
-                        Log.d(TAG, "强制检查模式 - 界面: " + currentInterface + " (APP: " + appName + ")");
-                    }
+            // 获取当前APP的状态
+            String lastAppState = Share.getAppState(currentActiveApp);
 
-                    if ("target".equals(currentInterface)) {
-                        Log.d(TAG, "检测到目标界面 - APP: " + appName + ", 手动隐藏状态: " + appManuallyHidden +
-                            ", 悬浮窗可见: " + isFloatingWindowVisible + ", 强制检查: " + forceCheck);
-                        
-                        if (!isFloatingWindowVisible) {
-                            Log.d(TAG, "显示悬浮窗 - APP: " + appName);
-                            showFloatingWindow();
-                        } else if (isFloatingWindowVisible) {
-                            Log.d(TAG, "悬浮窗已显示，跳过重复显示");
-                        }
-                    } else {
-                        if (isFloatingWindowVisible) {
-                            hideFloatingWindow();
-                        }
-                    }
+            // 如果是强制检查或者界面状态发生变化时才执行操作
+            if (forceCheck || !currentInterface.equals(lastAppState)) {
+                if (!forceCheck) {
+                    // 更新调试信息中的forceCheck触发时间
+                    Share.setAppState(currentActiveApp, currentInterface);
+                    Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: " + appName + ")");
                 } else {
-                    Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface + " (APP: " + appName + ")");
+                    Log.d(TAG, "强制检查模式 - 界面: " + currentInterface + " (APP: " + appName + ")");
                 }
 
-                rootNode.recycle();
+                if ("target".equals(currentInterface)) {
+                    Log.d(TAG, "检测到目标界面 - APP: " + appName + ", 手动隐藏状态: " + appManuallyHidden +
+                            ", 悬浮窗可见: " + isFloatingWindowVisible + ", 强制检查: " + forceCheck);
+
+                    if (!isFloatingWindowVisible) {
+                        Log.d(TAG, "显示悬浮窗 - APP: " + appName);
+                        showFloatingWindow();
+                    } else if (isFloatingWindowVisible) {
+                        Log.d(TAG, "悬浮窗已显示，跳过重复显示");
+                    }
+                } else {
+                    if (isFloatingWindowVisible) {
+                        hideFloatingWindow();
+                    }
+                }
+            } else {
+                Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface + " (APP: " + appName + ")");
             }
         } catch (Exception e) {
             Log.e(TAG, "优化版文本检测失败", e);
@@ -947,11 +983,7 @@ public class FloatService extends AccessibilityService
             handler.removeCallbacks(contentCheckRunnable);
         }
         
-        // 清理自动显示Handler
-        if (autoShowHandler != null && autoShowRunnable != null) {
-            autoShowHandler.removeCallbacks(autoShowRunnable);
-        }
-        
+
         // 清理所有APP的定时器
         if (autoShowHandler != null && appTimers != null) {
             for (Runnable timer : appTimers.values()) {
@@ -986,10 +1018,22 @@ public class FloatService extends AccessibilityService
             deviceInfoReporter = null;
         }
         
+        // 释放调试信息上报器资源
+        if (debugInfoReporter != null) {
+            debugInfoReporter.release();
+            debugInfoReporter = null;
+        }
+        
         // 清理悬浮窗文字获取器
         if (textFetcher != null) {
             textFetcher.cleanup();
             textFetcher = null;
+        }
+        
+        // 清理调试悬浮窗管理器
+        if (debugFloatingWindowManager != null) {
+            debugFloatingWindowManager.cleanup();
+            debugFloatingWindowManager = null;
         }
         
         // 清理多APP状态

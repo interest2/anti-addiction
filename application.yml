@@ -1,0 +1,24 @@
+server:
+  port: 5001
+
+spring:
+  application:
+    name: debug-info-receiver
+
+logging:
+  level:
+    com.book.mask.controller: INFO
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/debug-info.log
+    max-size: 10MB
+    max-history: 30
+
+# 跨域配置
+cors:
+  allowed-origins: "*"
+  allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+  allowed-headers: "*" 

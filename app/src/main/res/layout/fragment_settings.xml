@@ -82,5 +82,25 @@
             android:textSize="16sp"
             android:layout_marginBottom="16dp" />
 
+        <!-- 调试悬浮窗设置 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="调试功能"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/btn_toggle_debug_window"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="显示/隐藏调试悬浮窗"
+            android:backgroundTint="#2196F3"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp" />
+
     </LinearLayout>
 </ScrollView> 

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#80000000"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:gravity="center_vertical">
+
+    <!-- 调试信息标题 -->
+    <TextView
+        android:id="@+id/tv_debug_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🔧 调试信息"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+
+    <!-- 调试信息内容 -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#40000000">
+
+        <TextView
+            android:id="@+id/tv_debug_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="正在加载调试信息..."
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:lineSpacingExtra="2dp"
+            android:padding="4dp" />
+
+    </ScrollView>
+
+    <!-- 控制按钮 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="4dp">
+
+        <Button
+            android:id="@+id/btn_refresh_debug"
+            android:layout_width="60dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="8dp"
+            android:text="刷新"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:backgroundTint="#4CAF50" />
+
+        <Button
+            android:id="@+id/btn_hide_debug"
+            android:layout_width="60dp"
+            android:layout_height="24dp"
+            android:text="隐藏"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:backgroundTint="#FF6B6B" />
+
+    </LinearLayout>
+
+</LinearLayout> 
