@@ -32,7 +32,7 @@ public class CustomAppManager {
         PREDEFINED_APPS.add(new CustomApp("小红书", "com.xingin.xhs", "发现", 3));
         PREDEFINED_APPS.add(new CustomApp("知乎", "com.zhihu.android", "热榜", 2));
         PREDEFINED_APPS.add(new CustomApp("抖音", "com.ss.android.ugc.aweme", "推荐 精选 热点", 2));
-        PREDEFINED_APPS.add(new CustomApp("哔哩哔哩", "tv.danmaku.bili", "推荐", 1));
+        PREDEFINED_APPS.add(new CustomApp("哔哩哔哩", "tv.danmaku.bili", "推荐", 3));
         PREDEFINED_APPS.add(new CustomApp("支付宝", "com.eg.android.AlipayGphone", "股票 行情 持有", 3));
         PREDEFINED_APPS.add(new CustomApp("微信", WECHAT_PACKAGE, "微信关键词不起作用", 3));
     }

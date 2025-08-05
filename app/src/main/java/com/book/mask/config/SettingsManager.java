@@ -52,7 +52,7 @@ public class SettingsManager {
     private static final int DEFAULT_DAILY_INDEX = 2;
     // 严格、宽松模式的各选项
     private static final int[] dailyIntervalArray = {30, 60, 120};
-    private static final int[] casualIntervalArray = {600, 720, 900};
+    private static final int[] casualIntervalArray = {900, 1320, 1800};
 
     private SharedPreferences prefs;
     

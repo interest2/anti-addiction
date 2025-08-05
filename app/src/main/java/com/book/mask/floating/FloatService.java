@@ -290,58 +290,61 @@ public class FloatService extends AccessibilityService
 
             Log.d(TAG, "当前有活跃的APP，开始文本检测");
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
+            String targetWord = currentActiveApp.getTargetWord();
+            boolean hasTargetWord = false;
             if (rootNode != null) {
-
-                String targetWord = currentActiveApp.getTargetWord();
-
                 long start = System.currentTimeMillis();
-                boolean hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
+                hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
                 if(appName.equals("微信")){
                     hasTargetWord = true;
                 }
-
                 long end = System.currentTimeMillis();
                 double deltaSeconds = (end - start) / 1000.0;
                 Log.d(TAG, "检测耗时：" + String.format("%.3f", deltaSeconds));
 
-                // 简化界面判断逻辑：只检测目标词
-                String currentInterface = hasTargetWord ? "target" : "other";
+                rootNode.recycle();
+            }else{
+                Log.d(TAG, "rootNode 为空");
+                if(appName.equals("微信")){
+                    hasTargetWord = true;
+                }
+            }
+            // 简化界面判断逻辑：只检测目标词
+            String currentInterface = hasTargetWord ? "target" : "not target";
 
-                // 添加详细调试信息
-                Log.d(TAG, "文本检测结果: " + targetWord + "=" + hasTargetWord + ", 当前界面=" + currentInterface + ", APP=" + appName);
+            // 添加详细调试信息
+            Log.d(TAG, "文本检测结果: " + targetWord + "=" + hasTargetWord + ", 当前界面=" + currentInterface + ", APP=" + appName);
 
-                // 获取当前APP的状态
-                String lastAppState = Share.getAppState(currentActiveApp);
-                
-                // 如果是强制检查或者界面状态发生变化时才执行操作
-                if (forceCheck || !currentInterface.equals(lastAppState)) {
-                    if (!forceCheck) {
-                        Share.setAppState(currentActiveApp, currentInterface);
-                        Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: " + appName + ")");
-                    } else {
-                        Log.d(TAG, "强制检查模式 - 界面: " + currentInterface + " (APP: " + appName + ")");
-                    }
+            // 获取当前APP的状态
+            String lastAppState = Share.getAppState(currentActiveApp);
 
-                    if ("target".equals(currentInterface)) {
-                        Log.d(TAG, "检测到目标界面 - APP: " + appName + ", 手动隐藏状态: " + appManuallyHidden +
-                            ", 悬浮窗可见: " + isFloatingWindowVisible + ", 强制检查: " + forceCheck);
-                        
-                        if (!isFloatingWindowVisible) {
-                            Log.d(TAG, "显示悬浮窗 - APP: " + appName);
-                            showFloatingWindow();
-                        } else if (isFloatingWindowVisible) {
-                            Log.d(TAG, "悬浮窗已显示，跳过重复显示");
-                        }
-                    } else {
-                        if (isFloatingWindowVisible) {
-                            hideFloatingWindow();
-                        }
-                    }
+            // 如果是强制检查或者界面状态发生变化时才执行操作
+            if (forceCheck || !currentInterface.equals(lastAppState)) {
+                if (!forceCheck) {
+                    // 更新调试信息中的forceCheck触发时间
+                    Share.setAppState(currentActiveApp, currentInterface);
+                    Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: " + appName + ")");
                 } else {
-                    Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface + " (APP: " + appName + ")");
+                    Log.d(TAG, "强制检查模式 - 界面: " + currentInterface + " (APP: " + appName + ")");
                 }
 
-                rootNode.recycle();
+                if ("target".equals(currentInterface)) {
+                    Log.d(TAG, "检测到目标界面 - APP: " + appName + ", 手动隐藏状态: " + appManuallyHidden +
+                            ", 悬浮窗可见: " + isFloatingWindowVisible + ", 强制检查: " + forceCheck);
+
+                    if (!isFloatingWindowVisible) {
+                        Log.d(TAG, "显示悬浮窗 - APP: " + appName);
+                        showFloatingWindow();
+                    } else if (isFloatingWindowVisible) {
+                        Log.d(TAG, "悬浮窗已显示，跳过重复显示");
+                    }
+                } else {
+                    if (isFloatingWindowVisible) {
+                        hideFloatingWindow();
+                    }
+                }
+            } else {
+                Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface + " (APP: " + appName + ")");
             }
         } catch (Exception e) {
             Log.e(TAG, "优化版文本检测失败", e);
