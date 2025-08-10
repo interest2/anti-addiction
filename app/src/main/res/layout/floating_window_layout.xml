@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:layout_marginTop="5dp"
+        android:layout_marginTop="50dp"
         android:background="@drawable/floating_window_bg"
         android:orientation="vertical"
         android:padding="16dp"
@@ -52,15 +52,6 @@
         android:padding="16dp"
         android:gravity="center"
         android:visibility="gone">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🔢 回答数学题才能关闭悬浮窗"
-            android:textColor="#FFFF9800"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="12dp" />
 
         <TextView
             android:id="@+id/tv_math_question"
@@ -145,7 +136,7 @@
             android:layout_height="wrap_content"
             android:text="玩手机？不如去喝水"
             android:textColor="#399C3F"
-            android:textSize="20sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:gravity="start" />
 
@@ -153,7 +144,7 @@
             android:id="@+id/tv_daily_reminder_hint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="此内容的设置路径：个性设置-悬浮窗良好习惯提醒"
+            android:text="绿色文字的设置路径：个性设置->悬浮窗…提醒"
             android:textColor="#4CAF50"
             android:textSize="14sp"
             android:layout_marginTop="4dp"
@@ -168,7 +159,7 @@
         android:layout_height="40dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_marginTop="0dp"
+        android:layout_marginTop="50dp"
         android:layout_marginEnd="10dp"
         android:text="关闭"
         android:textColor="#FFFFFF"

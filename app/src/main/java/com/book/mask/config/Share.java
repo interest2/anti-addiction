@@ -15,9 +15,10 @@ public class Share {
     public static Map<String, Long> hiddenTimestamp = new HashMap<>();
 
     public static boolean judgeEnabled(String packageName){
-        return "com.xingin.xhs".equals(packageName)
-                || "com.zhihu.android".equals(packageName)
-                || "com.ss.android.ugc.aweme".equals(packageName);
+        return CustomAppManager.XHS_PACKAGE.equals(packageName)
+                || CustomAppManager.ZHIHU_PACKAGE.equals(packageName)
+                || CustomAppManager.BILI_PACKAGE.equals(packageName)
+                || CustomAppManager.DOUYIN_PACKAGE.equals(packageName);
     }
 
     /**

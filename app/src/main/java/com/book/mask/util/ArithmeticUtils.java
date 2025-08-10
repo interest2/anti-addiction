@@ -14,10 +14,6 @@ public class ArithmeticUtils {
         int addMin = (int) Math.pow(10, addendLen - 1);
         int addMax = (int) Math.pow(10, addendLen) - addMin;
 
-        // 举例：len = 4, 则分别为：1000、10000
-        int littlePower = (int) Math.pow(10, subtrahendLen - 1);
-        int bigPower = (int) Math.pow(10, subtrahendLen);
-
         // 乘数
         int mulMin1 = (int) Math.pow(10, multiplierLen1 - 1);
         int mulMax1 = (int) Math.pow(10, multiplierLen1) - mulMin1;
@@ -30,15 +26,15 @@ public class ArithmeticUtils {
         String operator;
         switch (operationType) {
             case 0: // 加法
-                num1 = cRandom(addMax) + addMin;
-                num2 = cRandom(addMax) + addMin;
+                String[] addTemp = hardAdd(addendLen).split(",");
+                num1 = Integer.parseInt(addTemp[0]);
+                num2 = Integer.parseInt(addTemp[1]);
                 operator = "+";
                 break;
-            case 1: // 减法，下式等价于（注意，cRandom方法结果最小是 0）
-                // num1 = [little * 2, big)
-                // num2 = [little, num1 - little)
-                num1 = cRandom(bigPower - littlePower * 2) + littlePower * 2;
-                num2 = cRandom(num1 - littlePower * 2) + littlePower;
+            case 1: // 减法
+                String[] subTemp = hardSub(subtrahendLen).split(",");
+                num1 = Integer.parseInt(subTemp[0]);
+                num2 = Integer.parseInt(subTemp[1]);
                 operator = "-";
                 break;
             case 2: // 乘法
@@ -52,6 +48,73 @@ public class ArithmeticUtils {
                 operator = "+";
         }
         return num1 + " " + operator + " " + num2 + " = ?";
+    }
+
+    public static String hardAdd(int addLen){
+        Random random = new Random();
+        StringBuilder first = new StringBuilder();
+        StringBuilder second = new StringBuilder();
+
+        int firstInit = random.nextInt(9) + 1;
+        int secondInit = random.nextInt(9) + 1;
+
+        first.append(firstInit);
+        second.append(secondInit);
+
+        int easyIndex = random.nextInt(4);
+
+        for (int i = 0; i < addLen - 1; i++) {
+            /* 每位的两两之和尽量大于 10 */
+            int a = random.nextInt(10);
+            int b = random.nextInt(a + 1) + 9 - a;
+            /* 某位可以不大于 10 */
+            if(i == easyIndex){
+                b = random.nextInt(10);
+            }
+
+            first.append(a);
+            second.append(b);
+        }
+        return first + "," + second;
+    }
+
+    public static String hardSub(int subLen){
+        Random random = new Random();
+        StringBuilder first = new StringBuilder();
+        StringBuilder second = new StringBuilder();
+
+        int firstInit = random.nextInt(8) + 2;
+        int secondInit = random.nextInt(firstInit - 1) + 1;
+
+        first.append(firstInit);
+        second.append(secondInit);
+
+        boolean easy =  (firstInit + secondInit) % 2 == 0;
+        int easyIndex = -1;
+        if(easy){
+            /* 允许某一位的被减数 比 减数 大 */
+            easyIndex = random.nextInt(subLen - 1);
+        }
+
+        for (int i = 0; i < subLen - 1; i++) {
+            int a = random.nextInt(9);
+
+            int b;
+            /* 允许某一位的被减数 比 减数 大 */
+            if(i == easyIndex){
+                b = random.nextInt(a + 1);
+            }else {
+                b = random.nextInt(10 - a) + a;
+            }
+            /* 避免 两数的尾数相同 */
+            if(i == subLen - 2 && a == b){
+                b = a + 1 + random.nextInt(9 - b);
+            }
+
+            first.append(a);
+            second.append(b);
+        }
+        return first + "," + second;
     }
 
     /**

@@ -95,8 +95,7 @@ public class MathChallengeManager {
         Button submitButton = floatingView.findViewById(R.id.btn_submit_answer);
         Button cancelButton = floatingView.findViewById(R.id.btn_cancel_close);
         EditText answerEdit = floatingView.findViewById(R.id.et_math_answer);
-        TextView resultText = floatingView.findViewById(R.id.tv_math_result);
-        
+
         // 提交答案按钮
         submitButton.setOnClickListener(v -> handleSubmitAnswer());
         

@@ -62,13 +62,6 @@ public class TextFetcher {
     }
     
     /**
-     * 获取上次更新时间
-     */
-    public long getLastUpdateTime() {
-        return prefs.getLong(PREF_KEY_LAST_UPDATE, 0);
-    }
-    
-    /**
      * 异步获取最新的文字内容
      */
     public void fetchLatestText(OnTextFetchListener listener) {
@@ -76,8 +69,9 @@ public class TextFetcher {
         
         executorService.execute(() -> {
             try {
-                String result = performHttpRequest();
-                
+                String reqResult = performHttpRequest();
+                String result = reqResult.replaceAll("\\n\\s*\\n", "\n");
+
                 mainHandler.post(() -> {
                     if (result != null) {
                         // 缓存新文字

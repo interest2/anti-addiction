@@ -15,7 +15,14 @@ public class CustomAppManager {
     private static final String PREF_NAME = "custom_apps";
     private static final String KEY_CUSTOM_APPS = "custom_apps_list";
     private static final String KEY_DEFAULT_APP_MODIFY = "predefined_apps_modifications";
+
+    /*预置支持 APP 的包名常量*/
+    public static final String XHS_PACKAGE = "com.xingin.xhs";
     public static final String WECHAT_PACKAGE = "com.tencent.mm";
+    public static final String ZHIHU_PACKAGE = "com.zhihu.android";
+    public static final String DOUYIN_PACKAGE = "com.ss.android.ugc.aweme";
+    public static final String BILI_PACKAGE = "tv.danmaku.bili";
+    public static final String ALIPAY_PACKAGE = "com.eg.android.AlipayGphone";
     private static CustomAppManager instance;
     private final Context context;
     private final SharedPreferences sharedPreferences;
@@ -29,11 +36,11 @@ public class CustomAppManager {
     
     static {
         // 初始化预定义应用
-        PREDEFINED_APPS.add(new CustomApp("小红书", "com.xingin.xhs", "发现", 3));
-        PREDEFINED_APPS.add(new CustomApp("知乎", "com.zhihu.android", "热榜", 2));
-        PREDEFINED_APPS.add(new CustomApp("抖音", "com.ss.android.ugc.aweme", "推荐 精选 热点", 2));
-        PREDEFINED_APPS.add(new CustomApp("哔哩哔哩", "tv.danmaku.bili", "推荐", 3));
-        PREDEFINED_APPS.add(new CustomApp("支付宝", "com.eg.android.AlipayGphone", "股票 行情 持有", 3));
+        PREDEFINED_APPS.add(new CustomApp("小红书", XHS_PACKAGE, "发现", 3));
+        PREDEFINED_APPS.add(new CustomApp("知乎", ZHIHU_PACKAGE, "热榜", 2));
+        PREDEFINED_APPS.add(new CustomApp("抖音", DOUYIN_PACKAGE, "推荐 精选 热点", 2));
+        PREDEFINED_APPS.add(new CustomApp("哔哩哔哩", BILI_PACKAGE, "推荐", 3));
+        PREDEFINED_APPS.add(new CustomApp("支付宝", ALIPAY_PACKAGE, "股票 行情 持有", 3));
         PREDEFINED_APPS.add(new CustomApp("微信", WECHAT_PACKAGE, "微信关键词不起作用", 3));
     }
 
