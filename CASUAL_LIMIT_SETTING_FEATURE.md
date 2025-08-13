@@ -2,7 +2,7 @@
 
 ## 功能描述
 
-在点击卡片后的弹窗中，新增了宽松模式一天次数设置功能，允许用户修改自定义APP的`casualLimitCount`变量。
+在点击卡片后的弹窗中，新增了宽松模式一天次数设置功能，允许用户修改自定义APP的`relaxedLimitCount`变量。
 
 ## 功能特性
 
@@ -53,7 +53,7 @@
     android:layout_marginBottom="12dp">
 
     <EditText
-        android:id="@+id/et_casual_limit_count"
+        android:id="@+id/et_relaxed_limit_count"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
@@ -66,7 +66,7 @@
         android:layout_marginEnd="8dp" />
 
     <Button
-        android:id="@+id/btn_save_casual_limit"
+        android:id="@+id/btn_save_relaxed_limit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="保存"
@@ -85,8 +85,8 @@
 /**
  * 获取预定义APP的自定义次数设置
  */
-public Integer getCustomCasualLimitCount(String packageName) {
-    String key = "custom_casual_limit_" + packageName;
+public Integer getCustomRelaxedLimitCount(String packageName) {
+    String key = "custom_relaxed_limit_" + packageName;
     int value = prefs.getInt(key, -1);
     return value == -1 ? null : value; // 返回null表示使用默认值
 }
@@ -94,16 +94,16 @@ public Integer getCustomCasualLimitCount(String packageName) {
 /**
  * 设置预定义APP的自定义次数设置
  */
-public void setCustomCasualLimitCount(String packageName, int count) {
-    String key = "custom_casual_limit_" + packageName;
+public void setCustomRelaxedLimitCount(String packageName, int count) {
+    String key = "custom_relaxed_limit_" + packageName;
     prefs.edit().putInt(key, count).apply();
 }
 
 /**
  * 清除预定义APP的自定义次数设置（恢复默认值）
  */
-public void clearCustomCasualLimitCount(String packageName) {
-    String key = "custom_casual_limit_" + packageName;
+public void clearCustomRelaxedLimitCount(String packageName) {
+    String key = "custom_relaxed_limit_" + packageName;
     prefs.edit().remove(key).apply();
 }
 ```
@@ -114,12 +114,12 @@ public static class CustomApp implements App {
     private final String appName;
     private final String packageName;
     private final String targetWord;
-    private int casualLimitCount; // 改为非final，支持修改
+    private int relaxedLimitCount; // 改为非final，支持修改
     
     // ... 其他方法 ...
     
-    public void setCasualLimitCount(int casualLimitCount) {
-        this.casualLimitCount = casualLimitCount;
+    public void setRelaxedLimitCount(int relaxedLimitCount) {
+        this.relaxedLimitCount = relaxedLimitCount;
     }
 }
 ```
@@ -137,23 +137,23 @@ public void saveCustomAppsChanges() {
 #### HomeFragment.java - showTimeSettingDialogForApp方法
 ```java
 // 获取UI元素
-EditText etCasualLimitCount = dialogView.findViewById(R.id.et_casual_limit_count);
-Button btnSaveCasualLimit = dialogView.findViewById(R.id.btn_save_casual_limit);
+EditText etRelaxedLimitCount = dialogView.findViewById(R.id.et_relaxed_limit_count);
+Button btnSaveRelaxedLimit = dialogView.findViewById(R.id.btn_save_relaxed_limit);
 
 // 设置输入框的当前值（优先使用自定义设置）
 if (app instanceof Const.SupportedApp) {
     Const.SupportedApp supportedApp = (Const.SupportedApp) app;
-    Integer customLimit = settingsManager.getCustomCasualLimitCount(supportedApp.getPackageName());
-    casualLimitCount = customLimit != null ? customLimit : supportedApp.getCasualLimitCount();
+    Integer customLimit = settingsManager.getCustomRelaxedLimitCount(supportedApp.getPackageName());
+    relaxedLimitCount = customLimit != null ? customLimit : supportedApp.getRelaxedLimitCount();
 } else if (app instanceof Const.CustomApp) {
     Const.CustomApp customApp = (Const.CustomApp) app;
-    casualLimitCount = customApp.getCasualLimitCount();
+    relaxedLimitCount = customApp.getRelaxedLimitCount();
 }
-etCasualLimitCount.setText(String.valueOf(casualLimitCount));
+etRelaxedLimitCount.setText(String.valueOf(relaxedLimitCount));
 
 // 设置保存按钮点击事件
-btnSaveCasualLimit.setOnClickListener(v -> {
-    String inputText = etCasualLimitCount.getText().toString().trim();
+btnSaveRelaxedLimit.setOnClickListener(v -> {
+    String inputText = etRelaxedLimitCount.getText().toString().trim();
     if (inputText.isEmpty()) {
         Toast.makeText(requireContext(), "请输入数字", Toast.LENGTH_SHORT).show();
         return;
@@ -166,18 +166,18 @@ btnSaveCasualLimit.setOnClickListener(v -> {
             return;
         }
         
-        // 更新APP的casualLimitCount
+        // 更新APP的relaxedLimitCount
         if (app instanceof Const.SupportedApp) {
             // 对于预定义APP，保存自定义次数设置
             Const.SupportedApp supportedApp = (Const.SupportedApp) app;
-            settingsManager.setCustomCasualLimitCount(supportedApp.getPackageName(), newLimitCount);
+            settingsManager.setCustomRelaxedLimitCount(supportedApp.getPackageName(), newLimitCount);
             Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
             
             // 更新APP列表显示
             updateAppCardsDisplay();
         } else if (app instanceof Const.CustomApp) {
             Const.CustomApp customApp = (Const.CustomApp) app;
-            customApp.setCasualLimitCount(newLimitCount);
+            customApp.setRelaxedLimitCount(newLimitCount);
             customAppManager.saveCustomAppsChanges(); // 保存到本地存储
             Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
             
@@ -198,13 +198,13 @@ if (app instanceof Const.SupportedApp) {
     Const.SupportedApp supportedApp = (Const.SupportedApp) app;
     appName = supportedApp.getAppName();
     // 优先使用自定义设置，如果没有则使用默认值
-    Integer customLimit = settingsManager.getCustomCasualLimitCount(supportedApp.getPackageName());
-    casualLimitCount = customLimit != null ? customLimit : supportedApp.getCasualLimitCount();
+    Integer customLimit = settingsManager.getCustomRelaxedLimitCount(supportedApp.getPackageName());
+    relaxedLimitCount = customLimit != null ? customLimit : supportedApp.getRelaxedLimitCount();
     packageName = supportedApp.getPackageName();
 } else if (app instanceof Const.CustomApp) {
     Const.CustomApp customApp = (Const.CustomApp) app;
     appName = customApp.getAppName();
-    casualLimitCount = customApp.getCasualLimitCount();
+    relaxedLimitCount = customApp.getRelaxedLimitCount();
     packageName = customApp.getPackageName();
 }
 ```
@@ -257,9 +257,9 @@ if (app instanceof Const.SupportedApp) {
 2. **默认值**：枚举中定义的默认值
 
 ### 存储键值
-- **预定义APP**：`custom_casual_limit_包名`
+- **预定义APP**：`custom_relaxed_limit_包名`
 - **自定义APP**：通过CustomAppManager管理
 
 ### 数据恢复
-- **清除自定义设置**：调用`clearCustomCasualLimitCount`恢复默认值
+- **清除自定义设置**：调用`clearCustomRelaxedLimitCount`恢复默认值
 - **自动回退**：如果自定义设置为null，自动使用默认值 

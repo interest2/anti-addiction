@@ -74,14 +74,14 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
     class AppCardViewHolder extends RecyclerView.ViewHolder {
         private TextView tvAppName;
         private TextView tvRemainingTime;
-        private TextView tvCasualCount;
+        private TextView tvRelaxedCount;
         private ToggleButton toggleMonitor;
 
         public AppCardViewHolder(@NonNull View itemView) {
             super(itemView);
             tvAppName = itemView.findViewById(R.id.tv_app_name);
             tvRemainingTime = itemView.findViewById(R.id.tv_remaining_time);
-            tvCasualCount = itemView.findViewById(R.id.tv_casual_count);
+            tvRelaxedCount = itemView.findViewById(R.id.tv_relaxed_count);
             toggleMonitor = itemView.findViewById(R.id.toggle_monitor);
 
             // 卡片点击事件
@@ -110,12 +110,12 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             }
             
             String appName;
-            int casualLimitCount;
+            int relaxedLimitCount;
             String packageName;
             
             // 获取APP信息
             appName = app.getAppName();
-            casualLimitCount = app.getCasualLimitCount();
+            relaxedLimitCount = app.getRelaxedLimitCount();
             packageName = app.getPackageName();
             
             // 设置APP名称
@@ -152,11 +152,11 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             }
 
             // 设置宽松模式剩余次数
-            int casualCount = settingsManager.getAppCasualCloseCount(app);
-            int remainingCount = Math.max(0, casualLimitCount - casualCount);
+            int relaxedCount = settingsManager.getAppRelaxedCloseCount(app);
+            int remainingCount = Math.max(0, relaxedLimitCount - relaxedCount);
             
-            if (tvCasualCount != null) {
-                tvCasualCount.setText("宽松剩余: " + remainingCount + "次");
+            if (tvRelaxedCount != null) {
+                tvRelaxedCount.setText("宽松剩余: " + remainingCount + "次");
             }
         }
     }

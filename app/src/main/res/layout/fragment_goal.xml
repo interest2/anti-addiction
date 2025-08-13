@@ -86,7 +86,7 @@
             android:layout_marginBottom="12dp" />
 
         <Button
-            android:id="@+id/btn_floating_daily_reminder"
+            android:id="@+id/btn_floating_strict_reminder"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:backgroundTint="#9C27B0"

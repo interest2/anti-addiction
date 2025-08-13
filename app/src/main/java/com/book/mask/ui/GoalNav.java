@@ -49,9 +49,9 @@ public class GoalNav extends Fragment {
         });
         
         // 设置悬浮窗额外显示日常提醒按钮
-        Button btnFloatingDailyReminder = view.findViewById(R.id.btn_floating_daily_reminder);
-        btnFloatingDailyReminder.setOnClickListener(v -> {
-            settingsDialogManager.showFloatingDailyReminderDialog();
+        Button btnFloatingStrictReminder = view.findViewById(R.id.btn_floating_strict_reminder);
+        btnFloatingStrictReminder.setOnClickListener(v -> {
+            settingsDialogManager.showFloatingStrictReminderDialog();
         });
         
         return view;

@@ -426,13 +426,13 @@ public class FloatService extends AccessibilityService
                         Log.d(TAG, "设置APP " + appName + " 为手动隐藏状态");
                         
                         // 检查是否是宽松模式
-                        boolean isCasualMode = settingsManager.isAppCasualMode(currentActiveApp);
-                        Log.d(TAG, "APP " + appName + " 当前是否宽松模式: " + isCasualMode);
+                        boolean isRelaxedMode = settingsManager.isAppRelaxedMode(currentActiveApp);
+                        Log.d(TAG, "APP " + appName + " 当前是否宽松模式: " + isRelaxedMode);
                         
                         // 如果是宽松模式，使用次数+1。
-                        if (isCasualMode) {
-                            int currentCount = settingsManager.getAppCasualCloseCount(currentActiveApp);
-                            settingsManager.incrementAppCasualCloseCount(currentActiveApp);
+                        if (isRelaxedMode) {
+                            int currentCount = settingsManager.getAppRelaxedCloseCount(currentActiveApp);
+                            settingsManager.incrementAppRelaxedCloseCount(currentActiveApp);
                             Log.d(TAG, "APP " + appName + " 宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
                             
                             // 通知HomeFragment更新UI显示
@@ -536,8 +536,8 @@ public class FloatService extends AccessibilityService
                 Log.d(TAG, "解除APP " + timerAppName + " 的手动隐藏状态 - 设置后状态: " + afterState);
 
                 // 如果是宽松模式，现在切换到严格模式
-                if (settingsManager.isAppCasualMode(appForTimer)) {
-                    settingsManager.setAppAutoShowInterval(appForTimer, settingsManager.getMaxDailyInterval());
+                if (settingsManager.isAppRelaxedMode(appForTimer)) {
+                    settingsManager.setAppAutoShowInterval(appForTimer, settingsManager.getMaxStrictInterval());
                     Log.d(TAG, "APP " + timerAppName + " 宽松模式已切换到严格模式");
                 }
 
@@ -604,7 +604,16 @@ public class FloatService extends AccessibilityService
                 int intervalSeconds;
                 String appName = "";
                 if (currentActiveApp != null) {
-                    intervalSeconds = settingsManager.getAppAutoShowInterval(currentActiveApp);
+
+                    /*如果上次关闭时是宽松模式，则本次显示应当切为严格模式*/
+                    int appLastCloseInterval = settingsManager.getAppLastCloseInterval(currentActiveApp);
+                    if(settingsManager.isLastRelaxedMode(appLastCloseInterval)){
+                        intervalSeconds = settingsManager.getMaxStrictInterval();
+                        settingsManager.setAppAutoShowInterval(currentActiveApp, intervalSeconds);
+                    }else {
+                        intervalSeconds = settingsManager.getAppAutoShowInterval(currentActiveApp);
+                    }
+
                     appName = currentActiveApp.getAppName();
                     Log.d(TAG, "悬浮窗显示APP " + appName + " 的时间间隔: " + intervalSeconds + "秒");
                 } else {
@@ -627,43 +636,43 @@ public class FloatService extends AccessibilityService
         }
         
         // 更新日常提醒显示
-        updateDailyReminderDisplay();
+        updateStrictReminderDisplay();
     }
 
     /**
      * 更新日常提醒显示
      */
-    private void updateDailyReminderDisplay() {
+    private void updateStrictReminderDisplay() {
         if (floatingView == null) return;
         
-        android.view.View dailyReminderLayout = floatingView.findViewById(R.id.daily_reminder_layout);
-        android.widget.TextView dailyReminderText = floatingView.findViewById(R.id.tv_daily_reminder);
-        android.widget.TextView dailyReminderHint = floatingView.findViewById(R.id.tv_daily_reminder_hint);
+        android.view.View strictReminderLayout = floatingView.findViewById(R.id.strict_reminder_layout);
+        android.widget.TextView strictReminderText = floatingView.findViewById(R.id.tv_strict_reminder);
+        android.widget.TextView strictReminderHint = floatingView.findViewById(R.id.tv_strict_reminder_hint);
         
-        if (dailyReminderLayout != null && dailyReminderText != null && dailyReminderHint != null) {
-            String dailyReminder = settingsManager.getFloatingDailyReminder();
-            boolean hasClickedSettings = settingsManager.getFloatingDailyReminderSettingsClicked();
+        if (strictReminderLayout != null && strictReminderText != null && strictReminderHint != null) {
+            String strictReminder = settingsManager.getFloatingStrictReminder();
+            boolean hasClickedSettings = settingsManager.getFloatingStrictReminderSettingsClicked();
             
             // 如果用户没有设置过提醒文字，显示默认文字
-            if (dailyReminder.isEmpty()) {
-                dailyReminderText.setText("玩手机？不如——\n多喝水、多起身活动");
-                dailyReminderLayout.setVisibility(android.view.View.VISIBLE);
+            if (strictReminder.isEmpty()) {
+                strictReminderText.setText("玩手机？不如——\n多喝水、多起身活动");
+                strictReminderLayout.setVisibility(android.view.View.VISIBLE);
                 
                 // 如果用户没有点击过设置按钮，显示小字提示
                 if (!hasClickedSettings) {
-                    dailyReminderHint.setVisibility(android.view.View.VISIBLE);
+                    strictReminderHint.setVisibility(android.view.View.VISIBLE);
                     Log.d(TAG, "显示默认日常提醒和小字提示");
                 } else {
                     // 用户点击过设置按钮，只隐藏小字提示
-                    dailyReminderHint.setVisibility(android.view.View.GONE);
+                    strictReminderHint.setVisibility(android.view.View.GONE);
                     Log.d(TAG, "显示默认日常提醒，隐藏小字提示");
                 }
             } else {
                 // 用户设置了自定义提醒文字
-                dailyReminderText.setText(dailyReminder);
-                dailyReminderHint.setVisibility(android.view.View.GONE);
-                dailyReminderLayout.setVisibility(android.view.View.VISIBLE);
-                Log.d(TAG, "显示自定义日常提醒: " + dailyReminder);
+                strictReminderText.setText(strictReminder);
+                strictReminderHint.setVisibility(android.view.View.GONE);
+                strictReminderLayout.setVisibility(android.view.View.VISIBLE);
+                Log.d(TAG, "显示自定义日常提醒: " + strictReminder);
             }
         }
     }
@@ -1009,7 +1018,7 @@ public class FloatService extends AccessibilityService
     private void notifyHomeFragmentUpdate(CustomApp app) {
         try {
             // 通过广播通知MainActivity更新HomeFragment
-            Intent intent = new Intent(Const.ACTION_UPDATE_CASUAL_COUNT);
+            Intent intent = new Intent(Const.ACTION_UPDATE_RELAXED_COUNT);
             String appName = app.getAppName();
             intent.putExtra("app_name", appName);
             sendBroadcast(intent);

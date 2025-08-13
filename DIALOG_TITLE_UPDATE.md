@@ -101,7 +101,7 @@ android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireCont
             android:layout_marginEnd="4dp" />
         
         <Button 
-            android:id="@+id/btn_casual_mode"
+            android:id="@+id/btn_relaxed_mode"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"

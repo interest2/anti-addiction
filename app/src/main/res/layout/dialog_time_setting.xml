@@ -36,7 +36,7 @@
             android:layout_marginEnd="4dp" />
 
         <Button
-            android:id="@+id/btn_casual_mode"
+            android:id="@+id/btn_relaxed_mode"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="0"
@@ -77,7 +77,7 @@
 
                  <!-- 正常文本显示 -->
          <LinearLayout
-             android:id="@+id/layout_casual_count_display"
+             android:id="@+id/layout_relaxed_count_display"
              android:layout_width="match_parent"
              android:layout_height="wrap_content"
              android:layout_gravity="start"
@@ -87,7 +87,7 @@
              android:background="@android:drawable/edit_text">
 
              <TextView
-                 android:id="@+id/tv_casual_count_display"
+                 android:id="@+id/tv_relaxed_count_display"
                  android:layout_width="0dp"
                  android:layout_height="wrap_content"
                  android:layout_weight="1"
@@ -97,7 +97,7 @@
                  android:textColor="#333333" />
 
              <ImageView
-                 android:id="@+id/iv_edit_casual_count"
+                 android:id="@+id/iv_edit_relaxed_count"
                  android:layout_width="24dp"
                  android:layout_height="24dp"
                  android:src="@android:drawable/ic_menu_edit"
@@ -109,7 +109,7 @@
 
         <!-- 输入框和保存按钮（默认隐藏） -->
         <LinearLayout
-            android:id="@+id/layout_casual_count_edit"
+            android:id="@+id/layout_relaxed_count_edit"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -118,7 +118,7 @@
             android:visibility="gone">
 
             <EditText
-                android:id="@+id/et_casual_limit_count"
+                android:id="@+id/et_relaxed_limit_count"
                 android:layout_width="40dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.6"
@@ -131,7 +131,7 @@
                 android:layout_marginEnd="8dp" />
 
             <TextView
-                android:id="@+id/iv_save_casual_count"
+                android:id="@+id/iv_save_relaxed_count"
                 android:layout_width="40dp"
                 android:layout_height="24dp"
                 android:text="✅"

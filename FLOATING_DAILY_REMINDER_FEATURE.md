@@ -16,25 +16,25 @@
 ## 实现细节
 
 ### 1. 数据存储
-- 在 `SettingsManager` 中添加了 `KEY_FLOATING_DAILY_REMINDER` 常量
-- 添加了 `KEY_FLOATING_DAILY_REMINDER_SETTINGS_CLICKED` 常量记录用户点击状态
-- 提供了 `setFloatingDailyReminder()` 和 `getFloatingDailyReminder()` 方法
-- 提供了 `setFloatingDailyReminderSettingsClicked()` 和 `getFloatingDailyReminderSettingsClicked()` 方法
+- 在 `SettingsManager` 中添加了 `KEY_FLOATING_STRICT_REMINDER` 常量
+- 添加了 `KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED` 常量记录用户点击状态
+- 提供了 `setFloatingStrictReminder()` 和 `getFloatingStrictReminder()` 方法
+- 提供了 `setFloatingStrictReminderSettingsClicked()` 和 `getFloatingStrictReminderSettingsClicked()` 方法
 
 ### 2. UI界面
 - 在 `fragment_goal.xml` 中添加了"悬浮窗-良好习惯提醒"按钮
-- 在 `floating_window_layout.xml` 中添加了 `daily_reminder_layout` 区域
-- 添加了 `tv_daily_reminder_hint` 小字提示
+- 在 `floating_window_layout.xml` 中添加了 `strict_reminder_layout` 区域
+- 添加了 `tv_strict_reminder_hint` 小字提示
 - 使用绿色背景 (`#E8F5E8`) 和深绿色文字 (`#2E7D32`)
 
 ### 3. 对话框管理
-- 在 `SettingsDialogManager` 中添加了 `showFloatingDailyReminderDialog()` 方法
+- 在 `SettingsDialogManager` 中添加了 `showFloatingStrictReminderDialog()` 方法
 - 支持输入当前已保存的文字
 - 提供输入提示和长度限制
 - 记录用户点击设置按钮的状态
 
 ### 4. 悬浮窗显示逻辑
-- 在 `FloatService` 中添加了 `updateDailyReminderDisplay()` 方法
+- 在 `FloatService` 中添加了 `updateStrictReminderDisplay()` 方法
 - 在悬浮窗显示和内容更新时自动调用
 - 智能显示逻辑：
   - 未设置且未点击过设置按钮：显示默认文字 + 小字提示
@@ -77,22 +77,22 @@
 
 ```java
 // 记录用户点击设置按钮
-settingsManager.setFloatingDailyReminderSettingsClicked(true);
+settingsManager.setFloatingStrictReminderSettingsClicked(true);
 
 // 智能显示逻辑
-if (dailyReminder.isEmpty()) {
-    dailyReminderText.setText("玩手机？不如去喝水");
-    dailyReminderLayout.setVisibility(View.VISIBLE);
+if (strictReminder.isEmpty()) {
+    strictReminderText.setText("玩手机？不如去喝水");
+    strictReminderLayout.setVisibility(View.VISIBLE);
     
     if (!hasClickedSettings) {
-        dailyReminderHint.setVisibility(View.VISIBLE);
+        strictReminderHint.setVisibility(View.VISIBLE);
     } else {
-        dailyReminderHint.setVisibility(View.GONE);
+        strictReminderHint.setVisibility(View.GONE);
     }
 } else {
-    dailyReminderText.setText(dailyReminder);
-    dailyReminderHint.setVisibility(View.GONE);
-    dailyReminderLayout.setVisibility(View.VISIBLE);
+    strictReminderText.setText(strictReminder);
+    strictReminderHint.setVisibility(View.GONE);
+    strictReminderLayout.setVisibility(View.VISIBLE);
 }
 ```
 

@@ -39,7 +39,7 @@ public class Const {
     public static final String CONTENT_TYPE = "application/json";
 
     // 广播Action常量
-    public static final String ACTION_UPDATE_CASUAL_COUNT = "com.book.mask.ACTION_UPDATE_CASUAL_COUNT";
+    public static final String ACTION_UPDATE_RELAXED_COUNT = "com.book.mask.ACTION_UPDATE_RELAXED_COUNT";
 
 
 }

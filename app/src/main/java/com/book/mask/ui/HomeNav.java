@@ -118,7 +118,7 @@ public class HomeNav extends Fragment implements
         TextInputEditText etAppName = dialogView.findViewById(R.id.et_app_name);
         TextInputEditText etPackageName = dialogView.findViewById(R.id.et_package_name);
         TextInputEditText etTargetWord = dialogView.findViewById(R.id.et_target_word);
-        TextInputEditText etCasualLimitCount = dialogView.findViewById(R.id.et_casual_limit_count);
+        TextInputEditText etRelaxedLimitCount = dialogView.findViewById(R.id.et_relaxed_limit_count);
         Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
         Button btnSave = dialogView.findViewById(R.id.btn_save);
         
@@ -133,7 +133,7 @@ public class HomeNav extends Fragment implements
             String appName = etAppName.getText().toString().trim();
             String packageName = etPackageName.getText().toString().trim();
             String targetWord = etTargetWord.getText().toString().trim();
-            String casualLimitCountStr = etCasualLimitCount.getText().toString().trim();
+            String relaxedLimitCountStr = etRelaxedLimitCount.getText().toString().trim();
             
             // 验证输入
             if (appName.isEmpty()) {
@@ -151,11 +151,11 @@ public class HomeNav extends Fragment implements
                 return;
             }
             
-            int casualLimitCount = 1;
-            if (!casualLimitCountStr.isEmpty()) {
+            int relaxedLimitCount = 1;
+            if (!relaxedLimitCountStr.isEmpty()) {
                 try {
-                    casualLimitCount = Integer.parseInt(casualLimitCountStr);
-                    if (casualLimitCount <= 0) {
+                    relaxedLimitCount = Integer.parseInt(relaxedLimitCountStr);
+                    if (relaxedLimitCount <= 0) {
                         Toast.makeText(requireContext(), "宽松模式次数必须大于0", Toast.LENGTH_SHORT).show();
                         return;
                     }
@@ -166,7 +166,7 @@ public class HomeNav extends Fragment implements
             }
             
             // 保存新APP
-            boolean success = customAppManager.addCustomApp(appName, packageName, targetWord, casualLimitCount);
+            boolean success = customAppManager.addCustomApp(appName, packageName, targetWord, relaxedLimitCount);
             if (success) {
                 Toast.makeText(requireContext(), "APP添加成功", Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
@@ -257,15 +257,15 @@ public class HomeNav extends Fragment implements
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_time_setting, null);
         
         Button strictModeButton = dialogView.findViewById(R.id.btn_strict_mode);
-        Button casualModeButton = dialogView.findViewById(R.id.btn_casual_mode);
+        Button relaxedModeButton = dialogView.findViewById(R.id.btn_relaxed_mode);
         
         // 新的UI组件
-        LinearLayout layoutCasualCountDisplay = dialogView.findViewById(R.id.layout_casual_count_display);
-        LinearLayout layoutCasualCountEdit = dialogView.findViewById(R.id.layout_casual_count_edit);
-        TextView tvCasualCountDisplay = dialogView.findViewById(R.id.tv_casual_count_display);
-        ImageView ivEditCasualCount = dialogView.findViewById(R.id.iv_edit_casual_count);
-        EditText etCasualLimitCount = dialogView.findViewById(R.id.et_casual_limit_count);
-        TextView ivSaveCasualCount = dialogView.findViewById(R.id.iv_save_casual_count);
+        LinearLayout layoutRelaxedCountDisplay = dialogView.findViewById(R.id.layout_relaxed_count_display);
+        LinearLayout layoutRelaxedCountEdit = dialogView.findViewById(R.id.layout_relaxed_count_edit);
+        TextView tvRelaxedCountDisplay = dialogView.findViewById(R.id.tv_relaxed_count_display);
+        ImageView ivEditRelaxedCount = dialogView.findViewById(R.id.iv_edit_relaxed_count);
+        EditText etRelaxedLimitCount = dialogView.findViewById(R.id.et_relaxed_limit_count);
+        TextView ivSaveRelaxedCount = dialogView.findViewById(R.id.iv_save_relaxed_count);
         
         // targetWord编辑组件
         LinearLayout layoutTargetWordDisplay = dialogView.findViewById(R.id.layout_target_word_display);
@@ -277,26 +277,26 @@ public class HomeNav extends Fragment implements
         
         // 获取APP信息
         String appName;
-        int casualLimitCount;
+        int relaxedLimitCount;
         String targetWord;
         
         appName = app.getAppName();
-        casualLimitCount = app.getCasualLimitCount();
+        relaxedLimitCount = app.getRelaxedLimitCount();
         targetWord = app.getTargetWord();
         
         // 设置显示文本的当前值
-        tvCasualCountDisplay.setText(String.valueOf(casualLimitCount));
+        tvRelaxedCountDisplay.setText(String.valueOf(relaxedLimitCount));
         tvTargetWordDisplay.setText(targetWord);
         
         // 检查宽松模式剩余次数
-        int casualCount = settingsManager.getAppCasualCloseCount(app);
-        int remainingCount = Math.max(0, casualLimitCount - casualCount);
+        int relaxedCount = settingsManager.getAppRelaxedCloseCount(app);
+        int remainingCount = Math.max(0, relaxedLimitCount - relaxedCount);
         
         // 如果宽松模式次数用完，置灰按钮
         if (remainingCount <= 0) {
-            casualModeButton.setEnabled(false);
-            casualModeButton.setAlpha(0.5f);
-            casualModeButton.setText("宽松模式 (次数已用完)");
+            relaxedModeButton.setEnabled(false);
+            relaxedModeButton.setAlpha(0.5f);
+            relaxedModeButton.setText("宽松模式 (次数已用完)");
         }
         
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
@@ -306,26 +306,26 @@ public class HomeNav extends Fragment implements
             .create();
         
         // 编辑图标点击事件
-        ivEditCasualCount.setOnClickListener(v -> {
+        ivEditRelaxedCount.setOnClickListener(v -> {
             // 隐藏显示布局，显示编辑布局
-            layoutCasualCountDisplay.setVisibility(View.GONE);
-            layoutCasualCountEdit.setVisibility(View.VISIBLE);
+            layoutRelaxedCountDisplay.setVisibility(View.GONE);
+            layoutRelaxedCountEdit.setVisibility(View.VISIBLE);
             
             // 设置输入框的当前值
-            etCasualLimitCount.setText(tvCasualCountDisplay.getText().toString());
-            etCasualLimitCount.requestFocus();
+            etRelaxedLimitCount.setText(tvRelaxedCountDisplay.getText().toString());
+            etRelaxedLimitCount.requestFocus();
             
             // 显示软键盘
             android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
                 requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
-                imm.showSoftInput(etCasualLimitCount, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                imm.showSoftInput(etRelaxedLimitCount, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
             }
         });
         
         // 保存图标点击事件
-        ivSaveCasualCount.setOnClickListener(v -> {
-            String inputText = etCasualLimitCount.getText().toString().trim();
+        ivSaveRelaxedCount.setOnClickListener(v -> {
+            String inputText = etRelaxedLimitCount.getText().toString().trim();
             if (inputText.isEmpty()) {
                 Toast.makeText(requireContext(), "请输入数字", Toast.LENGTH_SHORT).show();
                 return;
@@ -339,10 +339,10 @@ public class HomeNav extends Fragment implements
                 }
                 
                 // 更新显示文本
-                tvCasualCountDisplay.setText(String.valueOf(newLimitCount));
+                tvRelaxedCountDisplay.setText(String.valueOf(newLimitCount));
                 
-                // 更新APP的casualLimitCount
-                app.setCasualLimitCount(newLimitCount);
+                // 更新APP的relaxedLimitCount
+                app.setRelaxedLimitCount(newLimitCount);
                 customAppManager.saveCustomAppsChanges(); // 保存到本地存储
                 Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
                 
@@ -350,14 +350,14 @@ public class HomeNav extends Fragment implements
                 updateAppCardsDisplay();
                 
                 // 隐藏编辑布局，显示正常布局
-                layoutCasualCountEdit.setVisibility(View.GONE);
-                layoutCasualCountDisplay.setVisibility(View.VISIBLE);
+                layoutRelaxedCountEdit.setVisibility(View.GONE);
+                layoutRelaxedCountDisplay.setVisibility(View.VISIBLE);
                 
                 // 隐藏软键盘
                 android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
                     requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
                 if (imm != null) {
-                    imm.hideSoftInputFromWindow(etCasualLimitCount.getWindowToken(), 0);
+                    imm.hideSoftInputFromWindow(etRelaxedLimitCount.getWindowToken(), 0);
                 }
                 
             } catch (NumberFormatException e) {
@@ -366,10 +366,10 @@ public class HomeNav extends Fragment implements
         });
         
         // 输入框回车键保存
-        etCasualLimitCount.setOnEditorActionListener((v, actionId, event) -> {
+        etRelaxedLimitCount.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || 
                 (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
-                ivSaveCasualCount.performClick();
+                ivSaveRelaxedCount.performClick();
                 return true;
             }
             return false;
@@ -443,9 +443,9 @@ public class HomeNav extends Fragment implements
             settingsDialogManager.showTimeSettingDialogForApp(app, true);
         });
         
-        casualModeButton.setOnClickListener(v -> {
+        relaxedModeButton.setOnClickListener(v -> {
             // 只有在按钮可用时才执行
-            if (casualModeButton.isEnabled()) {
+            if (relaxedModeButton.isEnabled()) {
                 dialog.dismiss();
                 settingsDialogManager.showTimeSettingDialogForApp(app, false);
             }

@@ -117,7 +117,7 @@
 
     <!-- 日常提醒区域 -->
     <LinearLayout
-        android:id="@+id/daily_reminder_layout"
+        android:id="@+id/strict_reminder_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/math_challenge_layout"
@@ -131,7 +131,7 @@
         android:visibility="gone">
 
         <TextView
-            android:id="@+id/tv_daily_reminder"
+            android:id="@+id/tv_strict_reminder"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="玩手机？不如去喝水"
@@ -141,7 +141,7 @@
             android:gravity="start" />
 
         <TextView
-            android:id="@+id/tv_daily_reminder_hint"
+            android:id="@+id/tv_strict_reminder_hint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="绿色文字的设置路径：个性设置->悬浮窗…提醒"

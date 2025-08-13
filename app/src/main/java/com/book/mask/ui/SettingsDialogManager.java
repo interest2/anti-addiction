@@ -46,36 +46,12 @@ public class SettingsDialogManager {
     }
 
     /**
-     * 显示APP选择对话框
-     */
-    private void showAppSelectionDialog(boolean isDaily) {
-        // 重新更新APP选项以确保包含最新的自定义APP
-        updateAppOptions();
-        
-        String dialogTitle = isDaily ? "严格模式 - 选择APP" : "宽松模式 - 选择APP";
-
-        android.util.Log.d("SettingsDialog", "显示APP选择对话框: " + dialogTitle);
-        
-        new android.app.AlertDialog.Builder(context)
-            .setTitle(dialogTitle)
-            .setItems(appOptions, (dialog, which) -> {
-                CustomApp selectedApp = apps[which];
-                String appName = selectedApp.getAppName();
-                android.util.Log.d("SettingsDialog", "用户选择APP: " + appName);
-                showTimeSettingDialogForApp(selectedApp, isDaily);
-            })
-            .setNegativeButton("取消", null)
-            .show();
-    }
-    
-
-    /**
      * 为指定APP显示时间设置对话框 - 支持自定义APP
      */
-    public void showTimeSettingDialogForApp(CustomApp app, boolean isDaily) {
-        final int[] intervals = isDaily ? 
-            SettingsManager.getDailyAvailableIntervals() : 
-            SettingsManager.getCasualAvailableIntervals();
+    public void showTimeSettingDialogForApp(CustomApp app, boolean isStrict) {
+        final int[] intervals = isStrict ? 
+            SettingsManager.getStrictAvailableIntervals() : 
+            SettingsManager.getRelaxedAvailableIntervals();
         
         String[] intervalOptions = new String[intervals.length];
         for (int i = 0; i < intervals.length; i++) {
@@ -93,7 +69,7 @@ public class SettingsDialogManager {
             }
         }
         
-        String dialogTitle = isDaily ? "严格模式" : "宽松模式";
+        String dialogTitle = isStrict ? "严格模式" : "宽松模式";
         String packageName = app.getPackageName();
         String fullTitle = dialogTitle + " - " + app.getAppName();
 
@@ -114,12 +90,12 @@ public class SettingsDialogManager {
                 android.util.Log.d("SettingsDialog", "验证APP " + packageName + " 实际保存的时间间隔: " + verifyInterval + "秒");
                 
                 // 检查是否是宽松模式
-                boolean isCasualMode = settingsManager.isAppCasualMode(app);
-                android.util.Log.d("SettingsDialog", "APP " + packageName + " 是否宽松模式: " + isCasualMode);
+                boolean isRelaxedMode = settingsManager.isAppRelaxedMode(app);
+                android.util.Log.d("SettingsDialog", "APP " + packageName + " 是否宽松模式: " + isRelaxedMode);
                 
                 // 检查宽松模式的关闭次数
-                int casualCount = settingsManager.getAppCasualCloseCount(app);
-                android.util.Log.d("SettingsDialog", "APP " + packageName + " 今日宽松模式关闭次数: " + casualCount);
+                int relaxedCount = settingsManager.getAppRelaxedCloseCount(app);
+                android.util.Log.d("SettingsDialog", "APP " + packageName + " 今日宽松模式关闭次数: " + relaxedCount);
                 
                 // 通知服务配置已更改
                 FloatService.notifyIntervalChanged();
@@ -127,8 +103,6 @@ public class SettingsDialogManager {
                 // 显示提示信息
                 showIntervalExplanation(selectedInterval);
                 
-                String modeText = isCasualMode ? "宽松模式" : "严格模式";
-//                Toast.makeText(context, "已为" + appName + "设置为: " + intervalOptions[which] + " (" + modeText + ")", Toast.LENGTH_LONG).show();
                 dialog.dismiss();
                })
                .setNegativeButton("取消", (dialog, which) -> {
@@ -412,8 +386,8 @@ public class SettingsDialogManager {
     /**
      * 更新宽松模式按钮状态
      */
-    public void updateCasualButtonState(Button casualButton) {
-        if (casualButton != null) {
+    public void updateRelaxedButtonState(Button relaxedButton) {
+        if (relaxedButton != null) {
             // 计算所有支持APP的宽松模式次数总和
             int totalCloseCount = 0;
             
@@ -423,7 +397,7 @@ public class SettingsDialogManager {
                 java.util.List<CustomApp> allApps = customAppManager.getAllApps();
                 
                 for (CustomApp app : allApps) {
-                    totalCloseCount += settingsManager.getAppCasualCloseCount(app);
+                    totalCloseCount += settingsManager.getAppRelaxedCloseCount(app);
                 }
             } catch (Exception e) {
                 android.util.Log.w("SettingsDialogManager", "获取APP宽松模式次数失败", e);
@@ -431,18 +405,18 @@ public class SettingsDialogManager {
             
             // 如果所有APP都没有使用过，则使用全局次数（兼容性）
             if (totalCloseCount == 0) {
-                totalCloseCount = settingsManager.getCasualCloseCount();
+                totalCloseCount = settingsManager.getRelaxedCloseCount();
             }
             
             // 使用默认限制（保持兼容性）
-            casualButton.setEnabled(totalCloseCount < 3);
+            relaxedButton.setEnabled(totalCloseCount < 3);
         }
     }
     
     /**
      * 更新宽松模式次数显示
      */
-    public void updateCasualCountDisplay(TextView countText) {
+    public void updateRelaxedCountDisplay(TextView countText) {
         if (countText != null) {
             // 计算所有支持APP的宽松模式次数总和
             int totalCloseCount = 0;
@@ -453,7 +427,7 @@ public class SettingsDialogManager {
                 java.util.List<CustomApp> allApps = customAppManager.getAllApps();
                 
                 for (CustomApp app : allApps) {
-                    totalCloseCount += settingsManager.getAppCasualCloseCount(app);
+                    totalCloseCount += settingsManager.getAppRelaxedCloseCount(app);
                 }
             } catch (Exception e) {
                 android.util.Log.w("SettingsDialogManager", "获取APP宽松模式次数失败", e);
@@ -461,7 +435,7 @@ public class SettingsDialogManager {
             
             // 如果所有APP都没有使用过，则使用全局次数（兼容性）
             if (totalCloseCount == 0) {
-                totalCloseCount = settingsManager.getCasualCloseCount();
+                totalCloseCount = settingsManager.getRelaxedCloseCount();
             }
             
             // 使用默认限制（保持兼容性）
@@ -478,12 +452,12 @@ public class SettingsDialogManager {
     /**
      * 更新特定APP的宽松模式剩余次数显示 - 支持自定义APP
      */
-    public void updateAppCasualCountDisplay(TextView countText, CustomApp app) {
+    public void updateAppRelaxedCountDisplay(TextView countText, CustomApp app) {
         if (countText != null) {
-            int closeCount = settingsManager.getAppCasualCloseCount(app);
-            int casualLimitCount = ((CustomApp) app).getCasualLimitCount();
+            int closeCount = settingsManager.getAppRelaxedCloseCount(app);
+            int relaxedLimitCount = ((CustomApp) app).getRelaxedLimitCount();
             
-            int remainingCount = Math.max(0, casualLimitCount - closeCount);
+            int remainingCount = Math.max(0, relaxedLimitCount - closeCount);
             countText.setText("宽松剩余: " + remainingCount + "次");
         }
     }
@@ -606,9 +580,9 @@ public class SettingsDialogManager {
     /**
      * 显示悬浮窗额外显示日常提醒设置对话框
      */
-    public void showFloatingDailyReminderDialog() {
+    public void showFloatingStrictReminderDialog() {
         // 记录用户点击了设置按钮
-        settingsManager.setFloatingDailyReminderSettingsClicked(true);
+        settingsManager.setFloatingStrictReminderSettingsClicked(true);
         
         // 创建自定义布局
         android.widget.LinearLayout layout = new android.widget.LinearLayout(context);
@@ -641,7 +615,7 @@ public class SettingsDialogManager {
             android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
         
         // 设置当前已保存的文字
-        String currentReminder = settingsManager.getFloatingDailyReminder();
+        String currentReminder = settingsManager.getFloatingStrictReminder();
         if (!currentReminder.isEmpty()) {
             input.setText(currentReminder);
         }
@@ -652,7 +626,7 @@ public class SettingsDialogManager {
             .setView(layout)
             .setPositiveButton("保存", (dialog, which) -> {
                 String reminder = input.getText().toString().trim();
-                settingsManager.setFloatingDailyReminder(reminder);
+                settingsManager.setFloatingStrictReminder(reminder);
                 if (reminder.isEmpty()) {
                     Toast.makeText(context, "已清除日常提醒", Toast.LENGTH_SHORT).show();
                 } else {

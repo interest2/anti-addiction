@@ -14,8 +14,8 @@ public class SettingsManager {
     
     private static final String PREFS_NAME = "app_settings";
     private static final String KEY_AUTO_SHOW_INTERVAL = "auto_show_interval";
-    private static final String KEY_CASUAL_CLOSE_COUNT = "casual_close_count";
-    private static final String KEY_LAST_CASUAL_CLOSE_DATE = "last_casual_close_date";
+    private static final String KEY_RELAXED_CLOSE_COUNT = "relaxed_close_count";
+    private static final String KEY_LAST_RELAXED_CLOSE_DATE = "last_relaxed_close_date";
     private static final String KEY_MOTIVATION_TAG = "motivation_tag";
     private static final String KEY_TARGET_COMPLETION_DATE = "target_completion_date";
     private static final String KEY_FLOATING_TOP_OFFSET = "floating_top_offset";
@@ -23,8 +23,8 @@ public class SettingsManager {
     
     // 每个APP独立的设置键名前缀
     private static final String KEY_APP_AUTO_SHOW_INTERVAL = "app_auto_show_interval_";
-    private static final String KEY_APP_CASUAL_CLOSE_COUNT = "app_casual_close_count_";
-    private static final String KEY_APP_LAST_CASUAL_CLOSE_DATE = "app_last_casual_close_date_";
+    private static final String KEY_APP_RELAXED_CLOSE_COUNT = "app_relaxed_close_count_";
+    private static final String KEY_APP_LAST_RELAXED_CLOSE_DATE = "app_last_relaxed_close_date_";
     private static final String KEY_APP_LAST_CLOSE_TIME = "app_last_close_time_";
     private static final String KEY_APP_LAST_CLOSE_INTERVAL = "app_last_close_interval_";
     
@@ -33,8 +33,8 @@ public class SettingsManager {
     private static final String KEY_APP_HINT_CUSTOM = "app_hint_custom_";
 
     // 悬浮窗额外显示日常提醒
-    private static final String KEY_FLOATING_DAILY_REMINDER = "floating_daily_reminder";
-    private static final String KEY_FLOATING_DAILY_REMINDER_SETTINGS_CLICKED = "floating_daily_reminder_settings_clicked";
+    private static final String KEY_FLOATING_STRICT_REMINDER = "floating_strict_reminder";
+    private static final String KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED = "floating_strict_reminder_settings_clicked";
 
     // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
@@ -45,14 +45,14 @@ public class SettingsManager {
     private static final int DEFAULT_TOP_OFFSET = 130;
     private static final int DEFAULT_BOTTOM_OFFSET = 230;
 
-//    private static final int[] dailyIntervalArray = {5, 10, 20};
-//    private static final int[] casualIntervalArray = {60, 90, 120};
+//    private static final int[] strictIntervalArray = {5, 10, 20};
+//    private static final int[] relaxedIntervalArray = {60, 90, 120};
 
     // 严格模式默认的 interval 在数组的索引
-    private static final int DEFAULT_DAILY_INDEX = 2;
+    private static final int DEFAULT_STRICT_INDEX = 2;
     // 严格、宽松模式的各选项
-    private static final int[] dailyIntervalArray = {30, 60, 120};
-    private static final int[] casualIntervalArray = {900, 1320, 1800};
+    private static final int[] strictIntervalArray = {30, 60, 120};
+    private static final int[] relaxedIntervalArray = {900, 1320, 1800};
 
     private SharedPreferences prefs;
     
@@ -75,7 +75,7 @@ public class SettingsManager {
      * 获取自动显示间隔（秒）
      */
     public int getAutoShowInterval() {
-        return prefs.getInt(KEY_AUTO_SHOW_INTERVAL, dailyIntervalArray[DEFAULT_DAILY_INDEX]);
+        return prefs.getInt(KEY_AUTO_SHOW_INTERVAL, strictIntervalArray[DEFAULT_STRICT_INDEX]);
     }
 
     /**
@@ -151,39 +151,14 @@ public class SettingsManager {
     }
 
     /**
-     * 增加休闲版关闭次数，并处理每日重置
-     */
-    public void incrementCasualCloseCount() {
-        String currentDate = getCurrentDate();
-        String lastDate = prefs.getString(KEY_LAST_CASUAL_CLOSE_DATE, "");
-        
-        int count = prefs.getInt(KEY_CASUAL_CLOSE_COUNT, 0);
-
-        if (currentDate.equals(lastDate)) {
-            // 是同一天，计数+1
-            count++;
-        } else {
-            // 是新的一天，重置为1
-            count = 1;
-        }
-
-        prefs.edit()
-             .putInt(KEY_CASUAL_CLOSE_COUNT, count)
-             .putString(KEY_LAST_CASUAL_CLOSE_DATE, currentDate)
-             .apply();
-        
-        android.util.Log.d("SettingsManager", "休闲版关闭次数增加. 当前次数: " + count + " 日期: " + currentDate);
-    }
-
-    /**
      * 获取今天的休闲版关闭次数
      */
-    public int getCasualCloseCount() {
+    public int getRelaxedCloseCount() {
         String currentDate = getCurrentDate();
-        String lastDate = prefs.getString(KEY_LAST_CASUAL_CLOSE_DATE, "");
+        String lastDate = prefs.getString(KEY_LAST_RELAXED_CLOSE_DATE, "");
         
         if (currentDate.equals(lastDate)) {
-            return prefs.getInt(KEY_CASUAL_CLOSE_COUNT, 0);
+            return prefs.getInt(KEY_RELAXED_CLOSE_COUNT, 0);
         }
         
         // 如果不是同一天，返回0
@@ -193,30 +168,22 @@ public class SettingsManager {
     /**
      * 获取日常版可选的时间间隔列表
      */
-    public static int[] getDailyAvailableIntervals() {
-        return dailyIntervalArray;
+    public static int[] getStrictAvailableIntervals() {
+        return strictIntervalArray;
     }
     
     /**
      * 获取休闲版可选的时间间隔列表
      */
-    public static int[] getCasualAvailableIntervals() {
-        return casualIntervalArray;
+    public static int[] getRelaxedAvailableIntervals() {
+        return relaxedIntervalArray;
     }
     
     /**
      * 获取严格模式的最大时间间隔
      */
-    public static int getMaxDailyInterval() {
-        int max = 0;
-        if (dailyIntervalArray != null && dailyIntervalArray.length > 0) {
-            for (int interval : dailyIntervalArray) {
-                if (interval > max) {
-                    max = interval;
-                }
-            }
-        }
-        return max;
+    public static int getMaxStrictInterval() {
+        return strictIntervalArray[strictIntervalArray.length - 1];
     }
     
     /**
@@ -237,7 +204,7 @@ public class SettingsManager {
      */
     public int getAppAutoShowInterval(CustomApp app) {
         String key = KEY_APP_AUTO_SHOW_INTERVAL + app.getPackageName();
-        return prefs.getInt(key, dailyIntervalArray[DEFAULT_DAILY_INDEX]);
+        return prefs.getInt(key, strictIntervalArray[DEFAULT_STRICT_INDEX]);
     }
 
     /**
@@ -247,17 +214,11 @@ public class SettingsManager {
         String packageName = app.getPackageName();
         if (packageName == null) return;
         
-        int minInterval = dailyIntervalArray[0];
-        int maxInterval = casualIntervalArray[casualIntervalArray.length - 1];
-        if (seconds >= minInterval && seconds <= maxInterval) {
-            String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
-            
-            // 只保存设置，不立即生效
-            prefs.edit().putInt(key, seconds).apply();
-            
-            android.util.Log.d("SettingsManager", "APP " + packageName + " 设置时间间隔为: " + seconds + "秒");
-            android.util.Log.d("SettingsManager", "  新设置将在下次关闭悬浮窗后生效");
-        }
+        String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
+        prefs.edit().putInt(key, seconds).apply();
+
+        android.util.Log.d("SettingsManager", "APP " + packageName + " 设置时间间隔为: " + seconds + "秒");
+        android.util.Log.d("SettingsManager", "  新设置将在下次关闭悬浮窗后生效");
     }
     
     /**
@@ -270,10 +231,22 @@ public class SettingsManager {
     /**
      * 判断指定APP当前是否是休闲版模式
      */
-    public boolean isAppCasualMode(CustomApp app) {
+    public boolean isAppRelaxedMode(CustomApp app) {
         int currentInterval = getAppAutoShowInterval(app);
-        for (int interval : casualIntervalArray) {
+        for (int interval : relaxedIntervalArray) {
             if (interval == currentInterval) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 判断指定APP上次关闭时是否是宽松模式
+     */
+    public boolean isLastRelaxedMode(int lastInterval) {
+        for (int interval : relaxedIntervalArray) {
+            if (interval == lastInterval) {
                 return true;
             }
         }
@@ -283,13 +256,13 @@ public class SettingsManager {
     /**
      * 增加指定APP的休闲版关闭次数，并处理每日重置
      */
-    public void incrementAppCasualCloseCount(CustomApp app) {
+    public void incrementAppRelaxedCloseCount(CustomApp app) {
         String packageName = app.getPackageName();
         if (packageName == null) return;
         
         String currentDate = getCurrentDate();
-        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + packageName;
-        String dateKey = KEY_APP_LAST_CASUAL_CLOSE_DATE + packageName;
+        String countKey = KEY_APP_RELAXED_CLOSE_COUNT + packageName;
+        String dateKey = KEY_APP_LAST_RELAXED_CLOSE_DATE + packageName;
         String lastDate = prefs.getString(dateKey, "");
         
         int count = prefs.getInt(countKey, 0);
@@ -313,10 +286,10 @@ public class SettingsManager {
     /**
      * 获取指定APP今天的休闲版关闭次数
      */
-    public int getAppCasualCloseCount(CustomApp app) {
+    public int getAppRelaxedCloseCount(CustomApp app) {
         String currentDate = getCurrentDate();
-        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + app.getPackageName();
-        String dateKey = KEY_APP_LAST_CASUAL_CLOSE_DATE + app.getPackageName();
+        String countKey = KEY_APP_RELAXED_CLOSE_COUNT + app.getPackageName();
+        String dateKey = KEY_APP_LAST_RELAXED_CLOSE_DATE + app.getPackageName();
         String lastDate = prefs.getString(dateKey, "");
         
         if (currentDate.equals(lastDate)) {
@@ -330,30 +303,11 @@ public class SettingsManager {
     /**
      * 设置指定APP的休闲版关闭次数
      */
-    public void setAppCasualCloseCount(CustomApp app, int count) {
-        String countKey = KEY_APP_CASUAL_CLOSE_COUNT + app.getPackageName();
+    public void setAppRelaxedCloseCount(CustomApp app, int count) {
+        String countKey = KEY_APP_RELAXED_CLOSE_COUNT + app.getPackageName();
         prefs.edit().putInt(countKey, count).apply();
     }
     
-
-
-    /**
-     * 获取预定义APP的自定义次数设置
-     */
-    public Integer getCustomCasualLimitCount(String packageName) {
-        String key = "custom_casual_limit_" + packageName;
-        int value = prefs.getInt(key, -1);
-        return value == -1 ? null : value; // 返回null表示使用默认值
-    }
-
-    /**
-     * 设置预定义APP的自定义次数设置
-     */
-    public void setCustomCasualLimitCount(String packageName, int count) {
-        String key = "custom_casual_limit_" + packageName;
-        prefs.edit().putInt(key, count).apply();
-    }
-
     /**
      * 记录指定APP的悬浮窗关闭时间和使用的时间间隔
      */
@@ -385,7 +339,7 @@ public class SettingsManager {
      */
     public int getAppLastCloseInterval(CustomApp app) {
         String key = KEY_APP_LAST_CLOSE_INTERVAL + app.getPackageName();
-        return prefs.getInt(key, dailyIntervalArray[DEFAULT_DAILY_INDEX]);
+        return prefs.getInt(key, strictIntervalArray[DEFAULT_STRICT_INDEX]);
     }
     
 
@@ -593,31 +547,31 @@ public class SettingsManager {
     /**
      * 设置悬浮窗额外显示日常提醒文字
      */
-    public void setFloatingDailyReminder(String reminder) {
-        prefs.edit().putString(KEY_FLOATING_DAILY_REMINDER, reminder).apply();
+    public void setFloatingStrictReminder(String reminder) {
+        prefs.edit().putString(KEY_FLOATING_STRICT_REMINDER, reminder).apply();
         android.util.Log.d("SettingsManager", "设置悬浮窗日常提醒: " + reminder);
     }
     
     /**
      * 获取悬浮窗额外显示日常提醒文字
      */
-    public String getFloatingDailyReminder() {
-        return prefs.getString(KEY_FLOATING_DAILY_REMINDER, "");
+    public String getFloatingStrictReminder() {
+        return prefs.getString(KEY_FLOATING_STRICT_REMINDER, "");
     }
 
     /**
      * 记录用户是否点击过设置按钮
      */
-    public void setFloatingDailyReminderSettingsClicked(boolean clicked) {
-        prefs.edit().putBoolean(KEY_FLOATING_DAILY_REMINDER_SETTINGS_CLICKED, clicked).apply();
+    public void setFloatingStrictReminderSettingsClicked(boolean clicked) {
+        prefs.edit().putBoolean(KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, clicked).apply();
         android.util.Log.d("SettingsManager", "设置悬浮窗日常提醒设置按钮点击状态: " + clicked);
     }
 
     /**
      * 获取用户是否点击过设置按钮
      */
-    public boolean getFloatingDailyReminderSettingsClicked() {
-        return prefs.getBoolean(KEY_FLOATING_DAILY_REMINDER_SETTINGS_CLICKED, false);
+    public boolean getFloatingStrictReminderSettingsClicked() {
+        return prefs.getBoolean(KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, false);
     }
 
 }

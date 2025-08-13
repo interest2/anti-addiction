@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private HomeNav homeNav;
     private GoalNav goalNav;
     private SettingsNav settingsNav;
-    private BroadcastReceiver casualCountUpdateReceiver;
+    private BroadcastReceiver relaxedCountUpdateReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
         setupBottomNavigation();
         
         // 注册广播接收器
-        registerCasualCountUpdateReceiver();
+        registerRelaxedCountUpdateReceiver();
         
         // 检查并请求所有必要权限
         checkAndRequestPermissions();
@@ -90,13 +90,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        resetCasualCount();
+        resetRelaxedCount();
     }
 
-    private void resetCasualCount() {
+    private void resetRelaxedCount() {
         // 1. 获取当前日期
         String currentDate = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(new java.util.Date());
-        SharedPreferences prefs = getSharedPreferences("casual_count_reset", MODE_PRIVATE);
+        SharedPreferences prefs = getSharedPreferences("relaxed_count_reset", MODE_PRIVATE);
         String lastResetDate = prefs.getString("last_reset_date", "");
 
 // 2. 如果不是同一天，重置所有APP的宽松关闭次数为各自的最大值
@@ -106,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
             // 所有APP（包括预定义和自定义）
             CustomAppManager customAppManager = CustomAppManager.getInstance();
             for (CustomApp app : customAppManager.getAllApps()) {
-                settingsManager.setAppCasualCloseCount(app, 0); // 这里应设置为0
+                settingsManager.setAppRelaxedCloseCount(app, 0); // 这里应设置为0
             }
 
             // 记录本次重置日期
@@ -243,13 +243,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void registerCasualCountUpdateReceiver() {
+    private void registerRelaxedCountUpdateReceiver() {
         IntentFilter filter = new IntentFilter();
-        filter.addAction(Const.ACTION_UPDATE_CASUAL_COUNT);
-        casualCountUpdateReceiver = new BroadcastReceiver() {
+        filter.addAction(Const.ACTION_UPDATE_RELAXED_COUNT);
+        relaxedCountUpdateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                if (Const.ACTION_UPDATE_CASUAL_COUNT.equals(intent.getAction())) {
+                if (Const.ACTION_UPDATE_RELAXED_COUNT.equals(intent.getAction())) {
                     // 通知HomeFragment更新APP卡片显示
                     if (homeNav != null) {
                         homeNav.updateAppCardsDisplay();
@@ -258,9 +258,9 @@ public class MainActivity extends AppCompatActivity {
             }
         };
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            registerReceiver(casualCountUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(relaxedCountUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
-            registerReceiver(casualCountUpdateReceiver, filter);
+            registerReceiver(relaxedCountUpdateReceiver, filter);
         }
     }
 
@@ -273,9 +273,9 @@ public class MainActivity extends AppCompatActivity {
             deviceInfoReporter = null;
         }
         // 注销广播接收器
-        if (casualCountUpdateReceiver != null) {
-            unregisterReceiver(casualCountUpdateReceiver);
-            casualCountUpdateReceiver = null;
+        if (relaxedCountUpdateReceiver != null) {
+            unregisterReceiver(relaxedCountUpdateReceiver);
+            relaxedCountUpdateReceiver = null;
         }
     }
 } 

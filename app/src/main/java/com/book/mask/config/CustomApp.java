@@ -9,13 +9,13 @@ public class CustomApp {
     private final String appName;
     private final String packageName;
     private String targetWord; // 改为非final，支持修改
-    private int casualLimitCount; // 改为非final，支持修改
+    private int relaxedLimitCount; // 改为非final，支持修改
     
-    public CustomApp(String appName, String packageName, String targetWord, int casualLimitCount) {
+    public CustomApp(String appName, String packageName, String targetWord, int relaxedLimitCount) {
         this.appName = appName;
         this.packageName = packageName;
         this.targetWord = targetWord;
-        this.casualLimitCount = casualLimitCount;
+        this.relaxedLimitCount = relaxedLimitCount;
     }
     
     public String getAppName() {
@@ -30,12 +30,12 @@ public class CustomApp {
         return targetWord;
     }
     
-    public int getCasualLimitCount() {
-        return casualLimitCount;
+    public int getRelaxedLimitCount() {
+        return relaxedLimitCount;
     }
     
-    public void setCasualLimitCount(int casualLimitCount) {
-        this.casualLimitCount = casualLimitCount;
+    public void setRelaxedLimitCount(int relaxedLimitCount) {
+        this.relaxedLimitCount = relaxedLimitCount;
     }
     
     public void setTargetWord(String targetWord) {

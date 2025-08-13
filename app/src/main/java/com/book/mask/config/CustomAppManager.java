@@ -40,7 +40,7 @@ public class CustomAppManager {
         PREDEFINED_APPS.add(new CustomApp("知乎", ZHIHU_PACKAGE, "热榜", 2));
         PREDEFINED_APPS.add(new CustomApp("抖音", DOUYIN_PACKAGE, "推荐 精选 热点", 2));
         PREDEFINED_APPS.add(new CustomApp("哔哩哔哩", BILI_PACKAGE, "推荐", 3));
-        PREDEFINED_APPS.add(new CustomApp("支付宝", ALIPAY_PACKAGE, "股票 行情 持有", 3));
+        PREDEFINED_APPS.add(new CustomApp("支付宝", ALIPAY_PACKAGE, "股票 行情 持有", 1));
         PREDEFINED_APPS.add(new CustomApp("微信", WECHAT_PACKAGE, "微信关键词不起作用", 3));
     }
 
@@ -82,7 +82,7 @@ public class CustomAppManager {
     /**
      * 添加自定义APP
      */
-    public boolean addCustomApp(String appName, String packageName, String targetWord, int casualLimitCount) {
+    public boolean addCustomApp(String appName, String packageName, String targetWord, int relaxedLimitCount) {
         // 检查包名是否已存在
         if (isPackageNameExists(packageName)) {
             Log.w("CustomAppManager", "Package name already exists: " + packageName);
@@ -90,7 +90,7 @@ public class CustomAppManager {
         }
 
         // 创建新的自定义APP
-        CustomApp newApp = new CustomApp(appName, packageName, targetWord, casualLimitCount);
+        CustomApp newApp = new CustomApp(appName, packageName, targetWord, relaxedLimitCount);
         customApps.add(newApp);
         
         // 保存到SharedPreferences

@@ -60,7 +60,7 @@
                 android:gravity="center" />
 
             <TextView
-                android:id="@+id/tv_casual_count"
+                android:id="@+id/tv_relaxed_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
