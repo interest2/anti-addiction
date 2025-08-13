@@ -57,8 +57,10 @@ public class TextFetcher {
             Log.d(TAG, "获取到缓存文字");
             return cachedText;
         }
-        Log.d(TAG, "没有缓存文字，返回空字符串");
-        return ""; // 没有缓存时返回空字符串
+        Log.d(TAG, "没有缓存文字，用默认预置的内容");
+        return "别让指尖滑动成为你人生的绊脚石！\n" +
+                "APP的诱惑不过是虚幻的糖衣，吞噬的是你的黄金时间！\n" +
+                "醒醒吧，自律的缺失，正在将你推向平庸的深渊";
     }
     
     /**

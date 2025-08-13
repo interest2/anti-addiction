@@ -13,7 +13,6 @@ import java.util.Locale;
 public class SettingsManager {
     
     private static final String PREFS_NAME = "app_settings";
-    private static final String KEY_AUTO_SHOW_INTERVAL = "auto_show_interval";
     private static final String KEY_RELAXED_CLOSE_COUNT = "relaxed_close_count";
     private static final String KEY_LAST_RELAXED_CLOSE_DATE = "last_relaxed_close_date";
     private static final String KEY_MOTIVATION_TAG = "motivation_tag";
@@ -22,7 +21,8 @@ public class SettingsManager {
     private static final String KEY_FLOATING_BOTTOM_OFFSET = "floating_bottom_offset";
     
     // 每个APP独立的设置键名前缀
-    private static final String KEY_APP_AUTO_SHOW_INTERVAL = "app_auto_show_interval_";
+    private static final String KEY_DEFAULT_SHOW_INTERVAL = "default_show_interval";
+    private static final String KEY_APP_SHOW_INTERVAL = "app_show_interval_";
     private static final String KEY_APP_RELAXED_CLOSE_COUNT = "app_relaxed_close_count_";
     private static final String KEY_APP_LAST_RELAXED_CLOSE_DATE = "app_last_relaxed_close_date_";
     private static final String KEY_APP_LAST_CLOSE_TIME = "app_last_close_time_";
@@ -55,7 +55,11 @@ public class SettingsManager {
     private static final int[] relaxedIntervalArray = {900, 1320, 1800};
 
     private SharedPreferences prefs;
-    
+
+    public SettingsManager(Context context) {
+        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+
     // 时间格式化器
     private static final SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
     
@@ -65,89 +69,6 @@ public class SettingsManager {
     private static String formatTime(long timestamp) {
         if (timestamp == 0) return "未设置";
         return timeFormatter.format(new Date(timestamp));
-    }
-    
-    public SettingsManager(Context context) {
-        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-    }
-    
-    /**
-     * 获取自动显示间隔（秒）
-     */
-    public int getAutoShowInterval() {
-        return prefs.getInt(KEY_AUTO_SHOW_INTERVAL, strictIntervalArray[DEFAULT_STRICT_INDEX]);
-    }
-
-    /**
-     * 设置个人目标标签
-     */
-    public void setMotivationTag(String tag) {
-        prefs.edit().putString(KEY_MOTIVATION_TAG, tag).apply();
-        Share.MOTIVATE_CHANGE = true;
-    }
-
-    /**
-     * 获取个人目标标签
-     */
-    public String getMotivationTag() {
-        return prefs.getString(KEY_MOTIVATION_TAG, Const.TARGET_TO_BE_SET);
-    }
-
-    /**
-     * 设置目标完成日期
-     */
-    public void setTargetCompletionDate(String date) {
-        prefs.edit().putString(KEY_TARGET_COMPLETION_DATE, date).apply();
-        Share.MOTIVATE_CHANGE = true;
-    }
-
-    /**
-     * 获取目标完成日期
-     */
-    public String getTargetCompletionDate() {
-        return prefs.getString(KEY_TARGET_COMPLETION_DATE, Const.TARGET_TO_BE_SET);
-    }
-
-    /**
-     * 设置悬浮窗上边缘距离顶部的距离
-     */
-    public void setFloatingTopOffset(int offset) {
-        prefs.edit().putInt(KEY_FLOATING_TOP_OFFSET, offset).apply();
-    }
-
-    /**
-     * 获取悬浮窗上边缘距离顶部的距离
-     */
-    public int getFloatingTopOffset() {
-        return prefs.getInt(KEY_FLOATING_TOP_OFFSET, DEFAULT_TOP_OFFSET);
-    }
-
-    /**
-     * 设置悬浮窗下边缘距离底部的距离
-     */
-    public void setFloatingBottomOffset(int offset) {
-        prefs.edit().putInt(KEY_FLOATING_BOTTOM_OFFSET, offset).apply();
-    }
-
-    /**
-     * 获取悬浮窗下边缘距离底部的距离
-     */
-    public int getFloatingBottomOffset() {
-        return prefs.getInt(KEY_FLOATING_BOTTOM_OFFSET, DEFAULT_BOTTOM_OFFSET);
-    }
-
-    /**
-     * 获取可选的个人目标标签列表
-     */
-    public static String[] getAvailableTags() {
-        return MOTIVATION_TAGS;
-    }
-
-    /**
-     * 获取当前日期字符串 "yyyy-MM-dd"
-     */
-    private String getCurrentDate() {
-        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(new java.util.Date());
     }
 
     /**
@@ -168,14 +89,14 @@ public class SettingsManager {
     /**
      * 获取日常版可选的时间间隔列表
      */
-    public static int[] getStrictAvailableIntervals() {
+    public static int[] getStrictIntervals() {
         return strictIntervalArray;
     }
     
     /**
      * 获取休闲版可选的时间间隔列表
      */
-    public static int[] getRelaxedAvailableIntervals() {
+    public static int[] getRelaxedIntervals() {
         return relaxedIntervalArray;
     }
     
@@ -198,23 +119,29 @@ public class SettingsManager {
     }
     
     // ===== 多APP独立设置相关方法 =====
-    
+    /**
+     * 兜底的间隔（秒），当 currentActiveApp 为空时触发
+     */
+    public int getDefaultInterval() {
+        return prefs.getInt(KEY_DEFAULT_SHOW_INTERVAL, strictIntervalArray[DEFAULT_STRICT_INDEX]);
+    }
+
     /**
      * 获取指定APP的自动显示间隔（秒）
      */
-    public int getAppAutoShowInterval(CustomApp app) {
-        String key = KEY_APP_AUTO_SHOW_INTERVAL + app.getPackageName();
+    public int getAppInterval(CustomApp app) {
+        String key = KEY_APP_SHOW_INTERVAL + app.getPackageName();
         return prefs.getInt(key, strictIntervalArray[DEFAULT_STRICT_INDEX]);
     }
 
     /**
      * 设置指定APP的自动显示间隔（秒）
      */
-    public void setAppAutoShowInterval(CustomApp app, int seconds) {
+    public void setAppInterval(CustomApp app, int seconds) {
         String packageName = app.getPackageName();
         if (packageName == null) return;
         
-        String key = KEY_APP_AUTO_SHOW_INTERVAL + packageName;
+        String key = KEY_APP_SHOW_INTERVAL + packageName;
         prefs.edit().putInt(key, seconds).apply();
 
         android.util.Log.d("SettingsManager", "APP " + packageName + " 设置时间间隔为: " + seconds + "秒");
@@ -224,15 +151,15 @@ public class SettingsManager {
     /**
      * 获取指定APP的自动显示间隔（毫秒）
      */
-    public long getAppAutoShowIntervalMillis(CustomApp app) {
-        return getAppAutoShowInterval(app) * 1000L;
+    public long getAppIntervalMillis(CustomApp app) {
+        return getAppInterval(app) * 1000L;
     }
 
     /**
      * 判断指定APP当前是否是休闲版模式
      */
     public boolean isAppRelaxedMode(CustomApp app) {
-        int currentInterval = getAppAutoShowInterval(app);
+        int currentInterval = getAppInterval(app);
         for (int interval : relaxedIntervalArray) {
             if (interval == currentInterval) {
                 return true;
@@ -318,6 +245,7 @@ public class SettingsManager {
         String timeKey = KEY_APP_LAST_CLOSE_TIME + packageName;
         String intervalKey = KEY_APP_LAST_CLOSE_INTERVAL + packageName;
         long currentTime = System.currentTimeMillis();
+        /* 这里是分别对 2 个 key 进行设置 */
         prefs.edit()
             .putLong(timeKey, currentTime)
             .putInt(intervalKey, intervalSeconds)
@@ -333,7 +261,6 @@ public class SettingsManager {
         return prefs.getLong(key, 0);
     }
 
-    
     /**
      * 获取指定APP上次关闭时使用的时间间隔（秒）
      */
@@ -341,9 +268,7 @@ public class SettingsManager {
         String key = KEY_APP_LAST_CLOSE_INTERVAL + app.getPackageName();
         return prefs.getInt(key, strictIntervalArray[DEFAULT_STRICT_INDEX]);
     }
-    
 
-    
     /**
      * 计算指定APP的剩余可用时间（毫秒）
      * @param app 指定的APP
@@ -360,12 +285,12 @@ public class SettingsManager {
             // 从未关闭过，可以自由使用
             return -1;
         }
-        
+
         long currentTime = System.currentTimeMillis();
         // 使用上次关闭时记录的时间间隔，而不是当前设置的时间间隔
         int intervalSeconds = getAppLastCloseInterval(app);
-        long intervalMillis = intervalSeconds * 1000L;
-        long nextAvailableTime = lastCloseTime + intervalMillis;
+
+        long nextAvailableTime = lastCloseTime + intervalSeconds * 1000L;
 
         if (currentTime >= nextAvailableTime) {
             // 已经超过等待时间，可以自由使用
@@ -378,10 +303,6 @@ public class SettingsManager {
             return remainingTime;
         }
     }
-    
-
-    
-
     
     /**
      * 格式化剩余时间为MM:SS格式
@@ -572,6 +493,78 @@ public class SettingsManager {
      */
     public boolean getFloatingStrictReminderSettingsClicked() {
         return prefs.getBoolean(KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, false);
+    }
+
+    /**
+     * 设置个人目标标签
+     */
+    public void setMotivationTag(String tag) {
+        prefs.edit().putString(KEY_MOTIVATION_TAG, tag).apply();
+        Share.MOTIVATE_CHANGE = true;
+    }
+
+    /**
+     * 获取个人目标标签
+     */
+    public String getMotivationTag() {
+        return prefs.getString(KEY_MOTIVATION_TAG, Const.TARGET_TO_BE_SET);
+    }
+
+    /**
+     * 设置目标完成日期
+     */
+    public void setTargetCompletionDate(String date) {
+        prefs.edit().putString(KEY_TARGET_COMPLETION_DATE, date).apply();
+        Share.MOTIVATE_CHANGE = true;
+    }
+
+    /**
+     * 获取目标完成日期
+     */
+    public String getTargetCompletionDate() {
+        return prefs.getString(KEY_TARGET_COMPLETION_DATE, Const.TARGET_TO_BE_SET);
+    }
+
+    /**
+     * 设置悬浮窗上边缘距离顶部的距离
+     */
+    public void setFloatingTopOffset(int offset) {
+        prefs.edit().putInt(KEY_FLOATING_TOP_OFFSET, offset).apply();
+    }
+
+    /**
+     * 获取悬浮窗上边缘距离顶部的距离
+     */
+    public int getFloatingTopOffset() {
+        return prefs.getInt(KEY_FLOATING_TOP_OFFSET, DEFAULT_TOP_OFFSET);
+    }
+
+    /**
+     * 设置悬浮窗下边缘距离底部的距离
+     */
+    public void setFloatingBottomOffset(int offset) {
+        prefs.edit().putInt(KEY_FLOATING_BOTTOM_OFFSET, offset).apply();
+    }
+
+    /**
+     * 获取悬浮窗下边缘距离底部的距离
+     */
+    public int getFloatingBottomOffset() {
+        return prefs.getInt(KEY_FLOATING_BOTTOM_OFFSET, DEFAULT_BOTTOM_OFFSET);
+    }
+
+    /**
+     * 获取可选的个人目标标签列表
+     */
+    public static String[] getAvailableTags() {
+        return MOTIVATION_TAGS;
+    }
+
+    /**
+     * 获取当前日期字符串 "yyyy-MM-dd"
+     */
+    private String getCurrentDate() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(new java.util.Date());
     }
 
 }

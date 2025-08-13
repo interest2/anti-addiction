@@ -353,7 +353,7 @@ public class FloatService extends AccessibilityService
 
     private boolean stillInHidePeriod() {
         Long timestamp= Share.getHiddenTimestamp(currentActiveApp.getPackageName());
-        long currentInterval = settingsManager.getAppAutoShowIntervalMillis(currentActiveApp);
+        long currentInterval = settingsManager.getAppIntervalMillis(currentActiveApp);
 
         if(System.currentTimeMillis() - timestamp < currentInterval){
             Log.d(TAG, "APP " + currentActiveApp.getAppName() + " 被手动隐藏，跳过显示悬浮窗。当前配的使用时长（ms）为" + currentInterval);
@@ -414,13 +414,13 @@ public class FloatService extends AccessibilityService
                     
                     if (currentActiveApp != null) {
                         // 使用当前APP的时间间隔安排下次显示
-                        interval = settingsManager.getAppAutoShowIntervalMillis(currentActiveApp);
-                        intervalSeconds = settingsManager.getAppAutoShowInterval(currentActiveApp);
+                        interval = settingsManager.getAppIntervalMillis(currentActiveApp);
+                        intervalSeconds = settingsManager.getAppInterval(currentActiveApp);
                         
                         String appName = currentActiveApp.getAppName();
                         Log.d(TAG, "APP " + appName + " 当前设置的时间间隔: " + intervalSeconds + "秒");
                         
-                        // 记录关闭时间和当前使用的时间间隔
+                        // 记录关闭时刻、所用时间间隔
                         settingsManager.recordAppCloseTime(currentActiveApp, intervalSeconds);
                         Share.setAppManuallyHidden(currentActiveApp, true);
                         Log.d(TAG, "设置APP " + appName + " 为手动隐藏状态");
@@ -463,8 +463,8 @@ public class FloatService extends AccessibilityService
 
                         // 显示下次使用的时间间隔
                         int nextIntervalSeconds = currentActiveApp != null ?
-                                settingsManager.getAppAutoShowInterval(currentActiveApp) :
-                                settingsManager.getAutoShowInterval();
+                                settingsManager.getAppInterval(currentActiveApp) :
+                                settingsManager.getDefaultInterval();
                         Log.d(TAG, "下次时长：" + nextIntervalSeconds + "秒 (APP: " + appName + ")");
 
                         Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
@@ -512,7 +512,7 @@ public class FloatService extends AccessibilityService
             // 获取下次的文字
             String packageName = currentActiveApp.getPackageName();
             String source = settingsManager.getAppHintSource(packageName);
-            // 自定义来源
+            // 默认来源（大模型）
             if (Const.DEFAULT_HINT_SOURCE.equals(source)){
                 fetchNew();
             }
@@ -537,7 +537,7 @@ public class FloatService extends AccessibilityService
 
                 // 如果是宽松模式，现在切换到严格模式
                 if (settingsManager.isAppRelaxedMode(appForTimer)) {
-                    settingsManager.setAppAutoShowInterval(appForTimer, settingsManager.getMaxStrictInterval());
+                    settingsManager.setAppInterval(appForTimer, settingsManager.getMaxStrictInterval());
                     Log.d(TAG, "APP " + timerAppName + " 宽松模式已切换到严格模式");
                 }
 
@@ -609,15 +609,15 @@ public class FloatService extends AccessibilityService
                     int appLastCloseInterval = settingsManager.getAppLastCloseInterval(currentActiveApp);
                     if(settingsManager.isLastRelaxedMode(appLastCloseInterval)){
                         intervalSeconds = settingsManager.getMaxStrictInterval();
-                        settingsManager.setAppAutoShowInterval(currentActiveApp, intervalSeconds);
+                        settingsManager.setAppInterval(currentActiveApp, intervalSeconds);
                     }else {
-                        intervalSeconds = settingsManager.getAppAutoShowInterval(currentActiveApp);
+                        intervalSeconds = settingsManager.getAppInterval(currentActiveApp);
                     }
 
                     appName = currentActiveApp.getAppName();
                     Log.d(TAG, "悬浮窗显示APP " + appName + " 的时间间隔: " + intervalSeconds + "秒");
                 } else {
-                    intervalSeconds = settingsManager.getAutoShowInterval();
+                    intervalSeconds = settingsManager.getDefaultInterval();
                     Log.d(TAG, "悬浮窗显示全局时间间隔: " + intervalSeconds + "秒");
                 }
                 
@@ -723,10 +723,10 @@ public class FloatService extends AccessibilityService
                         instance.autoShowHandler.removeCallbacks(entry.getValue());
                         
                         // 使用当前APP的新时间间隔重新启动定时器
-                        long newInterval = instance.settingsManager.getAppAutoShowIntervalMillis(entry.getKey());
+                        long newInterval = instance.settingsManager.getAppIntervalMillis(entry.getKey());
                         instance.autoShowHandler.postDelayed(entry.getValue(), newInterval);
                         
-                        int intervalSeconds = instance.settingsManager.getAppAutoShowInterval(entry.getKey());
+                        int intervalSeconds = instance.settingsManager.getAppInterval(entry.getKey());
                         String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
                         String appName = entry.getKey().getAppName();
                         Log.d(instance.TAG, "时间间隔设置已更新，立即应用新间隔: " + intervalText + " (APP: " + appName + ")");

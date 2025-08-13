@@ -50,8 +50,8 @@ public class SettingsDialogManager {
      */
     public void showTimeSettingDialogForApp(CustomApp app, boolean isStrict) {
         final int[] intervals = isStrict ? 
-            SettingsManager.getStrictAvailableIntervals() : 
-            SettingsManager.getRelaxedAvailableIntervals();
+            SettingsManager.getStrictIntervals() :
+            SettingsManager.getRelaxedIntervals();
         
         String[] intervalOptions = new String[intervals.length];
         for (int i = 0; i < intervals.length; i++) {
@@ -59,7 +59,7 @@ public class SettingsDialogManager {
         }
 
         // 获取指定APP的当前设置
-        int currentInterval = settingsManager.getAppAutoShowInterval(app);
+        int currentInterval = settingsManager.getAppInterval(app);
         
         int checkedItem = -1;
         for (int i = 0; i < intervals.length; i++) {
@@ -82,11 +82,11 @@ public class SettingsDialogManager {
                 int selectedInterval = intervals[which];
                 
                 // 为指定APP设置时间间隔
-                settingsManager.setAppAutoShowInterval(app, selectedInterval);
+                settingsManager.setAppInterval(app, selectedInterval);
                 android.util.Log.d("SettingsDialog", "设置APP " + packageName + " 时间间隔为: " + selectedInterval + "秒");
                 
                 // 验证设置是否成功
-                int verifyInterval = settingsManager.getAppAutoShowInterval(app);
+                int verifyInterval = settingsManager.getAppInterval(app);
                 android.util.Log.d("SettingsDialog", "验证APP " + packageName + " 实际保存的时间间隔: " + verifyInterval + "秒");
                 
                 // 检查是否是宽松模式
