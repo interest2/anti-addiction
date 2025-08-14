@@ -122,11 +122,11 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/math_challenge_layout"
         android:layout_marginTop="36dp"
-        android:layout_marginLeft="20dp"
-        android:layout_marginRight="20dp"
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="5dp"
         android:background="#FCF8EB"
         android:orientation="vertical"
-        android:padding="12dp"
+        android:padding="5dp"
         android:gravity="center"
         android:visibility="gone">
 
@@ -136,9 +136,10 @@
             android:layout_height="wrap_content"
             android:text="玩手机？不如去喝水"
             android:textColor="#399C3F"
-            android:textSize="18sp"
+            android:textSize="20sp"
             android:textStyle="bold"
-            android:gravity="start" />
+            android:gravity="start"
+            android:letterSpacing="0.1" />
 
         <TextView
             android:id="@+id/tv_strict_reminder_hint"

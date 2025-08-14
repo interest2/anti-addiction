@@ -652,6 +652,10 @@ public class FloatService extends AccessibilityService
         if (strictReminderLayout != null && strictReminderText != null && strictReminderHint != null) {
             String strictReminder = settingsManager.getFloatingStrictReminder();
             boolean hasClickedSettings = settingsManager.getFloatingStrictReminderSettingsClicked();
+            int fontSize = settingsManager.getFloatingStrictReminderFontSize();
+            
+            // 应用自定义字体大小
+            strictReminderText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, fontSize);
             
             // 如果用户没有设置过提醒文字，显示默认文字
             if (strictReminder.isEmpty()) {
@@ -661,18 +665,18 @@ public class FloatService extends AccessibilityService
                 // 如果用户没有点击过设置按钮，显示小字提示
                 if (!hasClickedSettings) {
                     strictReminderHint.setVisibility(android.view.View.VISIBLE);
-                    Log.d(TAG, "显示默认日常提醒和小字提示");
+                    Log.d(TAG, "显示默认日常提醒和小字提示，字体大小: " + fontSize + "sp");
                 } else {
                     // 用户点击过设置按钮，只隐藏小字提示
                     strictReminderHint.setVisibility(android.view.View.GONE);
-                    Log.d(TAG, "显示默认日常提醒，隐藏小字提示");
+                    Log.d(TAG, "显示默认日常提醒，隐藏小字提示，字体大小: " + fontSize + "sp");
                 }
             } else {
                 // 用户设置了自定义提醒文字
                 strictReminderText.setText(strictReminder);
                 strictReminderHint.setVisibility(android.view.View.GONE);
                 strictReminderLayout.setVisibility(android.view.View.VISIBLE);
-                Log.d(TAG, "显示自定义日常提醒: " + strictReminder);
+                Log.d(TAG, "显示自定义日常提醒: " + strictReminder + "，字体大小: " + fontSize + "sp");
             }
         }
     }

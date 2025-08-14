@@ -621,16 +621,70 @@ public class SettingsDialogManager {
         }
         layout.addView(input);
 
+        // 添加字体大小设置区域
+        android.view.View fontSizeSpacer = new android.view.View(context);
+        fontSizeSpacer.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 20));
+        layout.addView(fontSizeSpacer);
+
+        // 字体大小标题
+        android.widget.TextView fontSizeTitle = new android.widget.TextView(context);
+        fontSizeTitle.setText("字体大小设置");
+        fontSizeTitle.setTextSize(14);
+        fontSizeTitle.setTextColor(0xFF666666);
+        fontSizeTitle.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+        layout.addView(fontSizeTitle);
+
+        // 字体大小选择器
+        android.widget.SeekBar fontSizeSeekBar = new android.widget.SeekBar(context);
+        fontSizeSeekBar.setMax(20); // 12sp到32sp，共21个选项
+        fontSizeSeekBar.setProgress(settingsManager.getFloatingStrictReminderFontSize() - 12); // 当前字体大小减去最小值
+        fontSizeSeekBar.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+        layout.addView(fontSizeSeekBar);
+
+        // 字体大小显示
+        final android.widget.TextView fontSizeDisplay = new android.widget.TextView(context);
+        fontSizeDisplay.setText("当前字体大小: " + settingsManager.getFloatingStrictReminderFontSize() + "sp");
+        fontSizeDisplay.setTextSize(12);
+        fontSizeDisplay.setTextColor(0xFF999999);
+        fontSizeDisplay.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+        layout.addView(fontSizeDisplay);
+
+        // 监听字体大小变化
+        fontSizeSeekBar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
+                int fontSize = progress + 12; // 12sp到32sp
+                fontSizeDisplay.setText("当前字体大小: " + fontSize + "sp");
+            }
+
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+        });
+
         new android.app.AlertDialog.Builder(context)
             .setTitle("良好习惯提醒")
             .setView(layout)
             .setPositiveButton("保存", (dialog, which) -> {
                 String reminder = input.getText().toString().trim();
+                int fontSize = fontSizeSeekBar.getProgress() + 12; // 获取当前字体大小
+                
                 settingsManager.setFloatingStrictReminder(reminder);
+                settingsManager.setFloatingStrictReminderFontSize(fontSize);
+                
                 if (reminder.isEmpty()) {
                     Toast.makeText(context, "已清除日常提醒", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(context, "已保存日常提醒: " + reminder, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "已保存日常提醒: " + reminder + "，字体大小: " + fontSize + "sp", Toast.LENGTH_SHORT).show();
                 }
             })
             .setNegativeButton("取消", null)

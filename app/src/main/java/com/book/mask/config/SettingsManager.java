@@ -35,6 +35,7 @@ public class SettingsManager {
     // 悬浮窗额外显示日常提醒
     private static final String KEY_FLOATING_STRICT_REMINDER = "floating_strict_reminder";
     private static final String KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED = "floating_strict_reminder_settings_clicked";
+    private static final String KEY_FLOATING_STRICT_REMINDER_FONT_SIZE = "floating_strict_reminder_font_size";
 
     // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
@@ -493,6 +494,21 @@ public class SettingsManager {
      */
     public boolean getFloatingStrictReminderSettingsClicked() {
         return prefs.getBoolean(KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, false);
+    }
+
+    /**
+     * 设置悬浮窗良好习惯提醒字体大小
+     */
+    public void setFloatingStrictReminderFontSize(int fontSize) {
+        prefs.edit().putInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, fontSize).apply();
+        android.util.Log.d("SettingsManager", "设置悬浮窗良好习惯提醒字体大小: " + fontSize);
+    }
+    
+    /**
+     * 获取悬浮窗良好习惯提醒字体大小
+     */
+    public int getFloatingStrictReminderFontSize() {
+        return prefs.getInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, 18); // 默认18sp
     }
 
     /**
