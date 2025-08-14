@@ -89,13 +89,12 @@ public class HomeNav extends Fragment implements
         
         // 设置加号按钮点击事件
         setupAddButton(view);
-        
+
         // 设置HTML文本，让"功能"二字加粗
         TextView tvDescription = view.findViewById(R.id.tv_description);
         if (tvDescription != null) {
             tvDescription.setText(android.text.Html.fromHtml(
-                "<b>功能</b>：悬浮窗遮盖APP推荐内容，但保留搜索等功能。<br/>" +
-                "<b>所需权限</b>：显示在其他应用的上层、无障碍服务、允许后台运行。"
+                    "<b>所需权限</b><br/>① 显示在其他应用的上层 <br/>② 无障碍服务 <br/>③ 允许后台运行"
             ));
         }
         
