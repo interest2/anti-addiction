@@ -25,7 +25,7 @@ public class Const {
 
     public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
 
-    public static final long APP_STATE_CHECK_INTERVAL = 2000; // 2秒检查一次
+    public static final long APP_STATE_CHECK_INTERVAL = 4000; // 检查间隔，ms
 
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";
