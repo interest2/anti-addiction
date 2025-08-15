@@ -63,6 +63,7 @@ public class FloatService extends AccessibilityService
     private Handler handler;
     private Runnable contentCheckRunnable;
     private long lastContentCheckTime = 0;
+    private long lastWindowCheckTime = 0;
 
     // 窗口状态变化锁机制
     public static String currentPackageName = "";
@@ -157,19 +158,21 @@ public class FloatService extends AccessibilityService
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
 //        Log.d(TAG, "onAccessibilityEvent 被调用，事件类型: " + event.getEventType());
-//        Log.d(TAG, "类名：" + event.getClassName());
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             handleWindowStateChanged(event);
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             handleWindowContentChanged(event);
         }
-        lastPackageName = (String) event.getPackageName();
+        String eventPackageName = (String)event.getPackageName();
+        if(!eventPackageName.equals(getPackageName())){
+            lastPackageName = (String) event.getPackageName();
+        }
     }
     private void handleWindowStateChanged(AccessibilityEvent event) {
         if (event.getPackageName() != null) {
             String packageName = event.getPackageName().toString();
             Log.d(TAG, "窗口状态改变，当前应用: " + packageName);
-            
+
             // 过滤掉我们自己的应用，避免悬浮窗显示时触发状态变化
             if (packageName.equals(getPackageName())) {
                 Log.d(TAG, "忽略自己的应用: " + packageName);
@@ -181,9 +184,21 @@ public class FloatService extends AccessibilityService
                 Log.d(TAG, "忽略输入法应用: " + packageName);
                 return;
             }
-            
+
             // 检测当前是否是支持的APP（包括预定义和自定义）
             CustomApp detectedApp = detectSupportedApp(packageName);
+
+            Log.d(TAG, "当前应用: " + packageName
+                    + "，lastPackageName: " + lastPackageName);
+
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastWindowCheckTime < 250
+                    && detectSupportedApp(lastPackageName) != null
+                    && detectedApp == null) {
+                Log.d(TAG, "短时内切换窗口，需忽略");
+                return; // 短时内切换事件直接忽略
+            }
+            lastWindowCheckTime = currentTime;
             
             if (detectedApp != null) {
                 String appName = detectedApp.getAppName();
@@ -298,9 +313,6 @@ public class FloatService extends AccessibilityService
                 Log.d(TAG, "包名变化，抢先显示悬浮窗: " + currentPackageName);
                 showFloatingWindow();
             }
-            // 记录当前包名为下次比较使用
-            lastPackageName = currentPackageName;
-
             Log.d(TAG, "当前有活跃的APP，开始文本检测");
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             String targetWord = currentActiveApp.getTargetWord();
@@ -881,6 +893,9 @@ public class FloatService extends AccessibilityService
                 // 检测当前是否是支持的APP（包括预定义和自定义）
                 CustomApp detectedApp = detectSupportedApp(currentPackage);
                 Log.d(TAG, "detectedApp 包名： " + currentPackage);
+                if(currentActiveApp != null){
+                    Log.d(TAG, "currentActiveApp 包名： " + currentActiveApp.getPackageName());
+                }
 
                 // 多APP状态检测
                 if (detectedApp != null) {
