@@ -163,6 +163,7 @@ public class FloatService extends AccessibilityService
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             handleWindowContentChanged(event);
         }
+        lastPackageName = (String) event.getPackageName();
     }
     private void handleWindowStateChanged(AccessibilityEvent event) {
         if (event.getPackageName() != null) {
@@ -291,6 +292,7 @@ public class FloatService extends AccessibilityService
                 }
             }
 
+            currentPackageName = currentActiveApp.getPackageName();
             // 有活跃APP的前提下，进行包名比较：如果与上次不同：抢先显示悬浮窗
             if (!currentPackageName.equals(lastPackageName)) {
                 Log.d(TAG, "包名变化，抢先显示悬浮窗: " + currentPackageName);
