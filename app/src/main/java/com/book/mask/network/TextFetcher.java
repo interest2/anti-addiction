@@ -54,7 +54,6 @@ public class TextFetcher {
     public String getCachedText() {
         String cachedText = prefs.getString(PREF_KEY_CACHED_TEXT, null);
         if (cachedText != null) {
-            Log.d(TAG, "获取到缓存文字");
             return cachedText;
         }
         Log.d(TAG, "没有缓存文字，用默认预置的内容");
