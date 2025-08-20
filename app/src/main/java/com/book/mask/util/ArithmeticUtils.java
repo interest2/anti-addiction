@@ -11,8 +11,7 @@ public class ArithmeticUtils {
         Random random = new Random();
         int operationType = random.nextInt(3); // 0: 加, 1: 减, 2: 乘
 
-        int addMin = (int) Math.pow(10, addendLen - 1);
-        int addMax = (int) Math.pow(10, addendLen) - addMin;
+        String[] addTemp;
 
         // 乘数
         int mulMin1 = (int) Math.pow(10, multiplierLen1 - 1);
@@ -26,7 +25,7 @@ public class ArithmeticUtils {
         String operator;
         switch (operationType) {
             case 0: // 加法
-                String[] addTemp = hardAdd(addendLen).split(",");
+                addTemp = hardAdd(addendLen).split(",");
                 num1 = Integer.parseInt(addTemp[0]);
                 num2 = Integer.parseInt(addTemp[1]);
                 operator = "+";
@@ -43,8 +42,9 @@ public class ArithmeticUtils {
                 operator = "×";
                 break;
             default:
-                num1 = cRandom(addMax) + addMin;
-                num2 = cRandom(addMax) + addMin;
+                addTemp = hardAdd(addendLen).split(",");
+                num1 = Integer.parseInt(addTemp[0]);
+                num2 = Integer.parseInt(addTemp[1]);
                 operator = "+";
         }
         return num1 + " " + operator + " " + num2 + " = ?";

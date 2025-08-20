@@ -192,7 +192,7 @@ public class FloatService extends AccessibilityService
                     + "，lastPackageName: " + lastPackageName);
 
             long currentTime = System.currentTimeMillis();
-            if (currentTime - lastWindowCheckTime < 250
+            if (currentTime - lastWindowCheckTime < 350
                     && detectSupportedApp(lastPackageName) != null
                     && detectedApp == null) {
                 Log.d(TAG, "短时内切换窗口，需忽略");

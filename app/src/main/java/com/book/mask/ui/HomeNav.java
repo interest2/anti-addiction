@@ -555,6 +555,12 @@ public class HomeNav extends Fragment implements
      * 显示算术题验证弹窗用于关闭屏蔽
      */
     private void showMathChallengeForMonitorToggle(CustomApp app, String packageName) {
+        if(CustomAppManager.WECHAT_PACKAGE.equals(packageName)){
+            settingsManager.setAppMonitoringEnabled(packageName, false);
+            updateAppCardsDisplay();
+            return;
+        }
+
         // 创建算术题验证弹窗
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_math_challenge, null);
         

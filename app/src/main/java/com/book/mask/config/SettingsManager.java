@@ -53,7 +53,7 @@ public class SettingsManager {
     private static final int DEFAULT_STRICT_INDEX = 2;
     // 严格、宽松模式的各选项
     private static final int[] strictIntervalArray = {30, 60, 120};
-    private static final int[] relaxedIntervalArray = {900, 1320, 1800};
+    private static final int[] relaxedIntervalArray = {600, 1200, 1800};
 
     private SharedPreferences prefs;
 
