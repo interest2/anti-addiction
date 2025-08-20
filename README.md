@@ -10,3 +10,12 @@
 见 github 和 gitee 链接：  
 https://gitee.com/interest2/anti-addiction/releases  
 https://github.com/interest2/anti-addiction/releases  
+
+**技术栈**  
+客户端（开源）：Java  
+服务端：Java/SpringBoot。  
+服务端代码未公开，2 个原因：① 本 APP 的逻辑基本发生在客户端，服务端做的事情很简单，② 服务端代码与其他项目耦合，故暂不适合发出。  
+大模型：智谱清言。  
+
+** 上报服务端的信息**  
+APP版本号、AndroidID、型号之类（不包括通讯录、定位等等相对敏感的信息）。
