@@ -32,7 +32,15 @@ public class ExampleUnitTest {
                 System.out.println(s);
             };
         }
+    }
 
+    @Test
+    public void t3(){
+        CharSequence charSequence = "2345678";
+//        System.out.println(charSequence.subSequence(0, 0).toString()+charSequence.subSequence(3, 5));
+        for (int i = 0; i < 1000; i++) {
+            System.out.println(ArithmeticUtils.hardMul(2, 2));
+        }
     }
 
 }

@@ -10,16 +10,7 @@ public class ArithmeticUtils {
     public static String customArithmetic(int addendLen, int subtrahendLen, int multiplierLen1, int multiplierLen2) {
         Random random = new Random();
         int operationType = random.nextInt(3); // 0: 加, 1: 减, 2: 乘
-
         String[] addTemp;
-
-        // 乘数
-        int mulMin1 = (int) Math.pow(10, multiplierLen1 - 1);
-        int mulMax1 = (int) Math.pow(10, multiplierLen1) - mulMin1;
-
-        // 被乘数
-        int mulMin2 = (int) Math.pow(10, multiplierLen2 - 1);
-        int mulMax2 = (int) Math.pow(10, multiplierLen2) - mulMin2;
 
         int num1, num2;
         String operator;
@@ -37,8 +28,9 @@ public class ArithmeticUtils {
                 operator = "-";
                 break;
             case 2: // 乘法
-                num1 = cRandom(mulMax1) + mulMin1;
-                num2 = cRandom(mulMax2) + mulMin2;
+                String[] mulTemp = hardMul(multiplierLen1, multiplierLen2).split(",");
+                num1 = Integer.parseInt(mulTemp[0]);
+                num2 = Integer.parseInt(mulTemp[1]);
                 operator = "×";
                 break;
             default:
@@ -48,6 +40,41 @@ public class ArithmeticUtils {
                 operator = "+";
         }
         return num1 + " " + operator + " " + num2 + " = ?";
+    }
+
+    public static String hardMul(int mulLen1, int mulLen2){
+        Random random = new Random();
+        StringBuilder first = new StringBuilder();
+        StringBuilder second = new StringBuilder();
+
+        int firstInit = random.nextInt(8) + 2;
+        int secondInit = random.nextInt(8) + 2;
+
+        first.append(firstInit);
+        second.append(secondInit);
+
+        createMulNum(mulLen1, first, firstInit);
+        createMulNum(mulLen2, second, secondInit);
+        return first + "," + second;
+    }
+
+    private static void createMulNum(int mulLen, StringBuilder initialNumChar, int initialNum){
+        CharSequence charSequence = "2345678";
+
+        Random random = new Random();
+        for (int i = 0; i < mulLen - 1; i++) {
+            char randChar = charSequence.charAt(random.nextInt(7));
+            int randNum = Integer.parseInt(String.valueOf(randChar));
+            // 两位数乘法时，避免（被）乘数的两位相同
+            if(randNum == initialNum){
+                charSequence =
+                        charSequence.subSequence(0, initialNum - 2).toString()
+                                + charSequence.subSequence(initialNum - 1, 7);
+                randChar = charSequence.charAt(random.nextInt(6));
+                randNum = Integer.parseInt(String.valueOf(randChar));
+            }
+            initialNumChar.append(randNum);
+        }
     }
 
     public static String hardAdd(int addLen){
