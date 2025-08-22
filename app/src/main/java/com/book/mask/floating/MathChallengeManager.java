@@ -41,7 +41,6 @@ public class MathChallengeManager {
     private AppSettingsManager appSettingsManager;
     
     // 数学题相关
-    private Random random = new Random();
     private int currentAnswer = 0;
     private boolean isMathChallengeActive = false;
     
