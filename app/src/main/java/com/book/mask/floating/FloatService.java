@@ -16,6 +16,7 @@ import java.util.Map;
 
 import com.book.mask.config.Const;
 import com.book.mask.config.Share;
+import com.book.mask.config.CustomAppManager;
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
@@ -202,7 +203,7 @@ public class FloatService extends AccessibilityService
         long interval;
         int intervalSeconds;
         
-        CustomApp currentActiveApp = appStateManager.getCurrentActiveApp();
+        CustomApp currentActiveApp = Share.currentApp;
         if (currentActiveApp != null) {
             // 使用当前APP的时间间隔安排下次显示
             interval = relaxManager.getAppIntervalMillis(currentActiveApp);
@@ -263,7 +264,7 @@ public class FloatService extends AccessibilityService
             public void onScreenUnlocked() {
                 Log.d(TAG, "屏幕解锁，检查悬浮窗状态");
                 // 屏幕解锁后，重新检查当前APP状态
-                CustomApp currentActiveApp = appStateManager.getCurrentActiveApp();
+                CustomApp currentActiveApp = Share.currentApp;
                 if (currentActiveApp != null && "target".equals(Share.getAppState(currentActiveApp))) {
                     boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
                     if (!floatingWindowManager.isFloatingWindowVisible() && !appManuallyHidden) {
@@ -283,7 +284,7 @@ public class FloatService extends AccessibilityService
             public void onUserPresent() {
                 Log.d(TAG, "用户解锁设备，重新检查应用状态");
                 // 用户解锁后，重新检测当前是否在支持的APP
-                CustomApp currentActiveApp = appStateManager.getCurrentActiveApp();
+                CustomApp currentActiveApp = Share.currentApp;
                 if (currentActiveApp != null) {
                     String appName = currentActiveApp.getAppName();
                     Log.d(TAG, "用户解锁后重新检测APP: " + appName);
@@ -359,7 +360,7 @@ public class FloatService extends AccessibilityService
      */
     public static void notifyIntervalChanged() {
         if (instance != null && instance.floatingWindowManager != null) {
-            CustomApp currentActiveApp = instance.appStateManager.getCurrentActiveApp();
+            CustomApp currentActiveApp = Share.currentApp;
             instance.floatingWindowManager.updateFloatingWindowContent(currentActiveApp);
             
             // 如果当前有正在运行的自动显示定时器，重新启动它

@@ -449,28 +449,7 @@ public class AppStateManager {
      * 检测包名对应的支持APP（统一使用CustomApp）
      */
     private CustomApp detectSupportedApp(String packageName) {
-        // 检查所有APP（包括预定义和自定义）
-        try {
-            CustomAppManager customAppManager = CustomAppManager.getInstance();
-            CustomApp app = customAppManager.getAppByPackageName(packageName);
-            
-            if (app != null) {
-                // 检查该APP的监测开关状态
-                if (!relaxManager.shouldMonitorApp(packageName)) {
-                    Log.d(TAG, "APP " + app.getAppName() + " 监测已关闭，跳过检测");
-                    return null;
-                }
-                return app;
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "检查APP时出错", e);
-        }
-        
-        return null;
-    }
-    
-    public CustomApp getCurrentActiveApp() {
-        return currentActiveApp;
+        return CustomAppManager.getInstance().detectSupportedApp(packageName, relaxManager);
     }
 
     public void cleanup() {

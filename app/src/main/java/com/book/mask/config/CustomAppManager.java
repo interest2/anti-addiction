@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import com.book.mask.setting.RelaxManager;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -139,6 +140,40 @@ public class CustomAppManager {
             }
         }
         return null;
+    }
+    
+    /**
+     * 检测包名对应的支持APP（统一使用CustomApp）
+     * @param packageName 包名
+     * @param relaxManager 用于检查监测开关状态
+     * @return 支持的APP，如果不支持或监测关闭则返回null
+     */
+    public CustomApp detectSupportedApp(String packageName, RelaxManager relaxManager) {
+        // 检查所有APP（包括预定义和自定义）
+        try {
+            CustomApp app = getAppByPackageName(packageName);
+            
+            if (app != null) {
+                // 检查该APP的监测开关状态
+                if (relaxManager != null && !relaxManager.shouldMonitorApp(packageName)) {
+                    Log.d("CustomAppManager", "APP " + app.getAppName() + " 监测已关闭，跳过检测");
+                    return null;
+                }
+                return app;
+            }
+        } catch (Exception e) {
+            Log.w("CustomAppManager", "检查APP时出错", e);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 获取当前活跃的APP
+     * @return 当前活跃的APP，如果没有则返回null
+     */
+    public CustomApp getCurrentActiveApp() {
+        return Share.currentApp;
     }
 
     /**
