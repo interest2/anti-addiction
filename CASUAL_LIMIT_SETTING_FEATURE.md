@@ -143,7 +143,7 @@ Button btnSaveRelaxedLimit = dialogView.findViewById(R.id.btn_save_relaxed_limit
 // 设置输入框的当前值（优先使用自定义设置）
 if (app instanceof Const.SupportedApp) {
     Const.SupportedApp supportedApp = (Const.SupportedApp) app;
-    Integer customLimit = settingsManager.getCustomRelaxedLimitCount(supportedApp.getPackageName());
+    Integer customLimit = relaxManager.getCustomRelaxedLimitCount(supportedApp.getPackageName());
     relaxedLimitCount = customLimit != null ? customLimit : supportedApp.getRelaxedLimitCount();
 } else if (app instanceof Const.CustomApp) {
     Const.CustomApp customApp = (Const.CustomApp) app;
@@ -170,7 +170,7 @@ btnSaveRelaxedLimit.setOnClickListener(v -> {
         if (app instanceof Const.SupportedApp) {
             // 对于预定义APP，保存自定义次数设置
             Const.SupportedApp supportedApp = (Const.SupportedApp) app;
-            settingsManager.setCustomRelaxedLimitCount(supportedApp.getPackageName(), newLimitCount);
+            relaxManager.setCustomRelaxedLimitCount(supportedApp.getPackageName(), newLimitCount);
             Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
             
             // 更新APP列表显示
@@ -198,7 +198,7 @@ if (app instanceof Const.SupportedApp) {
     Const.SupportedApp supportedApp = (Const.SupportedApp) app;
     appName = supportedApp.getAppName();
     // 优先使用自定义设置，如果没有则使用默认值
-    Integer customLimit = settingsManager.getCustomRelaxedLimitCount(supportedApp.getPackageName());
+    Integer customLimit = relaxManager.getCustomRelaxedLimitCount(supportedApp.getPackageName());
     relaxedLimitCount = customLimit != null ? customLimit : supportedApp.getRelaxedLimitCount();
     packageName = supportedApp.getPackageName();
 } else if (app instanceof Const.CustomApp) {

@@ -10,17 +10,17 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.book.mask.R;
-import com.book.mask.config.Const;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.Share;
+import com.book.mask.util.DateUtils;
 
 import java.util.List;
 
 public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardViewHolder> {
 
     private List<CustomApp> apps; // 包含预定义APP和自定义APP
-    private SettingsManager settingsManager;
+    private RelaxManager relaxManager;
     private OnAppCardClickListener listener;
     private OnMonitorToggleListener monitorListener;
     private OnEditClickListener editListener;
@@ -37,11 +37,11 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         void onEditClick(CustomApp app);
     }
 
-    public AppCardAdapter(List<CustomApp> apps, SettingsManager settingsManager, 
+    public AppCardAdapter(List<CustomApp> apps, RelaxManager relaxManager,
                          OnAppCardClickListener listener, OnMonitorToggleListener monitorListener,
                          OnEditClickListener editListener) {
         this.apps = apps;
-        this.settingsManager = settingsManager;
+        this.relaxManager = relaxManager;
         this.listener = listener;
         this.monitorListener = monitorListener;
         this.editListener = editListener;
@@ -105,7 +105,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         }
 
         public void bind(CustomApp app) {
-            if (app == null || settingsManager == null) {
+            if (app == null || relaxManager == null) {
                 return;
             }
             
@@ -126,7 +126,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             // 设置监测开关状态
             if (toggleMonitor != null) {
                 // 部分默认开启，其他默认关闭
-                Boolean isEnabled = settingsManager.isAppMonitoringEnabled(packageName);
+                Boolean isEnabled = relaxManager.isAppMonitoringEnabled(packageName);
                 if (isEnabled == null) {
                     // 如果还没有设置过，使用默认值
                     isEnabled = Share.judgeEnabled(packageName);
@@ -135,14 +135,14 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             }
 
             // 设置剩余时长
-            long remainingTime = settingsManager.getAppRemainingTime(app);
+            long remainingTime = relaxManager.getAppRemainingTime(app);
             String timeText;
             int timeColor;
             if (remainingTime == -1) {
                 timeText = "倒计时：00:00";
                 timeColor = 0xFF4CAF50; // 绿色
             } else {
-                timeText = "倒计时: " + SettingsManager.formatRemainingTime(remainingTime);
+                timeText = "倒计时: " + DateUtils.formatRemainingTime(remainingTime);
                 timeColor = 0xFFE91E63; // 红色
             }
             
@@ -152,7 +152,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             }
 
             // 设置宽松模式剩余次数
-            int relaxedCount = settingsManager.getAppRelaxedCloseCount(app);
+            int relaxedCount = relaxManager.getAppRelaxedCloseCount(app);
             int remainingCount = Math.max(0, relaxedLimitCount - relaxedCount);
             
             if (tvRelaxedCount != null) {

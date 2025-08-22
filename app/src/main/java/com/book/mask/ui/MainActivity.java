@@ -29,7 +29,7 @@ import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.lifecycle.AppLifecycleObserver;
 import com.book.mask.network.DeviceInfoReporter;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
 import com.book.mask.network.TextFetcher;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
@@ -39,7 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_ACCESSIBILITY_PERMISSION = 1003;
     private AppLifecycleObserver appLifecycleObserver;
     private DeviceInfoReporter deviceInfoReporter;
-    private SettingsManager settingsManager;
+    private RelaxManager relaxManager;
     private SettingsDialogManager settingsDialogManager;
     private HomeNav homeNav;
     private GoalNav goalNav;
@@ -57,8 +57,8 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        settingsManager = new SettingsManager(this);
-        settingsDialogManager = new SettingsDialogManager(this, settingsManager);
+        relaxManager = new RelaxManager(this);
+        settingsDialogManager = new SettingsDialogManager(this, relaxManager);
 
         // 设置底部导航
         setupBottomNavigation();
@@ -101,12 +101,12 @@ public class MainActivity extends AppCompatActivity {
 
 // 2. 如果不是同一天，重置所有APP的宽松关闭次数为各自的最大值
         if (!currentDate.equals(lastResetDate)) {
-            SettingsManager settingsManager = new SettingsManager(this);
+            RelaxManager relaxManager = new RelaxManager(this);
 
             // 所有APP（包括预定义和自定义）
             CustomAppManager customAppManager = CustomAppManager.getInstance();
             for (CustomApp app : customAppManager.getAllApps()) {
-                settingsManager.setAppRelaxedCloseCount(app, 0); // 这里应设置为0
+                relaxManager.setAppRelaxedCloseCount(app, 0); // 这里应设置为0
             }
 
             // 记录本次重置日期

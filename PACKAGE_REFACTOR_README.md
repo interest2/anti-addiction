@@ -71,7 +71,7 @@ import com.book.mask.lifecycle.AppLifecycleObserver;
 
 // FloatingAccessibilityService 中的 import 更新
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
 import com.book.mask.network.DeviceInfoReporter;
 
 // ServiceKeepAliveManager 中的 import 更新
@@ -133,7 +133,7 @@ graph TD
 ```java
 // 正确方式
 
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
 import com.book.mask.floating.FloatService;
 
 // 避免使用 * 导入

@@ -38,7 +38,7 @@ public void onMonitorToggle(Object app, boolean isEnabled) {
             showMathChallengeForMonitorToggle(app, packageName);
         } else {
             // 开启监测直接执行
-            settingsManager.setAppMonitoringEnabled(packageName, isEnabled);
+            relaxManager.setAppMonitoringEnabled(packageName, isEnabled);
             // 显示提示
             String status = isEnabled ? "已开启监测" : "已关闭屏蔽";
             Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show();

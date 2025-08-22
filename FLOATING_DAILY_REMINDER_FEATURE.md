@@ -77,7 +77,7 @@
 
 ```java
 // 记录用户点击设置按钮
-settingsManager.setFloatingStrictReminderSettingsClicked(true);
+relaxManager.setFloatingStrictReminderSettingsClicked(true);
 
 // 智能显示逻辑
 if (strictReminder.isEmpty()) {

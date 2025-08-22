@@ -8,18 +8,13 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.util.Log;
-import org.json.JSONObject;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.book.mask.config.Const;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
+import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.util.ContentUtils;
 
 public class TextFetcher {
@@ -33,7 +28,8 @@ public class TextFetcher {
     private ExecutorService executorService;
     private Handler mainHandler;
     private SharedPreferences prefs;
-    private SettingsManager settingsManager;
+    private RelaxManager relaxManager;
+    private AppSettingsManager appSettingsManager;
     
     public interface OnTextFetchListener {
         void onTextFetched(String text);
@@ -45,7 +41,8 @@ public class TextFetcher {
         this.executorService = Executors.newSingleThreadExecutor();
         this.mainHandler = new Handler(Looper.getMainLooper());
         this.prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        this.settingsManager = new SettingsManager(context);
+        this.relaxManager = new RelaxManager(context);
+        this.appSettingsManager = new AppSettingsManager(context);
     }
     
     /**
@@ -108,7 +105,7 @@ public class TextFetcher {
             String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
             PackageManager pm = context.getPackageManager();
             PackageInfo packageInfo = pm.getPackageInfo(context.getPackageName(), 0);
-            String tag = settingsManager.getMotivationTag();
+            String tag = appSettingsManager.getMotivationTag();
             String encodedTag = java.net.URLEncoder.encode(tag, java.nio.charset.StandardCharsets.UTF_8.name());
             String url = Const.DOMAIN_URL + Const.LLM_PATH + "?tag=" + encodedTag + "&devId=" + androidId + "&version=" + packageInfo.versionName;
 

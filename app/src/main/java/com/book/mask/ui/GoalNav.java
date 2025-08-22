@@ -12,12 +12,14 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
+import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.floating.FloatHelper;
 
 public class GoalNav extends Fragment {
 
-    private SettingsManager settingsManager;
+    private RelaxManager relaxManager;
+    private AppSettingsManager appSettingsManager;
     private SettingsDialogManager settingsDialogManager;
     private TextView tvGoalCountdown;
     private Button btnTagSetting, btnTargetDateSetting;
@@ -26,8 +28,9 @@ public class GoalNav extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_goal, container, false);
-        settingsManager = new SettingsManager(requireContext());
-        settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
+        relaxManager = new RelaxManager(requireContext());
+        appSettingsManager = new AppSettingsManager(requireContext());
+        settingsDialogManager = new SettingsDialogManager(requireContext(), relaxManager);
 
         // 初始化控件
         tvGoalCountdown = view.findViewById(R.id.tv_goal_countdown);
@@ -65,10 +68,10 @@ public class GoalNav extends Fragment {
 
     private void updateGoalInfo() {
         // 目标标签
-        String tag = settingsManager.getMotivationTag();
+        String tag = appSettingsManager.getMotivationTag();
         btnTagSetting.setText(tag == null || tag.isEmpty() ? "目标标签设置" : tag);
         // 目标日期
-        String date = settingsManager.getTargetCompletionDate();
+        String date = appSettingsManager.getTargetCompletionDate();
         btnTargetDateSetting.setText((date == null || date.isEmpty() || "待设置".equals(date)) ? "目标日期" : date);
         // 倒计时
         String countdown = FloatHelper.hintDate(date);

@@ -17,7 +17,8 @@ import java.util.Random;
 import com.book.mask.R;
 import com.book.mask.config.Const;
 import com.book.mask.config.CustomAppManager;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
+import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.util.ArithmeticUtils;
 
@@ -36,7 +37,8 @@ public class MathChallengeManager {
     private Handler handler;
     private FloatService accessibilityService;
     private CustomApp currentApp; // 当前APP（统一使用CustomApp）
-    private SettingsManager settingsManager;
+    private RelaxManager relaxManager;
+    private AppSettingsManager appSettingsManager;
     
     // 数学题相关
     private Random random = new Random();
@@ -60,7 +62,8 @@ public class MathChallengeManager {
         this.layoutParams = layoutParams;
         this.handler = handler;
         this.accessibilityService = accessibilityService;
-        this.settingsManager = new SettingsManager(context);
+        this.relaxManager = new RelaxManager(context);
+        this.appSettingsManager = new AppSettingsManager(context);
         
         initializeComponents();
     }
@@ -343,14 +346,14 @@ public class MathChallengeManager {
      * 根据设置获取数学题参数
      */
     private String generateMathQuestion() {
-        String difficultyMode = settingsManager.getMathDifficultyMode();
+        String difficultyMode = appSettingsManager.getMathDifficultyMode();
 
         if ("custom".equals(difficultyMode)) {
             // 使用自定义难度设置
-            int additionDigits = settingsManager.getMathAdditionDigits();
-            int subtractionDigits = settingsManager.getMathSubtractionDigits();
-            int multiplierDigits = settingsManager.getMathMultiplicationMultiplierDigits();
-            int multiplicandDigits = settingsManager.getMathMultiplicationMultiplicandDigits();
+            int additionDigits = appSettingsManager.getMathAdditionDigits();
+            int subtractionDigits = appSettingsManager.getMathSubtractionDigits();
+            int multiplierDigits = appSettingsManager.getMathMultiplicationMultiplierDigits();
+            int multiplicandDigits = appSettingsManager.getMathMultiplicationMultiplicandDigits();
 
             return ArithmeticUtils.customArithmetic(additionDigits, subtractionDigits, multiplierDigits, multiplicandDigits);
         } else {

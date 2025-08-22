@@ -66,7 +66,7 @@
 // 字体大小选择器
 android.widget.SeekBar fontSizeSeekBar = new android.widget.SeekBar(context);
 fontSizeSeekBar.setMax(20); // 12sp到32sp，共21个选项
-fontSizeSeekBar.setProgress(settingsManager.getFloatingStrictReminderFontSize() - 12);
+fontSizeSeekBar.setProgress(relaxManager.getFloatingStrictReminderFontSize() - 12);
 
 // 监听字体大小变化
 fontSizeSeekBar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {

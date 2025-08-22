@@ -1,9 +1,15 @@
 package com.book.mask.floating;
 
+import android.graphics.PixelFormat;
+import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.book.mask.config.Const;
+import com.book.mask.setting.RelaxManager;
+import com.book.mask.setting.AppSettingsManager;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -128,6 +134,38 @@ public class FloatHelper {
         }
 
         return false;
+    }
+
+    public static WindowManager.LayoutParams getLayoutParams(WindowManager windowManager, AppSettingsManager appSettingsManager){
+
+        // 设置悬浮窗参数
+        WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
+        layoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
+        // 添加FLAG_NOT_FOCUSABLE确保悬浮窗不会获得焦点，避免影响前台应用检测
+        // 添加FLAG_NOT_TOUCH_MODAL确保触摸事件可以传递到下层窗口
+        // 添加FLAG_NOT_TOUCHABLE确保悬浮窗默认不拦截触摸事件（除了特定区域）
+        layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
+        layoutParams.format = PixelFormat.TRANSLUCENT;
+        layoutParams.gravity = Gravity.LEFT | Gravity.TOP;
+
+        // 计算悬浮窗位置和大小
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+
+        int screenWidth = displayMetrics.widthPixels;
+        int screenHeight = displayMetrics.heightPixels;
+
+        // 设置悬浮窗位置和大小
+        int topOffset = appSettingsManager.getFloatingTopOffset();
+        int bottomOffset = appSettingsManager.getFloatingBottomOffset();
+
+        layoutParams.x = 0;
+        layoutParams.y = topOffset;
+        layoutParams.width = screenWidth;
+        layoutParams.height = screenHeight - topOffset - bottomOffset;
+        return layoutParams;
     }
 
     public static boolean isEmpty(CharSequence cs) {

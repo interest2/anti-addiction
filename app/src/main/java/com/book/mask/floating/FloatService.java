@@ -2,11 +2,9 @@ package com.book.mask.floating;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
-import android.graphics.PixelFormat;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
@@ -15,7 +13,6 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Button;
-import android.util.DisplayMetrics;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -28,7 +25,8 @@ import com.book.mask.config.Const;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
+import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.network.TextFetcher;
@@ -83,7 +81,8 @@ public class FloatService extends AccessibilityService
     private long mathChallengeStartTime = 0; // 数学题验证开始时间
     
     // 设置管理器
-    private SettingsManager settingsManager;
+    private RelaxManager relaxManager;
+    private AppSettingsManager appSettingsManager;
     
     // 设备信息上报器
     private DeviceInfoReporter deviceInfoReporter;
@@ -143,7 +142,8 @@ public class FloatService extends AccessibilityService
         }
         
         // 初始化设置管理器
-        settingsManager = new SettingsManager(this);
+        relaxManager = new RelaxManager(this);
+        appSettingsManager = new AppSettingsManager(this);
         
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
@@ -313,14 +313,14 @@ public class FloatService extends AccessibilityService
                 Log.d(TAG, "包名变化，抢先显示悬浮窗: " + currentPackageName);
                 showFloatingWindow();
             }
-            Log.d(TAG, "当前有活跃的APP，开始文本检测");
+            Log.d(TAG, "当前有活跃的APP，且符合条件，开始文本检测");
             AccessibilityNodeInfo rootNode = getRootInActiveWindow();
             String targetWord = currentActiveApp.getTargetWord();
             boolean hasTargetWord = false;
             if (rootNode != null) {
                 long start = System.currentTimeMillis();
                 hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
-                if(appName.equals("微信")){
+                if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
                     hasTargetWord = true;
                 }
                 long end = System.currentTimeMillis();
@@ -330,7 +330,7 @@ public class FloatService extends AccessibilityService
                 rootNode.recycle();
             }else{
                 Log.d(TAG, "rootNode 为空");
-                if(appName.equals("微信")){
+                if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
                     hasTargetWord = true;
                 }
             }
@@ -378,12 +378,13 @@ public class FloatService extends AccessibilityService
 
     private boolean stillInHidePeriod() {
         Long timestamp= Share.getHiddenTimestamp(currentActiveApp.getPackageName());
-        long currentInterval = settingsManager.getAppIntervalMillis(currentActiveApp);
+        long currentInterval = relaxManager.getAppIntervalMillis(currentActiveApp);
 
         if(System.currentTimeMillis() - timestamp < currentInterval){
             Log.d(TAG, "APP " + currentActiveApp.getAppName() + " 被手动隐藏，跳过显示悬浮窗。当前配的使用时长（ms）为" + currentInterval);
             return true;
         }else{
+            Log.d(TAG, "虽然状态是手动隐藏，但超过时间了，不该继续隐藏");
             Share.setAppManuallyHidden(currentActiveApp, false);
             return false;
         }
@@ -412,7 +413,7 @@ public class FloatService extends AccessibilityService
         // 创建悬浮窗布局
         LayoutInflater inflater = LayoutInflater.from(this);
         floatingView = inflater.inflate(R.layout.floating_window_layout, null);
-        layoutParams = getLayoutParams();
+        layoutParams = FloatHelper.getLayoutParams(windowManager, appSettingsManager);
         
         // 初始化数学题验证管理器
         if (floatingView != null) {
@@ -439,25 +440,25 @@ public class FloatService extends AccessibilityService
                     
                     if (currentActiveApp != null) {
                         // 使用当前APP的时间间隔安排下次显示
-                        interval = settingsManager.getAppIntervalMillis(currentActiveApp);
-                        intervalSeconds = settingsManager.getAppInterval(currentActiveApp);
+                        interval = relaxManager.getAppIntervalMillis(currentActiveApp);
+                        intervalSeconds = relaxManager.getAppInterval(currentActiveApp);
                         
                         String appName = currentActiveApp.getAppName();
                         Log.d(TAG, "APP " + appName + " 当前设置的时间间隔: " + intervalSeconds + "秒");
                         
                         // 记录关闭时刻、所用时间间隔
-                        settingsManager.recordAppCloseTime(currentActiveApp, intervalSeconds);
+                        relaxManager.recordAppCloseTime(currentActiveApp, intervalSeconds);
                         Share.setAppManuallyHidden(currentActiveApp, true);
                         Log.d(TAG, "设置APP " + appName + " 为手动隐藏状态");
                         
                         // 检查是否是宽松模式
-                        boolean isRelaxedMode = settingsManager.isAppRelaxedMode(currentActiveApp);
+                        boolean isRelaxedMode = relaxManager.isAppRelaxedMode(currentActiveApp);
                         Log.d(TAG, "APP " + appName + " 当前是否宽松模式: " + isRelaxedMode);
                         
                         // 如果是宽松模式，使用次数+1。
                         if (isRelaxedMode) {
-                            int currentCount = settingsManager.getAppRelaxedCloseCount(currentActiveApp);
-                            settingsManager.incrementAppRelaxedCloseCount(currentActiveApp);
+                            int currentCount = relaxManager.getAppRelaxedCloseCount(currentActiveApp);
+                            relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
                             Log.d(TAG, "APP " + appName + " 宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
                             
                             // 通知HomeFragment更新UI显示
@@ -483,13 +484,13 @@ public class FloatService extends AccessibilityService
                         autoShowHandler.postDelayed(nextShowTask, interval);
                         appTimers.put(currentActiveApp, nextShowTask);
 
-                        String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
+                        String intervalText = RelaxManager.getIntervalDisplayText(intervalSeconds);
                         Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗 (APP: " + appName + ")");
 
                         // 显示下次使用的时间间隔
                         int nextIntervalSeconds = currentActiveApp != null ?
-                                settingsManager.getAppInterval(currentActiveApp) :
-                                settingsManager.getDefaultInterval();
+                                relaxManager.getAppInterval(currentActiveApp) :
+                                relaxManager.getDefaultInterval();
                         Log.d(TAG, "下次时长：" + nextIntervalSeconds + "秒 (APP: " + appName + ")");
 
                         Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
@@ -536,7 +537,7 @@ public class FloatService extends AccessibilityService
             }
             // 获取下次的文字
             String packageName = currentActiveApp.getPackageName();
-            String source = settingsManager.getAppHintSource(packageName);
+            String source = appSettingsManager.getAppHintSource(packageName);
             // 默认来源（大模型）
             if (Const.DEFAULT_HINT_SOURCE.equals(source)){
                 fetchNew();
@@ -561,8 +562,8 @@ public class FloatService extends AccessibilityService
                 Log.d(TAG, "解除APP " + timerAppName + " 的手动隐藏状态 - 设置后状态: " + afterState);
 
                 // 如果是宽松模式，现在切换到严格模式
-                if (settingsManager.isAppRelaxedMode(appForTimer)) {
-                    settingsManager.setAppInterval(appForTimer, settingsManager.getMaxStrictInterval());
+                if (relaxManager.isAppRelaxedMode(appForTimer)) {
+                    relaxManager.setAppInterval(appForTimer, relaxManager.getMaxStrictInterval());
                     Log.d(TAG, "APP " + timerAppName + " 宽松模式已切换到严格模式");
                 }
 
@@ -610,11 +611,11 @@ public class FloatService extends AccessibilityService
             String dynamicText = "";
 
             String packageName = currentActiveApp.getPackageName();
-            String source = settingsManager.getAppHintSource(packageName);
+            String source = appSettingsManager.getAppHintSource(packageName);
 
             // 自定义来源
             if (Const.CUSTOM_HINT_SOURCE.equals(source)) {
-                dynamicText =  settingsManager.getAppHintCustomText(packageName);
+                dynamicText =  appSettingsManager.getAppHintCustomText(packageName);
             } else {
             // 大模型来源
                 if (textFetcher != null) {
@@ -624,27 +625,27 @@ public class FloatService extends AccessibilityService
 
             // 显示动态文字和时间间隔信息
             String content = dynamicText;
-            if (settingsManager != null) {
+            if (relaxManager != null) {
                 // 使用当前APP的时间间隔显示
                 int intervalSeconds;
                 if (currentActiveApp != null) {
 
                     /*如果上次关闭时是宽松模式，则本次显示应当切为严格模式*/
-                    int appLastCloseInterval = settingsManager.getAppLastCloseInterval(currentActiveApp);
-                    if(settingsManager.isLastRelaxedMode(appLastCloseInterval)){
-                        intervalSeconds = settingsManager.getMaxStrictInterval();
-                        settingsManager.setAppInterval(currentActiveApp, intervalSeconds);
+                    int appLastCloseInterval = relaxManager.getAppLastCloseInterval(currentActiveApp);
+                    if(relaxManager.isLastRelaxedMode(appLastCloseInterval)){
+                        intervalSeconds = relaxManager.getMaxStrictInterval();
+                        relaxManager.setAppInterval(currentActiveApp, intervalSeconds);
                     }else {
-                        intervalSeconds = settingsManager.getAppInterval(currentActiveApp);
+                        intervalSeconds = relaxManager.getAppInterval(currentActiveApp);
                     }
 
 //                    appName = currentActiveApp.getAppName();
 //                    Log.d(TAG, "悬浮窗显示APP " + appName + " 的时间间隔: " + intervalSeconds + "秒");
                 } else {
-                    intervalSeconds = settingsManager.getDefaultInterval();
+                    intervalSeconds = relaxManager.getDefaultInterval();
                 }
                 
-                String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
+                String intervalText = RelaxManager.getIntervalDisplayText(intervalSeconds);
                 String hintTIme = "\n若关闭，" + intervalText + "后将重新显示本页面";
                 if (!dynamicText.isEmpty()) {
                     content = dynamicText + "\n" + hintTIme;
@@ -652,7 +653,7 @@ public class FloatService extends AccessibilityService
                     content = hintTIme;
                 }
             }
-            String targetDateStr = settingsManager.getTargetCompletionDate();
+            String targetDateStr = appSettingsManager.getTargetCompletionDate();
             content = FloatHelper.hintDate(targetDateStr) + content;
             contentText.setText(content);
         }
@@ -672,9 +673,9 @@ public class FloatService extends AccessibilityService
         android.widget.TextView strictReminderHint = floatingView.findViewById(R.id.tv_strict_reminder_hint);
         
         if (strictReminderLayout != null && strictReminderText != null && strictReminderHint != null) {
-            String strictReminder = settingsManager.getFloatingStrictReminder();
-            boolean hasClickedSettings = settingsManager.getFloatingStrictReminderSettingsClicked();
-            int fontSize = settingsManager.getFloatingStrictReminderFontSize();
+            String strictReminder = appSettingsManager.getFloatingStrictReminder();
+            boolean hasClickedSettings = appSettingsManager.getFloatingStrictReminderSettingsClicked();
+            int fontSize = appSettingsManager.getFloatingStrictReminderFontSize();
             
             // 应用自定义字体大小
             strictReminderText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, fontSize);
@@ -696,7 +697,7 @@ public class FloatService extends AccessibilityService
                 strictReminderText.setText(strictReminder);
                 strictReminderHint.setVisibility(android.view.View.GONE);
                 strictReminderLayout.setVisibility(android.view.View.VISIBLE);
-                Log.d(TAG, "显示自定义日常提醒: " + strictReminder + "，字体大小: " + fontSize + "sp");
+//                Log.d(TAG, "显示自定义日常提醒: " + strictReminder + "，字体大小: " + fontSize + "sp");
             }
         }
     }
@@ -747,11 +748,11 @@ public class FloatService extends AccessibilityService
                         instance.autoShowHandler.removeCallbacks(entry.getValue());
                         
                         // 使用当前APP的新时间间隔重新启动定时器
-                        long newInterval = instance.settingsManager.getAppIntervalMillis(entry.getKey());
+                        long newInterval = instance.relaxManager.getAppIntervalMillis(entry.getKey());
                         instance.autoShowHandler.postDelayed(entry.getValue(), newInterval);
                         
-                        int intervalSeconds = instance.settingsManager.getAppInterval(entry.getKey());
-                        String intervalText = SettingsManager.getIntervalDisplayText(intervalSeconds);
+                        int intervalSeconds = instance.relaxManager.getAppInterval(entry.getKey());
+                        String intervalText = RelaxManager.getIntervalDisplayText(intervalSeconds);
                         String appName = entry.getKey().getAppName();
                         Log.d(instance.TAG, "时间间隔设置已更新，立即应用新间隔: " + intervalText + " (APP: " + appName + ")");
                         
@@ -1023,39 +1024,6 @@ public class FloatService extends AccessibilityService
         }
     }
 
-
-    private WindowManager.LayoutParams getLayoutParams(){
-
-        // 设置悬浮窗参数
-        layoutParams = new WindowManager.LayoutParams();
-        layoutParams.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
-        // 添加FLAG_NOT_FOCUSABLE确保悬浮窗不会获得焦点，避免影响前台应用检测
-        // 添加FLAG_NOT_TOUCH_MODAL确保触摸事件可以传递到下层窗口
-        // 添加FLAG_NOT_TOUCHABLE确保悬浮窗默认不拦截触摸事件（除了特定区域）
-        layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
-                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
-        layoutParams.format = PixelFormat.TRANSLUCENT;
-        layoutParams.gravity = Gravity.LEFT | Gravity.TOP;
-
-        // 计算悬浮窗位置和大小
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
-
-        int screenWidth = displayMetrics.widthPixels;
-        int screenHeight = displayMetrics.heightPixels;
-
-        // 设置悬浮窗位置和大小
-        int topOffset = settingsManager.getFloatingTopOffset();
-        int bottomOffset = settingsManager.getFloatingBottomOffset();
-
-        layoutParams.x = 0;
-        layoutParams.y = topOffset;
-        layoutParams.width = screenWidth;
-        layoutParams.height = screenHeight - topOffset - bottomOffset;
-        return layoutParams;
-    }
-
     /**
      * 检测包名对应的支持APP（统一使用CustomApp）
      */
@@ -1068,7 +1036,7 @@ public class FloatService extends AccessibilityService
             
             if (app != null) {
                 // 检查该APP的监测开关状态
-                if (!settingsManager.shouldMonitorApp(packageName)) {
+                if (!relaxManager.shouldMonitorApp(packageName)) {
                     Log.d(TAG, "APP " + app.getAppName() + " 监测已关闭，跳过检测");
                     return null;
                 }

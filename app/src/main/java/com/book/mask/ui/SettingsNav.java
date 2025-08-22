@@ -1,7 +1,6 @@
 package com.book.mask.ui;
 
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,17 +12,13 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
-import com.book.mask.config.Const;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
 import com.book.mask.config.Share;
-import com.book.mask.util.ContentUtils;
-
-import java.io.IOException;
 
 public class SettingsNav extends Fragment {
     private static final String TAG = "SettingsNav";
 
-    private SettingsManager settingsManager;
+    private RelaxManager relaxManager;
     private SettingsDialogManager settingsDialogManager;
 
     @Nullable
@@ -32,8 +27,8 @@ public class SettingsNav extends Fragment {
         View view = inflater.inflate(R.layout.fragment_settings, container, false);
         
         // 初始化设置管理器
-        settingsManager = new SettingsManager(requireContext());
-        settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
+        relaxManager = new RelaxManager(requireContext());
+        settingsDialogManager = new SettingsDialogManager(requireContext(), relaxManager);
         setupLatestApkButton(view);
 
         // 设置版本信息小字

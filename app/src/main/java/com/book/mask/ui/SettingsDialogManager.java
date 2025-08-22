@@ -8,7 +8,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.book.mask.config.Const;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
+import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.R;
@@ -20,14 +21,16 @@ import com.book.mask.R;
 public class SettingsDialogManager {
     
     private final Context context;
-    private final SettingsManager settingsManager;
+    private final RelaxManager relaxManager;
+    private final AppSettingsManager appSettingsManager;
 
     private static String[] appOptions;
     private static CustomApp[] apps; // 改为CustomApp类型
 
-    public SettingsDialogManager(Context context, SettingsManager settingsManager) {
+    public SettingsDialogManager(Context context, RelaxManager relaxManager) {
         this.context = context;
-        this.settingsManager = settingsManager;
+        this.relaxManager = relaxManager;
+        this.appSettingsManager = new AppSettingsManager(context);
         updateAppOptions(); // 动态更新APP选项
     }
 
@@ -50,16 +53,16 @@ public class SettingsDialogManager {
      */
     public void showTimeSettingDialogForApp(CustomApp app, boolean isStrict) {
         final int[] intervals = isStrict ? 
-            SettingsManager.getStrictIntervals() :
-            SettingsManager.getRelaxedIntervals();
+            RelaxManager.getStrictIntervals() :
+            RelaxManager.getRelaxedIntervals();
         
         String[] intervalOptions = new String[intervals.length];
         for (int i = 0; i < intervals.length; i++) {
-            intervalOptions[i] = SettingsManager.getIntervalDisplayText(intervals[i]);
+            intervalOptions[i] = RelaxManager.getIntervalDisplayText(intervals[i]);
         }
 
         // 获取指定APP的当前设置
-        int currentInterval = settingsManager.getAppInterval(app);
+        int currentInterval = relaxManager.getAppInterval(app);
         
         int checkedItem = -1;
         for (int i = 0; i < intervals.length; i++) {
@@ -82,19 +85,19 @@ public class SettingsDialogManager {
                 int selectedInterval = intervals[which];
                 
                 // 为指定APP设置时间间隔
-                settingsManager.setAppInterval(app, selectedInterval);
+                relaxManager.setAppInterval(app, selectedInterval);
                 android.util.Log.d("SettingsDialog", "设置APP " + packageName + " 时间间隔为: " + selectedInterval + "秒");
                 
                 // 验证设置是否成功
-                int verifyInterval = settingsManager.getAppInterval(app);
+                int verifyInterval = relaxManager.getAppInterval(app);
                 android.util.Log.d("SettingsDialog", "验证APP " + packageName + " 实际保存的时间间隔: " + verifyInterval + "秒");
                 
                 // 检查是否是宽松模式
-                boolean isRelaxedMode = settingsManager.isAppRelaxedMode(app);
+                boolean isRelaxedMode = relaxManager.isAppRelaxedMode(app);
                 android.util.Log.d("SettingsDialog", "APP " + packageName + " 是否宽松模式: " + isRelaxedMode);
                 
                 // 检查宽松模式的关闭次数
-                int relaxedCount = settingsManager.getAppRelaxedCloseCount(app);
+                int relaxedCount = relaxManager.getAppRelaxedCloseCount(app);
                 android.util.Log.d("SettingsDialog", "APP " + packageName + " 今日宽松模式关闭次数: " + relaxedCount);
                 
                 // 通知服务配置已更改
@@ -130,7 +133,7 @@ public class SettingsDialogManager {
      * 显示标签设置对话框
      */
     public void showTagSettingDialog(Runnable onSettingChanged) {
-        final String[] predefinedTags = SettingsManager.getAvailableTags();
+        final String[] predefinedTags = AppSettingsManager.getAvailableTags();
         final String customTagOption = "自定义...";
 
         // 将预设标签和"自定义"选项合并
@@ -147,7 +150,7 @@ public class SettingsDialogManager {
                     } else {
                         // 点击了预设标签
                         String selectedTag = dialogOptions[which];
-                        settingsManager.setMotivationTag(selectedTag);
+                        appSettingsManager.setMotivationTag(selectedTag);
                         Toast.makeText(context, "已设置为: " + selectedTag, Toast.LENGTH_SHORT).show();
                     }
                     if (onSettingChanged != null) onSettingChanged.run();
@@ -173,7 +176,7 @@ public class SettingsDialogManager {
                 if (customTag.isEmpty()) {
                     Toast.makeText(context, "目标不能为空", Toast.LENGTH_SHORT).show();
                 } else {
-                    settingsManager.setMotivationTag(customTag);
+                    appSettingsManager.setMotivationTag(customTag);
                     Toast.makeText(context, "已设置为: " + customTag, Toast.LENGTH_SHORT).show();
                 }
                 if (onSettingChanged != null) onSettingChanged.run();
@@ -217,7 +220,7 @@ public class SettingsDialogManager {
      */
     public void showTargetDateSettingDialog(Runnable onSettingChanged) {
         // 获取当前设置的日期
-        String currentDate = settingsManager.getTargetCompletionDate();
+        String currentDate = appSettingsManager.getTargetCompletionDate();
         
         // 创建日期选择器
         android.app.DatePickerDialog datePickerDialog = new android.app.DatePickerDialog(
@@ -225,7 +228,7 @@ public class SettingsDialogManager {
             (view, year, month, dayOfMonth) -> {
                 // 格式化日期为 yyyy-MM-dd 格式
                 String selectedDate = String.format("%04d-%02d-%02d", year, month + 1, dayOfMonth);
-                settingsManager.setTargetCompletionDate(selectedDate);
+                appSettingsManager.setTargetCompletionDate(selectedDate);
                 Toast.makeText(context, "目标完成日期已设置为: " + selectedDate, Toast.LENGTH_SHORT).show();
                 
                 // 通知设置页面更新按钮文本（如果当前在设置页面）
@@ -279,7 +282,7 @@ public class SettingsDialogManager {
 
         final android.widget.EditText topEdit = new android.widget.EditText(context);
         topEdit.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        topEdit.setText(String.valueOf(settingsManager.getFloatingTopOffset()));
+        topEdit.setText(String.valueOf(appSettingsManager.getFloatingTopOffset()));
         topEdit.setHint("默认: 130");
         layout.addView(topEdit);
 
@@ -297,7 +300,7 @@ public class SettingsDialogManager {
 
         final android.widget.EditText bottomEdit = new android.widget.EditText(context);
         bottomEdit.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        bottomEdit.setText(String.valueOf(settingsManager.getFloatingBottomOffset()));
+        bottomEdit.setText(String.valueOf(appSettingsManager.getFloatingBottomOffset()));
         bottomEdit.setHint("默认: 230");
         layout.addView(bottomEdit);
 
@@ -341,8 +344,8 @@ public class SettingsDialogManager {
                     }
                     
                     // 保存设置
-                    settingsManager.setFloatingTopOffset(topOffset);
-                    settingsManager.setFloatingBottomOffset(bottomOffset);
+                    appSettingsManager.setFloatingTopOffset(topOffset);
+                    appSettingsManager.setFloatingBottomOffset(bottomOffset);
                     
                     Toast.makeText(context, "悬浮窗位置已更新", Toast.LENGTH_SHORT).show();
                     
@@ -368,7 +371,7 @@ public class SettingsDialogManager {
      */
     public void updateTagButtonText(Button tagButton) {
         if (tagButton != null) {
-            String currentTag = settingsManager.getMotivationTag();
+            String currentTag = appSettingsManager.getMotivationTag();
             tagButton.setText("目标: " + currentTag);
         }
     }
@@ -378,87 +381,8 @@ public class SettingsDialogManager {
      */
     public void updateDateButtonText(Button dateButton) {
         if (dateButton != null) {
-            String currentDate = settingsManager.getTargetCompletionDate();
+            String currentDate = appSettingsManager.getTargetCompletionDate();
             dateButton.setText("完成日期: " + currentDate);
-        }
-    }
-    
-    /**
-     * 更新宽松模式按钮状态
-     */
-    public void updateRelaxedButtonState(Button relaxedButton) {
-        if (relaxedButton != null) {
-            // 计算所有支持APP的宽松模式次数总和
-            int totalCloseCount = 0;
-            
-            // 计算所有APP的宽松模式次数
-            try {
-                com.book.mask.config.CustomAppManager customAppManager = com.book.mask.config.CustomAppManager.getInstance();
-                java.util.List<CustomApp> allApps = customAppManager.getAllApps();
-                
-                for (CustomApp app : allApps) {
-                    totalCloseCount += settingsManager.getAppRelaxedCloseCount(app);
-                }
-            } catch (Exception e) {
-                android.util.Log.w("SettingsDialogManager", "获取APP宽松模式次数失败", e);
-            }
-            
-            // 如果所有APP都没有使用过，则使用全局次数（兼容性）
-            if (totalCloseCount == 0) {
-                totalCloseCount = settingsManager.getRelaxedCloseCount();
-            }
-            
-            // 使用默认限制（保持兼容性）
-            relaxedButton.setEnabled(totalCloseCount < 3);
-        }
-    }
-    
-    /**
-     * 更新宽松模式次数显示
-     */
-    public void updateRelaxedCountDisplay(TextView countText) {
-        if (countText != null) {
-            // 计算所有支持APP的宽松模式次数总和
-            int totalCloseCount = 0;
-            
-            // 计算所有APP的宽松模式次数
-            try {
-                com.book.mask.config.CustomAppManager customAppManager = com.book.mask.config.CustomAppManager.getInstance();
-                java.util.List<CustomApp> allApps = customAppManager.getAllApps();
-                
-                for (CustomApp app : allApps) {
-                    totalCloseCount += settingsManager.getAppRelaxedCloseCount(app);
-                }
-            } catch (Exception e) {
-                android.util.Log.w("SettingsDialogManager", "获取APP宽松模式次数失败", e);
-            }
-            
-            // 如果所有APP都没有使用过，则使用全局次数（兼容性）
-            if (totalCloseCount == 0) {
-                totalCloseCount = settingsManager.getRelaxedCloseCount();
-            }
-            
-            // 使用默认限制（保持兼容性）
-            int remainingCount = Math.max(0, 3 - totalCloseCount);
-            countText.setText("总剩余: " + remainingCount + "次");
-        }
-    }
-    
-    /**
-     * 更新特定APP的宽松模式剩余次数显示
-     */
-
-    
-    /**
-     * 更新特定APP的宽松模式剩余次数显示 - 支持自定义APP
-     */
-    public void updateAppRelaxedCountDisplay(TextView countText, CustomApp app) {
-        if (countText != null) {
-            int closeCount = settingsManager.getAppRelaxedCloseCount(app);
-            int relaxedLimitCount = ((CustomApp) app).getRelaxedLimitCount();
-            
-            int remainingCount = Math.max(0, relaxedLimitCount - closeCount);
-            countText.setText("宽松剩余: " + remainingCount + "次");
         }
     }
 
@@ -467,7 +391,7 @@ public class SettingsDialogManager {
      */
     public void showMathDifficultyDialog() {
         String[] difficultyOptions = {"默认难度", "自定义难度"};
-        String currentMode = settingsManager.getMathDifficultyMode();
+        String currentMode = appSettingsManager.getMathDifficultyMode();
         int checkedItem = "custom".equals(currentMode) ? 1 : 0;
 
         new android.app.AlertDialog.Builder(context)
@@ -475,11 +399,11 @@ public class SettingsDialogManager {
             .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
                 if (which == 0) {
                     // 选择默认难度
-                    settingsManager.setMathDifficultyMode("default");
+                    appSettingsManager.setMathDifficultyMode("default");
                     android.widget.Toast.makeText(context, "已设置为默认难度", android.widget.Toast.LENGTH_SHORT).show();
                 } else if (which == 1) {
                     // 选择自定义难度
-                    settingsManager.setMathDifficultyMode("custom");
+                    appSettingsManager.setMathDifficultyMode("custom");
                     showCustomMathDifficultyDialog();
                 }
                 dialog.dismiss();
@@ -503,10 +427,10 @@ public class SettingsDialogManager {
         android.widget.EditText etMultiplicationMultiplicandDigits = dialogView.findViewById(R.id.et_multiplication_multiplicand_digits);
         
         // 设置当前值
-        etAdditionDigits.setText(String.valueOf(settingsManager.getMathAdditionDigits()));
-        etSubtractionDigits.setText(String.valueOf(settingsManager.getMathSubtractionDigits()));
-        etMultiplicationMultiplierDigits.setText(String.valueOf(settingsManager.getMathMultiplicationMultiplierDigits()));
-        etMultiplicationMultiplicandDigits.setText(String.valueOf(settingsManager.getMathMultiplicationMultiplicandDigits()));
+        etAdditionDigits.setText(String.valueOf(appSettingsManager.getMathAdditionDigits()));
+        etSubtractionDigits.setText(String.valueOf(appSettingsManager.getMathSubtractionDigits()));
+        etMultiplicationMultiplierDigits.setText(String.valueOf(appSettingsManager.getMathMultiplicationMultiplierDigits()));
+        etMultiplicationMultiplicandDigits.setText(String.valueOf(appSettingsManager.getMathMultiplicationMultiplicandDigits()));
 
         new android.app.AlertDialog.Builder(context)
             .setTitle("数字位数设置")
@@ -563,10 +487,10 @@ public class SettingsDialogManager {
                     }
                     
                     // 保存设置
-                    settingsManager.setMathAdditionDigits(additionDigits);
-                    settingsManager.setMathSubtractionDigits(subtractionDigits);
-                    settingsManager.setMathMultiplicationMultiplierDigits(multiplierDigits);
-                    settingsManager.setMathMultiplicationMultiplicandDigits(multiplicandDigits);
+                    appSettingsManager.setMathAdditionDigits(additionDigits);
+                    appSettingsManager.setMathSubtractionDigits(subtractionDigits);
+                    appSettingsManager.setMathMultiplicationMultiplierDigits(multiplierDigits);
+                    appSettingsManager.setMathMultiplicationMultiplicandDigits(multiplicandDigits);
                     
                     android.widget.Toast.makeText(context, "已保存自定义难度设置", android.widget.Toast.LENGTH_SHORT).show();
                 } catch (NumberFormatException e) {
@@ -582,7 +506,7 @@ public class SettingsDialogManager {
      */
     public void showFloatingStrictReminderDialog() {
         // 记录用户点击了设置按钮
-        settingsManager.setFloatingStrictReminderSettingsClicked(true);
+        appSettingsManager.setFloatingStrictReminderSettingsClicked(true);
         
         // 创建自定义布局
         android.widget.LinearLayout layout = new android.widget.LinearLayout(context);
@@ -615,7 +539,7 @@ public class SettingsDialogManager {
             android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
         
         // 设置当前已保存的文字
-        String currentReminder = settingsManager.getFloatingStrictReminder();
+        String currentReminder = appSettingsManager.getFloatingStrictReminder();
         if (!currentReminder.isEmpty()) {
             input.setText(currentReminder);
         }
@@ -640,7 +564,7 @@ public class SettingsDialogManager {
         // 字体大小选择器
         android.widget.SeekBar fontSizeSeekBar = new android.widget.SeekBar(context);
         fontSizeSeekBar.setMax(20); // 12sp到32sp，共21个选项
-        fontSizeSeekBar.setProgress(settingsManager.getFloatingStrictReminderFontSize() - 12); // 当前字体大小减去最小值
+        fontSizeSeekBar.setProgress(appSettingsManager.getFloatingStrictReminderFontSize() - 12); // 当前字体大小减去最小值
         fontSizeSeekBar.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
             android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -648,7 +572,7 @@ public class SettingsDialogManager {
 
         // 字体大小显示
         final android.widget.TextView fontSizeDisplay = new android.widget.TextView(context);
-        fontSizeDisplay.setText("当前字体大小: " + settingsManager.getFloatingStrictReminderFontSize() + "sp");
+        fontSizeDisplay.setText("当前字体大小: " + appSettingsManager.getFloatingStrictReminderFontSize() + "sp");
         fontSizeDisplay.setTextSize(12);
         fontSizeDisplay.setTextColor(0xFF999999);
         fontSizeDisplay.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
@@ -678,8 +602,8 @@ public class SettingsDialogManager {
                 String reminder = input.getText().toString().trim();
                 int fontSize = fontSizeSeekBar.getProgress() + 12; // 获取当前字体大小
                 
-                settingsManager.setFloatingStrictReminder(reminder);
-                settingsManager.setFloatingStrictReminderFontSize(fontSize);
+                appSettingsManager.setFloatingStrictReminder(reminder);
+                appSettingsManager.setFloatingStrictReminderFontSize(fontSize);
                 
                 if (reminder.isEmpty()) {
                     Toast.makeText(context, "已清除日常提醒", Toast.LENGTH_SHORT).show();

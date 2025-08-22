@@ -23,7 +23,8 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.book.mask.R;
-import com.book.mask.config.SettingsManager;
+import com.book.mask.setting.RelaxManager;
+import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.config.Const;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
@@ -41,7 +42,8 @@ public class HomeNav extends Fragment implements
     AppCardAdapter.OnEditClickListener {
     private static final String TAG = "HomeNav";
 
-    private SettingsManager settingsManager;
+    private RelaxManager relaxManager;
+    private AppSettingsManager appSettingsManager;
     private SettingsDialogManager settingsDialogManager;
     private CustomAppManager customAppManager;
     
@@ -60,8 +62,9 @@ public class HomeNav extends Fragment implements
         View view = inflater.inflate(R.layout.fragment_home, container, false);
         
         // 初始化设置管理器
-        settingsManager = new SettingsManager(requireContext());
-        settingsDialogManager = new SettingsDialogManager(requireContext(), settingsManager);
+        relaxManager = new RelaxManager(requireContext());
+        appSettingsManager = new AppSettingsManager(requireContext());
+        settingsDialogManager = new SettingsDialogManager(requireContext(), relaxManager);
         customAppManager = CustomAppManager.getInstance();
 
         // 设置页的云端最新版本获取
@@ -199,7 +202,7 @@ public class HomeNav extends Fragment implements
             androidx.recyclerview.widget.GridLayoutManager layoutManager = 
                 new androidx.recyclerview.widget.GridLayoutManager(requireContext(), 2);
             rvAppCards.setLayoutManager(layoutManager);
-            appCardAdapter = new AppCardAdapter(allApps, settingsManager, this, this, this);
+            appCardAdapter = new AppCardAdapter(allApps, relaxManager, this, this, this);
             rvAppCards.setAdapter(appCardAdapter);
         }
     }
@@ -220,7 +223,7 @@ public class HomeNav extends Fragment implements
                 showMathChallengeForMonitorToggle(app, packageName);
             } else {
                 // 开启监测直接执行
-                settingsManager.setAppMonitoringEnabled(packageName, isEnabled);
+                relaxManager.setAppMonitoringEnabled(packageName, isEnabled);
                 android.util.Log.d("HomeFragment", "监测开关状态改变: " + packageName + " = " + isEnabled);
                 
                 // 显示提示
@@ -288,7 +291,7 @@ public class HomeNav extends Fragment implements
         tvTargetWordDisplay.setText(targetWord);
         
         // 检查宽松模式剩余次数
-        int relaxedCount = settingsManager.getAppRelaxedCloseCount(app);
+        int relaxedCount = relaxManager.getAppRelaxedCloseCount(app);
         int remainingCount = Math.max(0, relaxedLimitCount - relaxedCount);
         
         // 如果宽松模式次数用完，置灰按钮
@@ -464,7 +467,7 @@ public class HomeNav extends Fragment implements
      */
     private void showFloatingTextSourceDialog(CustomApp app) {
         String packageName = getPackageName(app);
-        String currentSource = settingsManager.getAppHintSource(packageName);
+        String currentSource = appSettingsManager.getAppHintSource(packageName);
 
         String[] options = {Const.CUSTOM_HINT_SOURCE, Const.DEFAULT_HINT_SOURCE};
         int checkedItem = 0;
@@ -527,9 +530,9 @@ public class HomeNav extends Fragment implements
         }
         
         // 使用SettingsManager存储，为每个APP独立存储
-        settingsManager.setAppHintSource(currentAppPackage, source);
+        appSettingsManager.setAppHintSource(currentAppPackage, source);
         if (customText != null && !customText.isEmpty()) {
-            settingsManager.setAppHintCustomText(currentAppPackage, customText);
+            appSettingsManager.setAppHintCustomText(currentAppPackage, customText);
         }
         android.util.Log.d("HomeFragment", "APP " + currentAppPackage + " 悬浮窗警示文字来源已保存: " + source + ", 自定义文字: " + customText);
     }
@@ -556,7 +559,7 @@ public class HomeNav extends Fragment implements
      */
     private void showMathChallengeForMonitorToggle(CustomApp app, String packageName) {
         if(CustomAppManager.WECHAT_PACKAGE.equals(packageName)){
-            settingsManager.setAppMonitoringEnabled(packageName, false);
+            relaxManager.setAppMonitoringEnabled(packageName, false);
             updateAppCardsDisplay();
             return;
         }
@@ -601,7 +604,7 @@ public class HomeNav extends Fragment implements
                     // 延迟关闭弹窗并执行关闭屏蔽
                     new Handler().postDelayed(() -> {
                         dialog.dismiss();
-                        settingsManager.setAppMonitoringEnabled(packageName, false);
+                        relaxManager.setAppMonitoringEnabled(packageName, false);
                         android.util.Log.d("HomeFragment", "算术题验证通过，关闭屏蔽: " + packageName);
                         Toast.makeText(requireContext(), "已关闭屏蔽", Toast.LENGTH_SHORT).show();
                         
