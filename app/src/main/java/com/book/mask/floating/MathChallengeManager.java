@@ -42,7 +42,7 @@ public class MathChallengeManager {
     
     // 数学题相关
     private int currentAnswer = 0;
-    private boolean isMathChallengeActive = false;
+    private static boolean isMathChallengeActive = false;
     
     // 回调接口
     public interface OnMathChallengeListener {

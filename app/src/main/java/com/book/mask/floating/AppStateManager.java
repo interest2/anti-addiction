@@ -13,6 +13,7 @@ import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
 import com.book.mask.setting.RelaxManager;
+import com.book.mask.util.DateUtils;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -51,6 +52,7 @@ public class AppStateManager {
         void onAppStateChanged(CustomApp app, boolean isTargetInterface);
         void onAppLeft(CustomApp app);
         void onTimerTriggered(CustomApp app);
+        boolean isMathChallengeActive();
     }
     
     public AppStateManager(AccessibilityService service, RelaxManager relaxManager) {
@@ -199,6 +201,11 @@ public class AppStateManager {
         try {
             if (currentActiveApp == null) {
                 Log.d(TAG, "当前没有活跃的APP，跳过文本检测");
+                return;
+            }
+
+            if(listener != null && listener.isMathChallengeActive()){
+                Log.d(TAG, "数学题正展示，暂停检测");
                 return;
             }
 
@@ -393,6 +400,12 @@ public class AppStateManager {
      */
     private void checkCurrentAppState() {
         try {
+            // 如果数学题验证界面正在显示，暂停状态检测
+            if (listener != null && listener.isMathChallengeActive()) {
+                Log.v(TAG, "数学题验证界面活跃，暂停应用状态检测");
+                return;
+            }
+
             // 获取当前窗口信息
             AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
             if (rootNode != null) {

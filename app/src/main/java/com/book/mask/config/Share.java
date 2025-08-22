@@ -1,10 +1,13 @@
 package com.book.mask.config;
 
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class Share {
     public static boolean MOTIVATE_CHANGE = false;
+    public static long mathChallengeStartTime = 0; // 数学题验证开始时间
 
     // 多APP状态管理
     public static Map<String, String> appStates = new HashMap<>(); // 使用包名作为键

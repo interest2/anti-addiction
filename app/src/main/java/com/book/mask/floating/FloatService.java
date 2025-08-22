@@ -23,6 +23,8 @@ import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.network.TextFetcher;
+import com.book.mask.util.DateUtils;
+
 import android.content.Intent;
 
 import androidx.annotation.NonNull;
@@ -35,17 +37,7 @@ public class FloatService extends AccessibilityService
 {
     private static final String TAG = "FloatingAccessibility";
     private static FloatService instance;
-    
-    // 时间格式化器
-    private static final SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
 
-    /**
-     * 格式化时间戳为可读格式
-     */
-    private static String formatTime(long timestamp) {
-        if (timestamp == 0) return "未设置";
-        return timeFormatter.format(new Date(timestamp));
-    }
 
     // 核心管理器
     private FloatingWindowManager floatingWindowManager;
@@ -67,7 +59,6 @@ public class FloatService extends AccessibilityService
     // 悬浮窗管理相关
     private WindowManager windowManager;
     private Handler handler;
-    private long mathChallengeStartTime = 0; // 数学题验证开始时间
 
     @Override
     public void onServiceConnected() {
@@ -128,8 +119,8 @@ public class FloatService extends AccessibilityService
      * 记录数学题验证开始时间
      */
     public void onMathChallengeStart() {
-        mathChallengeStartTime = System.currentTimeMillis();
-        Log.d(TAG, "数学题验证开始，暂停应用状态检测 [时间: " + formatTime(mathChallengeStartTime) + "]");
+        Share.mathChallengeStartTime = System.currentTimeMillis();
+        Log.d(TAG, "数学题验证开始，暂停应用状态检测 [时间: " + DateUtils.formatTime(Share.mathChallengeStartTime) + "]");
     }
 
     /**
@@ -137,9 +128,10 @@ public class FloatService extends AccessibilityService
      */
     public void onMathChallengeEnd() {
         long endTime = System.currentTimeMillis();
-        long duration = mathChallengeStartTime > 0 ? (endTime - mathChallengeStartTime) : 0;
-        Log.d(TAG, "数学题验证结束，恢复应用状态检测 [开始: " + formatTime(mathChallengeStartTime) + ", 结束: " + formatTime(endTime) + ", 用时: " + duration + "ms]");
-        mathChallengeStartTime = 0;
+        long duration = Share.mathChallengeStartTime > 0 ? (endTime - Share.mathChallengeStartTime) : 0;
+        Log.d(TAG, "数学题验证结束，恢复应用状态检测 [开始: " + DateUtils.formatTime(Share.mathChallengeStartTime)
+                + ", 结束: " + DateUtils.formatTime(endTime) + ", 用时: " + duration + "ms]");
+        Share.mathChallengeStartTime = 0;
     }
 
     /**
@@ -170,6 +162,12 @@ public class FloatService extends AccessibilityService
             @Override
             public void onTimerTriggered(CustomApp app) {
                 // 定时器触发时的处理
+            }
+            
+            @Override
+            public boolean isMathChallengeActive() {
+                return floatingWindowManager.getMathChallengeManager() != null && 
+                       floatingWindowManager.getMathChallengeManager().isMathChallengeActive();
             }
         });
         
