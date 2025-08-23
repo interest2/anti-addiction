@@ -78,7 +78,7 @@ public class AppStateManager {
         
         String eventPackageName = (String)event.getPackageName();
         // 当前 event 的包名 ≠ 当前包名，
-        if(!eventPackageName.equals(service.getPackageName())){
+        if(eventPackageName != null && !eventPackageName.equals(service.getPackageName())){
             lastPackageName = (String) event.getPackageName();
         }
     }
