@@ -2,6 +2,7 @@ package com.book.mask.floating;
 
 import android.content.Context;
 import android.os.Handler;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
@@ -24,6 +25,9 @@ import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.util.ArithmeticUtils;
+import com.book.mask.util.ContentUtils;
+
+import org.json.JSONObject;
 
 /**
  * 数学题验证管理器
@@ -184,8 +188,8 @@ public class MathChallengeManager {
         /**
          * 获取题目
          */
-        String question = unifyGetQuestion(currentType);
-        currentAnswer = unifyGetAnswer(currentType, question);
+        String question = unifyGetQuestion();
+        currentAnswer = unifyGetAnswer(question);
 
         /**
          * 原流程
@@ -257,24 +261,49 @@ public class MathChallengeManager {
 
     /**
      * 封装了不同类型题的获取问题、答案
-     * @param type
      * @return
      */
-    private String unifyGetQuestion(int type) {
-        if(type == 0){
+    private String unifyGetQuestion() {
+        if(currentType == 0){
             return generateMathQuestion();
         }else{
             /*缓存获取问题*/
+            String question = challenge.get("question");
+            if(question.isEmpty()){
+                String ret = httpObtainChallenge(currentType);
+                return generateMathQuestion();
+            }
             return challenge.get("question");
         }
     }
 
-    private String unifyGetAnswer(int type, String question) {
-        if(type == 0){
+    private String unifyGetAnswer(String question) {
+        if(currentType == 0){
             return String.valueOf(ArithmeticUtils.getMathAnswer(question));
         }else{
             /*缓存获取答案*/
             return challenge.get("answer");
+        }
+    }
+
+    /**
+     * http 获取题目
+     */
+    public String httpObtainChallenge(int type) {
+        try {
+            String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
+
+            JSONObject reqJson = new JSONObject();
+            reqJson.put("type", type);
+            reqJson.put("devId", androidId);
+
+            String response = ContentUtils.doHttpPost(Const.DOMAIN_URL + Const.CHALLENGE,
+                    reqJson.toString(), java.util.Collections.singletonMap("Accept", "application/json"));
+            return ContentUtils.parseRespJson(response);
+
+        } catch (Exception e) {
+            Log.e(TAG, "HTTP请求异常", e);
+            return null;
         }
     }
 
@@ -362,16 +391,16 @@ public class MathChallengeManager {
                 
                 // 1 秒后生成新题目，保持输入法显示
                 handler.postDelayed(() -> {
-                                    // 生成新题目，但不重新初始化悬浮窗参数
-                TextView questionText = floatingView.findViewById(R.id.tv_math_question);
-                String question = generateMathQuestion();
-                currentAnswer = String.valueOf(ArithmeticUtils.getMathAnswer(question));
-                questionText.setText(question);
-                
-                // 根据type动态设置字体大小
-                int fontSize = (currentType == 0) ? 20 : 16;
-                questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
-                    
+                    // 生成新题目，但不重新初始化悬浮窗参数
+                    TextView questionText = floatingView.findViewById(R.id.tv_math_question);
+                    String question = unifyGetQuestion();
+                    currentAnswer = unifyGetAnswer(question);
+                    questionText.setText(question);
+
+                    // 根据type动态设置字体大小
+                    int fontSize = (currentType == 0) ? 20 : 16;
+                    questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
+
                     // 清空输入框但保持焦点
                     answerEdit.setText("");
                     answerEdit.requestFocus();

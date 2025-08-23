@@ -2,6 +2,8 @@ package com.book.mask.util;
 
 import android.util.Log;
 
+import org.json.JSONException;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -58,5 +60,26 @@ public class ContentUtils {
         } finally {
             if (conn != null) conn.disconnect();
         }
+    }
+
+    public static String parseRespJson(String response) throws JSONException {
+        if (response == null) return null;
+        org.json.JSONObject jsonResponse = new org.json.JSONObject(response);
+        if (jsonResponse.has("status")) {
+            int status = jsonResponse.getInt("status");
+            if (status == 0) {
+                String text = jsonResponse.optString("data", "");
+                if (!text.isEmpty()) {
+                    return text;
+                }
+            } else {
+                String msg = jsonResponse.optString("msg", "未知错误");
+                Log.w(TAG, "服务器返回错误状态: " + status + ", 消息: " + msg);
+            }
+        } else {
+            Log.w(TAG, "响应中缺少status字段");
+        }
+        Log.w(TAG, "响应格式无效或无文字内容");
+        return null;
     }
 }
