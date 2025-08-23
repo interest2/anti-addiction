@@ -31,11 +31,7 @@ import java.util.concurrent.Executors;
  * 负责收集设备信息并上报到云端
  */
 public class DeviceInfoReporter {
-    
     private static final String TAG = "DeviceInfoReporter";
-    
-    private static final int TIMEOUT_CONNECT = 10000; // 10秒连接超时
-    private static final int TIMEOUT_READ = 15000; // 15秒读取超时
     
     private Context context;
     private ExecutorService executor;
@@ -111,36 +107,7 @@ public class DeviceInfoReporter {
         Log.d(TAG, "收集设备信息完成: " + deviceInfo.toString());
         return deviceInfo;
     }
-    
-    /**
-     * 获取序列号（处理不同Android版本的权限问题）
-     */
-    private String getSerialNumber() {
-        String serialNumber = "unknown";
-        
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                // Android 8.0及以上需要READ_PHONE_STATE权限
-                if (context.checkSelfPermission(android.Manifest.permission.READ_PHONE_STATE) 
-                    == PackageManager.PERMISSION_GRANTED) {
-                    serialNumber = Build.getSerial();
-                } else {
-                    // 没有权限，使用替代方案
-                    serialNumber = "no_permission_" + Build.FINGERPRINT.hashCode();
-                }
-            } else {
-                // Android 8.0以下可以直接获取
-                serialNumber = Build.SERIAL;
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "获取序列号失败，使用备用方案", e);
-            // 使用设备指纹作为备用方案
-            serialNumber = "fallback_" + Build.FINGERPRINT.hashCode();
-        }
-        
-        return serialNumber;
-    }
-    
+
     /**
      * 发送设备信息到云端
      */
@@ -174,7 +141,7 @@ public class DeviceInfoReporter {
     /**
      * 获取应用版本
      */
-    private String getAppVersion() {
+    public String getAppVersion() {
         try {
             PackageManager pm = context.getPackageManager();
             PackageInfo packageInfo = pm.getPackageInfo(context.getPackageName(), 0);
@@ -199,15 +166,7 @@ public class DeviceInfoReporter {
         Log.w(TAG, "设备信息上报失败: " + error);
         // 可以在这里添加失败后的处理逻辑，比如重试机制
     }
-    
-    /**
-     * 设置云端接口地址
-     */
-    public static void setReportUrl(String url) {
-        // 这里可以添加动态设置接口地址的逻辑
-        Log.d(TAG, "设置上报接口地址: " + url);
-    }
-    
+
     /**
      * 释放资源
      */

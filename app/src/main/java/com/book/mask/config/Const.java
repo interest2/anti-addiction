@@ -12,7 +12,7 @@ public class Const {
     public static final int MUL_SECOND_LEN_DEFAULT = 2;
 
     // 算术题-设置：自定义难度 位数范围
-    public static final int ADD_LEN_MIN = 3;
+    public static final int ADD_LEN_MIN = 4;
     public static final int ADD_LEN_MAX = 7;
     public static final int MUL_LEN_MIN = 2;
     public static final int MUL_LEN_MAX = 4;
