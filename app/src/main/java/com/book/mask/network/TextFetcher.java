@@ -17,6 +17,9 @@ import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.util.ContentUtils;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class TextFetcher {
     
     private static final String TAG = "TextFetcher";
@@ -67,7 +70,7 @@ public class TextFetcher {
         
         executorService.execute(() -> {
             try {
-                String reqResult = performHttpRequest();
+                String reqResult = httpObtainEncourageText();
                 String result = reqResult.replaceAll("\\n\\s*\\n", "\n");
 
                 mainHandler.post(() -> {
@@ -96,43 +99,73 @@ public class TextFetcher {
             }
         });
     }
-    
+
     /**
-     * 执行HTTP请求
+     * http 获取题目
      */
-    private String performHttpRequest() {
+    private String httpObtainChallenge(int type) {
+        try {
+            String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
+
+            JSONObject reqJson = new JSONObject();
+            reqJson.put("type", type);
+            reqJson.put("devId", androidId);
+
+            String response = ContentUtils.doHttpPost(Const.DOMAIN_URL + Const.CHALLENGE,
+                    reqJson.toString(), java.util.Collections.singletonMap("Accept", "application/json"));
+            return parseRespJson(response);
+
+        } catch (Exception e) {
+            Log.e(TAG, "HTTP请求异常", e);
+            return null;
+        }
+    }
+
+    /**
+     * http 获取警示文字
+     */
+    private String httpObtainEncourageText() {
         try {
             String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
             PackageManager pm = context.getPackageManager();
             PackageInfo packageInfo = pm.getPackageInfo(context.getPackageName(), 0);
             String tag = appSettingsManager.getMotivationTag();
             String encodedTag = java.net.URLEncoder.encode(tag, java.nio.charset.StandardCharsets.UTF_8.name());
-            String url = Const.DOMAIN_URL + Const.LLM_PATH + "?tag=" + encodedTag + "&devId=" + androidId + "&version=" + packageInfo.versionName;
 
-            String response = ContentUtils.doHttpPost(url, null, java.util.Collections.singletonMap("Accept", "application/json"));
+            JSONObject reqJson = new JSONObject();
+            reqJson.put("tag", encodedTag);
+            reqJson.put("devId", androidId);
+            reqJson.put("version", packageInfo.versionName);
 
-            if (response == null) return null;
-            org.json.JSONObject jsonResponse = new org.json.JSONObject(response);
-            if (jsonResponse.has("status")) {
-                int status = jsonResponse.getInt("status");
-                if (status == 0) {
-                    String text = jsonResponse.optString("data", "");
-                    if (!text.isEmpty()) {
-                        return text;
-                    }
-                } else {
-                    String msg = jsonResponse.optString("msg", "未知错误");
-                    Log.w(TAG, "服务器返回错误状态: " + status + ", 消息: " + msg);
-                }
-            } else {
-                Log.w(TAG, "响应中缺少status字段");
-            }
-            Log.w(TAG, "响应格式无效或无文字内容");
-            return null;
+            String response = ContentUtils.doHttpPost(Const.DOMAIN_URL + Const.LLM_PATH_V2,
+                    reqJson.toString(), java.util.Collections.singletonMap("Accept", "application/json"));
+            return parseRespJson(response);
+
         } catch (Exception e) {
             Log.e(TAG, "HTTP请求异常", e);
             return null;
         }
+    }
+
+    public String parseRespJson(String response) throws JSONException {
+        if (response == null) return null;
+        org.json.JSONObject jsonResponse = new org.json.JSONObject(response);
+        if (jsonResponse.has("status")) {
+            int status = jsonResponse.getInt("status");
+            if (status == 0) {
+                String text = jsonResponse.optString("data", "");
+                if (!text.isEmpty()) {
+                    return text;
+                }
+            } else {
+                String msg = jsonResponse.optString("msg", "未知错误");
+                Log.w(TAG, "服务器返回错误状态: " + status + ", 消息: " + msg);
+            }
+        } else {
+            Log.w(TAG, "响应中缺少status字段");
+        }
+        Log.w(TAG, "响应格式无效或无文字内容");
+        return null;
     }
     
     /**

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
@@ -12,6 +13,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import java.util.HashMap;
 import java.util.Random;
 
 import com.book.mask.R;
@@ -39,10 +42,20 @@ public class MathChallengeManager {
     private CustomApp currentApp; // 当前APP（统一使用CustomApp）
     private RelaxManager relaxManager;
     private AppSettingsManager appSettingsManager;
-    
+    static HashMap<String, String> challenge = new HashMap<>();
+
+    static {
+        String q = "某单位组织植树，若每人植4棵，还剩18棵；若每人植5棵，就缺12棵。问共有树苗多少棵？  \n" +
+                "A. 102  B. 114  C. 126  D. 138";
+        String a = "B";
+        challenge.put("question", q);
+        challenge.put("answer", a);
+    }
+
     // 数学题相关
-    private int currentAnswer = 0;
+    private String currentAnswer = "";
     private static boolean isMathChallengeActive = false;
+    private int currentType = 1; // 当前题目类型：0=算术题，1=数量关系题，2=逻辑推理
     
     // 回调接口
     public interface OnMathChallengeListener {
@@ -63,7 +76,7 @@ public class MathChallengeManager {
         this.accessibilityService = accessibilityService;
         this.relaxManager = new RelaxManager(context);
         this.appSettingsManager = new AppSettingsManager(context);
-        
+
         initializeComponents();
     }
     
@@ -73,9 +86,7 @@ public class MathChallengeManager {
     public void setCurrentApp(CustomApp app) {
         this.currentApp = app;
     }
-    
 
-    
     public void setOnMathChallengeListener(OnMathChallengeListener listener) {
         this.listener = listener;
     }
@@ -158,52 +169,63 @@ public class MathChallengeManager {
      */
     public void showMathChallenge() {
         if (floatingView == null) return;
-        
+
+        // type 0：算术题；1：数量关系题；2：逻辑推理
+        currentType = new Random().nextInt(2);
         LinearLayout mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
         TextView questionText = floatingView.findViewById(R.id.tv_math_question);
         EditText answerEdit = floatingView.findViewById(R.id.et_math_answer);
         TextView resultText = floatingView.findViewById(R.id.tv_math_result);
         
-        // 生成新的数学题
-        String question = generateMathQuestion();
-        currentAnswer = ArithmeticUtils.getMathAnswer(question);
+        // 根据type动态设置字体大小
+        int fontSize = (currentType == 0) ? 20 : 16;
+        questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
 
+        /**
+         * 获取题目
+         */
+        String question = unifyGetQuestion(currentType);
+        currentAnswer = unifyGetAnswer(currentType, question);
+
+        /**
+         * 原流程
+         */
         questionText.setText(question);
-        
+
         // 清空输入框和结果
         answerEdit.setText("");
         resultText.setText("");
         resultText.setVisibility(View.GONE);
-        
+
         // 显示数学题区域
         mathLayout.setVisibility(View.VISIBLE);
         isMathChallengeActive = true;
-        
+
         // 通知AccessibilityService数学题验证开始
         if (accessibilityService != null) {
             accessibilityService.onMathChallengeStart();
         }
-        
+
         // 关键：在数学题验证期间，完全允许悬浮窗获得焦点
         // 这样输入法就不会被意外隐藏了
         layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
         windowManager.updateViewLayout(floatingView, layoutParams);
-        
-        // 让EditText获得焦点
+
+          // 让EditText获得焦点
         answerEdit.setFocusable(true);
         answerEdit.setFocusableInTouchMode(true);
         answerEdit.requestFocus();
-        
+
         // 延迟显示输入法，确保界面已准备好
         handler.postDelayed(() -> {
             // 再次确保焦点在EditText上
             answerEdit.requestFocus();
-            
+
             InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
                 imm.showSoftInput(answerEdit, InputMethodManager.SHOW_FORCED);
             }
-            
+
             // 定期检查并保持EditText焦点（防止焦点丢失）
             Runnable focusKeeper = new Runnable() {
                 @Override
@@ -212,27 +234,50 @@ public class MathChallengeManager {
                         if (!answerEdit.hasFocus()) {
                             Log.d(TAG, "检测到EditText失去焦点，重新获得焦点");
                             answerEdit.requestFocus();
-                            
+
                             // 重新显示输入法
                             InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
                             if (imm != null) {
                                 imm.showSoftInput(answerEdit, InputMethodManager.SHOW_IMPLICIT);
                             }
                         }
-                        
+
                         // 继续检查
                         handler.postDelayed(this, 1000); // 每秒检查一次
                     }
                 }
             };
             handler.postDelayed(focusKeeper, 1000); // 1秒后开始检查
-            
+
             Log.d(TAG, "输入法显示完成，开始焦点保持机制");
         }, 300); // 300ms后显示输入法
-        
+
         Log.d(TAG, "显示数学题验证界面，输入法已请求显示");
     }
-    
+
+    /**
+     * 封装了不同类型题的获取问题、答案
+     * @param type
+     * @return
+     */
+    private String unifyGetQuestion(int type) {
+        if(type == 0){
+            return generateMathQuestion();
+        }else{
+            /*缓存获取问题*/
+            return challenge.get("question");
+        }
+    }
+
+    private String unifyGetAnswer(int type, String question) {
+        if(type == 0){
+            return String.valueOf(ArithmeticUtils.getMathAnswer(question));
+        }else{
+            /*缓存获取答案*/
+            return challenge.get("answer");
+        }
+    }
+
     /**
      * 隐藏数学题验证界面
      */
@@ -285,8 +330,7 @@ public class MathChallengeManager {
         }
         
         try {
-            int answer = Integer.parseInt(userAnswer);
-            if (answer == currentAnswer) {
+            if (currentAnswer.equalsIgnoreCase(userAnswer)) {
                 // 答案正确
                 Log.d(TAG, "数学题回答正确");
                 resultText.setText("✅ 答案正确！");
@@ -308,7 +352,7 @@ public class MathChallengeManager {
                 
             } else {
                 // 答案错误
-                Log.d(TAG, "数学题回答错误: " + answer + " (正确答案: " + currentAnswer + ")");
+                Log.d(TAG, "数学题回答错误: " + userAnswer + " (正确答案: " + currentAnswer + ")");
                 resultText.setText("❌ 答案错误，请重新计算");
                 resultText.setTextColor(context.getResources().getColor(android.R.color.holo_red_light));
                 resultText.setVisibility(View.VISIBLE);
@@ -318,11 +362,15 @@ public class MathChallengeManager {
                 
                 // 1 秒后生成新题目，保持输入法显示
                 handler.postDelayed(() -> {
-                    // 生成新题目，但不重新初始化悬浮窗参数
-                    TextView questionText = floatingView.findViewById(R.id.tv_math_question);
-                    String question = generateMathQuestion();
-                    currentAnswer = ArithmeticUtils.getMathAnswer(question);
-                    questionText.setText(question);
+                                    // 生成新题目，但不重新初始化悬浮窗参数
+                TextView questionText = floatingView.findViewById(R.id.tv_math_question);
+                String question = generateMathQuestion();
+                currentAnswer = String.valueOf(ArithmeticUtils.getMathAnswer(question));
+                questionText.setText(question);
+                
+                // 根据type动态设置字体大小
+                int fontSize = (currentType == 0) ? 20 : 16;
+                questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
                     
                     // 清空输入框但保持焦点
                     answerEdit.setText("");
