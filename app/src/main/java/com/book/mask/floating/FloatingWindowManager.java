@@ -17,6 +17,8 @@ import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.network.TextFetcher;
 
+import org.json.JSONException;
+
 /**
  * 悬浮窗管理器
  * 负责悬浮窗的显示、隐藏、内容更新等所有相关功能
@@ -178,7 +180,9 @@ public class FloatingWindowManager {
                 if (floatingView != null && windowManager != null) {
                     windowManager.removeView(floatingView);
                     floatingView = null;
+                    
                     mathChallengeManager = null; // 清理管理器引用
+                    
                     Log.d(TAG, "悬浮窗隐藏成功");
                 }
             } catch (Exception e) {
