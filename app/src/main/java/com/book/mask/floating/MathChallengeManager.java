@@ -27,6 +27,7 @@ import com.book.mask.config.CustomApp;
 import com.book.mask.util.ArithmeticUtils;
 import com.book.mask.util.ContentUtils;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -46,12 +47,15 @@ public class MathChallengeManager {
     private CustomApp currentApp; // 当前APP（统一使用CustomApp）
     private RelaxManager relaxManager;
     private AppSettingsManager appSettingsManager;
+
     static HashMap<String, String> challenge = new HashMap<>();
 
     static {
-        String q = "某单位组织植树，若每人植4棵，还剩18棵；若每人植5棵，就缺12棵。问共有树苗多少棵？  \n" +
-                "A. 102  B. 114  C. 126  D. 138";
-        String a = "B";
+        String q = "小红书社区组织挖红薯：\n" +
+                "如果每位主包挖 5 个，地里还剩 90 个；\n" +
+                "如果每位主包挖 17 个，就还缺 66 个。\n" +
+                "问共有多少位主包参加了挖红薯？";
+        String a = "13";
         challenge.put("question", q);
         challenge.put("answer", a);
     }
@@ -59,7 +63,7 @@ public class MathChallengeManager {
     // 数学题相关
     private String currentAnswer = "";
     private static boolean isMathChallengeActive = false;
-    private int currentType = 1; // 当前题目类型：0=算术题，1=数量关系题，2=逻辑推理
+    private int currentType = 1; // 当前题目类型
     
     // 回调接口
     public interface OnMathChallengeListener {
@@ -82,6 +86,9 @@ public class MathChallengeManager {
         this.appSettingsManager = new AppSettingsManager(context);
 
         initializeComponents();
+        
+        // 初始化时异步获取远程题目
+        fetchLatestChallenge();
     }
     
     /**
@@ -174,15 +181,15 @@ public class MathChallengeManager {
     public void showMathChallenge() {
         if (floatingView == null) return;
 
-        // type 0：算术题；1：数量关系题；2：逻辑推理
-        currentType = new Random().nextInt(2);
+        // type 0：逻辑应用题、1 2：算术题；
+        currentType = new Random().nextInt(3);
         LinearLayout mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
         TextView questionText = floatingView.findViewById(R.id.tv_math_question);
         EditText answerEdit = floatingView.findViewById(R.id.et_math_answer);
         TextView resultText = floatingView.findViewById(R.id.tv_math_result);
         
         // 根据type动态设置字体大小
-        int fontSize = (currentType == 0) ? 20 : 16;
+        int fontSize = (currentType > 0) ? 20 : 16;
         questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
 
         /**
@@ -264,21 +271,31 @@ public class MathChallengeManager {
      * @return
      */
     private String unifyGetQuestion() {
-        if(currentType == 0){
+        // 普通算术题
+        if(currentType > 0){
             return generateMathQuestion();
+        // 情景逻辑题
         }else{
-            /*缓存获取问题*/
-            String question = challenge.get("question");
-            if(question.isEmpty()){
-                String ret = httpObtainChallenge(currentType);
-                return generateMathQuestion();
+            // 先尝试从缓存获取
+            String cachedQuestion = challenge.get("question");
+            String cachedAnswer = challenge.get("answer");
+
+            // 异步获取新的远程题目，为下次使用做准备
+            fetchLatestChallenge();
+
+            if (cachedQuestion != null && cachedAnswer != null) {
+                Log.d(TAG, "使用缓存的远程题目");
+                return cachedQuestion;
             }
-            return challenge.get("question");
+
+            // 缓存中没有，使用本地题目作为备选
+            Log.w(TAG, "缓存中没有远程题目，使用本地算术题作为备选");
+            return generateMathQuestion();
         }
     }
 
     private String unifyGetAnswer(String question) {
-        if(currentType == 0){
+        if(currentType > 0){
             return String.valueOf(ArithmeticUtils.getMathAnswer(question));
         }else{
             /*缓存获取答案*/
@@ -287,9 +304,37 @@ public class MathChallengeManager {
     }
 
     /**
+     * 异步获取远程题目并缓存
+     */
+    public void fetchLatestChallenge() {
+        Log.d(TAG, "开始获取最新远程题目");
+        
+        new Thread(() -> {
+            try {
+                String remoteChallenge = httpObtainChallenge(currentType);
+                if (remoteChallenge != null) {
+                    org.json.JSONObject jsonResponse = new org.json.JSONObject(remoteChallenge);
+                    String remoteQuestion = (String) jsonResponse.get("question");
+                    String remoteAnswer = (String) jsonResponse.get("answer");
+                    
+                    // 缓存题目和答案
+                    challenge.put("question", remoteQuestion);
+                    challenge.put("answer", remoteAnswer);
+                    
+                    Log.d(TAG, "远程题目获取成功并已缓存");
+                } else {
+                    Log.w(TAG, "获取远程题目失败");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "获取远程题目时发生异常", e);
+            }
+        }).start();
+    }
+
+    /**
      * http 获取题目
      */
-    public String httpObtainChallenge(int type) {
+    private String httpObtainChallenge(int type) {
         try {
             String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
 
@@ -398,7 +443,7 @@ public class MathChallengeManager {
                     questionText.setText(question);
 
                     // 根据type动态设置字体大小
-                    int fontSize = (currentType == 0) ? 20 : 16;
+                    int fontSize = (currentType > 0) ? 20 : 16;
                     questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
 
                     // 清空输入框但保持焦点
@@ -409,6 +454,7 @@ public class MathChallengeManager {
                     resultText.setVisibility(View.GONE);
                     
                     Log.d(TAG, "生成新数学题，保持输入法显示");
+
                 }, 1000);
             }
         } catch (NumberFormatException e) {
@@ -441,4 +487,5 @@ public class MathChallengeManager {
                     Const.MUL_SECOND_LEN_DEFAULT);
         }
     }
+    
 }

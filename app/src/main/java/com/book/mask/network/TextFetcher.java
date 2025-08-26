@@ -70,6 +70,15 @@ public class TextFetcher {
         executorService.execute(() -> {
             try {
                 String reqResult = httpObtainEncourage();
+                if (reqResult == null) {
+                    mainHandler.post(() -> {
+                        Log.w(TAG, "获取文字失败，使用缓存文字");
+                        if (listener != null) {
+                            listener.onFetchError("获取文字失败");
+                        }
+                    });
+                    return;
+                }
                 String result = reqResult.replaceAll("\\n\\s*\\n", "\n");
 
                 mainHandler.post(() -> {
@@ -109,10 +118,9 @@ public class TextFetcher {
             PackageManager pm = context.getPackageManager();
             PackageInfo packageInfo = pm.getPackageInfo(context.getPackageName(), 0);
             String tag = appSettingsManager.getMotivationTag();
-            String encodedTag = java.net.URLEncoder.encode(tag, java.nio.charset.StandardCharsets.UTF_8.name());
 
             JSONObject reqJson = new JSONObject();
-            reqJson.put("tag", encodedTag);
+            reqJson.put("tag", tag);
             reqJson.put("devId", androidId);
             reqJson.put("version", packageInfo.versionName);
 

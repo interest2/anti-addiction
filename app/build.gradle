@@ -10,8 +10,8 @@ android {
         applicationId "com.book.mask"
         minSdk 24
         targetSdk 35
-        versionCode 28
-        versionName "2.5.5"
+        versionCode 30
+        versionName "2.5.7"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }

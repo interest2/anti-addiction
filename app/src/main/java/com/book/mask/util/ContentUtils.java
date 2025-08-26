@@ -56,14 +56,17 @@ public class ContentUtils {
             return response.toString();
         }catch(Exception e){
             Log.e(TAG, "网络调用失败", e);
-            return "";
+            return null;
         } finally {
             if (conn != null) conn.disconnect();
         }
     }
 
     public static String parseRespJson(String response) throws JSONException {
-        if (response == null) return null;
+        if (response == null || response.trim().isEmpty()) {
+            Log.w(TAG, "响应内容为空或null");
+            return null;
+        }
         org.json.JSONObject jsonResponse = new org.json.JSONObject(response);
         if (jsonResponse.has("status")) {
             int status = jsonResponse.getInt("status");
