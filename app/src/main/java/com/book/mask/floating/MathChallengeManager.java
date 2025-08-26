@@ -183,8 +183,16 @@ public class MathChallengeManager {
     public void showMathChallenge() {
         if (floatingView == null) return;
 
-        /* 应用题（word）的概率需要更低*/
-        currentType = new Random().nextInt(100) % 3 == 0 ? TYPE_WORD : TYPE_ARITHMETIC;
+        // 根据用户设置决定题型
+        String questionType = appSettingsManager.getMathQuestionType();
+        if ("arithmetic_only".equals(questionType)) {
+            // 纯算术题
+            currentType = TYPE_ARITHMETIC;
+        } else {
+            // 混合型（保持原有的概率逻辑）
+            currentType = new Random().nextInt(100) % 3 == 0 ? TYPE_WORD : TYPE_ARITHMETIC;
+        }
+        
         LinearLayout mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
         TextView questionText = floatingView.findViewById(R.id.tv_math_question);
         EditText answerEdit = floatingView.findViewById(R.id.et_math_answer);

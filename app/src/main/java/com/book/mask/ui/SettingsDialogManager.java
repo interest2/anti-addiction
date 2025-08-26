@@ -390,12 +390,42 @@ public class SettingsDialogManager {
      * 显示算术题难度设置对话框
      */
     public void showMathDifficultyDialog() {
+        String typeMixed = "混杂（应用题、算术题）";
+        String typeArithmetic = "算术题";
+        String[] difficultyOptions = {typeMixed, typeArithmetic};
+        String currentMode = appSettingsManager.getMathQuestionType();
+        int checkedItem = "arithmetic_only".equals(currentMode) ? 1 : 0;
+
+        new android.app.AlertDialog.Builder(context)
+            .setTitle("关闭悬浮窗所需答题的类型")
+            .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
+                if (which == 0) {
+                    // 选择混合型
+                    appSettingsManager.setMathQuestionType("mixed");
+                    android.widget.Toast.makeText(context, "已设置为" + typeMixed, android.widget.Toast.LENGTH_SHORT).show();
+                } else if (which == 1) {
+                    // 选择纯算术题
+                    appSettingsManager.setMathQuestionType("arithmetic_only");
+                    android.widget.Toast.makeText(context, "已设置为" + typeArithmetic, android.widget.Toast.LENGTH_SHORT).show();
+                    // 显示次级弹窗（原有的难度设置）
+                    showArithmeticDifficultyDialog();
+                }
+                dialog.dismiss();
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
+    /**
+     * 显示纯算术题难度设置对话框（次级弹窗）
+     */
+    private void showArithmeticDifficultyDialog() {
         String[] difficultyOptions = {"默认难度", "自定义难度"};
         String currentMode = appSettingsManager.getMathDifficultyMode();
         int checkedItem = "custom".equals(currentMode) ? 1 : 0;
 
         new android.app.AlertDialog.Builder(context)
-            .setTitle("算术题修改难度")
+            .setTitle("算术题难度设置")
             .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
                 if (which == 0) {
                     // 选择默认难度

@@ -11,9 +11,9 @@ import com.book.mask.config.Share;
  * 用于管理算术题难度、悬浮窗设置、个人目标等配置参数
  */
 public class AppSettingsManager {
-    
+
     private static final String PREFS_NAME = "app_settings";
-    
+
     // 每个APP独立的悬浮窗警示文字来源相关
     private static final String KEY_APP_HINT_SOURCE = "app_hint_source_";
     private static final String KEY_APP_HINT_CUSTOM = "app_hint_custom_";
@@ -42,7 +42,7 @@ public class AppSettingsManager {
     // 个人目标相关
     private static final String KEY_MOTIVATION_TAG = "motivation_tag";
     private static final String KEY_TARGET_COMPLETION_DATE = "target_completion_date";
-    
+
     // 悬浮窗位置相关
     private static final String KEY_FLOATING_TOP_OFFSET = "floating_top_offset";
     private static final String KEY_FLOATING_BOTTOM_OFFSET = "floating_bottom_offset";
@@ -54,7 +54,7 @@ public class AppSettingsManager {
     }
 
     // ===== 悬浮窗警示文字来源相关方法 =====
-    
+
     /**
      * 设置指定APP的悬浮窗警示文字来源
      */
@@ -62,14 +62,14 @@ public class AppSettingsManager {
         prefs.edit().putString(KEY_APP_HINT_SOURCE + packageName, source).apply();
         android.util.Log.d("SettingsManager", "设置APP " + packageName + " 悬浮窗警示文字来源: " + source);
     }
-    
+
     /**
      * 获取指定APP的悬浮窗警示文字来源
      */
     public String getAppHintSource(String packageName) {
         return prefs.getString(KEY_APP_HINT_SOURCE + packageName, Const.DEFAULT_HINT_SOURCE);
     }
-    
+
     /**
      * 设置指定APP的自定义悬浮窗警示文字
      */
@@ -77,7 +77,7 @@ public class AppSettingsManager {
         prefs.edit().putString(KEY_APP_HINT_CUSTOM + packageName, customText).apply();
         android.util.Log.d("SettingsManager", "设置APP " + packageName + " 自定义悬浮窗警示文字: " + customText);
     }
-    
+
     /**
      * 获取指定APP的自定义悬浮窗警示文字
      */
@@ -89,6 +89,7 @@ public class AppSettingsManager {
 
     /**
      * 设置算术题难度模式
+     *
      * @param mode "default" 或 "custom"
      */
     public void setMathDifficultyMode(String mode) {
@@ -160,7 +161,7 @@ public class AppSettingsManager {
     }
 
     // ===== 悬浮窗额外显示日常提醒相关方法 =====
-    
+
     /**
      * 设置悬浮窗额外显示日常提醒文字
      */
@@ -168,7 +169,7 @@ public class AppSettingsManager {
         prefs.edit().putString(KEY_FLOATING_STRICT_REMINDER, reminder).apply();
         android.util.Log.d("SettingsManager", "设置悬浮窗日常提醒: " + reminder);
     }
-    
+
     /**
      * 获取悬浮窗额外显示日常提醒文字
      */
@@ -198,7 +199,7 @@ public class AppSettingsManager {
         prefs.edit().putInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, fontSize).apply();
         android.util.Log.d("SettingsManager", "设置悬浮窗良好习惯提醒字体大小: " + fontSize);
     }
-    
+
     /**
      * 获取悬浮窗良好习惯提醒字体大小
      */
@@ -273,5 +274,23 @@ public class AppSettingsManager {
      */
     public int getFloatingBottomOffset() {
         return prefs.getInt(KEY_FLOATING_BOTTOM_OFFSET, DEFAULT_BOTTOM_OFFSET);
+    }
+
+    // 题型设置相关常量
+    private static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
+    private static final String DEFAULT_QUESTION_TYPE = "mixed"; // 默认为混合型
+
+    /**
+     * 获取数学题题型
+     */
+    public String getMathQuestionType() {
+        return prefs.getString(KEY_MATH_QUESTION_TYPE, DEFAULT_QUESTION_TYPE);
+    }
+
+    /**
+     * 设置数学题题型
+     */
+    public void setMathQuestionType(String questionType) {
+        prefs.edit().putString(KEY_MATH_QUESTION_TYPE, questionType).apply();
     }
 }
