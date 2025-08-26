@@ -58,7 +58,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="2、算术题修改难度"
+            android:text="2、修改答题难度、题型"
             android:textSize="18sp"
             android:textColor="#333333"
             android:textStyle="bold"
@@ -70,7 +70,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:backgroundTint="#4CAF50"
-            android:text="设置难度"
+            android:text="修改"
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
 

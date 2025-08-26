@@ -27,7 +27,6 @@ import com.book.mask.config.CustomApp;
 import com.book.mask.util.ArithmeticUtils;
 import com.book.mask.util.ContentUtils;
 
-import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -63,8 +62,11 @@ public class MathChallengeManager {
     // 数学题相关
     private String currentAnswer = "";
     private static boolean isMathChallengeActive = false;
-    private int currentType = 1; // 当前题目类型
-    
+    // type 0：算术题；1：应用题
+    private int currentType = 0;
+    private static final int TYPE_ARITHMETIC = 0;
+    private static final int TYPE_WORD = 1;
+
     // 回调接口
     public interface OnMathChallengeListener {
         void onAnswerCorrect();
@@ -181,15 +183,15 @@ public class MathChallengeManager {
     public void showMathChallenge() {
         if (floatingView == null) return;
 
-        // type 0：逻辑应用题、1 2：算术题；
-        currentType = new Random().nextInt(3);
+        /* 应用题（word）的概率需要更低*/
+        currentType = new Random().nextInt(100) % 3 == 0 ? TYPE_WORD : TYPE_ARITHMETIC;
         LinearLayout mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
         TextView questionText = floatingView.findViewById(R.id.tv_math_question);
         EditText answerEdit = floatingView.findViewById(R.id.et_math_answer);
         TextView resultText = floatingView.findViewById(R.id.tv_math_result);
         
         // 根据type动态设置字体大小
-        int fontSize = (currentType > 0) ? 20 : 16;
+        int fontSize = currentType == TYPE_WORD ? 16 : 20;
         questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
 
         /**
@@ -272,7 +274,7 @@ public class MathChallengeManager {
      */
     private String unifyGetQuestion() {
         // 普通算术题
-        if(currentType > 0){
+        if(currentType == TYPE_ARITHMETIC){
             return generateMathQuestion();
         // 情景逻辑题
         }else{
@@ -295,7 +297,7 @@ public class MathChallengeManager {
     }
 
     private String unifyGetAnswer(String question) {
-        if(currentType > 0){
+        if(currentType == TYPE_ARITHMETIC){
             return String.valueOf(ArithmeticUtils.getMathAnswer(question));
         }else{
             /*缓存获取答案*/
@@ -443,7 +445,7 @@ public class MathChallengeManager {
                     questionText.setText(question);
 
                     // 根据type动态设置字体大小
-                    int fontSize = (currentType > 0) ? 20 : 16;
+                    int fontSize = currentType == TYPE_WORD ? 16 : 20;
                     questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
 
                     // 清空输入框但保持焦点
