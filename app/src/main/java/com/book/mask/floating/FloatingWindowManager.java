@@ -19,6 +19,11 @@ import com.book.mask.network.TextFetcher;
 
 import org.json.JSONException;
 
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.graphics.Color;
+
 /**
  * 悬浮窗管理器
  * 负责悬浮窗的显示、隐藏、内容更新等所有相关功能
@@ -204,11 +209,11 @@ public class FloatingWindowManager {
         if (contentText != null) {
             // 获取缓存的动态文字内容
             String dynamicText = "";
-
+    
             if (currentActiveApp != null) {
                 String packageName = currentActiveApp.getPackageName();
                 String source = appSettingsManager.getAppHintSource(packageName);
-
+    
                 // 自定义来源
                 if (Const.CUSTOM_HINT_SOURCE.equals(source)) {
                     dynamicText = appSettingsManager.getAppHintCustomText(packageName);
@@ -219,38 +224,62 @@ public class FloatingWindowManager {
                     }
                 }
             }
-
+    
             // 显示动态文字和时间间隔信息
             String content = dynamicText;
             if (relaxManager != null) {
                 // 使用当前APP的时间间隔显示
                 int intervalSeconds;
+                boolean isRelaxedMode = false;
                 if (currentActiveApp != null) {
                     /*如果上次关闭时是宽松模式，则本次显示应当切为严格模式*/
                     int appLastCloseInterval = relaxManager.getAppLastCloseInterval(currentActiveApp);
                     Log.d(TAG, "appLastCloseInterval: " + appLastCloseInterval);
-//                    if(relaxManager.isLastRelaxedMode(appLastCloseInterval)){
-//
-//                        intervalSeconds = relaxManager.getMaxStrictInterval();
-//                        relaxManager.setAppInterval(currentActiveApp, intervalSeconds);
-//                    }else {
+    //                    if(relaxManager.isLastRelaxedMode(appLastCloseInterval)){
+    //
+    //                        intervalSeconds = relaxManager.getMaxStrictInterval();
+    //                        relaxManager.setAppInterval(currentActiveApp, intervalSeconds);
+    //                    }else {
                         intervalSeconds = relaxManager.getAppInterval(currentActiveApp);
-//                    }
+                        // 判断当前是否为宽松模式
+                        isRelaxedMode = relaxManager.isAppRelaxedMode(currentActiveApp);
+    //                    }
                 } else {
                     intervalSeconds = relaxManager.getDefaultInterval();
                 }
                 
                 String intervalText = RelaxManager.getIntervalDisplayText(intervalSeconds);
-                String hintTIme = "\n若关闭，" + intervalText + "后将重新显示本页面";
+                String hintTime = "\n若关闭，" + intervalText + "后将重新显示本页面";
+                
+                // 构建完整内容
                 if (!dynamicText.isEmpty()) {
-                    content = dynamicText + "\n" + hintTIme;
+                    content = dynamicText + hintTime;
                 } else {
-                    content = hintTIme;
+                    content = hintTime;
+                }
+                
+                // 添加日期前缀
+                String targetDateStr = appSettingsManager.getTargetCompletionDate();
+                String datePrefix = FloatHelper.hintDate(targetDateStr);
+                content = datePrefix + content;
+                
+                // 如果是宽松模式，设置时间数字为红色
+                if (isRelaxedMode) {
+                    SpannableString spannableContent = new SpannableString(content);
+                    
+                    // 查找时间文字的位置（注意要查找完整的时间文字，包括数字）
+                    int timeStartIndex = content.indexOf(intervalText);
+                    if (timeStartIndex != -1) {
+                        int timeEndIndex = timeStartIndex + intervalText.length();
+                        spannableContent.setSpan(new ForegroundColorSpan(Color.RED), 
+                                                timeStartIndex, timeEndIndex, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                    contentText.setText(spannableContent);
+                } else {
+                    // 严格模式，保持原样
+                    contentText.setText(content);
                 }
             }
-            String targetDateStr = appSettingsManager.getTargetCompletionDate();
-            content = FloatHelper.hintDate(targetDateStr) + content;
-            contentText.setText(content);
         }
         
         // 更新日常提醒显示
