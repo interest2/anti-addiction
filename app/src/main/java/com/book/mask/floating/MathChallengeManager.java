@@ -88,11 +88,8 @@ public class MathChallengeManager {
         this.appSettingsManager = new AppSettingsManager(context);
 
         initializeComponents();
-        
-        // 初始化时异步获取远程题目
-        fetchLatestChallenge();
     }
-    
+
     /**
      * 设置当前APP
      */
@@ -190,7 +187,7 @@ public class MathChallengeManager {
             currentType = TYPE_ARITHMETIC;
         } else {
             // 混合型（保持原有的概率逻辑）
-            currentType = new Random().nextInt(100) % 3 == 0 ? TYPE_WORD : TYPE_ARITHMETIC;
+            currentType = new Random().nextInt(100) % 5 == 0 ? TYPE_WORD : TYPE_ARITHMETIC;
         }
         
         LinearLayout mathLayout = floatingView.findViewById(R.id.math_challenge_layout);

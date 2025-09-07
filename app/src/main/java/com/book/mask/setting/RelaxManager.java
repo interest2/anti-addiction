@@ -2,6 +2,7 @@ package com.book.mask.setting;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 import com.book.mask.config.CustomApp;
 import com.book.mask.util.DateUtils;
@@ -15,7 +16,8 @@ import java.util.Locale;
  * 用于管理应用的时间间隔设置和宽松版关闭次数统计
  */
 public class RelaxManager {
-    
+    private static final String TAG = "RelaxManager";
+
     private static final String PREFS_NAME = "app_settings";
     // 每个APP独立的设置键名前缀
     private static final String KEY_DEFAULT_SHOW_INTERVAL = "default_show_interval";
@@ -28,7 +30,8 @@ public class RelaxManager {
     // 严格、宽松模式的各选项
     private static final int[] strictIntervalArray = {30, 60, 120};
     private static final int[] relaxedIntervalArray = {600, 1200, 1800};
-
+//    private static final int[] strictIntervalArray = {3, 6, 12};
+//    private static final int[] relaxedIntervalArray = {20, 30, 40};
     private SharedPreferences prefs;
 
     public RelaxManager(Context context) {
@@ -199,6 +202,7 @@ public class RelaxManager {
      * 记录指定APP的悬浮窗关闭时间和使用的时间间隔
      */
     public void recordAppCloseTime(CustomApp app, int intervalSeconds) {
+        Log.d(TAG, "recordAppCloseTime:" + intervalSeconds);
         String packageName = app.getPackageName();
         if (packageName == null) return;
         

@@ -136,7 +136,7 @@
             android:layout_height="wrap_content"
             android:text="玩手机？不如去喝水"
             android:textColor="#399C3F"
-            android:textSize="20sp"
+            android:textSize="24sp"
             android:textStyle="bold"
             android:gravity="start"
             android:letterSpacing="0.1" />

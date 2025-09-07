@@ -228,12 +228,14 @@ public class FloatingWindowManager {
                 if (currentActiveApp != null) {
                     /*如果上次关闭时是宽松模式，则本次显示应当切为严格模式*/
                     int appLastCloseInterval = relaxManager.getAppLastCloseInterval(currentActiveApp);
-                    if(relaxManager.isLastRelaxedMode(appLastCloseInterval)){
-                        intervalSeconds = relaxManager.getMaxStrictInterval();
-                        relaxManager.setAppInterval(currentActiveApp, intervalSeconds);
-                    }else {
+                    Log.d(TAG, "appLastCloseInterval: " + appLastCloseInterval);
+//                    if(relaxManager.isLastRelaxedMode(appLastCloseInterval)){
+//
+//                        intervalSeconds = relaxManager.getMaxStrictInterval();
+//                        relaxManager.setAppInterval(currentActiveApp, intervalSeconds);
+//                    }else {
                         intervalSeconds = relaxManager.getAppInterval(currentActiveApp);
-                    }
+//                    }
                 } else {
                     intervalSeconds = relaxManager.getDefaultInterval();
                 }
