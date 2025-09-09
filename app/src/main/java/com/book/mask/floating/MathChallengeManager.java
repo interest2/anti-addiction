@@ -187,7 +187,7 @@ public class MathChallengeManager {
             currentType = TYPE_ARITHMETIC;
         } else {
             // 混合型（保持原有的概率逻辑）
-            currentType = new Random().nextInt(100) % 5 == 0 ? TYPE_WORD : TYPE_ARITHMETIC;
+            currentType = new Random().nextInt(100) % 9 == 0 ? TYPE_WORD : TYPE_ARITHMETIC;
         }
         
         LinearLayout mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
