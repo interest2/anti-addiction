@@ -32,6 +32,8 @@ import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.network.TextFetcher;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.badge.BadgeDrawable;
+import com.book.mask.config.Share;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -45,6 +47,8 @@ public class MainActivity extends AppCompatActivity {
     private GoalNav goalNav;
     private SettingsNav settingsNav;
     private BroadcastReceiver relaxedCountUpdateReceiver;
+    private BottomNavigationView bottomNav;
+    private BadgeDrawable settingsBadge;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -115,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupBottomNavigation() {
-        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.setOnNavigationItemSelectedListener(item -> {
             Fragment selectedFragment = null;
             if (item.getItemId() == R.id.navigation_home) {
@@ -141,6 +145,39 @@ public class MainActivity extends AppCompatActivity {
             .replace(R.id.fragment_container, homeNav)
             .commit();
         bottomNav.setSelectedItemId(R.id.navigation_home);
+        
+        // 更新底部导航图标
+        updateBottomNavigationIcon();
+    }
+
+    private void updateBottomNavigationIcon() {
+        if (bottomNav == null) return;
+        
+        // 获取当前版本信息
+        String localVer = "";
+        try {
+            localVer = getPackageManager()
+                    .getPackageInfo(getPackageName(), 0)
+                    .versionName;
+        } catch (Exception e) {
+            localVer = "未成功获取";
+        }
+
+        String remoteVer = Share.latestVersion;
+        boolean isLatest = localVer.equals(remoteVer);
+        
+        // 创建或更新Badge
+        if (settingsBadge == null) {
+            settingsBadge = bottomNav.getOrCreateBadge(R.id.navigation_settings);
+        }
+        
+        // 根据版本状态显示或隐藏Badge
+        if (isLatest) {
+            settingsBadge.setVisible(false);
+        } else {
+            settingsBadge.setVisible(true);
+            settingsBadge.setNumber(1);
+        }
     }
 
     private void checkAndRequestPermissions() {
@@ -241,6 +278,9 @@ public class MainActivity extends AppCompatActivity {
                 initAppLifecycleObserver();
             }
         }
+        
+        // 更新底部导航图标
+        updateBottomNavigationIcon();
     }
 
     private void registerRelaxedCountUpdateReceiver() {

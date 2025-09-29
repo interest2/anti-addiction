@@ -6,6 +6,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -57,6 +59,9 @@ public class SettingsNav extends Fragment {
 
         tvVersionDetail.setText(hintVersion);
 
+        // 设置版本更新红色小圆点
+        setupVersionUpdateRedDot(view, isLatest);
+
         // 设置悬浮窗位置按钮
         setupFloatingPositionButton(view);
         // 设置重置所有APP悬浮窗状态按钮
@@ -76,6 +81,17 @@ public class SettingsNav extends Fragment {
         latestApkButton.setOnClickListener(v -> {
             settingsDialogManager.showLatestApkDialog();
         });
+    }
+
+    private void setupVersionUpdateRedDot(View view, boolean isLatest) {
+        RelativeLayout redDot = view.findViewById(R.id.iv_version_update_red_dot);
+        if (redDot != null) {
+            if (isLatest) {
+                redDot.setVisibility(View.GONE);
+            } else {
+                redDot.setVisibility(View.VISIBLE);
+            }
+        }
     }
 
     private void setupFloatingPositionButton(View view) {
