@@ -57,6 +57,9 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
+        // 初始化自定义应用管理器 - 提前到这里，为其他组件提供基础数据
+        CustomAppManager.initialize(this);
+
         relaxManager = new RelaxManager(this);
         settingsDialogManager = new SettingsDialogManager(this, relaxManager);
 
@@ -72,9 +75,6 @@ public class MainActivity extends AppCompatActivity {
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();
-
-        // 初始化自定义应用管理器
-        CustomAppManager.initialize(this);
 
         // 检查缓存并获取云端内容
         TextFetcher fetcher = new TextFetcher(this);

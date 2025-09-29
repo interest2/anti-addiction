@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CustomAppManager {
+    private static final String TAG = "CustomAppManager";
+
     private static final String PREF_NAME = "custom_apps";
     private static final String KEY_CUSTOM_APPS = "custom_apps_list";
     private static final String KEY_DEFAULT_APP_MODIFY = "predefined_apps_modifications";
@@ -113,6 +115,7 @@ public class CustomAppManager {
         }
         // 添加自定义应用
         allApps.addAll(customApps);
+        Log.d(TAG, "customApps: " + customApps);
         return allApps;
     }
     
@@ -231,6 +234,15 @@ public class CustomAppManager {
         try {
             String json = gson.toJson(customApps);
             sharedPreferences.edit().putString(KEY_CUSTOM_APPS, json).apply();
+            
+            // 验证保存是否成功 - 从SharedPreferences读取内容
+            String savedJson = sharedPreferences.getString(KEY_CUSTOM_APPS, null);
+            if (savedJson != null && savedJson.equals(json)) {
+                Log.d(TAG, "Custom apps saved successfully. Data verified.");
+                Log.d(TAG, "Saved data: " + savedJson);
+            } else {
+                Log.e(TAG, "Failed to save custom apps - verification failed");
+            }
         } catch (Exception e) {
             Log.e("CustomAppManager", "Error saving custom apps", e);
         }
