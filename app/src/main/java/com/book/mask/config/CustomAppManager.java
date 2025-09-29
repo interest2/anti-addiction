@@ -28,7 +28,7 @@ public class CustomAppManager {
     public static final String ALIPAY_PACKAGE = "com.eg.android.AlipayGphone";
     private static CustomAppManager instance;
     private final Context context;
-    private final SharedPreferences sharedPreferences;
+    private SharedPreferences sharedPreferences; // 移除 final 修饰符
     private final Gson gson;
     private List<CustomApp> customApps;
     
@@ -226,9 +226,21 @@ public class CustomAppManager {
      */
     private void saveCustomApps() {
         if (sharedPreferences == null) {
-            // 只读模式，不保存
-            Log.w("CustomAppManager", "Cannot save in read-only mode");
-            return;
+            // 尝试重新初始化（如果有context的话）
+            if (context != null) {
+                Log.w("CustomAppManager", "SharedPreferences is null, attempting to reinitialize...");
+                try {
+                    sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+                    Log.i("CustomAppManager", "Successfully reinitialized SharedPreferences");
+                } catch (Exception e) {
+                    Log.e("CustomAppManager", "Failed to reinitialize SharedPreferences", e);
+                    return;
+                }
+            } else {
+                // 只读模式，不保存
+                Log.w("CustomAppManager", "Cannot save in read-only mode - no context available");
+                return;
+            }
         }
         
         try {
@@ -242,6 +254,8 @@ public class CustomAppManager {
                 Log.d(TAG, "Saved data: " + savedJson);
             } else {
                 Log.e(TAG, "Failed to save custom apps - verification failed");
+                Log.e(TAG, "Expected: " + json);
+                Log.e(TAG, "Actual: " + savedJson);
             }
         } catch (Exception e) {
             Log.e("CustomAppManager", "Error saving custom apps", e);
@@ -338,4 +352,4 @@ public class CustomAppManager {
             Log.e("CustomAppManager", "Error saving predefined app modifications", e);
         }
     }
-} 
+}
