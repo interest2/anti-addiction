@@ -29,7 +29,7 @@ public class RelaxManager {
 
     // 严格、宽松模式的各选项
     private static final int[] strictIntervalArray = {30, 60, 120};
-    private static final int[] relaxedIntervalArray = {600, 1200, 1800};
+    private static final int[] relaxedIntervalArray = {600, 900, 1200, 1800};
 //    private static final int[] strictIntervalArray = {3, 6, 12};
 //    private static final int[] relaxedIntervalArray = {20, 30, 40};
     private SharedPreferences prefs;
