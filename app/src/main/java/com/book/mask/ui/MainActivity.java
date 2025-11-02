@@ -21,6 +21,7 @@ import android.content.Context;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.view.accessibility.AccessibilityManager;
 import java.util.List;
+import java.util.Calendar;
 
 import com.book.mask.R;
 import com.book.mask.config.Const;
@@ -281,6 +282,9 @@ public class MainActivity extends AppCompatActivity {
         
         // 更新底部导航图标
         updateBottomNavigationIcon();
+        
+        // 检测当前时间是否晚于20:00
+        checkTimeAndPerformAction();
     }
 
     private void registerRelaxedCountUpdateReceiver() {
@@ -301,6 +305,67 @@ public class MainActivity extends AppCompatActivity {
             registerReceiver(relaxedCountUpdateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
         } else {
             registerReceiver(relaxedCountUpdateReceiver, filter);
+        }
+    }
+
+    /**
+     * 检测当前时间是否晚于20:00
+     * @return true表示当前时间晚于20:00，false表示早于或等于20:00
+     */
+    private boolean isTimeAfterEightPM() {
+        Calendar calendar = Calendar.getInstance();
+        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+        // 检查是否晚于20:00（即hour >= 20）
+        return hour >= 20;
+    }
+
+    /**
+     * 检测时间并执行相应操作
+     */
+    private void checkTimeAndPerformAction() {
+        if (isTimeAfterEightPM()) {
+            performAfterEightPMAction();
+        }
+    }
+
+    /**
+     * 在20:00之后执行的操作
+     * 如果卡片显示的宽松剩余次数>1，则重置为1
+     */
+    private void performAfterEightPMAction() {
+        if (relaxManager == null) {
+            relaxManager = new RelaxManager(this);
+        }
+        
+        CustomAppManager customAppManager = CustomAppManager.getInstance();
+        List<CustomApp> allApps = customAppManager.getAllApps();
+        
+        boolean hasChanges = false;
+        
+        for (CustomApp app : allApps) {
+            int relaxedLimitCount = app.getRelaxedLimitCount();
+            int relaxedCount = relaxManager.getAppRelaxedCloseCount(app);
+            int remainingCount = Math.max(0, relaxedLimitCount - relaxedCount);
+            
+            // 如果剩余次数>1，则重置为1
+            if (remainingCount > 1) {
+                // 设置已用次数 = 最大次数 - 1，这样剩余次数就是1
+                int newRelaxedCount = relaxedLimitCount - 1;
+                // 确保不会设置为负数
+                if (newRelaxedCount >= 0) {
+                    relaxManager.setAppRelaxedCloseCount(app, newRelaxedCount);
+                    hasChanges = true;
+                    android.util.Log.d("MainActivity", 
+                        app.getAppName() + " 宽松剩余次数从 " + remainingCount + " 重置为 1");
+                }
+            }
+        }
+        
+        // 如果有变更，发送广播通知UI更新
+        if (hasChanges) {
+            Intent updateIntent = new Intent(Const.ACTION_UPDATE_RELAXED_COUNT);
+            sendBroadcast(updateIntent);
+            android.util.Log.d("MainActivity", "已重置宽松剩余次数，通知UI更新");
         }
     }
 

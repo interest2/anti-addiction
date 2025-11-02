@@ -194,8 +194,13 @@ public class RelaxManager {
      * 设置指定APP的宽松版关闭次数
      */
     public void setAppRelaxedCloseCount(CustomApp app, int count) {
+        String currentDate = DateUtils.getCurrentDate();
         String countKey = KEY_RELAXED_CLOSE_COUNT + app.getPackageName();
-        prefs.edit().putInt(countKey, count).apply();
+        String dateKey = KEY_LAST_RELAXED_CLOSE_DATE + app.getPackageName();
+        prefs.edit()
+             .putInt(countKey, count)
+             .putString(dateKey, currentDate)
+             .apply();
     }
     
     /**
