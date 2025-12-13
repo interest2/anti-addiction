@@ -1,7 +1,6 @@
 package com.book.mask.ui;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -35,6 +34,7 @@ import com.book.mask.network.TextFetcher;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.badge.BadgeDrawable;
 import com.book.mask.config.Share;
+import com.tencent.mmkv.MMKV;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -54,6 +54,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 初始化 MMKV
+        String rootDir = MMKV.initialize(this);
+        android.util.Log.d("MainActivity", "MMKV initialized, root: " + rootDir);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -101,8 +104,8 @@ public class MainActivity extends AppCompatActivity {
     private void resetRelaxedCount() {
         // 1. 获取当前日期
         String currentDate = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(new java.util.Date());
-        SharedPreferences prefs = getSharedPreferences("relaxed_count_reset", MODE_PRIVATE);
-        String lastResetDate = prefs.getString("last_reset_date", "");
+        MMKV mmkv = MMKV.mmkvWithID("relaxed_count_reset");
+        String lastResetDate = mmkv.getString("last_reset_date", "");
 
 // 2. 如果不是同一天，重置所有APP的宽松关闭次数为各自的最大值
         if (!currentDate.equals(lastResetDate)) {
@@ -115,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             // 记录本次重置日期
-            prefs.edit().putString("last_reset_date", currentDate).apply();
+            mmkv.putString("last_reset_date", currentDate).commit();
         }
     }
 

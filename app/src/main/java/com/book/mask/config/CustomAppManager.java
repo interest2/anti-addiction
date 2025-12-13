@@ -1,12 +1,12 @@
 package com.book.mask.config;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.book.mask.setting.RelaxManager;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.tencent.mmkv.MMKV;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -28,7 +28,7 @@ public class CustomAppManager {
     public static final String ALIPAY_PACKAGE = "com.eg.android.AlipayGphone";
     private static CustomAppManager instance;
     private final Context context;
-    private SharedPreferences sharedPreferences; // 移除 final 修饰符
+    private MMKV mmkv;
     private final Gson gson;
     private List<CustomApp> customApps;
     
@@ -50,14 +50,14 @@ public class CustomAppManager {
     private CustomAppManager(Context context) {
         if (context != null) {
             this.context = context.getApplicationContext();
-            this.sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+            this.mmkv = MMKV.mmkvWithID(PREF_NAME);
             this.gson = new Gson();
             loadCustomApps();
             loadPredefinedAppModifications();
         } else {
             // 只读模式，用于静态上下文
             this.context = null;
-            this.sharedPreferences = null;
+            this.mmkv = null;
             this.gson = new Gson();
             this.customApps = new ArrayList<>();
             this.predefinedAppModifications = new ArrayList<>();
@@ -96,7 +96,7 @@ public class CustomAppManager {
         CustomApp newApp = new CustomApp(appName, packageName, targetWord, relaxedLimitCount);
         customApps.add(newApp);
         
-        // 保存到SharedPreferences
+        // 保存到MMKV
         saveCustomApps();
         
         Log.d("CustomAppManager", "Added custom app: " + appName + " (" + packageName + ")");
@@ -199,16 +199,16 @@ public class CustomAppManager {
     }
 
     /**
-     * 从SharedPreferences加载自定义APP
+     * 从MMKV加载自定义APP
      */
     private void loadCustomApps() {
-        if (sharedPreferences == null) {
+        if (mmkv == null) {
             // 只读模式，使用空列表
             customApps = new ArrayList<>();
             return;
         }
         
-        String json = sharedPreferences.getString(KEY_CUSTOM_APPS, "[]");
+        String json = mmkv.getString(KEY_CUSTOM_APPS, "[]");
         try {
             Type type = new TypeToken<List<CustomApp>>(){}.getType();
             customApps = gson.fromJson(json, type);
@@ -222,18 +222,18 @@ public class CustomAppManager {
     }
 
     /**
-     * 保存自定义APP到SharedPreferences
+     * 保存自定义APP到MMKV
      */
     private void saveCustomApps() {
-        if (sharedPreferences == null) {
+        if (mmkv == null) {
             // 尝试重新初始化（如果有context的话）
             if (context != null) {
-                Log.w("CustomAppManager", "SharedPreferences is null, attempting to reinitialize...");
+                Log.w("CustomAppManager", "MMKV is null, attempting to reinitialize...");
                 try {
-                    sharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-                    Log.i("CustomAppManager", "Successfully reinitialized SharedPreferences");
+                    mmkv = MMKV.mmkvWithID(PREF_NAME);
+                    Log.i("CustomAppManager", "Successfully reinitialized MMKV");
                 } catch (Exception e) {
-                    Log.e("CustomAppManager", "Failed to reinitialize SharedPreferences", e);
+                    Log.e("CustomAppManager", "Failed to reinitialize MMKV", e);
                     return;
                 }
             } else {
@@ -245,10 +245,10 @@ public class CustomAppManager {
         
         try {
             String json = gson.toJson(customApps);
-            sharedPreferences.edit().putString(KEY_CUSTOM_APPS, json).apply();
+            mmkv.putString(KEY_CUSTOM_APPS, json).commit();
             
-            // 验证保存是否成功 - 从SharedPreferences读取内容
-            String savedJson = sharedPreferences.getString(KEY_CUSTOM_APPS, null);
+            // 验证保存是否成功 - 从MMKV读取内容
+            String savedJson = mmkv.getString(KEY_CUSTOM_APPS, null);
             if (savedJson != null && savedJson.equals(json)) {
                 Log.d(TAG, "Custom apps saved successfully. Data verified.");
                 Log.d(TAG, "Saved data: " + savedJson);
@@ -318,12 +318,12 @@ public class CustomAppManager {
      * 加载预定义APP的修改记录
      */
     private void loadPredefinedAppModifications() {
-        if (sharedPreferences == null) {
+        if (mmkv == null) {
             predefinedAppModifications = new ArrayList<>();
             return;
         }
         
-        String json = sharedPreferences.getString(KEY_DEFAULT_APP_MODIFY, "[]");
+        String json = mmkv.getString(KEY_DEFAULT_APP_MODIFY, "[]");
         try {
             Type type = new TypeToken<List<CustomApp>>(){}.getType();
             predefinedAppModifications = gson.fromJson(json, type);
@@ -340,14 +340,14 @@ public class CustomAppManager {
      * 保存预定义APP的修改记录
      */
     private void savePredefinedAppModifications() {
-        if (sharedPreferences == null) {
+        if (mmkv == null) {
             Log.w("CustomAppManager", "Cannot save predefined app modifications in read-only mode");
             return;
         }
         
         try {
             String json = gson.toJson(predefinedAppModifications);
-            sharedPreferences.edit().putString(KEY_DEFAULT_APP_MODIFY, json).apply();
+            mmkv.putString(KEY_DEFAULT_APP_MODIFY, json).commit();
         } catch (Exception e) {
             Log.e("CustomAppManager", "Error saving predefined app modifications", e);
         }

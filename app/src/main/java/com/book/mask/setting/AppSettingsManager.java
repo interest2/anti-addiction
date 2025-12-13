@@ -1,10 +1,10 @@
 package com.book.mask.setting;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 
 import com.book.mask.config.Const;
 import com.book.mask.config.Share;
+import com.tencent.mmkv.MMKV;
 
 /**
  * 应用设置管理器
@@ -47,10 +47,10 @@ public class AppSettingsManager {
     private static final String KEY_FLOATING_TOP_OFFSET = "floating_top_offset";
     private static final String KEY_FLOATING_BOTTOM_OFFSET = "floating_bottom_offset";
 
-    private SharedPreferences prefs;
+    private MMKV mmkv;
 
     public AppSettingsManager(Context context) {
-        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        mmkv = MMKV.mmkvWithID(PREFS_NAME);
     }
 
     // ===== 悬浮窗警示文字来源相关方法 =====
@@ -59,7 +59,7 @@ public class AppSettingsManager {
      * 设置指定APP的悬浮窗警示文字来源
      */
     public void setAppHintSource(String packageName, String source) {
-        prefs.edit().putString(KEY_APP_HINT_SOURCE + packageName, source).apply();
+        mmkv.putString(KEY_APP_HINT_SOURCE + packageName, source).commit();
         android.util.Log.d("SettingsManager", "设置APP " + packageName + " 悬浮窗警示文字来源: " + source);
     }
 
@@ -67,14 +67,14 @@ public class AppSettingsManager {
      * 获取指定APP的悬浮窗警示文字来源
      */
     public String getAppHintSource(String packageName) {
-        return prefs.getString(KEY_APP_HINT_SOURCE + packageName, Const.DEFAULT_HINT_SOURCE);
+        return mmkv.getString(KEY_APP_HINT_SOURCE + packageName, Const.DEFAULT_HINT_SOURCE);
     }
 
     /**
      * 设置指定APP的自定义悬浮窗警示文字
      */
     public void setAppHintCustomText(String packageName, String customText) {
-        prefs.edit().putString(KEY_APP_HINT_CUSTOM + packageName, customText).apply();
+        mmkv.putString(KEY_APP_HINT_CUSTOM + packageName, customText).commit();
         android.util.Log.d("SettingsManager", "设置APP " + packageName + " 自定义悬浮窗警示文字: " + customText);
     }
 
@@ -82,7 +82,7 @@ public class AppSettingsManager {
      * 获取指定APP的自定义悬浮窗警示文字
      */
     public String getAppHintCustomText(String packageName) {
-        return prefs.getString(KEY_APP_HINT_CUSTOM + packageName, "");
+        return mmkv.getString(KEY_APP_HINT_CUSTOM + packageName, "");
     }
 
     // ===== 算术题难度设置相关方法 =====
@@ -94,12 +94,12 @@ public class AppSettingsManager {
      */
     public void setMathDifficultyMode(String mode) {
         android.util.Log.d("SettingsManager", "设置难度模式: " + mode);
-        prefs.edit().putString(KEY_MATH_DIFFICULTY_MODE, mode).apply();
+        mmkv.putString(KEY_MATH_DIFFICULTY_MODE, mode).commit();
         android.util.Log.d("SettingsManager", "难度模式设置完成");
     }
 
     public String getMathDifficultyMode() {
-        String mode = prefs.getString(KEY_MATH_DIFFICULTY_MODE, "default");
+        String mode = mmkv.getString(KEY_MATH_DIFFICULTY_MODE, "default");
         android.util.Log.d("SettingsManager", "获取难度模式: " + mode);
         return mode;
     }
@@ -108,56 +108,56 @@ public class AppSettingsManager {
      * 设置加法数字位数
      */
     public void setMathAdditionDigits(int digits) {
-        prefs.edit().putInt(KEY_MATH_ADDITION_DIGITS, digits).apply();
+        mmkv.putInt(KEY_MATH_ADDITION_DIGITS, digits).commit();
     }
 
     /**
      * 获取加法数字位数
      */
     public int getMathAdditionDigits() {
-        return prefs.getInt(KEY_MATH_ADDITION_DIGITS, Const.ADD_LEN_DEFAULT);
+        return mmkv.getInt(KEY_MATH_ADDITION_DIGITS, Const.ADD_LEN_DEFAULT);
     }
 
     /**
      * 设置减法数字位数
      */
     public void setMathSubtractionDigits(int digits) {
-        prefs.edit().putInt(KEY_MATH_SUBTRACTION_DIGITS, digits).apply();
+        mmkv.putInt(KEY_MATH_SUBTRACTION_DIGITS, digits).commit();
     }
 
     /**
      * 获取减法数字位数
      */
     public int getMathSubtractionDigits() {
-        return prefs.getInt(KEY_MATH_SUBTRACTION_DIGITS, Const.SUB_LEN_DEFAULT);
+        return mmkv.getInt(KEY_MATH_SUBTRACTION_DIGITS, Const.SUB_LEN_DEFAULT);
     }
 
     /**
      * 设置乘法乘数位数
      */
     public void setMathMultiplicationMultiplierDigits(int digits) {
-        prefs.edit().putInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, digits).apply();
+        mmkv.putInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, digits).commit();
     }
 
     /**
      * 获取乘法乘数位数
      */
     public int getMathMultiplicationMultiplierDigits() {
-        return prefs.getInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, Const.MUL_FIRST_LEN_DEFAULT);
+        return mmkv.getInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, Const.MUL_FIRST_LEN_DEFAULT);
     }
 
     /**
      * 设置乘法被乘数位数
      */
     public void setMathMultiplicationMultiplicandDigits(int digits) {
-        prefs.edit().putInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, digits).apply();
+        mmkv.putInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, digits).commit();
     }
 
     /**
      * 获取乘法被乘数位数
      */
     public int getMathMultiplicationMultiplicandDigits() {
-        return prefs.getInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, Const.MUL_SECOND_LEN_DEFAULT);
+        return mmkv.getInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, Const.MUL_SECOND_LEN_DEFAULT);
     }
 
     // ===== 悬浮窗额外显示日常提醒相关方法 =====
@@ -166,7 +166,7 @@ public class AppSettingsManager {
      * 设置悬浮窗额外显示日常提醒文字
      */
     public void setFloatingStrictReminder(String reminder) {
-        prefs.edit().putString(KEY_FLOATING_STRICT_REMINDER, reminder).apply();
+        mmkv.putString(KEY_FLOATING_STRICT_REMINDER, reminder).commit();
         android.util.Log.d("SettingsManager", "设置悬浮窗日常提醒: " + reminder);
     }
 
@@ -174,14 +174,14 @@ public class AppSettingsManager {
      * 获取悬浮窗额外显示日常提醒文字
      */
     public String getFloatingStrictReminder() {
-        return prefs.getString(KEY_FLOATING_STRICT_REMINDER, "");
+        return mmkv.getString(KEY_FLOATING_STRICT_REMINDER, "");
     }
 
     /**
      * 记录用户是否点击过设置按钮
      */
     public void setFloatingStrictReminderSettingsClicked(boolean clicked) {
-        prefs.edit().putBoolean(KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, clicked).apply();
+        mmkv.putBoolean(KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, clicked).commit();
         android.util.Log.d("SettingsManager", "设置悬浮窗日常提醒设置按钮点击状态: " + clicked);
     }
 
@@ -189,14 +189,14 @@ public class AppSettingsManager {
      * 获取用户是否点击过设置按钮
      */
     public boolean getFloatingStrictReminderSettingsClicked() {
-        return prefs.getBoolean(KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, false);
+        return mmkv.getBoolean(KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, false);
     }
 
     /**
      * 设置悬浮窗良好习惯提醒字体大小
      */
     public void setFloatingStrictReminderFontSize(int fontSize) {
-        prefs.edit().putInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, fontSize).apply();
+        mmkv.putInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, fontSize).commit();
         android.util.Log.d("SettingsManager", "设置悬浮窗良好习惯提醒字体大小: " + fontSize);
     }
 
@@ -204,7 +204,7 @@ public class AppSettingsManager {
      * 获取悬浮窗良好习惯提醒字体大小
      */
     public int getFloatingStrictReminderFontSize() {
-        return prefs.getInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, 18); // 默认18sp
+        return mmkv.getInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, 18); // 默认18sp
     }
 
     // ===== 个人目标相关方法 =====
@@ -213,7 +213,7 @@ public class AppSettingsManager {
      * 设置个人目标标签
      */
     public void setMotivationTag(String tag) {
-        prefs.edit().putString(KEY_MOTIVATION_TAG, tag).apply();
+        mmkv.putString(KEY_MOTIVATION_TAG, tag).commit();
         Share.MOTIVATE_CHANGE = true;
     }
 
@@ -221,14 +221,14 @@ public class AppSettingsManager {
      * 获取个人目标标签
      */
     public String getMotivationTag() {
-        return prefs.getString(KEY_MOTIVATION_TAG, Const.TARGET_TO_BE_SET);
+        return mmkv.getString(KEY_MOTIVATION_TAG, Const.TARGET_TO_BE_SET);
     }
 
     /**
      * 设置目标完成日期
      */
     public void setTargetCompletionDate(String date) {
-        prefs.edit().putString(KEY_TARGET_COMPLETION_DATE, date).apply();
+        mmkv.putString(KEY_TARGET_COMPLETION_DATE, date).commit();
         Share.MOTIVATE_CHANGE = true;
     }
 
@@ -236,7 +236,7 @@ public class AppSettingsManager {
      * 获取目标完成日期
      */
     public String getTargetCompletionDate() {
-        return prefs.getString(KEY_TARGET_COMPLETION_DATE, Const.TARGET_TO_BE_SET);
+        return mmkv.getString(KEY_TARGET_COMPLETION_DATE, Const.TARGET_TO_BE_SET);
     }
 
     /**
@@ -252,28 +252,28 @@ public class AppSettingsManager {
      * 设置悬浮窗上边缘距离顶部的距离
      */
     public void setFloatingTopOffset(int offset) {
-        prefs.edit().putInt(KEY_FLOATING_TOP_OFFSET, offset).apply();
+        mmkv.putInt(KEY_FLOATING_TOP_OFFSET, offset).commit();
     }
 
     /**
      * 获取悬浮窗上边缘距离顶部的距离
      */
     public int getFloatingTopOffset() {
-        return prefs.getInt(KEY_FLOATING_TOP_OFFSET, DEFAULT_TOP_OFFSET);
+        return mmkv.getInt(KEY_FLOATING_TOP_OFFSET, DEFAULT_TOP_OFFSET);
     }
 
     /**
      * 设置悬浮窗下边缘距离底部的距离
      */
     public void setFloatingBottomOffset(int offset) {
-        prefs.edit().putInt(KEY_FLOATING_BOTTOM_OFFSET, offset).apply();
+        mmkv.putInt(KEY_FLOATING_BOTTOM_OFFSET, offset).commit();
     }
 
     /**
      * 获取悬浮窗下边缘距离底部的距离
      */
     public int getFloatingBottomOffset() {
-        return prefs.getInt(KEY_FLOATING_BOTTOM_OFFSET, DEFAULT_BOTTOM_OFFSET);
+        return mmkv.getInt(KEY_FLOATING_BOTTOM_OFFSET, DEFAULT_BOTTOM_OFFSET);
     }
 
     // 题型设置相关常量
@@ -284,13 +284,13 @@ public class AppSettingsManager {
      * 获取数学题题型
      */
     public String getMathQuestionType() {
-        return prefs.getString(KEY_MATH_QUESTION_TYPE, DEFAULT_QUESTION_TYPE);
+        return mmkv.getString(KEY_MATH_QUESTION_TYPE, DEFAULT_QUESTION_TYPE);
     }
 
     /**
      * 设置数学题题型
      */
     public void setMathQuestionType(String questionType) {
-        prefs.edit().putString(KEY_MATH_QUESTION_TYPE, questionType).apply();
+        mmkv.putString(KEY_MATH_QUESTION_TYPE, questionType).commit();
     }
 }

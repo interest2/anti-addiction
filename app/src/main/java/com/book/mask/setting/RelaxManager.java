@@ -1,11 +1,11 @@
 package com.book.mask.setting;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.book.mask.config.CustomApp;
 import com.book.mask.util.DateUtils;
+import com.tencent.mmkv.MMKV;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -32,10 +32,10 @@ public class RelaxManager {
     private static final int[] relaxedIntervalArray = {600, 900, 1200, 1800};
 //    private static final int[] strictIntervalArray = {3, 6, 12};
 //    private static final int[] relaxedIntervalArray = {20, 30, 40};
-    private SharedPreferences prefs;
+    private MMKV mmkv;
 
     public RelaxManager(Context context) {
-        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        mmkv = MMKV.mmkvWithID(PREFS_NAME);
     }
 
     // 时间格式化器
@@ -86,7 +86,7 @@ public class RelaxManager {
      * 兜底的间隔（秒），当 currentActiveApp 为空时触发
      */
     public int getDefaultInterval() {
-        return prefs.getInt(KEY_DEFAULT_SHOW_INTERVAL, getMaxStrictInterval());
+        return mmkv.getInt(KEY_DEFAULT_SHOW_INTERVAL, getMaxStrictInterval());
     }
 
     /**
@@ -94,7 +94,7 @@ public class RelaxManager {
      */
     public int getAppInterval(CustomApp app) {
         String key = KEY_SHOW_INTERVAL + app.getPackageName();
-        return prefs.getInt(key, getMaxStrictInterval());
+        return mmkv.getInt(key, getMaxStrictInterval());
     }
 
     /**
@@ -105,7 +105,7 @@ public class RelaxManager {
         if (packageName == null) return;
         
         String key = KEY_SHOW_INTERVAL + packageName;
-        prefs.edit().putInt(key, seconds).apply();
+        mmkv.putInt(key, seconds).commit();
 
         android.util.Log.d("SettingsManager", "APP " + packageName + " 设置时间间隔为: " + seconds + "秒");
         android.util.Log.d("SettingsManager", "  新设置将在下次关闭悬浮窗后生效");
@@ -153,9 +153,9 @@ public class RelaxManager {
         String currentDate = DateUtils.getCurrentDate();
         String countKey = KEY_RELAXED_CLOSE_COUNT + packageName;
         String dateKey = KEY_LAST_RELAXED_CLOSE_DATE + packageName;
-        String lastDate = prefs.getString(dateKey, "");
+        String lastDate = mmkv.getString(dateKey, "");
         
-        int count = prefs.getInt(countKey, 0);
+        int count = mmkv.getInt(countKey, 0);
 
         if (currentDate.equals(lastDate)) {
             // 是同一天，计数+1
@@ -165,10 +165,9 @@ public class RelaxManager {
             count = 1;
         }
 
-        prefs.edit()
-             .putInt(countKey, count)
+        mmkv.putInt(countKey, count)
              .putString(dateKey, currentDate)
-             .apply();
+             .commit();
         
         android.util.Log.d("SettingsManager", "APP " + packageName + " 宽松版关闭次数增加. 当前次数: " + count + " 日期: " + currentDate);
     }
@@ -180,10 +179,10 @@ public class RelaxManager {
         String currentDate = DateUtils.getCurrentDate();
         String countKey = KEY_RELAXED_CLOSE_COUNT + app.getPackageName();
         String dateKey = KEY_LAST_RELAXED_CLOSE_DATE + app.getPackageName();
-        String lastDate = prefs.getString(dateKey, "");
+        String lastDate = mmkv.getString(dateKey, "");
         
         if (currentDate.equals(lastDate)) {
-            return prefs.getInt(countKey, 0);
+            return mmkv.getInt(countKey, 0);
         }
         
         // 如果不是同一天，返回0
@@ -197,10 +196,9 @@ public class RelaxManager {
         String currentDate = DateUtils.getCurrentDate();
         String countKey = KEY_RELAXED_CLOSE_COUNT + app.getPackageName();
         String dateKey = KEY_LAST_RELAXED_CLOSE_DATE + app.getPackageName();
-        prefs.edit()
-             .putInt(countKey, count)
+        mmkv.putInt(countKey, count)
              .putString(dateKey, currentDate)
-             .apply();
+             .commit();
     }
     
     /**
@@ -215,10 +213,9 @@ public class RelaxManager {
         String intervalKey = KEY_LAST_CLOSE_INTERVAL + packageName;
         long currentTime = System.currentTimeMillis();
         /* 这里是分别对 2 个 key 进行设置 */
-        prefs.edit()
-            .putLong(timeKey, currentTime)
+        mmkv.putLong(timeKey, currentTime)
             .putInt(intervalKey, intervalSeconds)
-            .apply();
+            .commit();
         android.util.Log.d("SettingsManager", "记录APP " + packageName + " 关闭时间: " + formatTime(currentTime) + ", 使用间隔: " + intervalSeconds + "秒");
     }
     
@@ -227,7 +224,7 @@ public class RelaxManager {
      */
     public long getAppLastCloseTime(CustomApp app) {
         String key = KEY_LAST_CLOSE_TIME + app.getPackageName();
-        return prefs.getLong(key, 0);
+        return mmkv.getLong(key, 0);
     }
 
     /**
@@ -235,7 +232,7 @@ public class RelaxManager {
      */
     public int getAppLastCloseInterval(CustomApp app) {
         String key = KEY_LAST_CLOSE_INTERVAL + app.getPackageName();
-        return prefs.getInt(key, getMaxStrictInterval());
+        return mmkv.getInt(key, getMaxStrictInterval());
     }
 
     /**
@@ -278,10 +275,10 @@ public class RelaxManager {
      */
     public Boolean isAppMonitoringEnabled(String packageName) {
         String key = "app_monitoring_enabled_" + packageName;
-        if (!prefs.contains(key)) {
+        if (!mmkv.contains(key)) {
             return null; // 还没有设置过
         }
-        return prefs.getBoolean(key, false);
+        return mmkv.getBoolean(key, false);
     }
 
     /**
@@ -289,7 +286,7 @@ public class RelaxManager {
      */
     public void setAppMonitoringEnabled(String packageName, boolean enabled) {
         String key = "app_monitoring_enabled_" + packageName;
-        prefs.edit().putBoolean(key, enabled).apply();
+        mmkv.putBoolean(key, enabled).commit();
         android.util.Log.d("SettingsManager", "设置APP监测状态: " + packageName + " = " + enabled);
     }
 

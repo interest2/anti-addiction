@@ -1,7 +1,6 @@
 package com.book.mask.network;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Handler;
@@ -16,6 +15,7 @@ import com.book.mask.config.Const;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.util.ContentUtils;
+import com.tencent.mmkv.MMKV;
 
 import org.json.JSONObject;
 
@@ -29,7 +29,7 @@ public class TextFetcher {
     private Context context;
     private ExecutorService executorService;
     private Handler mainHandler;
-    private SharedPreferences prefs;
+    private MMKV mmkv;
     private RelaxManager relaxManager;
     private AppSettingsManager appSettingsManager;
     
@@ -42,7 +42,7 @@ public class TextFetcher {
         this.context = context;
         this.executorService = Executors.newSingleThreadExecutor();
         this.mainHandler = new Handler(Looper.getMainLooper());
-        this.prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        this.mmkv = MMKV.mmkvWithID(PREF_NAME);
         this.relaxManager = new RelaxManager(context);
         this.appSettingsManager = new AppSettingsManager(context);
     }
@@ -51,7 +51,7 @@ public class TextFetcher {
      * 获取缓存的文字内容
      */
     public String getCachedText() {
-        String cachedText = prefs.getString(PREF_KEY_CACHED_TEXT, null);
+        String cachedText = mmkv.getString(PREF_KEY_CACHED_TEXT, null);
         if (cachedText != null) {
             return cachedText;
         }
@@ -140,10 +140,9 @@ public class TextFetcher {
      */
     private void cacheText(String text) {
         try {
-            prefs.edit()
-                    .putString(PREF_KEY_CACHED_TEXT, text)
+            mmkv.putString(PREF_KEY_CACHED_TEXT, text)
                     .putLong(PREF_KEY_LAST_UPDATE, System.currentTimeMillis())
-                    .apply();
+                    .commit();
             Log.d(TAG, "文字已缓存");
         } catch (Exception e) {
             Log.e(TAG, "缓存文字失败", e);
