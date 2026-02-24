@@ -46,6 +46,9 @@ public class MathChallengeManager {
     private CustomApp currentApp; // 当前APP（统一使用CustomApp）
     private RelaxManager relaxManager;
     private AppSettingsManager appSettingsManager;
+    
+    // 用于跟踪是否正在选择文字，避免打断用户的选择操作
+    private boolean isTextSelecting = false;
 
     static HashMap<String, String> challenge = new HashMap<>();
 
@@ -62,10 +65,25 @@ public class MathChallengeManager {
     // 数学题相关
     private String currentAnswer = "";
     private static boolean isMathChallengeActive = false;
-    // type 0：算术题；1：应用题
+    // type 0：算术题；1：应用题；2：英文阅读
     private int currentType = 0;
     private static final int TYPE_ARITHMETIC = 0;
     private static final int TYPE_WORD = 1;
+    private static final int TYPE_ENGLISH = 2;
+
+    // 英文阅读题缓存
+    static HashMap<String, String> englishChallenge = new HashMap<>();
+
+    static {
+        String eq = "Supermarkets were still a California phenomenon; District food shopping was done in small groceries, in red-fronted outlets of the Great Atlantic & Pacific Tea Company, in open markets, or on pavements." +
+                "\n\n" +
+                "A.Supermarkets were prevalent in California, while food shopping in other districts was typically done in small groceries, open markets, or on pavements.\n" +
+                "B.California exclusively used open markets for food shopping, with supermarkets being a rare phenomenon.\n" +
+                "C.Supermarkets were the dominant form of food shopping in all districts, with no use of small groceries or open markets.";
+        String ea = "A";
+        englishChallenge.put("question", eq);
+        englishChallenge.put("answer", ea);
+    }
 
     // 回调接口
     public interface OnMathChallengeListener {
@@ -185,6 +203,9 @@ public class MathChallengeManager {
         if ("arithmetic_only".equals(questionType)) {
             // 纯算术题
             currentType = TYPE_ARITHMETIC;
+        } else if ("english_reading".equals(questionType)) {
+            // 英文阅读
+            currentType = TYPE_ENGLISH;
         } else {
             // 混合型（保持原有的概率逻辑）
             currentType = new Random().nextInt(100) % 9 == 0 ? TYPE_WORD : TYPE_ARITHMETIC;
@@ -194,10 +215,106 @@ public class MathChallengeManager {
         TextView questionText = floatingView.findViewById(R.id.tv_math_question);
         EditText answerEdit = floatingView.findViewById(R.id.et_math_answer);
         TextView resultText = floatingView.findViewById(R.id.tv_math_result);
+        android.widget.ScrollView scrollView = floatingView.findViewById(R.id.sv_math_question);
         
-        // 根据type动态设置字体大小
-        int fontSize = currentType == TYPE_WORD ? 16 : 20;
-        questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
+        // 确保题目文字可以选中、复制和翻译
+        questionText.setTextIsSelectable(true);
+        questionText.setLongClickable(true);
+        questionText.setFocusable(true);
+        questionText.setFocusableInTouchMode(true);
+        
+        // 确保ScrollView不会拦截文本选择事件
+        if (scrollView != null) {
+            scrollView.setDescendantFocusability(android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        }
+        
+        // 设置自定义文本选择回调，确保菜单能正常显示
+        questionText.setCustomSelectionActionModeCallback(new android.view.ActionMode.Callback() {
+            @Override
+            public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                // 标记为正在选择文字
+                isTextSelecting = true;
+                return true; // 返回true以显示默认菜单（包括复制、全选等）
+            }
+
+            @Override
+            public boolean onPrepareActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                return false; // 使用默认菜单
+            }
+
+            @Override
+            public boolean onActionItemClicked(android.view.ActionMode mode, android.view.MenuItem item) {
+                return false; // 让系统处理默认操作
+            }
+
+            @Override
+            public void onDestroyActionMode(android.view.ActionMode mode) {
+                // 文本选择菜单关闭时，延迟取消标记
+                handler.postDelayed(() -> {
+                    isTextSelecting = false;
+                }, 300);
+            }
+        });
+        
+        // 根据题型调整UI样式和位置
+        if (currentType == TYPE_ENGLISH) {
+            // 英文阅读：浅灰色背景、黑字、常规不加粗、位置在关闭按钮下方、宽度占满屏幕
+            mathLayout.setBackgroundColor(0xFFF5F5F5); // 浅灰色背景，有利于阅读
+            questionText.setTextColor(0xFF000000); // 黑色文字
+            questionText.setTypeface(null, android.graphics.Typeface.NORMAL); // 常规不加粗
+            
+            // 调整位置和宽度：顶部正好低于关闭按钮，宽度占满屏幕
+            // 关闭按钮：marginTop=50dp, height=40dp，所以阅读区topMargin=90dp
+            android.widget.RelativeLayout.LayoutParams layoutParams = 
+                (android.widget.RelativeLayout.LayoutParams) mathLayout.getLayoutParams();
+            layoutParams.removeRule(android.widget.RelativeLayout.BELOW);
+            layoutParams.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
+            int topMarginPx = (int) (90 * context.getResources().getDisplayMetrics().density); // 90dp转px，正好低于关闭按钮
+            layoutParams.topMargin = topMarginPx;
+            layoutParams.leftMargin = 0; // 左边距为0，占满屏幕
+            layoutParams.rightMargin = 0; // 右边距为0，占满屏幕
+            mathLayout.setLayoutParams(layoutParams);
+            
+            // 设置ScrollView最大高度，为阅读题提供更大的显示空间
+            if (scrollView != null) {
+                int maxHeightPx = (int) (500 * context.getResources().getDisplayMetrics().density); // 500dp转px
+                android.widget.LinearLayout.LayoutParams scrollParams = 
+                    (android.widget.LinearLayout.LayoutParams) scrollView.getLayoutParams();
+                scrollParams.height = maxHeightPx;
+                scrollView.setLayoutParams(scrollParams);
+            }
+            
+            // 设置字体大小
+            questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        } else {
+            // 其他题型：恢复默认样式
+            mathLayout.setBackgroundColor(0xFF333333); // 深灰色背景
+            questionText.setTextColor(0xFFFFFFFF); // 白色文字
+            questionText.setTypeface(null, android.graphics.Typeface.BOLD); // 加粗
+            
+            // 恢复默认位置和边距
+            android.widget.RelativeLayout.LayoutParams layoutParams = 
+                (android.widget.RelativeLayout.LayoutParams) mathLayout.getLayoutParams();
+            layoutParams.removeRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
+            layoutParams.addRule(android.widget.RelativeLayout.BELOW, R.id.top_info_layout);
+            layoutParams.topMargin = (int) (10 * context.getResources().getDisplayMetrics().density); // 10dp转px
+            layoutParams.leftMargin = (int) (20 * context.getResources().getDisplayMetrics().density); // 20dp转px
+            layoutParams.rightMargin = (int) (20 * context.getResources().getDisplayMetrics().density); // 20dp转px
+            mathLayout.setLayoutParams(layoutParams);
+            
+            // 恢复ScrollView默认最大高度
+            if (scrollView != null) {
+                int maxHeightPx = (int) (300 * context.getResources().getDisplayMetrics().density); // 300dp转px
+                android.widget.LinearLayout.LayoutParams scrollParams = 
+                    (android.widget.LinearLayout.LayoutParams) scrollView.getLayoutParams();
+                scrollParams.height = android.widget.LinearLayout.LayoutParams.WRAP_CONTENT;
+                scrollView.setLayoutParams(scrollParams);
+            }
+            
+            // 根据type动态设置字体大小（应用题使用较小字体）
+            int fontSize = currentType == TYPE_WORD ? 16 : 20;
+            questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
+        }
 
         /**
          * 获取题目
@@ -248,8 +365,24 @@ public class MathChallengeManager {
             Runnable focusKeeper = new Runnable() {
                 @Override
                 public void run() {
-                    if (isMathChallengeActive && answerEdit != null) {
-                        if (!answerEdit.hasFocus()) {
+                    if (isMathChallengeActive && answerEdit != null && questionText != null) {
+                        // 如果正在选择文字，不要强制让EditText获得焦点
+                        if (isTextSelecting) {
+                            // 检查是否还有文字被选中
+                            try {
+                                int selectionStart = questionText.getSelectionStart();
+                                int selectionEnd = questionText.getSelectionEnd();
+                                if (selectionStart < 0 || selectionEnd < 0 || selectionStart == selectionEnd) {
+                                    // 没有文字被选中，取消选择标记
+                                    isTextSelecting = false;
+                                }
+                            } catch (Exception e) {
+                                isTextSelecting = false;
+                            }
+                        }
+                        
+                        // 如果不在选择文字状态，且EditText失去焦点，则重新获得焦点
+                        if (!isTextSelecting && !answerEdit.hasFocus()) {
                             Log.d(TAG, "检测到EditText失去焦点，重新获得焦点");
                             answerEdit.requestFocus();
 
@@ -281,6 +414,23 @@ public class MathChallengeManager {
         // 普通算术题
         if(currentType == TYPE_ARITHMETIC){
             return generateMathQuestion();
+        // 英文阅读
+        }else if(currentType == TYPE_ENGLISH){
+            // 先尝试从缓存获取
+            String cachedQuestion = englishChallenge.get("question");
+            String cachedAnswer = englishChallenge.get("answer");
+
+            // 异步获取新的远程题目，为下次使用做准备
+            fetchLatestEnglishReading();
+
+            if (cachedQuestion != null && cachedAnswer != null) {
+                Log.d(TAG, "使用缓存的英文阅读题");
+                return cachedQuestion;
+            }
+
+            // 缓存中没有，使用本地题目作为备选
+            Log.w(TAG, "缓存中没有英文阅读题，使用本地算术题作为备选");
+            return generateMathQuestion();
         // 情景逻辑题
         }else{
             // 先尝试从缓存获取
@@ -304,6 +454,9 @@ public class MathChallengeManager {
     private String unifyGetAnswer(String question) {
         if(currentType == TYPE_ARITHMETIC){
             return String.valueOf(ArithmeticUtils.getMathAnswer(question));
+        }else if(currentType == TYPE_ENGLISH){
+            /*缓存获取英文阅读答案*/
+            return englishChallenge.get("answer");
         }else{
             /*缓存获取答案*/
             return challenge.get("answer");
@@ -360,6 +513,58 @@ public class MathChallengeManager {
     }
 
     /**
+     * 异步获取英文阅读题目并缓存
+     */
+    public void fetchLatestEnglishReading() {
+        Log.d(TAG, "开始获取最新英文阅读题目");
+        
+        new Thread(() -> {
+            try {
+                String remoteChallenge = httpObtainEnglishReading();
+                if (remoteChallenge != null) {
+                    org.json.JSONObject jsonResponse = new org.json.JSONObject(remoteChallenge);
+                    String remoteQuestion = (String) jsonResponse.get("question");
+                    String remoteAnswer = (String) jsonResponse.get("answer");
+                    
+                    // 缓存题目和答案
+                    englishChallenge.put("question", remoteQuestion);
+                    englishChallenge.put("answer", remoteAnswer);
+                    
+                    Log.d(TAG, "英文阅读题获取成功并已缓存");
+                } else {
+                    Log.w(TAG, "获取英文阅读题失败");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "获取英文阅读题时发生异常", e);
+            }
+        }).start();
+    }
+
+    /**
+     * http 获取英文阅读题目
+     */
+    private String httpObtainEnglishReading() {
+        try {
+            String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
+            int readingLength = appSettingsManager.getEnglishReadingLength();
+            // 确保阅读字数至少为最小值200
+            readingLength = Math.max(readingLength, Const.ENGLISH_READING_LENGTH_MIN);
+
+            JSONObject reqJson = new JSONObject();
+            reqJson.put("devId", androidId);
+            reqJson.put("length", readingLength);
+
+            String response = ContentUtils.doHttpPost(Const.DOMAIN_URL + Const.ENGLISH_READING,
+                    reqJson.toString(), java.util.Collections.singletonMap("Accept", "application/json"));
+            return ContentUtils.parseRespJson(response);
+
+        } catch (Exception e) {
+            Log.e(TAG, "HTTP请求英文阅读题异常", e);
+            return null;
+        }
+    }
+
+    /**
      * 隐藏数学题验证界面
      */
     public void hideMathChallenge() {
@@ -377,9 +582,37 @@ public class MathChallengeManager {
         // 清除EditText焦点
         answerEdit.clearFocus();
         
+        // 恢复默认样式和位置（为下次显示做准备）
+        mathLayout.setBackgroundColor(0xFF333333); // 恢复深灰色背景
+        TextView questionText = floatingView.findViewById(R.id.tv_math_question);
+        if (questionText != null) {
+            questionText.setTextColor(0xFFFFFFFF); // 恢复白色文字
+            questionText.setTypeface(null, android.graphics.Typeface.BOLD); // 恢复加粗
+        }
+        
+        // 恢复ScrollView默认最大高度
+        android.widget.ScrollView scrollView = floatingView.findViewById(R.id.sv_math_question);
+        if (scrollView != null) {
+            android.widget.LinearLayout.LayoutParams scrollParams = 
+                (android.widget.LinearLayout.LayoutParams) scrollView.getLayoutParams();
+            scrollParams.height = android.widget.LinearLayout.LayoutParams.WRAP_CONTENT;
+            scrollView.setLayoutParams(scrollParams);
+        }
+        
+        // 恢复默认位置和边距
+        android.widget.RelativeLayout.LayoutParams mathLayoutParams = 
+            (android.widget.RelativeLayout.LayoutParams) mathLayout.getLayoutParams();
+        mathLayoutParams.removeRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
+        mathLayoutParams.addRule(android.widget.RelativeLayout.BELOW, R.id.top_info_layout);
+        mathLayoutParams.topMargin = (int) (10 * context.getResources().getDisplayMetrics().density); // 10dp转px
+        mathLayoutParams.leftMargin = (int) (20 * context.getResources().getDisplayMetrics().density); // 20dp转px
+        mathLayoutParams.rightMargin = (int) (20 * context.getResources().getDisplayMetrics().density); // 20dp转px
+        mathLayout.setLayoutParams(mathLayoutParams);
+        
         // 隐藏数学题区域
         mathLayout.setVisibility(View.GONE);
         isMathChallengeActive = false;
+        isTextSelecting = false; // 重置文字选择状态
         
         // 通知AccessibilityService数学题验证结束
         if (accessibilityService != null) {
@@ -388,10 +621,10 @@ public class MathChallengeManager {
         
         // 重新设置悬浮窗为不可获得焦点，避免影响其他应用
         // 保持与showFloatingWindow中的标志位设置一致
-        layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
+        this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
                             WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL |
                             WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
-        windowManager.updateViewLayout(floatingView, layoutParams);
+        windowManager.updateViewLayout(floatingView, this.layoutParams);
         
         Log.d(TAG, "隐藏数学题验证界面，输入法已隐藏");
     }
@@ -449,9 +682,49 @@ public class MathChallengeManager {
                     currentAnswer = unifyGetAnswer(question);
                     questionText.setText(question);
 
-                    // 根据type动态设置字体大小
-                    int fontSize = currentType == TYPE_WORD ? 16 : 20;
-                    questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
+                    // 确保题目文字可以选中、复制和翻译
+                    questionText.setTextIsSelectable(true);
+                    questionText.setLongClickable(true);
+                    questionText.setFocusable(true);
+                    questionText.setFocusableInTouchMode(true);
+                    
+                    // 重新设置自定义文本选择回调
+                    questionText.setCustomSelectionActionModeCallback(new android.view.ActionMode.Callback() {
+                        @Override
+                        public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                            isTextSelecting = true;
+                            return true;
+                        }
+
+                        @Override
+                        public boolean onPrepareActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                            return false;
+                        }
+
+                        @Override
+                        public boolean onActionItemClicked(android.view.ActionMode mode, android.view.MenuItem item) {
+                            return false;
+                        }
+
+                        @Override
+                        public void onDestroyActionMode(android.view.ActionMode mode) {
+                            handler.postDelayed(() -> {
+                                isTextSelecting = false;
+                            }, 300);
+                        }
+                    });
+
+                    // 根据题型设置样式（英文阅读保持白底黑字、常规不加粗）
+                    if (currentType == TYPE_ENGLISH) {
+                        questionText.setTextColor(0xFF000000); // 黑色文字
+                        questionText.setTypeface(null, android.graphics.Typeface.NORMAL); // 常规不加粗
+                        questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+                    } else {
+                        questionText.setTextColor(0xFFFFFFFF); // 白色文字
+                        questionText.setTypeface(null, android.graphics.Typeface.BOLD); // 加粗
+                        int fontSize = currentType == TYPE_WORD ? 16 : 20;
+                        questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
+                    }
 
                     // 清空输入框但保持焦点
                     answerEdit.setText("");

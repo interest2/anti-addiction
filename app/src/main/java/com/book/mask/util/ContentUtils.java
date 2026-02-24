@@ -30,7 +30,7 @@ public class ContentUtils {
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(10000);
-            conn.setReadTimeout(15000);
+            conn.setReadTimeout(90000);
             conn.setDoOutput(true);
             conn.setDoInput(true);
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");

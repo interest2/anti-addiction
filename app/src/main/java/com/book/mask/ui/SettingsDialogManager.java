@@ -392,9 +392,27 @@ public class SettingsDialogManager {
     public void showMathDifficultyDialog() {
         String typeMixed = "混杂（应用题、算术题）";
         String typeArithmetic = "算术题";
-        String[] difficultyOptions = {typeMixed, typeArithmetic};
+        String typeEnglishReading = "英文阅读";
+        
+        // 根据解锁状态决定是否显示英文阅读选项
+        boolean isEnglishReadingUnlocked = appSettingsManager.isEnglishReadingUnlocked();
+        String[] difficultyOptions;
+        
+        if (isEnglishReadingUnlocked) {
+            // 已解锁，显示所有选项
+            difficultyOptions = new String[]{typeMixed, typeArithmetic, typeEnglishReading};
+        } else {
+            // 未解锁，只显示前两个选项
+            difficultyOptions = new String[]{typeMixed, typeArithmetic};
+        }
+        
         String currentMode = appSettingsManager.getMathQuestionType();
-        int checkedItem = "arithmetic_only".equals(currentMode) ? 1 : 0;
+        int checkedItem = 0;
+        if ("arithmetic_only".equals(currentMode)) {
+            checkedItem = 1;
+        } else if ("english_reading".equals(currentMode) && isEnglishReadingUnlocked) {
+            checkedItem = 2;
+        }
 
         new android.app.AlertDialog.Builder(context)
             .setTitle("关闭悬浮窗所需答题的类型")
@@ -409,8 +427,50 @@ public class SettingsDialogManager {
                     android.widget.Toast.makeText(context, "已设置为" + typeArithmetic, android.widget.Toast.LENGTH_SHORT).show();
                     // 显示次级弹窗（原有的难度设置）
                     showArithmeticDifficultyDialog();
+                } else if (which == 2 && isEnglishReadingUnlocked) {
+                    // 选择英文阅读（仅在已解锁时）
+                    appSettingsManager.setMathQuestionType("english_reading");
+                    android.widget.Toast.makeText(context, "已设置为" + typeEnglishReading, android.widget.Toast.LENGTH_SHORT).show();
+                    // 显示阅读字数设置弹窗
+                    showEnglishReadingLengthDialog();
                 }
                 dialog.dismiss();
+            })
+            .setNegativeButton("取消", null)
+            .show();
+    }
+
+    /**
+     * 显示英文阅读字数设置对话框（次级弹窗）
+     */
+    private void showEnglishReadingLengthDialog() {
+        // 创建输入框
+        android.widget.EditText input = new android.widget.EditText(context);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setHint("请输入阅读字数");
+        int currentLength = appSettingsManager.getEnglishReadingLength();
+        input.setText(String.valueOf(currentLength));
+        input.setSelection(input.getText().length()); // 选中所有文本，方便修改
+
+        new android.app.AlertDialog.Builder(context)
+            .setTitle("设置阅读字数")
+            .setMessage("阅读字数范围：200-1000")
+            .setView(input)
+            .setPositiveButton("确定", (dialog, which) -> {
+                String inputText = input.getText().toString().trim();
+                if (!inputText.isEmpty()) {
+                    try {
+                        int length = Integer.parseInt(inputText);
+                        if (length >= Const.ENGLISH_READING_LENGTH_MIN && length <= Const.ENGLISH_READING_LENGTH_MAX) {
+                            appSettingsManager.setEnglishReadingLength(length);
+                            android.widget.Toast.makeText(context, "已设置阅读字数为：" + length, android.widget.Toast.LENGTH_SHORT).show();
+                        } else {
+                            android.widget.Toast.makeText(context, "阅读字数必须在" + Const.ENGLISH_READING_LENGTH_MIN + "-" + Const.ENGLISH_READING_LENGTH_MAX + "之间", android.widget.Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (NumberFormatException e) {
+                        android.widget.Toast.makeText(context, "请输入有效数字", android.widget.Toast.LENGTH_SHORT).show();
+                    }
+                }
             })
             .setNegativeButton("取消", null)
             .show();

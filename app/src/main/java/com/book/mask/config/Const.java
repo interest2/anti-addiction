@@ -17,6 +17,11 @@ public class Const {
     public static final int MUL_LEN_MIN = 2;
     public static final int MUL_LEN_MAX = 4;
 
+    // 英文阅读字数范围
+    public static final int ENGLISH_READING_LENGTH_MIN = 200;
+    public static final int ENGLISH_READING_LENGTH_MAX = 1000;
+    public static final int ENGLISH_READING_LENGTH_DEFAULT = 300;
+
 //    算术题-卡片难度
     public static final int ADD_LEN_CARD = 7;
     public static final int SUB_LEN_CARD = 7;
@@ -35,6 +40,7 @@ public class Const {
     public static final String DOMAIN_URL = "https://www.ratetend.com:5001/antiAddict"; // 请替换为实际的地址
     public static final String LLM_PATH_V2 = "/llm/v2";
     public static final String CHALLENGE = "/challenge";
+    public static final String ENGLISH_READING = "/reading";
     public static final String REPORT_PATH = "/report";
     public static final String LATEST_VERSION_PATH = "/latestAppVersion";
     public static final String CONTENT_TYPE = "application/json";

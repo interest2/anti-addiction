@@ -24,29 +24,33 @@ public class FloatHelper {
      * 判断是否是输入法应用
      */
     static boolean isInputMethodApp(String packageName) {
-        // 常见输入法包名列表
+        // 输入法特殊包名列表（含input的包名直接放行，详见方法后的注释）
         String[] inputMethodPackages = {
-                "com.baidu.input",           // 百度输入法
-                "com.baidu.input_hihonor",   // 荣耀百度输入法
-                "com.sohu.inputmethod.sogou", // 搜狗输入法
-                "com.iflytek.inputmethod",   // 讯飞输入法
                 "com.touchtype.swiftkey",    // SwiftKey
-                "com.google.android.inputmethod.latin", // Google输入法
-                "com.android.inputmethod.latin", // 系统输入法
-                "com.samsung.android.honeyboard", // 三星输入法
-                "com.huawei.inputmethod",    // 华为输入法
-                "com.xiaomi.inputmethod",    // 小米输入法
                 "com.tencent.qqpinyin",      // QQ输入法
-                "com.qihoo.inputmethod"      // 360输入法
+                "com.samsung.android.honeyboard" // 三星输入法
         };
 
         for (String inputMethodPackage : inputMethodPackages) {
-            if (packageName.contains(inputMethodPackage) || packageName.contains("input")) {
+            if (packageName.contains("input") || packageName.contains(inputMethodPackage)) {
                 return true;
             }
         }
 
         return false;
+//        "com.baidu.input",           // 百度输入法
+//        "com.baidu.input_hihonor",   // 荣耀百度输入法
+//        "com.sohu.inputmethod.sogou", // 搜狗输入法
+//        "com.iflytek.inputmethod",   // 讯飞输入法
+//        "com.google.android.inputmethod.latin", // Google输入法
+//        "com.android.inputmethod.latin", // 系统输入法
+//        "com.huawei.inputmethod",    // 华为输入法
+//        "com.xiaomi.inputmethod",    // 小米输入法
+//        "com.qihoo.inputmethod",     // 360输入法
+//        "com.oppo.inputmethod",      // OPPO输入法
+//        "com.coloros.inputmethod",   // ColorOS输入法
+//        "com.vivo.inputmethod",      // vivo输入法
+//        "com.bbk.inputmethod"       // vivo输入法（旧版本）
     }
 
     public static String hintDate(String targetDateStr){

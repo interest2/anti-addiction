@@ -53,15 +53,29 @@
         android:gravity="center"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/tv_math_question"
-            android:layout_width="wrap_content"
+        <ScrollView
+            android:id="@+id/sv_math_question"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="3 + 5 = ?"
-            android:textColor="#FFFFFF"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="12dp" />
+            android:maxHeight="300dp"
+            android:layout_marginBottom="12dp"
+            android:fillViewport="false"
+            android:descendantFocusability="afterDescendants">
+
+            <TextView
+                android:id="@+id/tv_math_question"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="3 + 5 = ?"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textIsSelectable="true"
+                android:longClickable="true"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+
+        </ScrollView>
 
         <LinearLayout
             android:layout_width="match_parent"

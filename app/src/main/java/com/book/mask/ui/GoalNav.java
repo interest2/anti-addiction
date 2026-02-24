@@ -23,6 +23,12 @@ public class GoalNav extends Fragment {
     private SettingsDialogManager settingsDialogManager;
     private TextView tvGoalCountdown;
     private Button btnTagSetting, btnTargetDateSetting;
+    
+    // 连续点击计数器
+    private int clickCount = 0;
+    private long lastClickTime = 0;
+    private static final int REQUIRED_CLICKS = 20;
+    private static final long CLICK_TIMEOUT = 3000; // 3秒内有效
 
     @Nullable
     @Override
@@ -57,6 +63,10 @@ public class GoalNav extends Fragment {
             settingsDialogManager.showFloatingStrictReminderDialog();
         });
         
+        // 在空白处（标题）添加连续点击20次的检测逻辑
+        TextView tvTitle = view.findViewById(R.id.tv_goal_title);
+        tvTitle.setOnClickListener(v -> handleSecretClick());
+        
         return view;
     }
 
@@ -76,5 +86,40 @@ public class GoalNav extends Fragment {
         // 倒计时
         String countdown = FloatHelper.hintDate(date);
         tvGoalCountdown.setText(countdown.isEmpty() ? "距离目标：--天" : countdown);
+    }
+    
+    /**
+     * 处理隐藏的连续点击检测
+     */
+    private void handleSecretClick() {
+        long currentTime = System.currentTimeMillis();
+        
+        // 如果距离上次点击超过3秒，重置计数器
+        if (currentTime - lastClickTime > CLICK_TIMEOUT) {
+            clickCount = 0;
+        }
+        
+        clickCount++;
+        lastClickTime = currentTime;
+        
+        // 达到20次点击，解锁英文阅读功能
+        if (clickCount >= REQUIRED_CLICKS) {
+            if (!appSettingsManager.isEnglishReadingUnlocked()) {
+                appSettingsManager.setEnglishReadingUnlocked(true);
+                android.widget.Toast.makeText(requireContext(), 
+                    "🎉 恭喜！已解锁英文阅读答题功能", 
+                    android.widget.Toast.LENGTH_LONG).show();
+            } else {
+                android.widget.Toast.makeText(requireContext(), 
+                    "英文阅读功能已经解锁了哦", 
+                    android.widget.Toast.LENGTH_SHORT).show();
+            }
+            clickCount = 0; // 重置计数器
+        } else if (clickCount >= 15) {
+            // 给用户一些提示
+            android.widget.Toast.makeText(requireContext(), 
+                "再点击 " + (REQUIRED_CLICKS - clickCount) + " 次...", 
+                android.widget.Toast.LENGTH_SHORT).show();
+        }
     }
 }
