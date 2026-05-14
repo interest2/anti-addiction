@@ -15,7 +15,10 @@ import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
 import com.book.mask.setting.RelaxManager;
+import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
+
+import java.util.List;
 
 public class SettingsNav extends Fragment {
     private static final String TAG = "SettingsNav";
@@ -73,7 +76,61 @@ public class SettingsNav extends Fragment {
             }
             android.widget.Toast.makeText(requireContext(), "所有APP悬浮窗状态已重置", android.widget.Toast.LENGTH_SHORT).show();
         });
+
+        // 包名日志开关（拟物 ToggleButton，沿用首页卡片样式）
+        android.widget.ToggleButton packageLogToggle = view.findViewById(R.id.toggle_package_log);
+        packageLogToggle.setChecked(PackageLogManager.getInstance().isEnabled());
+        packageLogToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            PackageLogManager.getInstance().setEnabled(isChecked);
+            android.widget.Toast.makeText(requireContext(),
+                    isChecked ? "已开启包名日志" : "已关闭包名日志",
+                    android.widget.Toast.LENGTH_SHORT).show();
+        });
+
+        // 包名日志按钮
+        Button packageLogButton = view.findViewById(R.id.btn_package_log);
+        packageLogButton.setOnClickListener(v -> showPackageLogDialog());
         return view;
+    }
+
+    private void showPackageLogDialog() {
+        List<String> logs = PackageLogManager.getInstance().getLogs();
+        LayoutInflater inflater = LayoutInflater.from(requireContext());
+        View dialogView = inflater.inflate(R.layout.dialog_package_log, null);
+        android.widget.LinearLayout container = dialogView.findViewById(R.id.ll_log_items);
+
+        if (logs.isEmpty()) {
+            TextView emptyText = new TextView(requireContext());
+            emptyText.setText("（暂无记录）");
+            emptyText.setTextSize(14);
+            container.addView(emptyText);
+        } else {
+            for (int i = 0; i < logs.size(); i++) {
+                final String pkg = logs.get(i);
+                View itemView = inflater.inflate(R.layout.item_package_log, container, false);
+                TextView tvText = itemView.findViewById(R.id.tv_log_text);
+                Button btnCopy = itemView.findViewById(R.id.btn_copy);
+                tvText.setText((i + 1) + ". " + pkg);
+                btnCopy.setOnClickListener(b -> copyToClipboard(pkg));
+                container.addView(itemView);
+            }
+        }
+
+        new android.app.AlertDialog.Builder(requireContext())
+            .setView(dialogView)
+            .setPositiveButton("确定", null)
+            .show();
+    }
+
+    private void copyToClipboard(String packageName) {
+        android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+        if (cm != null) {
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("package", packageName));
+            android.widget.Toast.makeText(requireContext(),
+                    "已复制：" + packageName,
+                    android.widget.Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void setupLatestApkButton(View view) {

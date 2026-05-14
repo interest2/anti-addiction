@@ -103,6 +103,9 @@ public class AppStateManager {
                 return;
             }
 
+            // 记录包名访问 LRU（用于"包名日志"调试）
+            com.book.mask.config.PackageLogManager.getInstance().record(packageName);
+
             // 检测当前是否是支持的APP（包括预定义和自定义）
             CustomApp detectedApp = detectSupportedApp(packageName);
 
