@@ -291,6 +291,25 @@ public class RelaxManager {
     }
 
     /**
+     * 清除指定APP在本管理器中的所有持久化设置（监测开关、间隔、关闭记录、宽松计数等）
+     */
+    public void clearAppSettings(String packageName) {
+        if (packageName == null) return;
+        String[] keys = new String[] {
+                KEY_SHOW_INTERVAL + packageName,
+                KEY_RELAXED_CLOSE_COUNT + packageName,
+                KEY_LAST_RELAXED_CLOSE_DATE + packageName,
+                KEY_LAST_CLOSE_TIME + packageName,
+                KEY_LAST_CLOSE_INTERVAL + packageName,
+                "app_monitoring_enabled_" + packageName,
+        };
+        for (String key : keys) {
+            mmkv.removeValueForKey(key);
+        }
+        android.util.Log.d(TAG, "清除APP在RelaxManager中的所有设置: " + packageName);
+    }
+
+    /**
      * 检查APP是否应该被监测
      */
     public boolean shouldMonitorApp(String packageName) {

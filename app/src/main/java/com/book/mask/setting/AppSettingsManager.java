@@ -85,6 +85,16 @@ public class AppSettingsManager {
         return mmkv.getString(KEY_APP_HINT_CUSTOM + packageName, "");
     }
 
+    /**
+     * 清除指定APP在本管理器中的所有持久化设置（悬浮窗警示文字来源、自定义文字等）
+     */
+    public void clearAppSettings(String packageName) {
+        if (packageName == null) return;
+        mmkv.removeValueForKey(KEY_APP_HINT_SOURCE + packageName);
+        mmkv.removeValueForKey(KEY_APP_HINT_CUSTOM + packageName);
+        android.util.Log.d("SettingsManager", "清除APP在AppSettingsManager中的所有设置: " + packageName);
+    }
+
     // ===== 算术题难度设置相关方法 =====
 
     /**

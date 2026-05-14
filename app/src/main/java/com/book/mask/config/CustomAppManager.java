@@ -208,6 +208,43 @@ public class CustomAppManager {
     }
 
     /**
+     * 判断是否为用户手动添加的自定义APP（非预定义）
+     */
+    public boolean isCustomApp(String packageName) {
+        if (packageName == null) return false;
+        for (CustomApp predefinedApp : PREDEFINED_APPS) {
+            if (predefinedApp.getPackageName().equals(packageName)) {
+                return false;
+            }
+        }
+        for (CustomApp app : customApps) {
+            if (app.getPackageName().equals(packageName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 删除用户手动添加的自定义APP（预定义APP不可删除）
+     */
+    public boolean removeCustomApp(String packageName) {
+        if (packageName == null) return false;
+        boolean removed = false;
+        for (int i = customApps.size() - 1; i >= 0; i--) {
+            if (packageName.equals(customApps.get(i).getPackageName())) {
+                customApps.remove(i);
+                removed = true;
+            }
+        }
+        if (removed) {
+            saveCustomApps();
+            Log.d(TAG, "Removed custom app: " + packageName);
+        }
+        return removed;
+    }
+
+    /**
      * 检查包名是否已存在（包括预定义和自定义APP）
      */
     public boolean isPackageNameExists(String packageName) {
