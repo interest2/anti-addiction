@@ -286,9 +286,6 @@ public class AppSettingsManager {
     // 英文阅读功能解锁状态
     private static final String KEY_ENGLISH_READING_UNLOCKED = "english_reading_unlocked";
 
-    // 包名调试模式
-    private static final String KEY_PACKAGE_DEBUG_ENABLED = "package_debug_enabled";
-
     /**
      * 获取数学题题型
      */
@@ -334,20 +331,5 @@ public class AppSettingsManager {
     public void setEnglishReadingUnlocked(boolean unlocked) {
         mmkv.putBoolean(KEY_ENGLISH_READING_UNLOCKED, unlocked).commit();
         android.util.Log.d("SettingsManager", "英文阅读功能解锁状态: " + unlocked);
-    }
-
-    /**
-     * 获取包名调试模式开关
-     */
-    public boolean isPackageDebugEnabled() {
-        return mmkv.getBoolean(KEY_PACKAGE_DEBUG_ENABLED, false);
-    }
-
-    /**
-     * 设置包名调试模式开关
-     */
-    public void setPackageDebugEnabled(boolean enabled) {
-        mmkv.putBoolean(KEY_PACKAGE_DEBUG_ENABLED, enabled).commit();
-        android.util.Log.d("SettingsManager", "包名调试模式: " + enabled);
     }
 }

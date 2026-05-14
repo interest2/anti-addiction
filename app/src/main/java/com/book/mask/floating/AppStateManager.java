@@ -12,11 +12,9 @@ import com.book.mask.config.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
-import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.util.DateUtils;
 
-import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -31,8 +29,7 @@ public class AppStateManager {
     private Handler handler;
     private Handler autoShowHandler;
     private RelaxManager relaxManager;
-    private AppSettingsManager appSettingsManager;
-    
+
     // 应用状态相关
     private CustomApp currentActiveApp = null;
     private String lastPackageName = null;
@@ -61,7 +58,6 @@ public class AppStateManager {
     public AppStateManager(AccessibilityService service, RelaxManager relaxManager) {
         this.service = service;
         this.relaxManager = relaxManager;
-        this.appSettingsManager = new AppSettingsManager(service);
         this.handler = new Handler(Looper.getMainLooper());
         this.autoShowHandler = new Handler(Looper.getMainLooper());
     }
@@ -105,12 +101,6 @@ public class AppStateManager {
             if (FloatHelper.isInputMethodApp(packageName)) {
                 Log.d(TAG, "忽略输入法应用: " + packageName);
                 return;
-            }
-
-            // 包名调试模式：进入新APP时提示包名及屏蔽支持情况
-            if (appSettingsManager != null && appSettingsManager.isPackageDebugEnabled()
-                    && !packageName.equals(lastPackageName)) {
-                showPackageDebugToast(packageName);
             }
 
             // 检测当前是否是支持的APP（包括预定义和自定义）
@@ -474,39 +464,6 @@ public class AppStateManager {
      */
     private CustomApp detectSupportedApp(String packageName) {
         return CustomAppManager.getInstance().detectSupportedApp(packageName, relaxManager);
-    }
-
-    /**
-     * 包名调试 Toast：提示当前包名、是否支持屏蔽、以及用户手动添加过的包名
-     */
-    private void showPackageDebugToast(String packageName) {
-        try {
-            CustomAppManager manager = CustomAppManager.getInstance();
-            boolean supported = manager.getAppByPackageName(packageName) != null;
-
-            List<CustomApp> customApps = manager.getCustomApps();
-            String addedPkgs;
-            if (customApps == null || customApps.isEmpty()) {
-                addedPkgs = "（无）";
-            } else {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < customApps.size(); i++) {
-                    if (i > 0) sb.append("、");
-                    sb.append(customApps.get(i).getPackageName());
-                }
-                addedPkgs = sb.toString();
-            }
-
-            String msg = "当前包名：" + packageName
-                    + "，" + (supported ? "支持" : "不支持") + "屏蔽；"
-                    + "您手动添加过的包名为：" + addedPkgs;
-
-            handler.post(() ->
-                Toast.makeText(service, msg, Toast.LENGTH_LONG).show()
-            );
-        } catch (Exception e) {
-            Log.w(TAG, "showPackageDebugToast 失败", e);
-        }
     }
 
     public void cleanup() {

@@ -121,18 +121,8 @@ public class HomeNav extends Fragment implements
         TextInputEditText etPackageName = dialogView.findViewById(R.id.et_package_name);
         TextInputEditText etTargetWord = dialogView.findViewById(R.id.et_target_word);
         TextInputEditText etRelaxedLimitCount = dialogView.findViewById(R.id.et_relaxed_limit_count);
-        androidx.appcompat.widget.SwitchCompat switchPackageDebug = dialogView.findViewById(R.id.switch_package_debug);
         Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
         Button btnSave = dialogView.findViewById(R.id.btn_save);
-
-        // 初始化并监听包名调试开关
-        switchPackageDebug.setChecked(appSettingsManager.isPackageDebugEnabled());
-        switchPackageDebug.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            appSettingsManager.setPackageDebugEnabled(isChecked);
-            Toast.makeText(requireContext(),
-                    isChecked ? "已开启包名调试" : "已关闭包名调试",
-                    Toast.LENGTH_SHORT).show();
-        });
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
             .setView(dialogView)

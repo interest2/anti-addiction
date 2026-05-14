@@ -148,13 +148,6 @@ public class CustomAppManager {
     }
     
     /**
-     * 获取手动添加的自定义APP列表（不含预定义APP）
-     */
-    public List<CustomApp> getCustomApps() {
-        return new ArrayList<>(customApps);
-    }
-
-    /**
      * 根据包名获取APP
      */
     public CustomApp getAppByPackageName(String packageName) {
