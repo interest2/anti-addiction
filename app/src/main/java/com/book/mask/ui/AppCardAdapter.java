@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.book.mask.R;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.config.CustomApp;
+import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
 import com.book.mask.util.DateUtils;
 
@@ -24,27 +25,33 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
     private OnAppCardClickListener listener;
     private OnMonitorToggleListener monitorListener;
     private OnEditClickListener editListener;
+    private OnDeleteClickListener deleteListener;
 
         public interface OnAppCardClickListener {
         void onAppCardClick(CustomApp app);
     }
-    
+
     public interface OnMonitorToggleListener {
         void onMonitorToggle(CustomApp app, boolean isEnabled);
     }
-    
+
     public interface OnEditClickListener {
         void onEditClick(CustomApp app);
     }
 
+    public interface OnDeleteClickListener {
+        void onDeleteClick(CustomApp app);
+    }
+
     public AppCardAdapter(List<CustomApp> apps, RelaxManager relaxManager,
                          OnAppCardClickListener listener, OnMonitorToggleListener monitorListener,
-                         OnEditClickListener editListener) {
+                         OnEditClickListener editListener, OnDeleteClickListener deleteListener) {
         this.apps = apps;
         this.relaxManager = relaxManager;
         this.listener = listener;
         this.monitorListener = monitorListener;
         this.editListener = editListener;
+        this.deleteListener = deleteListener;
     }
 
     @NonNull
@@ -76,6 +83,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         private TextView tvRemainingTime;
         private TextView tvRelaxedCount;
         private ToggleButton toggleMonitor;
+        private TextView btnDeleteApp;
 
         public AppCardViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -83,6 +91,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             tvRemainingTime = itemView.findViewById(R.id.tv_remaining_time);
             tvRelaxedCount = itemView.findViewById(R.id.tv_relaxed_count);
             toggleMonitor = itemView.findViewById(R.id.toggle_monitor);
+            btnDeleteApp = itemView.findViewById(R.id.btn_delete_app);
 
             // 卡片点击事件
             itemView.setOnClickListener(v -> {
@@ -101,6 +110,16 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
                     monitorListener.onMonitorToggle(app, isEnabled);
                 }
             });
+
+            // 删除按钮点击事件
+            if (btnDeleteApp != null) {
+                btnDeleteApp.setOnClickListener(v -> {
+                    int position = getAdapterPosition();
+                    if (position != RecyclerView.NO_POSITION && deleteListener != null) {
+                        deleteListener.onDeleteClick(apps.get(position));
+                    }
+                });
+            }
 
         }
 
@@ -121,6 +140,12 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             // 设置APP名称
             if (tvAppName != null) {
                 tvAppName.setText(appName);
+            }
+
+            // 删除按钮仅对手动添加的自定义APP显示
+            if (btnDeleteApp != null) {
+                boolean isCustom = CustomAppManager.getInstance().isCustomApp(packageName);
+                btnDeleteApp.setVisibility(isCustom ? View.VISIBLE : View.GONE);
             }
 
             // 设置监测开关状态

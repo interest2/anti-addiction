@@ -39,7 +39,8 @@ import java.util.List;
 public class HomeNav extends Fragment implements
     AppCardAdapter.OnAppCardClickListener,
     AppCardAdapter.OnMonitorToggleListener,
-    AppCardAdapter.OnEditClickListener {
+    AppCardAdapter.OnEditClickListener,
+    AppCardAdapter.OnDeleteClickListener {
     private static final String TAG = "HomeNav";
 
     private RelaxManager relaxManager;
@@ -202,7 +203,7 @@ public class HomeNav extends Fragment implements
             androidx.recyclerview.widget.GridLayoutManager layoutManager = 
                 new androidx.recyclerview.widget.GridLayoutManager(requireContext(), 2);
             rvAppCards.setLayoutManager(layoutManager);
-            appCardAdapter = new AppCardAdapter(allApps, relaxManager, this, this, this);
+            appCardAdapter = new AppCardAdapter(allApps, relaxManager, this, this, this, this);
             rvAppCards.setAdapter(appCardAdapter);
         }
     }
@@ -239,6 +240,15 @@ public class HomeNav extends Fragment implements
         String appName = getAppName(app);
         Toast.makeText(requireContext(), "编辑 " + appName, Toast.LENGTH_SHORT).show();
         // TODO: 实现编辑功能
+    }
+
+    @Override
+    public void onDeleteClick(CustomApp app) {
+        // 仅手动添加的自定义APP允许删除，再校验一次防御
+        if (app == null || !customAppManager.isCustomApp(app.getPackageName())) {
+            return;
+        }
+        showMathChallengeForDelete(app);
     }
 
     private String getPackageName(CustomApp app) {
@@ -552,6 +562,103 @@ public class HomeNav extends Fragment implements
         // 可能需要从全局变量、SharedPreferences或其他地方获取
         // 暂时返回null，需要你补充具体的获取逻辑
         return null;
+    }
+
+    /**
+     * 显示"删除前验证"算术题弹窗，仅用于删除手动添加的自定义APP
+     */
+    private void showMathChallengeForDelete(CustomApp app) {
+        final String packageName = app.getPackageName();
+
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_math_challenge, null);
+
+        TextView headerText = dialogView.findViewById(R.id.tv_math_header);
+        TextView questionText = dialogView.findViewById(R.id.tv_math_question);
+        EditText answerEdit = dialogView.findViewById(R.id.et_math_answer);
+        TextView resultText = dialogView.findViewById(R.id.tv_math_result);
+        Button submitButton = dialogView.findViewById(R.id.btn_submit_answer);
+        Button cancelButton = dialogView.findViewById(R.id.btn_cancel_close);
+
+        if (headerText != null) {
+            headerText.setText("🔢 回答算术题才能删除APP");
+        }
+
+        String question = ArithmeticUtils.customArithmetic(Const.ADD_LEN_CARD, Const.SUB_LEN_CARD, Const.MUL_FIRST_CARD, Const.MUL_SECOND_CARD);
+        final int[] correctAnswer = {ArithmeticUtils.getMathAnswer(question)};
+        questionText.setText(question);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+            .setTitle("删除前验证")
+            .setView(dialogView)
+            .setCancelable(false)
+            .create();
+
+        submitButton.setOnClickListener(v -> {
+            String userAnswer = answerEdit.getText().toString().trim();
+            if (userAnswer.isEmpty()) {
+                resultText.setText("⚠️ 请输入答案");
+                resultText.setVisibility(View.VISIBLE);
+                return;
+            }
+
+            try {
+                int answer = Integer.parseInt(userAnswer);
+                if (answer == correctAnswer[0]) {
+                    resultText.setText("✅ 答案正确！");
+                    resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_green_light));
+                    resultText.setVisibility(View.VISIBLE);
+
+                    new Handler().postDelayed(() -> {
+                        dialog.dismiss();
+                        // 删除APP并清理相关持久化设置
+                        boolean removed = customAppManager.removeCustomApp(packageName);
+                        if (removed) {
+                            relaxManager.clearAppSettings(packageName);
+                            appSettingsManager.clearAppSettings(packageName);
+                            android.util.Log.d(TAG, "已删除自定义APP: " + packageName);
+                            Toast.makeText(requireContext(), "已删除", Toast.LENGTH_SHORT).show();
+                            updateAppCardsDisplay();
+                        } else {
+                            Toast.makeText(requireContext(), "删除失败", Toast.LENGTH_SHORT).show();
+                        }
+                    }, 1000);
+
+                } else {
+                    resultText.setText("❌ 答案错误，请重新计算");
+                    resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_red_light));
+                    resultText.setVisibility(View.VISIBLE);
+
+                    answerEdit.setText("");
+
+                    new Handler().postDelayed(() -> {
+                        String newQuestion = ArithmeticUtils.customArithmetic(
+                                Const.ADD_LEN_MAX, Const.ADD_LEN_MAX, Const.MUL_LEN_MAX, Const.MUL_LEN_MAX);
+                        correctAnswer[0] = ArithmeticUtils.getMathAnswer(newQuestion);
+                        questionText.setText(newQuestion);
+                        answerEdit.setText("");
+                        resultText.setVisibility(View.GONE);
+                    }, 1000);
+                }
+            } catch (NumberFormatException e) {
+                resultText.setText("⚠️ 请输入有效数字");
+                resultText.setVisibility(View.VISIBLE);
+            }
+        });
+
+        cancelButton.setOnClickListener(v -> dialog.dismiss());
+
+        answerEdit.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE ||
+                (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
+                submitButton.performClick();
+                return true;
+            }
+            return false;
+        });
+
+        dialog.show();
+
+        answerEdit.requestFocus();
     }
 
     /**
