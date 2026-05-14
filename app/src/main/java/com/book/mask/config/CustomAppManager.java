@@ -86,21 +86,49 @@ public class CustomAppManager {
      * 添加自定义APP
      */
     public boolean addCustomApp(String appName, String packageName, String targetWord, int relaxedLimitCount) {
+        // 入口清洗：去除零宽字符等不可见字符，并校验包名合法性
+        String cleanedPkg = sanitizePackageName(packageName);
+        if (!isValidPackageName(cleanedPkg)) {
+            Log.w(TAG, "Reject invalid package name: original=[" + packageName
+                    + "] cleaned=[" + cleanedPkg + "]");
+            return false;
+        }
+        if (!cleanedPkg.equals(packageName)) {
+            Log.w(TAG, "Sanitized package name on add: [" + packageName + "] -> [" + cleanedPkg + "]");
+        }
+        packageName = cleanedPkg;
+
         // 检查包名是否已存在
         if (isPackageNameExists(packageName)) {
-            Log.w("CustomAppManager", "Package name already exists: " + packageName);
+            Log.w(TAG, "Package name already exists: " + packageName);
             return false;
         }
 
         // 创建新的自定义APP
         CustomApp newApp = new CustomApp(appName, packageName, targetWord, relaxedLimitCount);
         customApps.add(newApp);
-        
+
         // 保存到MMKV
         saveCustomApps();
-        
-        Log.d("CustomAppManager", "Added custom app: " + appName + " (" + packageName + ")");
+
+        Log.d(TAG, "Added custom app: " + appName + " (" + packageName + ")");
         return true;
+    }
+
+    /**
+     * 清洗包名：白名单方案，仅保留 [a-zA-Z0-9._]，杜绝零宽 / 控制 / 同形字符
+     */
+    private static String sanitizePackageName(String pkg) {
+        if (pkg == null) return "";
+        return pkg.replaceAll("[^a-zA-Z0-9._]", "");
+    }
+
+    /**
+     * 校验包名是否符合 Android 规则：
+     * 至少含一个点，每段以字母开头，仅含字母数字下划线
+     */
+    private static boolean isValidPackageName(String pkg) {
+        return pkg != null && pkg.matches("^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+$");
     }
     
     /**
@@ -207,7 +235,7 @@ public class CustomAppManager {
             customApps = new ArrayList<>();
             return;
         }
-        
+
         String json = mmkv.getString(KEY_CUSTOM_APPS, "[]");
         try {
             Type type = new TypeToken<List<CustomApp>>(){}.getType();
@@ -219,6 +247,35 @@ public class CustomAppManager {
             Log.e("CustomAppManager", "Error loading custom apps", e);
             customApps = new ArrayList<>();
         }
+
+        // 存量清洗：修复历史脏数据（含零宽字符等不可见字符的旧记录）
+        if (sanitizeAppListInPlace(customApps, "customApps")) {
+            saveCustomApps();
+        }
+    }
+
+    /**
+     * 对列表中的 CustomApp 做包名清洗，发现脏数据时原地替换为重建后的对象。
+     * @return 是否发生过清洗（true 表示需要回写存储）
+     */
+    private boolean sanitizeAppListInPlace(List<CustomApp> apps, String tagForLog) {
+        boolean dirty = false;
+        for (int i = 0; i < apps.size(); i++) {
+            CustomApp app = apps.get(i);
+            if (app == null) continue;
+            String original = app.getPackageName();
+            String cleaned = sanitizePackageName(original);
+            if (!cleaned.equals(original)) {
+                Log.w(TAG, "Cleaning dirty packageName in " + tagForLog
+                        + ": [" + original + "] -> [" + cleaned + "]");
+                // packageName 是 final，需要重建对象
+                CustomApp rebuilt = new CustomApp(
+                        app.getAppName(), cleaned, app.getTargetWord(), app.getRelaxedLimitCount());
+                apps.set(i, rebuilt);
+                dirty = true;
+            }
+        }
+        return dirty;
     }
 
     /**
@@ -273,6 +330,15 @@ public class CustomAppManager {
      * 更新预定义APP（保存修改）
      */
     public void updatePredefinedApp(CustomApp modifiedApp) {
+        // 入口清洗：拒绝带不可见字符的脏数据
+        String pkg = modifiedApp.getPackageName();
+        String cleanedPkg = sanitizePackageName(pkg);
+        if (!isValidPackageName(cleanedPkg) || !cleanedPkg.equals(pkg)) {
+            Log.w(TAG, "Reject updatePredefinedApp with invalid/dirty package name: original=["
+                    + pkg + "] cleaned=[" + cleanedPkg + "]");
+            return;
+        }
+
         // 检查是否是预定义APP
         boolean isPredefined = false;
         for (CustomApp predefinedApp : PREDEFINED_APPS) {
@@ -322,7 +388,7 @@ public class CustomAppManager {
             predefinedAppModifications = new ArrayList<>();
             return;
         }
-        
+
         String json = mmkv.getString(KEY_DEFAULT_APP_MODIFY, "[]");
         try {
             Type type = new TypeToken<List<CustomApp>>(){}.getType();
@@ -333,6 +399,11 @@ public class CustomAppManager {
         } catch (Exception e) {
             Log.e("CustomAppManager", "Error loading predefined app modifications", e);
             predefinedAppModifications = new ArrayList<>();
+        }
+
+        // 存量清洗：修复历史脏数据
+        if (sanitizeAppListInPlace(predefinedAppModifications, "predefinedAppModifications")) {
+            savePredefinedAppModifications();
         }
     }
     
