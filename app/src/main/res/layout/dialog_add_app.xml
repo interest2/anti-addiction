@@ -24,6 +24,30 @@
         android:gravity="start"
         android:layout_marginBottom="24dp" />
 
+    <!-- 包名调试开关 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="包名调试：开启后，切换至任意APP时会提示包名及屏蔽支持情况"
+            android:textSize="13sp"
+            android:textColor="#666666" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switch_package_debug"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
     <!-- APP名称 -->
     <TextView
         android:layout_width="match_parent"
