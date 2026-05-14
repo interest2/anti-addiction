@@ -19,8 +19,8 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="最上面代表最新访问的；注意有部分是手机系统自己包名请忽视它"
-        android:textSize="12sp"
+        android:text="按时间排序，序号 1 是最新访问的；\n注意其中有部分包名是手机系统自己的，请自行甄别忽视掉它们"
+        android:textSize="14sp"
         android:textColor="#666666"
         android:layout_marginTop="4dp"
         android:layout_marginBottom="12dp" />

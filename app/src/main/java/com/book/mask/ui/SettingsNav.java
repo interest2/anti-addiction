@@ -101,7 +101,7 @@ public class SettingsNav extends Fragment {
 
         if (logs.isEmpty()) {
             TextView emptyText = new TextView(requireContext());
-            emptyText.setText("（暂无记录）");
+            emptyText.setText("（暂无记录，请打开记录包名的开关）");
             emptyText.setTextSize(14);
             container.addView(emptyText);
         } else {
