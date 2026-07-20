@@ -98,7 +98,7 @@ public class HomeNav extends Fragment implements
         TextView tvDescription = view.findViewById(R.id.tv_description);
         if (tvDescription != null) {
             tvDescription.setText(android.text.Html.fromHtml(
-                    "<b>所需权限</b><br/>① 显示在其他应用的上层 <br/>② 无障碍服务 <br/>③ 允许后台运行"
+                    "<b>所需权限</b><br/>① 悬浮窗 <br/>② 无障碍服务 <br/>③ 允许后台运行"
             ));
         }
         
