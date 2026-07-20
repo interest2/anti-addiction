@@ -24,6 +24,7 @@ import com.book.mask.config.CustomApp;
 import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.network.TextFetcher;
 import com.book.mask.util.DateUtils;
+import com.tencent.mmkv.MMKV;
 
 import android.content.Intent;
 
@@ -63,6 +64,7 @@ public class FloatService extends AccessibilityService
     @Override
     public void onServiceConnected() {
         super.onServiceConnected();
+        MMKV.initialize(this);
         instance = this;
         Log.d(TAG, "AccessibilityService 已连接！");
         Toast.makeText(this, "无障碍服务已启动", Toast.LENGTH_LONG).show();

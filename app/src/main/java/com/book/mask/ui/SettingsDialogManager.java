@@ -198,11 +198,11 @@ public class SettingsDialogManager {
 
             new android.app.AlertDialog.Builder(context)
                 .setMessage(content.toString())
-                .setPositiveButton("复制github地址", (dialog, which) -> {
+                .setPositiveButton("复制 GitHub 地址", (dialog, which) -> {
                     copyToClipboard("https://github.com/interest2/anti-addiction/releases");
                     Toast.makeText(context, "gitHub地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
                 })
-                .setNegativeButton("复制gitee地址", (dialog, which) -> {
+                .setNegativeButton("复制 Gitee 地址", (dialog, which) -> {
                     copyToClipboard("https://gitee.com/interest2/anti-addiction/releases");
                     Toast.makeText(context, "gitee地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
                 })

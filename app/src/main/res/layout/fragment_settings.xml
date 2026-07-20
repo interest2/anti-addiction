@@ -100,6 +100,42 @@
             android:textSize="18sp"
             android:layout_marginBottom="32dp" />
 
+        <!-- 键盘免屏蔽 -->
+        <TextView
+            android:id="@+id/tv_keyboard_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="键盘白名单"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_keyboard_package"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="尚未检测键盘包名"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_keyboard_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="遇到键盘出不来的情况（例如想关闭悬浮窗却无法答题），可点击下方按钮给键盘添加白名单"
+            android:textSize="14sp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_keyboard_allow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="检测并添加当前键盘"
+            android:backgroundTint="#009688"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:layout_marginBottom="32dp" />
+
         <!-- 其它说明 -->
         <TextView
             android:layout_width="wrap_content"

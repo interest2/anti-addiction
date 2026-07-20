@@ -8,6 +8,7 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.book.mask.config.Const;
+import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
 
@@ -37,7 +38,7 @@ public class FloatHelper {
             }
         }
 
-        return false;
+        return InputMethodPackageManager.getInstance().contains(packageName);
 //        "com.baidu.input",           // 百度输入法
 //        "com.baidu.input_hihonor",   // 荣耀百度输入法
 //        "com.sohu.inputmethod.sogou", // 搜狗输入法

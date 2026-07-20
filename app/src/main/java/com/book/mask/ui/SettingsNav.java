@@ -1,6 +1,7 @@
 package com.book.mask.ui;
 
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +16,7 @@ import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
 import com.book.mask.setting.RelaxManager;
+import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
 
@@ -67,6 +69,7 @@ public class SettingsNav extends Fragment {
 
         // 设置悬浮窗位置按钮
         setupFloatingPositionButton(view);
+        setupKeyboardAllowButton(view);
         // 设置重置所有APP悬浮窗状态按钮
         Button resetFloatingStateButton = view.findViewById(R.id.btn_reset_floating_state);
         resetFloatingStateButton.setOnClickListener(v -> {
@@ -156,6 +159,56 @@ public class SettingsNav extends Fragment {
         floatingPositionButton.setOnClickListener(v -> {
             settingsDialogManager.showFloatingPositionDialog();
         });
+    }
+
+    private void setupKeyboardAllowButton(View view) {
+        TextView keyboardPackageText = view.findViewById(R.id.tv_keyboard_package);
+        Button keyboardAllowButton = view.findViewById(R.id.btn_keyboard_allow);
+
+        updateKeyboardPackageText(keyboardPackageText);
+        keyboardAllowButton.setOnClickListener(v -> detectAndSaveCurrentKeyboard(keyboardPackageText));
+    }
+
+    private void detectAndSaveCurrentKeyboard(TextView keyboardPackageText) {
+        String packageName = getCurrentKeyboardPackageName();
+        if (packageName.isEmpty()) {
+            android.widget.Toast.makeText(requireContext(),
+                    "未检测到键盘包名，请确认键盘已弹出",
+                    android.widget.Toast.LENGTH_SHORT).show();
+            updateKeyboardPackageText(keyboardPackageText);
+            return;
+        }
+
+        boolean added = InputMethodPackageManager.getInstance().addPackage(packageName);
+        updateKeyboardPackageText(keyboardPackageText);
+        android.widget.Toast.makeText(requireContext(),
+                added ? "已添加键盘包名：" + packageName : "键盘包名已存在：" + packageName,
+                android.widget.Toast.LENGTH_SHORT).show();
+    }
+
+    private String getCurrentKeyboardPackageName() {
+        String inputMethodId = Settings.Secure.getString(
+                requireContext().getContentResolver(),
+                Settings.Secure.DEFAULT_INPUT_METHOD);
+        if (inputMethodId == null || inputMethodId.trim().isEmpty()) {
+            return "";
+        }
+
+        int separatorIndex = inputMethodId.indexOf('/');
+        if (separatorIndex <= 0) {
+            return inputMethodId.trim();
+        }
+        return inputMethodId.substring(0, separatorIndex).trim();
+    }
+
+    private void updateKeyboardPackageText(TextView keyboardPackageText) {
+        List<String> packages = InputMethodPackageManager.getInstance().getPackages();
+        if (packages.isEmpty()) {
+            keyboardPackageText.setText("尚未检测键盘包名");
+            return;
+        }
+
+        keyboardPackageText.setText("已手动免屏蔽：" + android.text.TextUtils.join("、", packages));
     }
     
     private void updateGoalButtonTexts(View view) {
