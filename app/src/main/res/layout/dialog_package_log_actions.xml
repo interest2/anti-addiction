@@ -34,6 +34,8 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:backgroundTint="#607D8B"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
         android:text="@string/view_package_name_log"
         android:textAllCaps="false"
         android:textColor="#FFFFFF"

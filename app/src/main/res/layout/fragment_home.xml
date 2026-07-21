@@ -57,7 +57,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="支持的APP"
+                android:text="支持的 APP"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -67,7 +67,7 @@
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@android:drawable/ic_input_add"
-                android:contentDescription="添加APP"
+                android:contentDescription="添加 APP"
                 android:scaleType="centerInside" />
 
         </LinearLayout>

@@ -9,7 +9,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="添加新APP"
+        android:text="添加新 APP"
         android:textSize="20sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -24,11 +24,11 @@
         android:gravity="start"
         android:layout_marginBottom="24dp" />
 
-    <!-- APP名称 -->
+    <!-- APP 名称 -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="APP名称"
+        android:text="APP 名称"
         android:textSize="14sp"
         android:textColor="@android:color/black"
         android:layout_marginBottom="8dp" />
@@ -37,7 +37,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:hint="请输入APP名称"
+        android:hint="请输入 APP 名称"
         app:hintTextColor="#757575"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 

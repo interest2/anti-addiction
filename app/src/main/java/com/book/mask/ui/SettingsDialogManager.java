@@ -312,13 +312,13 @@ public class SettingsDialogManager {
         layout.addView(spacer2);
 
         android.widget.TextView hintText = new android.widget.TextView(context);
-        hintText.setText("说明：悬浮窗默认不遮挡顶部、底部，但可能出现遮挡过度、不足，您可手动调整。");
+        hintText.setText("说明：此处是各 APP 的默认设置，各 APP 还可单独调悬浮窗位置");
         hintText.setTextSize(14);
         hintText.setTextColor(0xFF666666);
         layout.addView(hintText);
 
         new android.app.AlertDialog.Builder(context)
-            .setTitle("调整悬浮窗边缘位置")
+            .setTitle("调整悬浮窗边缘位置（全局默认）")
             .setView(layout)
             .setPositiveButton("确定", (dialog, which) -> {
                 try {

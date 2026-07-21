@@ -17,7 +17,7 @@
     <string name="update_badge_count" translatable="false">1</string>
     <string name="keyboard_whitelist_hint">遇到键盘出不来或闪现消失（例如想关闭悬浮窗却无法答题），可点击下方按钮给键盘添加白名单</string>
     <string name="add_current_keyboard">检测并添加当前键盘</string>
-    <string name="reset_floating_window_hint">若答题解除屏蔽到期后悬浮窗却没出现，可尝试点击下方按钮重置</string>
+    <string name="reset_floating_window_hint">若答题成功解除了屏蔽，但到期后悬浮窗没出现，可尝试点击下方按钮重置</string>
     <string name="reset_all_floating_windows">重置所有APP悬浮窗状态</string>
     <string name="record_package_name">记录包名</string>
     <string name="view_package_name_log">查看包名日志</string>

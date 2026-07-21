@@ -98,7 +98,8 @@ public class HomeNav extends Fragment implements
         TextView tvDescription = view.findViewById(R.id.tv_description);
         if (tvDescription != null) {
             tvDescription.setText(android.text.Html.fromHtml(
-                    "<b>所需权限</b><br/>① 悬浮窗 <br/>② 无障碍服务 <br/>③ 允许后台运行"
+                    "<b>所需权限</b><br/>① 悬浮窗 <br/>② 无障碍服务 <br/>③ 允许后台运行" +
+                            "<br/><small><font color=\"#808080\">最好再加上开机自启（可选）</font></small>"
             ));
         }
         
@@ -140,7 +141,7 @@ public class HomeNav extends Fragment implements
             
             // 验证输入
             if (appName.isEmpty()) {
-                Toast.makeText(requireContext(), "请输入APP名称", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "请输入 APP 名称", Toast.LENGTH_SHORT).show();
                 return;
             }
             
