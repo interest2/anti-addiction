@@ -192,23 +192,27 @@ public class SettingsDialogManager {
         try {
             // 构建弹窗内容
             StringBuilder content = new StringBuilder();
-            content.append("下面链接的网页上，找最新的 app-release.apk 文件下载：\n\n");
-            content.append("https://gitee.com/interest2/anti-addiction/releases\n（网页正常）\n\n");
-            content.append("https://github.com/interest2/anti-addiction/releases\n（网页不一定能打开）");
+            content.append("下面链接二选一即可，网页上找最新的 app-release.apk 文件下载：\n\n");
+            content.append("https://gitee.com/interest2/anti-addiction/releases\n（国内网络）\n\n");
+            content.append("https://github.com/interest2/anti-addiction/releases\n（国际网络）");
 
-            new android.app.AlertDialog.Builder(context)
+            android.app.AlertDialog latestApkDialog = new android.app.AlertDialog.Builder(context)
                 .setMessage(content.toString())
                 .setPositiveButton("复制 GitHub 地址", (dialog, which) -> {
                     copyToClipboard("https://github.com/interest2/anti-addiction/releases");
-                    Toast.makeText(context, "gitHub地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "GitHub 地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("复制 Gitee 地址", (dialog, which) -> {
                     copyToClipboard("https://gitee.com/interest2/anti-addiction/releases");
-                    Toast.makeText(context, "gitee地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Gitee 地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
                 })
                 .setNeutralButton("关闭", null)
                 .show();
-                
+
+            latestApkDialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setAllCaps(false);
+            latestApkDialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).setAllCaps(false);
+            latestApkDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setAllCaps(false);
+
         } catch (Exception e) {
             android.util.Log.e("SettingsDialogManager", "获取版本信息失败", e);
             Toast.makeText(context, "获取版本信息失败", Toast.LENGTH_SHORT).show();

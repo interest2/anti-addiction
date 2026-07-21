@@ -204,10 +204,11 @@ public class SettingsNav extends Fragment {
     private void updateKeyboardPackageText(TextView keyboardPackageText) {
         List<String> packages = InputMethodPackageManager.getInstance().getPackages();
         if (packages.isEmpty()) {
-            keyboardPackageText.setText("尚未检测键盘包名");
+            keyboardPackageText.setVisibility(View.GONE);
             return;
         }
 
+        keyboardPackageText.setVisibility(View.VISIBLE);
         keyboardPackageText.setText("已手动免屏蔽：" + android.text.TextUtils.join("、", packages));
     }
     
