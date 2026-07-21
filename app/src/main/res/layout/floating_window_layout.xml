@@ -14,9 +14,12 @@
         android:layout_alignParentTop="true"
         android:layout_marginTop="50dp"
         android:background="@drawable/floating_window_bg"
+        android:gravity="center"
         android:orientation="vertical"
-        android:padding="16dp"
-        android:gravity="center">
+        android:paddingStart="16dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp">
 
         <TextView
             android:id="@+id/tv_title"
@@ -35,6 +38,16 @@
             android:text="小红书应用正在运行"
             android:textColor="#EEEEEE"
             android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/tv_unlock_duration_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="start"
+            android:text="下次解禁时长 1 分钟"
+            android:textColor="#B0B0B0"
+            android:textSize="14sp" />
 
     </LinearLayout>
 

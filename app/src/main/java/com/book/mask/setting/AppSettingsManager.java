@@ -46,6 +46,8 @@ public class AppSettingsManager {
     // 悬浮窗位置相关
     private static final String KEY_FLOATING_TOP_OFFSET = "floating_top_offset";
     private static final String KEY_FLOATING_BOTTOM_OFFSET = "floating_bottom_offset";
+    private static final String KEY_APP_FLOATING_TOP_OFFSET = "app_floating_top_offset_";
+    private static final String KEY_APP_FLOATING_BOTTOM_OFFSET = "app_floating_bottom_offset_";
 
     private MMKV mmkv;
 
@@ -92,6 +94,8 @@ public class AppSettingsManager {
         if (packageName == null) return;
         mmkv.removeValueForKey(KEY_APP_HINT_SOURCE + packageName);
         mmkv.removeValueForKey(KEY_APP_HINT_CUSTOM + packageName);
+        mmkv.removeValueForKey(KEY_APP_FLOATING_TOP_OFFSET + packageName);
+        mmkv.removeValueForKey(KEY_APP_FLOATING_BOTTOM_OFFSET + packageName);
         android.util.Log.d("SettingsManager", "清除APP在AppSettingsManager中的所有设置: " + packageName);
     }
 
@@ -284,6 +288,40 @@ public class AppSettingsManager {
      */
     public int getFloatingBottomOffset() {
         return mmkv.getInt(KEY_FLOATING_BOTTOM_OFFSET, DEFAULT_BOTTOM_OFFSET);
+    }
+
+    /**
+     * 设置指定APP的悬浮窗上边缘距离。
+     */
+    public void setAppFloatingTopOffset(String packageName, int offset) {
+        mmkv.putInt(KEY_APP_FLOATING_TOP_OFFSET + packageName, offset).commit();
+    }
+
+    /**
+     * 获取指定APP的悬浮窗上边缘距离，未单独设置时使用全局默认设置。
+     */
+    public int getAppFloatingTopOffset(String packageName) {
+        if (packageName == null || packageName.isEmpty()) {
+            return getFloatingTopOffset();
+        }
+        return mmkv.getInt(KEY_APP_FLOATING_TOP_OFFSET + packageName, getFloatingTopOffset());
+    }
+
+    /**
+     * 设置指定APP的悬浮窗下边缘距离。
+     */
+    public void setAppFloatingBottomOffset(String packageName, int offset) {
+        mmkv.putInt(KEY_APP_FLOATING_BOTTOM_OFFSET + packageName, offset).commit();
+    }
+
+    /**
+     * 获取指定APP的悬浮窗下边缘距离，未单独设置时使用全局默认设置。
+     */
+    public int getAppFloatingBottomOffset(String packageName) {
+        if (packageName == null || packageName.isEmpty()) {
+            return getFloatingBottomOffset();
+        }
+        return mmkv.getInt(KEY_APP_FLOATING_BOTTOM_OFFSET + packageName, getFloatingBottomOffset());
     }
 
     // 题型设置相关常量

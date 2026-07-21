@@ -469,6 +469,10 @@ public class HomeNav extends Fragment implements
         changeFloatingTextSourceButton.setOnClickListener(v -> {
             showFloatingTextSourceDialog(app);
         });
+
+        Button floatingSizeSettingsButton = dialogView.findViewById(R.id.btn_floating_size_settings);
+        floatingSizeSettingsButton.setOnClickListener(v ->
+                settingsDialogManager.showFloatingPositionDialogForApp(app));
         
         dialog.show();
     }

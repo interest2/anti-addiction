@@ -270,6 +270,41 @@ public class SettingsDialogManager {
      * 显示悬浮窗位置设置对话框
      */
     public void showFloatingPositionDialog() {
+        showFloatingPositionDialog(
+                "调整悬浮窗边缘位置\n（全局默认）",
+                "说明：此处是各 APP 的默认设置，各 APP 还可单独调悬浮窗位置",
+                appSettingsManager.getFloatingTopOffset(),
+                appSettingsManager.getFloatingBottomOffset(),
+                (topOffset, bottomOffset) -> {
+                    appSettingsManager.setFloatingTopOffset(topOffset);
+                    appSettingsManager.setFloatingBottomOffset(bottomOffset);
+                });
+    }
+
+    /**
+     * 为指定APP显示悬浮窗位置设置对话框。
+     */
+    public void showFloatingPositionDialogForApp(CustomApp app) {
+        if (app == null || app.getPackageName() == null || app.getPackageName().isEmpty()) {
+            Toast.makeText(context, "无法获取当前APP", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String packageName = app.getPackageName();
+        showFloatingPositionDialog(
+                "调整悬浮窗边缘位置\n（" + app.getAppName() + "）",
+                "说明：此处设置仅对当前 APP 生效",
+                appSettingsManager.getAppFloatingTopOffset(packageName),
+                appSettingsManager.getAppFloatingBottomOffset(packageName),
+                (topOffset, bottomOffset) -> {
+                    appSettingsManager.setAppFloatingTopOffset(packageName, topOffset);
+                    appSettingsManager.setAppFloatingBottomOffset(packageName, bottomOffset);
+                });
+    }
+
+    private void showFloatingPositionDialog(String title, String hint,
+                                            int currentTopOffset, int currentBottomOffset,
+                                            FloatingPositionSaver saver) {
         // 创建自定义布局
         android.widget.LinearLayout layout = new android.widget.LinearLayout(context);
         layout.setOrientation(android.widget.LinearLayout.VERTICAL);
@@ -283,7 +318,7 @@ public class SettingsDialogManager {
 
         final android.widget.EditText topEdit = new android.widget.EditText(context);
         topEdit.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        topEdit.setText(String.valueOf(appSettingsManager.getFloatingTopOffset()));
+        topEdit.setText(String.valueOf(currentTopOffset));
         topEdit.setHint("默认: 130");
         layout.addView(topEdit);
 
@@ -301,7 +336,7 @@ public class SettingsDialogManager {
 
         final android.widget.EditText bottomEdit = new android.widget.EditText(context);
         bottomEdit.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        bottomEdit.setText(String.valueOf(appSettingsManager.getFloatingBottomOffset()));
+        bottomEdit.setText(String.valueOf(currentBottomOffset));
         bottomEdit.setHint("默认: 230");
         layout.addView(bottomEdit);
 
@@ -312,13 +347,13 @@ public class SettingsDialogManager {
         layout.addView(spacer2);
 
         android.widget.TextView hintText = new android.widget.TextView(context);
-        hintText.setText("说明：此处是各 APP 的默认设置，各 APP 还可单独调悬浮窗位置");
+        hintText.setText(hint);
         hintText.setTextSize(14);
         hintText.setTextColor(0xFF666666);
         layout.addView(hintText);
 
         new android.app.AlertDialog.Builder(context)
-            .setTitle("调整悬浮窗边缘位置（全局默认）")
+            .setTitle(title)
             .setView(layout)
             .setPositiveButton("确定", (dialog, which) -> {
                 try {
@@ -344,9 +379,7 @@ public class SettingsDialogManager {
                         return;
                     }
                     
-                    // 保存设置
-                    appSettingsManager.setFloatingTopOffset(topOffset);
-                    appSettingsManager.setFloatingBottomOffset(bottomOffset);
+                    saver.save(topOffset, bottomOffset);
                     
                     Toast.makeText(context, "悬浮窗位置已更新", Toast.LENGTH_SHORT).show();
                     
@@ -356,6 +389,10 @@ public class SettingsDialogManager {
             })
             .setNegativeButton("取消", null)
             .show();
+    }
+
+    private interface FloatingPositionSaver {
+        void save(int topOffset, int bottomOffset);
     }
     
     /**

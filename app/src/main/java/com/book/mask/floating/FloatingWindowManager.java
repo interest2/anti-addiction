@@ -19,11 +19,6 @@ import com.book.mask.network.TextFetcher;
 
 import org.json.JSONException;
 
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.ForegroundColorSpan;
-import android.graphics.Color;
-
 /**
  * 悬浮窗管理器
  * 负责悬浮窗的显示、隐藏、内容更新等所有相关功能
@@ -90,7 +85,8 @@ public class FloatingWindowManager {
         // 创建悬浮窗布局
         LayoutInflater inflater = LayoutInflater.from(context);
         floatingView = inflater.inflate(R.layout.floating_window_layout, null);
-        layoutParams = FloatHelper.getLayoutParams(windowManager, appSettingsManager);
+        String currentPackageName = currentActiveApp == null ? null : currentActiveApp.getPackageName();
+        layoutParams = FloatHelper.getLayoutParams(windowManager, appSettingsManager, currentPackageName);
         
         // 初始化数学题验证管理器
         if (floatingView != null) {
@@ -206,6 +202,10 @@ public class FloatingWindowManager {
         if (floatingView == null) return;
         
         TextView contentText = floatingView.findViewById(R.id.tv_content);
+        TextView unlockDurationText = floatingView.findViewById(R.id.tv_unlock_duration_hint);
+        if (unlockDurationText != null) {
+            unlockDurationText.setVisibility(View.GONE);
+        }
         if (contentText != null) {
             // 获取缓存的动态文字内容
             String dynamicText = "";
@@ -230,7 +230,6 @@ public class FloatingWindowManager {
             if (relaxManager != null) {
                 // 使用当前APP的时间间隔显示
                 int intervalSeconds;
-                boolean isRelaxedMode = false;
                 if (currentActiveApp != null) {
                     /*如果上次关闭时是宽松模式，则本次显示应当切为严格模式*/
                     int appLastCloseInterval = relaxManager.getAppLastCloseInterval(currentActiveApp);
@@ -241,44 +240,26 @@ public class FloatingWindowManager {
     //                        relaxManager.setAppInterval(currentActiveApp, intervalSeconds);
     //                    }else {
                         intervalSeconds = relaxManager.getAppInterval(currentActiveApp);
-                        // 判断当前是否为宽松模式
-                        isRelaxedMode = relaxManager.isAppRelaxedMode(currentActiveApp);
     //                    }
                 } else {
                     intervalSeconds = relaxManager.getDefaultInterval();
                 }
-                
-                String intervalText = RelaxManager.getIntervalDisplayText(intervalSeconds);
-                String hintTime = "\n若关闭，" + intervalText + "后将重新显示本页面";
-                
-                // 构建完整内容
-                if (!dynamicText.isEmpty()) {
-                    content = dynamicText + hintTime;
-                } else {
-                    content = hintTime;
+
+                String intervalMinutes = intervalSeconds % 60 == 0
+                        ? String.valueOf(intervalSeconds / 60)
+                        : String.valueOf(intervalSeconds / 60.0);
+                if (unlockDurationText != null) {
+                    unlockDurationText.setText("下次解禁时长 " + intervalMinutes + " 分钟");
+                    unlockDurationText.setVisibility(View.VISIBLE);
                 }
-                
+                 
                 // 添加日期前缀
                 String targetDateStr = appSettingsManager.getTargetCompletionDate();
                 String datePrefix = FloatHelper.hintDate(targetDateStr);
                 content = datePrefix + content;
-                
-                // 如果是宽松模式，设置时间数字为红色
-                if (isRelaxedMode) {
-                    SpannableString spannableContent = new SpannableString(content);
-                    
-                    // 查找时间文字的位置（注意要查找完整的时间文字，包括数字）
-                    int timeStartIndex = content.indexOf(intervalText);
-                    if (timeStartIndex != -1) {
-                        int timeEndIndex = timeStartIndex + intervalText.length();
-                        spannableContent.setSpan(new ForegroundColorSpan(Color.RED), 
-                                                timeStartIndex, timeEndIndex, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                    }
-                    contentText.setText(spannableContent);
-                } else {
-                    // 严格模式，保持原样
-                    contentText.setText(content);
-                }
+
+                contentText.setText(content);
+                contentText.setVisibility(content.isEmpty() ? View.GONE : View.VISIBLE);
             }
         }
         

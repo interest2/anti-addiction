@@ -141,7 +141,9 @@ public class FloatHelper {
         return false;
     }
 
-    public static WindowManager.LayoutParams getLayoutParams(WindowManager windowManager, AppSettingsManager appSettingsManager){
+    public static WindowManager.LayoutParams getLayoutParams(WindowManager windowManager,
+                                                              AppSettingsManager appSettingsManager,
+                                                              String packageName) {
 
         // 设置悬浮窗参数
         WindowManager.LayoutParams layoutParams = new WindowManager.LayoutParams();
@@ -163,8 +165,8 @@ public class FloatHelper {
         int screenHeight = displayMetrics.heightPixels;
 
         // 设置悬浮窗位置和大小
-        int topOffset = appSettingsManager.getFloatingTopOffset();
-        int bottomOffset = appSettingsManager.getFloatingBottomOffset();
+        int topOffset = appSettingsManager.getAppFloatingTopOffset(packageName);
+        int bottomOffset = appSettingsManager.getAppFloatingBottomOffset(packageName);
 
         layoutParams.x = 0;
         layoutParams.y = topOffset;

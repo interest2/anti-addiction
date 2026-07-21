@@ -257,22 +257,40 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="start"
-        android:text="悬浮窗警示文字"
+        android:text="悬浮窗设置"
         android:textSize="16sp"
         android:textColor="#333333"
         android:textStyle="bold"
         android:layout_marginBottom="8dp" />
 
-    <Button
-        android:id="@+id/btn_change_floating_text_source"
-        android:layout_width="100dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="start"
-        android:text="更换来源"
-        android:textSize="14sp"
-        android:padding="12dp"
-        android:backgroundTint="#2196F3"
-        android:textColor="#FFFFFF"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
-</LinearLayout> 
+        <Button
+            android:id="@+id/btn_change_floating_text_source"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:text="警示文字来源"
+            android:textSize="14sp"
+            android:padding="12dp"
+            android:backgroundTint="#2196F3"
+            android:textColor="#FFFFFF" />
+
+        <Button
+            android:id="@+id/btn_floating_size_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="悬浮窗大小设置"
+            android:textSize="14sp"
+            android:padding="12dp"
+            android:backgroundTint="#2196F3"
+            android:textColor="#FFFFFF" />
+
+    </LinearLayout>
+
+</LinearLayout>
