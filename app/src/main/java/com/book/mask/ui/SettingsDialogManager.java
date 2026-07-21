@@ -724,7 +724,7 @@ public class SettingsDialogManager {
         });
 
         new android.app.AlertDialog.Builder(context)
-            .setTitle("良好习惯提醒")
+            .setTitle("自定义提醒")
             .setView(layout)
             .setPositiveButton("保存", (dialog, which) -> {
                 String reminder = input.getText().toString().trim();

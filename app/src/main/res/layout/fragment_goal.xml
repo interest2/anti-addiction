@@ -86,7 +86,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="3、悬浮窗日常提醒"
+            android:text="3、悬浮窗额外文字"
             android:textSize="18sp"
             android:textColor="#333333"
             android:textStyle="bold"
@@ -98,7 +98,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:backgroundTint="#9C27B0"
-            android:text="日常提醒设置"
+            android:text="自定义绿色文字"
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
 
