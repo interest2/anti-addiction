@@ -1,14 +1,15 @@
 package com.book.mask.ui;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.ImageView;
-import android.widget.RelativeLayout;
+import android.widget.ToggleButton;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -24,9 +25,24 @@ import java.util.List;
 
 public class SettingsNav extends Fragment {
     private static final String TAG = "SettingsNav";
+    private static final long VERSION_BADGE_REFRESH_DELAY_MS = 500L;
 
     private RelaxManager relaxManager;
     private SettingsDialogManager settingsDialogManager;
+    private final Handler versionBadgeHandler = new Handler(Looper.getMainLooper());
+    private final Runnable versionBadgeRefresh = new Runnable() {
+        @Override
+        public void run() {
+            View view = getView();
+            if (view == null) {
+                return;
+            }
+            updateVersionBadge(view);
+            if (isVersionStatusPending()) {
+                versionBadgeHandler.postDelayed(this, VERSION_BADGE_REFRESH_DELAY_MS);
+            }
+        }
+    };
 
     @Nullable
     @Override
@@ -36,52 +52,110 @@ public class SettingsNav extends Fragment {
         // 初始化设置管理器
         relaxManager = new RelaxManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), relaxManager);
-        setupLatestApkButton(view);
 
-        // 设置版本信息小字
-        TextView tvVersionDetail = view.findViewById(R.id.tv_version_detail);
+        setupMenuEntries(view);
+        updateVersionBadge(view);
+        return view;
+    }
 
-        // 获取当前版本信息
-        String localVer = "";
+    private void setupMenuEntries(View view) {
+        view.findViewById(R.id.row_version_update)
+                .setOnClickListener(v -> showVersionUpdateDialog());
+        view.findViewById(R.id.row_floating_settings)
+                .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
+        view.findViewById(R.id.row_keyboard_whitelist)
+                .setOnClickListener(v -> showKeyboardWhitelistDialog());
+        view.findViewById(R.id.row_reset_floating)
+                .setOnClickListener(v -> showResetFloatingDialog());
+        view.findViewById(R.id.row_package_log)
+                .setOnClickListener(v -> showPackageLogActionsDialog());
+    }
+
+    private void showVersionUpdateDialog() {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_version_update, null);
+        TextView versionDetail = dialogView.findViewById(R.id.tv_version_detail);
+        versionDetail.setText(buildVersionDetail());
+        android.app.AlertDialog versionDialog = new android.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.version_update)
+                .setView(dialogView)
+                .setNegativeButton("关闭", null)
+                .create();
+        dialogView.findViewById(R.id.btn_latest_apk)
+                .setOnClickListener(v -> settingsDialogManager.showLatestApkDialog(versionDialog::dismiss));
+
+        versionDialog.show();
+    }
+
+    private String buildVersionDetail() {
+        String localVersion = getLocalVersion();
+        String remoteVersion = Share.latestVersion;
+        if (remoteVersion == null || remoteVersion.trim().isEmpty()) {
+            return "当前版本 " + localVersion + "，正在获取最新版本";
+        }
+        if ("获取失败".equals(remoteVersion)) {
+            return "当前版本 " + localVersion + "，最新版本获取失败";
+        }
+        if (localVersion.equals(remoteVersion)) {
+            return "当前已是最新版本（" + localVersion + "）";
+        }
+        return "当前版本 " + localVersion + "，最新发布 " + remoteVersion;
+    }
+
+    private String getLocalVersion() {
         try {
-            localVer = requireContext()
+            return requireContext()
                     .getPackageManager()
                     .getPackageInfo(requireContext().getPackageName(), 0)
                     .versionName;
         } catch (Exception e) {
-            localVer = "未成功获取";
+            android.util.Log.w(TAG, "读取本地版本失败", e);
+            return "未成功获取";
         }
+    }
 
-        String remoteVer = Share.latestVersion;
-        boolean isLatest = localVer.equals(remoteVer);
+    private void showKeyboardWhitelistDialog() {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_keyboard_whitelist, null);
+        TextView keyboardPackageText = dialogView.findViewById(R.id.tv_keyboard_package);
+        Button keyboardAllowButton = dialogView.findViewById(R.id.btn_keyboard_allow);
 
-        String hintVersion = "";
-        if(isLatest){
-            hintVersion = "当前已是最新版本（" + localVer + "）";
-        }else {
-            hintVersion = "当前版本 " + localVer + "，最新发布 " + remoteVer;
-        }
+        updateKeyboardPackageText(keyboardPackageText);
+        keyboardAllowButton.setOnClickListener(v -> detectAndSaveCurrentKeyboard(keyboardPackageText));
 
-        tvVersionDetail.setText(hintVersion);
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("键盘白名单")
+                .setView(dialogView)
+                .setNegativeButton("关闭", null)
+                .show();
+    }
 
-        // 设置版本更新红色小圆点
-        setupVersionUpdateRedDot(view, isLatest);
+    private void showResetFloatingDialog() {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_reset_floating, null);
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("重置悬浮窗")
+                .setView(dialogView)
+                .setNegativeButton("关闭", null)
+                .create();
 
-        // 设置悬浮窗位置按钮
-        setupFloatingPositionButton(view);
-        setupKeyboardAllowButton(view);
-        // 设置重置所有APP悬浮窗状态按钮
-        Button resetFloatingStateButton = view.findViewById(R.id.btn_reset_floating_state);
-        resetFloatingStateButton.setOnClickListener(v -> {
+        dialogView.findViewById(R.id.btn_reset_floating_state).setOnClickListener(v -> {
             java.util.Set<String> keys = Share.appManuallyHidden.keySet();
             for (String key : keys) {
                 Share.appManuallyHidden.put(key, false);
             }
-            android.widget.Toast.makeText(requireContext(), "所有APP悬浮窗状态已重置", android.widget.Toast.LENGTH_SHORT).show();
+            android.widget.Toast.makeText(requireContext(),
+                    "所有APP悬浮窗状态已重置",
+                    android.widget.Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
         });
+        dialog.show();
+    }
 
-        // 包名日志开关（拟物 ToggleButton，沿用首页卡片样式）
-        android.widget.ToggleButton packageLogToggle = view.findViewById(R.id.toggle_package_log);
+    private void showPackageLogActionsDialog() {
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_package_log_actions, null);
+        ToggleButton packageLogToggle = dialogView.findViewById(R.id.toggle_package_log);
         packageLogToggle.setChecked(PackageLogManager.getInstance().isEnabled());
         packageLogToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             PackageLogManager.getInstance().setEnabled(isChecked);
@@ -89,11 +163,14 @@ public class SettingsNav extends Fragment {
                     isChecked ? "已开启包名日志" : "已关闭包名日志",
                     android.widget.Toast.LENGTH_SHORT).show();
         });
+        dialogView.findViewById(R.id.btn_package_log)
+                .setOnClickListener(v -> showPackageLogDialog());
 
-        // 包名日志按钮
-        Button packageLogButton = view.findViewById(R.id.btn_package_log);
-        packageLogButton.setOnClickListener(v -> showPackageLogDialog());
-        return view;
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("包名日志")
+                .setView(dialogView)
+                .setNegativeButton("关闭", null)
+                .show();
     }
 
     private void showPackageLogDialog() {
@@ -136,37 +213,21 @@ public class SettingsNav extends Fragment {
         }
     }
 
-    private void setupLatestApkButton(View view) {
-        Button latestApkButton = view.findViewById(R.id.btn_latest_apk);
-        latestApkButton.setOnClickListener(v -> {
-            settingsDialogManager.showLatestApkDialog();
-        });
-    }
-
-    private void setupVersionUpdateRedDot(View view, boolean isLatest) {
-        RelativeLayout redDot = view.findViewById(R.id.iv_version_update_red_dot);
-        if (redDot != null) {
-            if (isLatest) {
-                redDot.setVisibility(View.GONE);
-            } else {
-                redDot.setVisibility(View.VISIBLE);
-            }
+    private void updateVersionBadge(View view) {
+        boolean hasUpdate = false;
+        String remoteVersion = Share.latestVersion;
+        if (remoteVersion != null
+                && !remoteVersion.trim().isEmpty()
+                && !"获取失败".equals(remoteVersion)) {
+            hasUpdate = !remoteVersion.equals(getLocalVersion());
         }
+
+        View redDot = view.findViewById(R.id.iv_version_update_red_dot);
+        redDot.setVisibility(hasUpdate ? View.VISIBLE : View.GONE);
     }
 
-    private void setupFloatingPositionButton(View view) {
-        Button floatingPositionButton = view.findViewById(R.id.btn_floating_position);
-        floatingPositionButton.setOnClickListener(v -> {
-            settingsDialogManager.showFloatingPositionDialog();
-        });
-    }
-
-    private void setupKeyboardAllowButton(View view) {
-        TextView keyboardPackageText = view.findViewById(R.id.tv_keyboard_package);
-        Button keyboardAllowButton = view.findViewById(R.id.btn_keyboard_allow);
-
-        updateKeyboardPackageText(keyboardPackageText);
-        keyboardAllowButton.setOnClickListener(v -> detectAndSaveCurrentKeyboard(keyboardPackageText));
+    private boolean isVersionStatusPending() {
+        return Share.latestVersion == null || Share.latestVersion.trim().isEmpty();
     }
 
     private void detectAndSaveCurrentKeyboard(TextView keyboardPackageText) {
@@ -212,20 +273,16 @@ public class SettingsNav extends Fragment {
         keyboardPackageText.setText("已手动免屏蔽：" + android.text.TextUtils.join("、", packages));
     }
     
-    private void updateGoalButtonTexts(View view) {
-        Button tagButton = view.findViewById(R.id.btn_tag_setting);
-        settingsDialogManager.updateTagButtonText(tagButton);
-        
-        Button targetDateButton = view.findViewById(R.id.btn_target_date_setting);
-        settingsDialogManager.updateDateButtonText(targetDateButton);
-    }
-    
     @Override
     public void onResume() {
         super.onResume();
-        // 每次回到前台时更新UI状态
-        if (getView() != null) {
-            updateGoalButtonTexts(getView());
-        }
+        versionBadgeHandler.removeCallbacks(versionBadgeRefresh);
+        versionBadgeHandler.post(versionBadgeRefresh);
+    }
+
+    @Override
+    public void onPause() {
+        versionBadgeHandler.removeCallbacks(versionBadgeRefresh);
+        super.onPause();
     }
 } 

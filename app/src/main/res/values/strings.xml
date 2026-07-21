@@ -1,4 +1,24 @@
 <resources>
     <string name="app_name">防沉迷提醒</string>
     <string name="accessibility_service_description">用于检测APP是否在首页状态的无障碍服务</string>
+    <string name="other_menu_title">其他</string>
+    <string name="version_update">版本更新</string>
+    <string name="latest_apk_address">最新安装包地址</string>
+    <string name="latest_apk_hint">下面链接二选一即可，网页上找最新的 app-release.apk 文件下载：</string>
+    <string name="gitee_release_url" translatable="false">https://gitee.com/interest2/anti-addiction/releases</string>
+    <string name="github_release_url" translatable="false">https://github.com/interest2/anti-addiction/releases</string>
+    <string name="domestic_network">国内网络</string>
+    <string name="international_network">国际网络</string>
+    <string name="copy">复制</string>
+    <string name="floating_window_settings">悬浮窗设置</string>
+    <string name="keyboard_whitelist">键盘白名单</string>
+    <string name="reset_floating_window">重置悬浮窗</string>
+    <string name="package_name_log">包名日志</string>
+    <string name="update_badge_count" translatable="false">1</string>
+    <string name="keyboard_whitelist_hint">遇到键盘出不来或闪现消失（例如想关闭悬浮窗却无法答题），可点击下方按钮给键盘添加白名单</string>
+    <string name="add_current_keyboard">检测并添加当前键盘</string>
+    <string name="reset_floating_window_hint">若答题解除屏蔽到期后悬浮窗却没出现，可尝试点击下方按钮重置</string>
+    <string name="reset_all_floating_windows">重置所有APP悬浮窗状态</string>
+    <string name="record_package_name">记录包名</string>
+    <string name="view_package_name_log">查看包名日志</string>
 </resources>

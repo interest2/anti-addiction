@@ -188,31 +188,28 @@ public class SettingsDialogManager {
     /**
      * 显示最新安装包地址对话框
      */
-    public void showLatestApkDialog() {
+    public void showLatestApkDialog(Runnable onClosed) {
         try {
-            // 构建弹窗内容
-            StringBuilder content = new StringBuilder();
-            content.append("下面链接二选一即可，网页上找最新的 app-release.apk 文件下载：\n\n");
-            content.append("https://gitee.com/interest2/anti-addiction/releases\n（国内网络）\n\n");
-            content.append("https://github.com/interest2/anti-addiction/releases\n（国际网络）");
+            android.view.View dialogView = android.view.LayoutInflater.from(context)
+                    .inflate(R.layout.dialog_latest_apk, null);
+            dialogView.findViewById(R.id.btn_copy_gitee).setOnClickListener(v -> {
+                copyToClipboard(context.getString(R.string.gitee_release_url));
+                Toast.makeText(context, "Gitee 地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
+            });
+            dialogView.findViewById(R.id.btn_copy_github).setOnClickListener(v -> {
+                copyToClipboard(context.getString(R.string.github_release_url));
+                Toast.makeText(context, "GitHub 地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
+            });
 
-            android.app.AlertDialog latestApkDialog = new android.app.AlertDialog.Builder(context)
-                .setMessage(content.toString())
-                .setPositiveButton("复制 GitHub 地址", (dialog, which) -> {
-                    copyToClipboard("https://github.com/interest2/anti-addiction/releases");
-                    Toast.makeText(context, "GitHub 地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
+            new android.app.AlertDialog.Builder(context)
+                .setTitle(R.string.latest_apk_address)
+                .setView(dialogView)
+                .setNegativeButton("关闭", (dialog, which) -> {
+                    if (onClosed != null) {
+                        onClosed.run();
+                    }
                 })
-                .setNegativeButton("复制 Gitee 地址", (dialog, which) -> {
-                    copyToClipboard("https://gitee.com/interest2/anti-addiction/releases");
-                    Toast.makeText(context, "Gitee 地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
-                })
-                .setNeutralButton("关闭", null)
                 .show();
-
-            latestApkDialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setAllCaps(false);
-            latestApkDialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).setAllCaps(false);
-            latestApkDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setAllCaps(false);
-
         } catch (Exception e) {
             android.util.Log.e("SettingsDialogManager", "获取版本信息失败", e);
             Toast.makeText(context, "获取版本信息失败", Toast.LENGTH_SHORT).show();

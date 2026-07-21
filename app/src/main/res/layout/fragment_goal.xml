@@ -29,20 +29,28 @@
             android:textStyle="bold"
             android:layout_marginBottom="12dp" />
 
-        <Button
-            android:id="@+id/btn_tag_setting"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:backgroundTint="#FF9800"
-            android:text="目标设置" />
+            android:gravity="start"
+            android:orientation="horizontal">
 
-        <Button
-            android:id="@+id/btn_target_date_setting"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:backgroundTint="#2196F3"
-            android:text="目标日期"
-            android:layout_marginTop="12dp" />
+            <Button
+                android:id="@+id/btn_tag_setting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:backgroundTint="#FF9800"
+                android:text="目标设置" />
+
+            <Button
+                android:id="@+id/btn_target_date_setting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#2196F3"
+                android:text="目标日期" />
+
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tv_goal_countdown"
@@ -67,7 +75,7 @@
 
         <Button
             android:id="@+id/btn_math_difficulty"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:backgroundTint="#4CAF50"
             android:text="修改"
@@ -87,7 +95,7 @@
 
         <Button
             android:id="@+id/btn_floating_strict_reminder"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:backgroundTint="#9C27B0"
             android:text="日常提醒设置"

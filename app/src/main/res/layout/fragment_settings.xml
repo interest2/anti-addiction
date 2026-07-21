@@ -3,196 +3,272 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:background="#F7F7F7"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:overScrollMode="never">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingStart="20dp"
+        android:paddingTop="26dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="32dp">
 
         <TextView
-            android:id="@+id/tv_goal_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="28dp"
             android:gravity="center"
-            android:text="其他设置"
+            android:text="@string/other_menu_title"
+            android:textColor="#202020"
             android:textSize="24sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
+            android:textStyle="bold" />
 
-        <!-- 版本更新区域 -->
-        <RelativeLayout
+        <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="4dp">
-            
-            <TextView
-                android:id="@+id/tv_version_update_title"
-                android:layout_width="wrap_content"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:cardPreventCornerOverlap="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="版本更新"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-            
-            <RelativeLayout
-                android:id="@+id/iv_version_update_red_dot"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:layout_alignTop="@id/tv_version_update_title"
-                android:layout_toEndOf="@id/tv_version_update_title"
-                android:layout_marginStart="4dp"
-                android:layout_marginTop="1dp"
-                android:background="@drawable/red_badge_with_1"
-                android:visibility="gone">
-                
-                <TextView
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:id="@+id/row_version_update"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:text="1"
-                    android:textColor="#FFFFFF"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:gravity="center" />
-                    
-            </RelativeLayout>
-                
-        </RelativeLayout>
+                    android:layout_height="68dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="18dp">
 
-        <TextView
-            android:id="@+id/tv_version_detail"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="本机当前1.0.0，云端最新1.0.1"
-            android:textSize="16sp"
-            android:layout_marginBottom="8dp"/>
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_update" />
 
-        <Button
-            android:id="@+id/btn_latest_apk"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="最新安装包地址"
-            android:backgroundTint="#7C4DFF"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:layout_marginBottom="24dp" />
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="18dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/version_update"
+                            android:textColor="#252525"
+                            android:textSize="18sp" />
 
-        <!-- 悬浮窗设置标题 -->
-        <TextView
-            android:id="@+id/tv_settings_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="悬浮窗设置"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
+                        <TextView
+                            android:id="@+id/iv_version_update_red_dot"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_marginStart="5dp"
+                            android:background="@drawable/red_badge_with_1"
+                            android:gravity="center"
+                            android:includeFontPadding="false"
+                            android:text="@string/update_badge_count"
+                            android:textColor="#FFFFFF"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:visibility="gone" />
 
-        <!-- 悬浮窗设置按钮 -->
-        <Button
-            android:id="@+id/btn_floating_position"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="调整悬浮窗边缘位置"
-            android:backgroundTint="#FFA000"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:layout_marginBottom="32dp" />
+                    </LinearLayout>
 
-        <!-- 键盘免屏蔽 -->
-        <TextView
-            android:id="@+id/tv_keyboard_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="键盘白名单"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
 
-        <TextView
-            android:id="@+id/tv_keyboard_package"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="尚未检测键盘包名"
-            android:textSize="14sp"
-            android:layout_marginBottom="8dp" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_chevron" />
 
-        <TextView
-            android:id="@+id/tv_keyboard_hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="遇到键盘出不来或闪现消失（例如想关闭悬浮窗却无法答题），可点击下方按钮给键盘添加白名单"
-            android:textSize="14sp"
-            android:layout_marginBottom="8dp" />
+                </LinearLayout>
 
-        <Button
-            android:id="@+id/btn_keyboard_allow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="检测并添加当前键盘"
-            android:backgroundTint="#009688"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:layout_marginBottom="32dp" />
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="66dp"
+                    android:background="#EEEEEE" />
 
-        <!-- 其它说明 -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="若答题解除屏蔽到期后悬浮窗却没出现，可尝试点击下方按钮重置"
-            android:textSize="14sp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="8dp" />
+                <LinearLayout
+                    android:id="@+id/row_floating_settings"
+                    android:layout_width="match_parent"
+                    android:layout_height="68dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="18dp">
 
-        <!-- 重置按钮 -->
-        <Button
-            android:id="@+id/btn_reset_floating_state"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="重置所有APP悬浮窗状态"
-            android:backgroundTint="#E91E63"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:layout_marginBottom="16dp" />
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_floating" />
 
-        <!-- 包名日志：标签 + 拟物开关 + 查看，靠左 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="18dp"
+                        android:layout_weight="1"
+                        android:text="@string/floating_window_settings"
+                        android:textColor="#252525"
+                        android:textSize="18sp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="记录包名"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@android:color/black" />
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_chevron" />
 
-            <ToggleButton
-                android:id="@+id/toggle_package_log"
-                android:layout_width="44dp"
-                android:layout_height="22dp"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/toggle_switch_background_large"
-                android:textOff=""
-                android:textOn=""
-                android:checked="false" />
+                </LinearLayout>
 
-            <Button
-                android:id="@+id/btn_package_log"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="包名日志"
-                android:backgroundTint="#607D8B"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp" />
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="66dp"
+                    android:background="#EEEEEE" />
 
-        </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/row_keyboard_whitelist"
+                    android:layout_width="match_parent"
+                    android:layout_height="68dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="18dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_keyboard" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="18dp"
+                        android:layout_weight="1"
+                        android:text="@string/keyboard_whitelist"
+                        android:textColor="#252525"
+                        android:textSize="18sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_chevron" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="66dp"
+                    android:background="#EEEEEE" />
+
+                <LinearLayout
+                    android:id="@+id/row_reset_floating"
+                    android:layout_width="match_parent"
+                    android:layout_height="68dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="18dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_reset" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="18dp"
+                        android:layout_weight="1"
+                        android:text="@string/reset_floating_window"
+                        android:textColor="#252525"
+                        android:textSize="18sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_chevron" />
+
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="66dp"
+                    android:background="#EEEEEE" />
+
+                <LinearLayout
+                    android:id="@+id/row_package_log"
+                    android:layout_width="match_parent"
+                    android:layout_height="68dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="18dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_log" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="18dp"
+                        android:layout_weight="1"
+                        android:text="@string/package_name_log"
+                        android:textColor="#252525"
+                        android:textSize="18sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_chevron" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
 
     </LinearLayout>
+
 </ScrollView>
