@@ -35,6 +35,9 @@ public class FloatingWindowManager {
     private boolean isSuspendedForSystemUi = false;
     private boolean isSuspendedForPackageTransition = false;
     private String packageTransitionTargetPackage;
+    private boolean packageTransitionUsesTransparentWindow = false;
+    private float packageTransitionOriginalWindowAlpha = 1.0f;
+    private int packageTransitionOriginalWindowFlags = 0;
     
     // 管理器依赖
     private MathChallengeManager mathChallengeManager;
@@ -210,7 +213,7 @@ public class FloatingWindowManager {
     }
 
     /**
-     * 普通包名切换时立即隐藏 View，但继续保留 Window，供短时重入快速恢复。
+     * 普通包名切换时将现有 Window 设为透明且不可触摸，保留已绘制 Surface 供短时重入恢复。
      */
     public void suspendForPackageTransition(CustomApp targetApp) {
         if (!isFloatingWindowVisible || floatingView == null || isSuspendedForPackageTransition) {
@@ -222,11 +225,41 @@ public class FloatingWindowManager {
             mathChallengeManager.hideMathChallenge();
         }
 
-        floatingView.setVisibility(View.INVISIBLE);
+        boolean keepsDrawnSurface = floatingView.getVisibility() == View.VISIBLE
+                && suspendPackageTransitionWindowWithoutHidingView();
+        if (!keepsDrawnSurface) {
+            // 厂商 WindowManager 不支持参数热更新时，保留原有隐藏方式作为回退。
+            floatingView.setVisibility(View.INVISIBLE);
+        }
         isSuspendedForPackageTransition = true;
         packageTransitionTargetPackage = targetApp == null ? null : targetApp.getPackageName();
-        Log.d(TAG, "包名切换时悬浮窗已临时隐藏，保留 View，耗时 "
+        Log.d(TAG, "包名切换时悬浮窗已临时隐藏，方式="
+                + (keepsDrawnSurface ? "透明且不可触摸" : "INVISIBLE 回退") + "，耗时 "
                 + elapsedMillisSince(startedAt) + "ms");
+    }
+
+    private boolean suspendPackageTransitionWindowWithoutHidingView() {
+        if (layoutParams == null || windowManager == null) {
+            return false;
+        }
+
+        float originalAlpha = layoutParams.alpha;
+        int originalFlags = layoutParams.flags;
+        layoutParams.alpha = 0.0f;
+        layoutParams.flags = originalFlags | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+        try {
+            windowManager.updateViewLayout(floatingView, layoutParams);
+            packageTransitionOriginalWindowAlpha = originalAlpha;
+            packageTransitionOriginalWindowFlags = originalFlags;
+            packageTransitionUsesTransparentWindow = true;
+            return true;
+        } catch (RuntimeException e) {
+            layoutParams.alpha = originalAlpha;
+            layoutParams.flags = originalFlags;
+            packageTransitionUsesTransparentWindow = false;
+            Log.w(TAG, "无法使用透明 Window 临时隐藏，回退到 INVISIBLE", e);
+            return false;
+        }
     }
 
     /**
@@ -256,7 +289,19 @@ public class FloatingWindowManager {
         if (mathChallengeManager != null) {
             mathChallengeManager.setCurrentApp(targetApp);
         }
-        floatingView.setVisibility(View.VISIBLE);
+        if (packageTransitionUsesTransparentWindow) {
+            layoutParams.alpha = packageTransitionOriginalWindowAlpha;
+            layoutParams.flags = packageTransitionOriginalWindowFlags;
+            try {
+                windowManager.updateViewLayout(floatingView, layoutParams);
+            } catch (RuntimeException e) {
+                Log.e(TAG, "恢复透明 Window 失败，重新创建悬浮窗", e);
+                finishPackageTransitionHide();
+                return false;
+            }
+        } else {
+            floatingView.setVisibility(View.VISIBLE);
+        }
         clearPackageTransitionSuspension();
         Log.d(TAG, "悬浮窗从包名切换临时隐藏中恢复完成，耗时 "
                 + elapsedMillisSince(startedAt) + "ms");
@@ -273,6 +318,9 @@ public class FloatingWindowManager {
     private void clearPackageTransitionSuspension() {
         isSuspendedForPackageTransition = false;
         packageTransitionTargetPackage = null;
+        packageTransitionUsesTransparentWindow = false;
+        packageTransitionOriginalWindowAlpha = 1.0f;
+        packageTransitionOriginalWindowFlags = 0;
     }
 
     private double elapsedMillisSince(long startedAtNanos) {
