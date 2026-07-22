@@ -55,20 +55,11 @@ public class AppStateManager {
     private static final class PackageHideTransition {
         private final CustomApp targetApp;
         private final long startedAt;
-        private final int animationDuration;
-        private final int packageCheckDelay;
         private PackageTransitionPhase phase = PackageTransitionPhase.WAITING_FOR_INITIAL_CHECK;
 
-        private PackageHideTransition(
-                CustomApp targetApp,
-                long startedAt,
-                int animationDuration,
-                int packageCheckDelay
-        ) {
+        private PackageHideTransition(CustomApp targetApp, long startedAt) {
             this.targetApp = targetApp;
             this.startedAt = startedAt;
-            this.animationDuration = animationDuration;
-            this.packageCheckDelay = packageCheckDelay;
         }
     }
 
@@ -493,22 +484,21 @@ public class AppStateManager {
         cancelPendingContentCheck();
         Share.clearAppState(currentActiveApp);
 
-        int animationDuration = appSettingsManager.getTransitionAnimationDurationMs();
-        int packageCheckDelay = appSettingsManager.getTransitionPackageCheckDelayMs();
         packageHideTransition = new PackageHideTransition(
                 currentActiveApp,
-                SystemClock.elapsedRealtime(),
-                animationDuration,
-                packageCheckDelay
+                SystemClock.elapsedRealtime()
         );
 
         if (listener != null) {
             listener.onPackageTransitionStarted(currentActiveApp);
         }
 
-        schedulePackageTransitionStep(packageCheckDelay, this::confirmPackageAtInitialCheck);
+        schedulePackageTransitionStep(
+                Const.PACKAGE_TRANSITION_CHECK_DELAY_MS,
+                this::confirmPackageAtInitialCheck
+        );
         Log.d(TAG, source + "观察到离开目标 APP，悬浮窗已立即隐藏；"
-                + packageCheckDelay + "ms 后首次复核包名");
+                + Const.PACKAGE_TRANSITION_CHECK_DELAY_MS + "ms 后首次复核包名");
     }
 
     private void handlePackageDuringHideTransition(String packageName, String source) {
@@ -526,8 +516,7 @@ public class AppStateManager {
         if (transition.targetApp.getPackageName().equals(packageName)
                 && PackageTransitionTiming.isWithinDirectReentryWindow(
                         transition.startedAt,
-                        now,
-                        transition.animationDuration
+                        now
                 )) {
             reenterTargetAndShowBeforeContentCheck(transition.targetApp, source);
             return;
@@ -535,8 +524,7 @@ public class AppStateManager {
 
         if (!PackageTransitionTiming.isWithinDirectReentryWindow(
                 transition.startedAt,
-                now,
-                transition.animationDuration
+                now
         )) {
             discardPackageTransitionView(transition.targetApp);
             cancelPackageHideTransition();
@@ -562,10 +550,7 @@ public class AppStateManager {
         String confirmedPackage = getActiveRootPackage();
         if (transition.targetApp.getPackageName().equals(confirmedPackage)) {
             transition.phase = PackageTransitionPhase.PAUSED_AFTER_EARLY_RETURN;
-            long pauseDuration = PackageTransitionTiming.getEarlyReturnPauseDuration(
-                    transition.animationDuration,
-                    transition.packageCheckDelay
-            );
+            long pauseDuration = PackageTransitionTiming.getEarlyReturnPauseDuration();
             schedulePackageTransitionStep(pauseDuration, this::resumeAfterEarlyReturnPause);
             Log.d(TAG, "首次复核已回到目标 APP，继续暂停检测 " + pauseDuration + "ms");
             return;
@@ -584,9 +569,7 @@ public class AppStateManager {
         setSuspendedForSystemUi(false);
 
         long deadline = transition.startedAt
-                + PackageTransitionTiming.getDirectReentryWindowDuration(
-                        transition.animationDuration
-                );
+                + PackageTransitionTiming.getDirectReentryWindowDuration();
         long remaining = Math.max(0L, deadline - SystemClock.elapsedRealtime());
         schedulePackageTransitionStep(remaining, this::finishDirectReentryMonitoring);
     }

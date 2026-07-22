@@ -8,18 +8,13 @@ import static org.junit.Assert.assertTrue;
 
 public class PackageTransitionTimingTest {
     @Test
-    public void defaultEarlyReturnPauseEndsAtAnimationDurationPlusBuffer() {
-        assertEquals(800, PackageTransitionTiming.getEarlyReturnPauseDuration(1000, 300));
-    }
-
-    @Test
-    public void earlyReturnPauseNeverBecomesNegative() {
-        assertEquals(0, PackageTransitionTiming.getEarlyReturnPauseDuration(100, 300));
+    public void earlyReturnPauseEndsAtAnimationDurationPlusBuffer() {
+        assertEquals(800, PackageTransitionTiming.getEarlyReturnPauseDuration());
     }
 
     @Test
     public void directReentryIncludesDeadlineAndRejectsLaterReturn() {
-        assertTrue(PackageTransitionTiming.isWithinDirectReentryWindow(5000, 6300, 1000));
-        assertFalse(PackageTransitionTiming.isWithinDirectReentryWindow(5000, 6301, 1000));
+        assertTrue(PackageTransitionTiming.isWithinDirectReentryWindow(5000, 6300));
+        assertFalse(PackageTransitionTiming.isWithinDirectReentryWindow(5000, 6301));
     }
 }

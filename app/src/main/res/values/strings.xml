@@ -22,15 +22,4 @@
     <string name="reset_all_floating_windows">重置所有APP悬浮窗状态</string>
     <string name="record_package_name">记录包名</string>
     <string name="view_package_name_log">查看包名日志</string>
-    <string name="debounce_settings_title">包名切换过渡时间（毫秒）</string>
-    <string name="transition_animation_duration_label">过渡动画时长 a</string>
-    <string name="transition_animation_duration_hint">用于计算暂停检测时长和短时重入截止时刻</string>
-    <string name="transition_animation_duration_default_hint">默认 1000</string>
-    <string name="transition_package_check_delay_label">首次包名复核时刻 p</string>
-    <string name="transition_package_check_delay_hint">悬浮窗立即隐藏后，经过此时长首次复核包名</string>
-    <string name="transition_package_check_delay_default_hint">默认 300</string>
-    <string name="save_debounce_settings">保存并立即生效</string>
-    <string name="debounce_settings_saved">包名切换过渡时间已保存</string>
-    <string name="debounce_value_required">请输入毫秒数</string>
-    <string name="debounce_value_out_of_range">请输入 0–10000 之间的毫秒数</string>
 </resources>

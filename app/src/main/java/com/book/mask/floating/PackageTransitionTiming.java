@@ -9,25 +9,25 @@ public final class PackageTransitionTiming {
     private PackageTransitionTiming() {
     }
 
-    public static long getEarlyReturnPauseDuration(int animationDuration, int packageCheckDelay) {
+    public static long getEarlyReturnPauseDuration() {
         return Math.max(
                 0L,
-                (long) animationDuration
-                        - packageCheckDelay
+                (long) Const.PACKAGE_TRANSITION_ANIMATION_DURATION_MS
+                        - Const.PACKAGE_TRANSITION_CHECK_DELAY_MS
                         + Const.TRANSITION_EARLY_RETURN_BUFFER_MS
         );
     }
 
-    public static long getDirectReentryWindowDuration(int animationDuration) {
-        return (long) animationDuration + Const.TRANSITION_DIRECT_REENTRY_BUFFER_MS;
+    public static long getDirectReentryWindowDuration() {
+        return (long) Const.PACKAGE_TRANSITION_ANIMATION_DURATION_MS
+                + Const.TRANSITION_DIRECT_REENTRY_BUFFER_MS;
     }
 
     public static boolean isWithinDirectReentryWindow(
             long transitionStartedAt,
-            long now,
-            int animationDuration
+            long now
     ) {
         long elapsed = now - transitionStartedAt;
-        return elapsed >= 0 && elapsed <= getDirectReentryWindowDuration(animationDuration);
+        return elapsed >= 0 && elapsed <= getDirectReentryWindowDuration();
     }
 }

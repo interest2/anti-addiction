@@ -49,12 +49,6 @@ public class AppSettingsManager {
     private static final String KEY_APP_FLOATING_TOP_OFFSET = "app_floating_top_offset_";
     private static final String KEY_APP_FLOATING_BOTTOM_OFFSET = "app_floating_bottom_offset_";
 
-    // 特殊细节中的包名切换过渡设置。使用新 key，避免继承旧防抖配置的 350ms 值。
-    private static final String KEY_TRANSITION_ANIMATION_DURATION_MS =
-            "transition_animation_duration_ms";
-    private static final String KEY_TRANSITION_PACKAGE_CHECK_DELAY_MS =
-            "transition_package_check_delay_ms";
-
     private MMKV mmkv;
 
     public AppSettingsManager(Context context) {
@@ -328,40 +322,6 @@ public class AppSettingsManager {
             return getFloatingBottomOffset();
         }
         return mmkv.getInt(KEY_APP_FLOATING_BOTTOM_OFFSET + packageName, getFloatingBottomOffset());
-    }
-
-    // ===== 包名切换过渡设置 =====
-
-    public int getTransitionAnimationDurationMs() {
-        return normalizeTransitionTimingMs(mmkv.getInt(
-                KEY_TRANSITION_ANIMATION_DURATION_MS,
-                Const.DEFAULT_TRANSITION_ANIMATION_DURATION_MS
-        ));
-    }
-
-    public void setTransitionAnimationDurationMs(int durationMs) {
-        mmkv.putInt(
-                KEY_TRANSITION_ANIMATION_DURATION_MS,
-                normalizeTransitionTimingMs(durationMs)
-        ).commit();
-    }
-
-    public int getTransitionPackageCheckDelayMs() {
-        return normalizeTransitionTimingMs(mmkv.getInt(
-                KEY_TRANSITION_PACKAGE_CHECK_DELAY_MS,
-                Const.DEFAULT_TRANSITION_PACKAGE_CHECK_DELAY_MS
-        ));
-    }
-
-    public void setTransitionPackageCheckDelayMs(int delayMs) {
-        mmkv.putInt(
-                KEY_TRANSITION_PACKAGE_CHECK_DELAY_MS,
-                normalizeTransitionTimingMs(delayMs)
-        ).commit();
-    }
-
-    private int normalizeTransitionTimingMs(int valueMs) {
-        return Math.max(0, Math.min(valueMs, Const.MAX_TRANSITION_TIMING_SETTING_MS));
     }
 
     // 题型设置相关常量

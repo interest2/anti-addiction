@@ -35,11 +35,10 @@ public class Const {
 
     public static final long APP_STATE_CHECK_INTERVAL = 2000; // 轮询检查间隔，ms
     public static final long SYSTEM_UI_CONFIRM_DELAY_MS = 100; // 离开目标包名后的确认时长
-    public static final int DEFAULT_TRANSITION_ANIMATION_DURATION_MS = 1000; // 过渡动画时长 a
-    public static final int DEFAULT_TRANSITION_PACKAGE_CHECK_DELAY_MS = 300; // 首次复核时刻 p
+    public static final int PACKAGE_TRANSITION_ANIMATION_DURATION_MS = 1000; // 过渡动画时长 a
+    public static final int PACKAGE_TRANSITION_CHECK_DELAY_MS = 300; // 首次复核时刻 p
     public static final int TRANSITION_EARLY_RETURN_BUFFER_MS = 100;
     public static final int TRANSITION_DIRECT_REENTRY_BUFFER_MS = 300;
-    public static final int MAX_TRANSITION_TIMING_SETTING_MS = 10000;
     public static final long FLOATING_SHOW_DETECTION_DEBOUNCE_MS = 350;
     public static final long PAGE_TRANSITION_WINDOW_REUSE_MS = 1000;
     public static final long CONTENT_CHECK_DEBOUNCE_MS = 200; // 页面内容变化停止后再检测

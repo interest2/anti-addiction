@@ -6,7 +6,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -15,23 +14,18 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
-import com.book.mask.config.Const;
 import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.config.Share;
-import com.book.mask.setting.AppSettingsManager;
 
 import java.util.List;
 
 public class SpecialDetailsNav extends Fragment {
-    private AppSettingsManager appSettingsManager;
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_special_details, container, false);
-        appSettingsManager = new AppSettingsManager(requireContext());
 
         view.findViewById(R.id.btn_special_details_back)
                 .setOnClickListener(v -> getParentFragmentManager().popBackStack());
@@ -39,70 +33,7 @@ public class SpecialDetailsNav extends Fragment {
                 .setOnClickListener(v -> showKeyboardWhitelistDialog());
         view.findViewById(R.id.row_reset_floating)
                 .setOnClickListener(v -> showResetFloatingDialog());
-        setupDebounceSettings(view);
         return view;
-    }
-
-    private void setupDebounceSettings(View view) {
-        EditText animationDurationInput = view.findViewById(
-                R.id.et_transition_animation_duration_ms
-        );
-        EditText packageCheckDelayInput = view.findViewById(
-                R.id.et_transition_package_check_delay_ms
-        );
-        View saveButton = view.findViewById(R.id.btn_save_debounce_settings);
-
-        animationDurationInput.setText(String.valueOf(
-                appSettingsManager.getTransitionAnimationDurationMs()
-        ));
-        packageCheckDelayInput.setText(String.valueOf(
-                appSettingsManager.getTransitionPackageCheckDelayMs()
-        ));
-
-        saveButton.setOnClickListener(v -> {
-            Integer animationDuration = readTransitionTimingValue(animationDurationInput);
-            Integer packageCheckDelay = readTransitionTimingValue(packageCheckDelayInput);
-            if (animationDuration == null || packageCheckDelay == null) {
-                return;
-            }
-
-            appSettingsManager.setTransitionAnimationDurationMs(animationDuration);
-            appSettingsManager.setTransitionPackageCheckDelayMs(packageCheckDelay);
-            Toast.makeText(
-                    requireContext(),
-                    R.string.debounce_settings_saved,
-                    Toast.LENGTH_SHORT
-            ).show();
-        });
-
-        packageCheckDelayInput.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
-                saveButton.performClick();
-                return true;
-            }
-            return false;
-        });
-    }
-
-    private Integer readTransitionTimingValue(EditText input) {
-        String value = input.getText() == null ? "" : input.getText().toString().trim();
-        if (value.isEmpty()) {
-            input.setError(getString(R.string.debounce_value_required));
-            return null;
-        }
-
-        try {
-            int delayMs = Integer.parseInt(value);
-            if (delayMs < 0 || delayMs > Const.MAX_TRANSITION_TIMING_SETTING_MS) {
-                input.setError(getString(R.string.debounce_value_out_of_range));
-                return null;
-            }
-            input.setError(null);
-            return delayMs;
-        } catch (NumberFormatException e) {
-            input.setError(getString(R.string.debounce_value_out_of_range));
-            return null;
-        }
     }
 
     private void showKeyboardWhitelistDialog() {
