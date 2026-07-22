@@ -147,12 +147,13 @@ public class FloatService extends AccessibilityService
             public void onAppStateChanged(CustomApp app, boolean isTargetInterface) {
                 if (isTargetInterface) {
                     if (floatingWindowManager.isSuspendedForPackageTransition()
+                            || floatingWindowManager.isSuspendedForPageTransition()
                             || !floatingWindowManager.isFloatingWindowVisible()) {
                         floatingWindowManager.showFloatingWindow(app);
                     }
                 } else {
                     if (floatingWindowManager.isFloatingWindowVisible()) {
-                        floatingWindowManager.hideFloatingWindow();
+                        floatingWindowManager.suspendForPageTransition(app);
                     }
                 }
             }

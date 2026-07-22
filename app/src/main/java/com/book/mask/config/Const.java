@@ -41,6 +41,7 @@ public class Const {
     public static final int TRANSITION_DIRECT_REENTRY_BUFFER_MS = 300;
     public static final int MAX_TRANSITION_TIMING_SETTING_MS = 10000;
     public static final long FLOATING_SHOW_DETECTION_DEBOUNCE_MS = 350;
+    public static final long PAGE_TRANSITION_WINDOW_REUSE_MS = 1000;
     public static final long CONTENT_CHECK_DEBOUNCE_MS = 200; // 页面内容变化停止后再检测
     public static final long CONTENT_CHECK_MAX_WAIT_MS = 500; // 连续变化时的最长等待时间
 

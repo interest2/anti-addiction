@@ -32,12 +32,22 @@ public class FloatingWindowManager {
     private View floatingView;
     private WindowManager.LayoutParams layoutParams;
     private boolean isFloatingWindowVisible = false;
-    private boolean isSuspendedForSystemUi = false;
-    private boolean isSuspendedForPackageTransition = false;
+    private CustomApp currentWindowApp;
+    private final WindowSuspensionState windowSuspensionState = new WindowSuspensionState();
+    private SuspensionMode suspensionMode = SuspensionMode.NONE;
+    private float suspensionOriginalWindowAlpha = 1.0f;
+    private int suspensionOriginalWindowFlags = 0;
     private String packageTransitionTargetPackage;
-    private boolean packageTransitionUsesTransparentWindow = false;
-    private float packageTransitionOriginalWindowAlpha = 1.0f;
-    private int packageTransitionOriginalWindowFlags = 0;
+    private String pageTransitionTargetPackage;
+    private Runnable pageTransitionExpiryRunnable;
+    private long pageTransitionGeneration = 0;
+    private CustomApp systemUiRecoveryApp;
+
+    private enum SuspensionMode {
+        NONE,
+        TRANSPARENT_WINDOW,
+        INVISIBLE_VIEW
+    }
     
     // 管理器依赖
     private MathChallengeManager mathChallengeManager;
@@ -77,6 +87,9 @@ public class FloatingWindowManager {
         if (tryResumeFromPackageTransition(currentActiveApp)) {
             return;
         }
+        if (tryResumeFromPageTransition(currentActiveApp)) {
+            return;
+        }
 
         if (isFloatingWindowVisible) {
             Log.v(TAG, "悬浮窗已显示，跳过重复显示");
@@ -97,6 +110,7 @@ public class FloatingWindowManager {
         // 创建悬浮窗布局
         LayoutInflater inflater = LayoutInflater.from(context);
         floatingView = inflater.inflate(R.layout.floating_window_layout, null);
+        currentWindowApp = currentActiveApp;
         String currentPackageName = currentActiveApp == null ? null : currentActiveApp.getPackageName();
         layoutParams = FloatHelper.getLayoutParams(windowManager, appSettingsManager, currentPackageName);
         
@@ -135,10 +149,10 @@ public class FloatingWindowManager {
             Button closeButton = floatingView.findViewById(R.id.btn_close);
             closeButton.setOnClickListener(v -> {
                 Log.d(TAG, "用户点击关闭按钮");
-                
+
                 // 微信APP直接当作答题通过，不显示数学题
-                if (currentActiveApp != null && 
-                    "com.tencent.mm".equals(currentActiveApp.getPackageName())) {
+                if (currentWindowApp != null &&
+                    "com.tencent.mm".equals(currentWindowApp.getPackageName())) {
                     Log.d(TAG, "微信APP直接当作答题通过");
                     // 直接调用答题成功的逻辑
                     if (mathChallengeManager != null && mathChallengeManager.getOnMathChallengeListener() != null) {
@@ -150,21 +164,18 @@ public class FloatingWindowManager {
                 }
             });
 
-            // 更新悬浮窗内容，显示当前时间间隔设置
-            updateFloatingWindowContent(currentActiveApp);
-
             // 添加悬浮窗到窗口管理器
             try {
                 windowManager.addView(floatingView, layoutParams);
                 isFloatingWindowVisible = true;
-                isSuspendedForSystemUi = false;
-                clearPackageTransitionSuspension();
+                clearAllSuspensionState();
                 Share.isFloatingWindowVisible = true; // 同步状态
                 Log.d(TAG, "悬浮窗显示成功");
                 notifyShownFromHidden();
             } catch (Exception e) {
                 Log.e(TAG, "显示悬浮窗失败", e);
                 isFloatingWindowVisible = false;
+                currentWindowApp = null;
                 Share.isFloatingWindowVisible = false; // 同步状态
             }
             
@@ -204,10 +215,10 @@ public class FloatingWindowManager {
             } catch (Exception e) {
                 Log.e(TAG, "隐藏悬浮窗失败", e);
             }
-            
+
             isFloatingWindowVisible = false;
-            isSuspendedForSystemUi = false;
-            clearPackageTransitionSuspension();
+            currentWindowApp = null;
+            clearAllSuspensionState();
             Share.isFloatingWindowVisible = false; // 同步状态
         }
     }
@@ -216,7 +227,7 @@ public class FloatingWindowManager {
      * 普通包名切换时将现有 Window 设为透明且不可触摸，保留已绘制 Surface 供短时重入恢复。
      */
     public void suspendForPackageTransition(CustomApp targetApp) {
-        if (!isFloatingWindowVisible || floatingView == null || isSuspendedForPackageTransition) {
+        if (!isFloatingWindowVisible || floatingView == null || isSuspendedForPackageTransition()) {
             return;
         }
 
@@ -225,48 +236,28 @@ public class FloatingWindowManager {
             mathChallengeManager.hideMathChallenge();
         }
 
-        boolean keepsDrawnSurface = floatingView.getVisibility() == View.VISIBLE
-                && suspendPackageTransitionWindowWithoutHidingView();
-        if (!keepsDrawnSurface) {
-            // 厂商 WindowManager 不支持参数热更新时，保留原有隐藏方式作为回退。
-            floatingView.setVisibility(View.INVISIBLE);
+        if (!suspendAttachedWindow(WindowSuspensionState.Reason.PACKAGE_TRANSITION)) {
+            Log.w(TAG, "包名切换时无法暂停 Window，直接移除后等待按需重建");
+            hideFloatingWindow();
+            return;
         }
-        isSuspendedForPackageTransition = true;
+
+        // 页面切换已经隐藏窗口时，把暂停原因原子地移交给包名切换，避免页面保留计时器误删窗口。
+        if (windowSuspensionState.hasReason(WindowSuspensionState.Reason.PAGE_TRANSITION)) {
+            resumeAttachedWindow(WindowSuspensionState.Reason.PAGE_TRANSITION);
+            clearPageTransitionMetadata();
+        }
         packageTransitionTargetPackage = targetApp == null ? null : targetApp.getPackageName();
         Log.d(TAG, "包名切换时悬浮窗已临时隐藏，方式="
-                + (keepsDrawnSurface ? "透明且不可触摸" : "INVISIBLE 回退") + "，耗时 "
+                + suspensionModeForLog() + "，耗时 "
                 + elapsedMillisSince(startedAt) + "ms");
-    }
-
-    private boolean suspendPackageTransitionWindowWithoutHidingView() {
-        if (layoutParams == null || windowManager == null) {
-            return false;
-        }
-
-        float originalAlpha = layoutParams.alpha;
-        int originalFlags = layoutParams.flags;
-        layoutParams.alpha = 0.0f;
-        layoutParams.flags = originalFlags | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-        try {
-            windowManager.updateViewLayout(floatingView, layoutParams);
-            packageTransitionOriginalWindowAlpha = originalAlpha;
-            packageTransitionOriginalWindowFlags = originalFlags;
-            packageTransitionUsesTransparentWindow = true;
-            return true;
-        } catch (RuntimeException e) {
-            layoutParams.alpha = originalAlpha;
-            layoutParams.flags = originalFlags;
-            packageTransitionUsesTransparentWindow = false;
-            Log.w(TAG, "无法使用透明 Window 临时隐藏，回退到 INVISIBLE", e);
-            return false;
-        }
     }
 
     /**
      * 短时重入窗口结束或切换到其他目标 APP 后，销毁临时保留的 View。
      */
     public void finishPackageTransitionHide() {
-        if (!isSuspendedForPackageTransition) {
+        if (!isSuspendedForPackageTransition()) {
             return;
         }
         Log.d(TAG, "包名切换临时隐藏结束，移除保留的 View");
@@ -274,7 +265,7 @@ public class FloatingWindowManager {
     }
 
     private boolean tryResumeFromPackageTransition(CustomApp targetApp) {
-        if (!isSuspendedForPackageTransition || floatingView == null) {
+        if (!isSuspendedForPackageTransition() || floatingView == null) {
             return false;
         }
 
@@ -289,24 +280,179 @@ public class FloatingWindowManager {
         if (mathChallengeManager != null) {
             mathChallengeManager.setCurrentApp(targetApp);
         }
-        if (packageTransitionUsesTransparentWindow) {
-            layoutParams.alpha = packageTransitionOriginalWindowAlpha;
-            layoutParams.flags = packageTransitionOriginalWindowFlags;
-            try {
-                windowManager.updateViewLayout(floatingView, layoutParams);
-            } catch (RuntimeException e) {
-                Log.e(TAG, "恢复透明 Window 失败，重新创建悬浮窗", e);
-                finishPackageTransitionHide();
-                return false;
-            }
-        } else {
-            floatingView.setVisibility(View.VISIBLE);
+        if (!resumeAttachedWindow(WindowSuspensionState.Reason.PACKAGE_TRANSITION)) {
+            Log.e(TAG, "恢复包名切换保留的 Window 失败，重新创建悬浮窗");
+            finishPackageTransitionHide();
+            return false;
         }
-        clearPackageTransitionSuspension();
+        currentWindowApp = targetApp;
+        packageTransitionTargetPackage = null;
         Log.d(TAG, "悬浮窗从包名切换临时隐藏中恢复完成，耗时 "
                 + elapsedMillisSince(startedAt) + "ms");
-        notifyShownFromHidden();
+        notifyIfWindowActuallyShown();
         return true;
+    }
+
+    /**
+     * 同一 APP 暂时离开目标页面时保留已绘制 Window；超过保留期仍未返回则释放。
+     */
+    public void suspendForPageTransition(CustomApp targetApp) {
+        if (!isFloatingWindowVisible || floatingView == null || isSuspendedForPageTransition()) {
+            return;
+        }
+
+        String targetPackage = targetApp == null ? null : targetApp.getPackageName();
+        String currentPackage = currentWindowApp == null ? null : currentWindowApp.getPackageName();
+        if (targetPackage == null || !targetPackage.equals(currentPackage)) {
+            hideFloatingWindow();
+            return;
+        }
+
+        if (!suspendAttachedWindow(WindowSuspensionState.Reason.PAGE_TRANSITION)) {
+            Log.w(TAG, "页面切换时无法暂停 Window，直接移除后等待按需重建");
+            hideFloatingWindow();
+            return;
+        }
+
+        pageTransitionTargetPackage = targetPackage;
+        schedulePageTransitionExpiry();
+        Log.d(TAG, "离开目标页面，悬浮窗已临时隐藏，方式=" + suspensionModeForLog()
+                + "，保留 " + Const.PAGE_TRANSITION_WINDOW_REUSE_MS + "ms");
+    }
+
+    private boolean tryResumeFromPageTransition(CustomApp targetApp) {
+        if (!isSuspendedForPageTransition() || floatingView == null) {
+            return false;
+        }
+
+        String targetPackage = targetApp == null ? null : targetApp.getPackageName();
+        if (pageTransitionTargetPackage == null
+                || !pageTransitionTargetPackage.equals(targetPackage)) {
+            finishPageTransitionHide();
+            return false;
+        }
+
+        long startedAt = SystemClock.elapsedRealtimeNanos();
+        if (mathChallengeManager != null) {
+            mathChallengeManager.setCurrentApp(targetApp);
+        }
+        if (!resumeAttachedWindow(WindowSuspensionState.Reason.PAGE_TRANSITION)) {
+            Log.e(TAG, "恢复页面切换保留的 Window 失败，重新创建悬浮窗");
+            finishPageTransitionHide();
+            return false;
+        }
+        currentWindowApp = targetApp;
+        clearPageTransitionMetadata();
+        Log.d(TAG, "悬浮窗从页面切换临时隐藏中恢复完成，耗时 "
+                + elapsedMillisSince(startedAt) + "ms");
+        notifyIfWindowActuallyShown();
+        return true;
+    }
+
+    private void schedulePageTransitionExpiry() {
+        clearPageTransitionExpiryCallback();
+        long generation = ++pageTransitionGeneration;
+        pageTransitionExpiryRunnable = () -> {
+            if (generation != pageTransitionGeneration || !isSuspendedForPageTransition()) {
+                return;
+            }
+            pageTransitionExpiryRunnable = null;
+            Log.d(TAG, "页面切换保留期结束，移除悬浮窗");
+            finishPageTransitionHide();
+        };
+        handler.postDelayed(pageTransitionExpiryRunnable, Const.PAGE_TRANSITION_WINDOW_REUSE_MS);
+    }
+
+    private void finishPageTransitionHide() {
+        if (!isSuspendedForPageTransition()) {
+            return;
+        }
+        hideFloatingWindow();
+    }
+
+    private void clearPageTransitionMetadata() {
+        clearPageTransitionExpiryCallback();
+        pageTransitionTargetPackage = null;
+    }
+
+    private void clearPageTransitionExpiryCallback() {
+        pageTransitionGeneration++;
+        if (pageTransitionExpiryRunnable != null) {
+            handler.removeCallbacks(pageTransitionExpiryRunnable);
+            pageTransitionExpiryRunnable = null;
+        }
+    }
+
+    private boolean suspendAttachedWindow(WindowSuspensionState.Reason reason) {
+        boolean shouldApplyPhysicalHide = windowSuspensionState.suspend(reason);
+        if (!shouldApplyPhysicalHide) {
+            return true;
+        }
+
+        if (layoutParams != null && windowManager != null && floatingView.getVisibility() == View.VISIBLE) {
+            float originalAlpha = layoutParams.alpha;
+            int originalFlags = layoutParams.flags;
+            layoutParams.alpha = 0.0f;
+            layoutParams.flags = originalFlags | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+            try {
+                windowManager.updateViewLayout(floatingView, layoutParams);
+                suspensionOriginalWindowAlpha = originalAlpha;
+                suspensionOriginalWindowFlags = originalFlags;
+                suspensionMode = SuspensionMode.TRANSPARENT_WINDOW;
+                return true;
+            } catch (RuntimeException e) {
+                layoutParams.alpha = originalAlpha;
+                layoutParams.flags = originalFlags;
+                Log.w(TAG, "无法使用透明 Window 临时隐藏，回退到 INVISIBLE", e);
+            }
+        }
+
+        try {
+            floatingView.setVisibility(View.INVISIBLE);
+            suspensionMode = SuspensionMode.INVISIBLE_VIEW;
+            return true;
+        } catch (RuntimeException e) {
+            windowSuspensionState.resume(reason);
+            resetSuspensionRenderingState();
+            Log.e(TAG, "悬浮窗临时隐藏失败", e);
+            return false;
+        }
+    }
+
+    private boolean resumeAttachedWindow(WindowSuspensionState.Reason reason) {
+        WindowSuspensionState.ResumeAction action = windowSuspensionState.resume(reason);
+        if (action == WindowSuspensionState.ResumeAction.NONE
+                || action == WindowSuspensionState.ResumeAction.KEEP_HIDDEN) {
+            return true;
+        }
+
+        try {
+            if (suspensionMode == SuspensionMode.TRANSPARENT_WINDOW) {
+                layoutParams.alpha = suspensionOriginalWindowAlpha;
+                layoutParams.flags = suspensionOriginalWindowFlags;
+                windowManager.updateViewLayout(floatingView, layoutParams);
+            } else if (suspensionMode == SuspensionMode.INVISIBLE_VIEW) {
+                floatingView.setVisibility(View.VISIBLE);
+            }
+            resetSuspensionRenderingState();
+            return true;
+        } catch (RuntimeException e) {
+            resetSuspensionRenderingState();
+            Log.e(TAG, "恢复临时隐藏的悬浮窗失败", e);
+            return false;
+        }
+    }
+
+    private String suspensionModeForLog() {
+        return suspensionMode == SuspensionMode.TRANSPARENT_WINDOW
+                ? "透明且不可触摸"
+                : "INVISIBLE 回退";
+    }
+
+    private void notifyIfWindowActuallyShown() {
+        if (!windowSuspensionState.isSuspended()) {
+            notifyShownFromHidden();
+        }
     }
 
     private void notifyShownFromHidden() {
@@ -315,12 +461,18 @@ public class FloatingWindowManager {
         }
     }
 
-    private void clearPackageTransitionSuspension() {
-        isSuspendedForPackageTransition = false;
+    private void clearAllSuspensionState() {
+        windowSuspensionState.clear();
         packageTransitionTargetPackage = null;
-        packageTransitionUsesTransparentWindow = false;
-        packageTransitionOriginalWindowAlpha = 1.0f;
-        packageTransitionOriginalWindowFlags = 0;
+        clearPageTransitionMetadata();
+        systemUiRecoveryApp = null;
+        resetSuspensionRenderingState();
+    }
+
+    private void resetSuspensionRenderingState() {
+        suspensionMode = SuspensionMode.NONE;
+        suspensionOriginalWindowAlpha = 1.0f;
+        suspensionOriginalWindowFlags = 0;
     }
 
     private double elapsedMillisSince(long startedAtNanos) {
@@ -332,13 +484,43 @@ public class FloatingWindowManager {
      * 回到目标 APP 后直接恢复原 View，避免重新 inflate/addView 产生额外空档。
      */
     public void setSuspendedForSystemUi(boolean suspended) {
-        if (!isFloatingWindowVisible || floatingView == null || isSuspendedForSystemUi == suspended) {
+        boolean currentlySuspended = windowSuspensionState.hasReason(
+                WindowSuspensionState.Reason.SYSTEM_UI
+        );
+        if (currentlySuspended == suspended) {
+            if (!suspended && !isFloatingWindowVisible && systemUiRecoveryApp != null) {
+                CustomApp recoveryApp = systemUiRecoveryApp;
+                systemUiRecoveryApp = null;
+                showFloatingWindow(recoveryApp);
+            }
             return;
         }
 
-        floatingView.setVisibility(suspended ? View.INVISIBLE : View.VISIBLE);
-        isSuspendedForSystemUi = suspended;
-        Log.d(TAG, suspended ? "SystemUI 持续存在，临时暂停悬浮窗" : "回到目标 APP，恢复悬浮窗");
+        if (suspended) {
+            if (!isFloatingWindowVisible || floatingView == null) {
+                return;
+            }
+            systemUiRecoveryApp = null;
+            if (!suspendAttachedWindow(WindowSuspensionState.Reason.SYSTEM_UI)) {
+                CustomApp recoveryApp = currentWindowApp;
+                hideFloatingWindow();
+                systemUiRecoveryApp = recoveryApp;
+                return;
+            }
+            Log.d(TAG, "SystemUI 持续存在，临时暂停悬浮窗，方式=" + suspensionModeForLog());
+            return;
+        }
+
+        CustomApp recoveryApp = currentWindowApp;
+        if (!resumeAttachedWindow(WindowSuspensionState.Reason.SYSTEM_UI)) {
+            hideFloatingWindow();
+            if (recoveryApp != null) {
+                showFloatingWindow(recoveryApp);
+            }
+            return;
+        }
+        Log.d(TAG, "回到目标 APP，恢复悬浮窗");
+        notifyIfWindowActuallyShown();
     }
     
     /**
@@ -478,7 +660,11 @@ public class FloatingWindowManager {
     }
 
     public boolean isSuspendedForPackageTransition() {
-        return isSuspendedForPackageTransition;
+        return windowSuspensionState.hasReason(WindowSuspensionState.Reason.PACKAGE_TRANSITION);
+    }
+
+    public boolean isSuspendedForPageTransition() {
+        return windowSuspensionState.hasReason(WindowSuspensionState.Reason.PAGE_TRANSITION);
     }
     
     public void cleanup() {

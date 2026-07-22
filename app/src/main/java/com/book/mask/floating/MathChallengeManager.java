@@ -7,12 +7,12 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.ViewStub;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.HashMap;
@@ -65,6 +65,7 @@ public class MathChallengeManager {
     // 数学题相关
     private String currentAnswer = "";
     private static boolean isMathChallengeActive = false;
+    private boolean componentsInitialized = false;
     // type 0：算术题；1：应用题；2：英文阅读
     private int currentType = 0;
     private static final int TYPE_ARITHMETIC = 0;
@@ -104,8 +105,6 @@ public class MathChallengeManager {
         this.accessibilityService = accessibilityService;
         this.relaxManager = new RelaxManager(context);
         this.appSettingsManager = new AppSettingsManager(context);
-
-        initializeComponents();
     }
 
     /**
@@ -130,12 +129,26 @@ public class MathChallengeManager {
     /**
      * 初始化数学题相关组件
      */
-    private void initializeComponents() {
-        if (floatingView == null) return;
+    private boolean ensureComponentsInitialized() {
+        if (componentsInitialized) {
+            return true;
+        }
+        if (floatingView == null) {
+            return false;
+        }
+
+        ViewStub challengeStub = floatingView.findViewById(R.id.math_challenge_stub);
+        if (challengeStub != null) {
+            challengeStub.inflate();
+        }
         
         Button submitButton = floatingView.findViewById(R.id.btn_submit_answer);
         Button cancelButton = floatingView.findViewById(R.id.btn_cancel_close);
         EditText answerEdit = floatingView.findViewById(R.id.et_math_answer);
+        if (submitButton == null || cancelButton == null || answerEdit == null) {
+            Log.e(TAG, "数学题布局懒加载失败");
+            return false;
+        }
 
         // 提交答案按钮
         submitButton.setOnClickListener(v -> handleSubmitAnswer());
@@ -190,13 +203,17 @@ public class MathChallengeManager {
                 }
             }
         });
+        componentsInitialized = true;
+        return true;
     }
     
     /**
      * 显示数学题验证界面
      */
     public void showMathChallenge() {
-        if (floatingView == null) return;
+        if (!ensureComponentsInitialized()) {
+            return;
+        }
 
         // 根据用户设置决定题型
         String questionType = appSettingsManager.getMathQuestionType();
@@ -212,7 +229,7 @@ public class MathChallengeManager {
                     ? TYPE_WORD : TYPE_ARITHMETIC;
         }
         
-        LinearLayout mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
+        View mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
         TextView questionText = floatingView.findViewById(R.id.tv_math_question);
         EditText answerEdit = floatingView.findViewById(R.id.et_math_answer);
         TextView resultText = floatingView.findViewById(R.id.tv_math_result);
@@ -569,9 +586,9 @@ public class MathChallengeManager {
      * 隐藏数学题验证界面
      */
     public void hideMathChallenge() {
-        if (floatingView == null) return;
+        if (floatingView == null || !componentsInitialized) return;
         
-        LinearLayout mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
+        View mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
         EditText answerEdit = floatingView.findViewById(R.id.et_math_answer);
         
         // 隐藏输入法
