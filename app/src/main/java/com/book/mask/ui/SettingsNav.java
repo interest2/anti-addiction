@@ -6,6 +6,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.method.LinkMovementMethod;
+import android.text.style.URLSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -63,6 +67,8 @@ public class SettingsNav extends Fragment {
     private void setupMenuEntries(View view) {
         view.findViewById(R.id.row_version_update)
                 .setOnClickListener(v -> showVersionUpdateDialog());
+        view.findViewById(R.id.row_install_troubleshooting)
+                .setOnClickListener(v -> showInstallTroubleshootingDialog());
         view.findViewById(R.id.row_floating_settings)
                 .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
         view.findViewById(R.id.row_special_details)
@@ -102,6 +108,35 @@ public class SettingsNav extends Fragment {
         ));
 
         versionDialog.show();
+    }
+
+    private void showInstallTroubleshootingDialog() {
+        String messageText = getString(R.string.install_troubleshooting_message);
+        String linkText = getString(R.string.blog_link_text);
+        int linkStart = messageText.indexOf(linkText);
+        SpannableString message = new SpannableString(messageText);
+        if (linkStart >= 0) {
+            message.setSpan(
+                    new URLSpan(getString(R.string.install_troubleshooting_url)),
+                    linkStart,
+                    linkStart + linkText.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            );
+        }
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.install_troubleshooting)
+                .setMessage(message)
+                .setNegativeButton("关闭", null)
+                .create();
+        dialog.setOnShowListener(ignored -> {
+            TextView messageView = dialog.findViewById(android.R.id.message);
+            if (messageView != null) {
+                messageView.setMovementMethod(LinkMovementMethod.getInstance());
+                messageView.setLinksClickable(true);
+            }
+        });
+        dialog.show();
     }
 
     private void downloadLatestApk(android.app.AlertDialog versionDialog,
