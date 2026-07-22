@@ -20,9 +20,8 @@
         android:id="@+id/btn_latest_apk"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:backgroundTint="#7C4DFF"
+        android:backgroundTint="#4CAF50"
         android:text="@string/download_latest_apk"
-        android:textAllCaps="false"
         android:textColor="#FFFFFF"
         android:textSize="16sp" />
 
