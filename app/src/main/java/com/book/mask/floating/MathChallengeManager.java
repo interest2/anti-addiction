@@ -207,8 +207,9 @@ public class MathChallengeManager {
             // 英文阅读
             currentType = TYPE_ENGLISH;
         } else {
-            // 混合型（保持原有的概率逻辑）
-            currentType = new Random().nextInt(100) % 9 == 0 ? TYPE_WORD : TYPE_ARITHMETIC;
+            // 混合型：按配置比例生成应用题，其余为算术题
+            currentType = new Random().nextInt(100) < Const.MIXED_WORD_PROBLEM_PERCENT
+                    ? TYPE_WORD : TYPE_ARITHMETIC;
         }
         
         LinearLayout mathLayout = floatingView.findViewById(R.id.math_challenge_layout);
