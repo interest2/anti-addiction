@@ -157,6 +157,11 @@ public class FloatService extends AccessibilityService
                     }
                 }
             }
+
+            @Override
+            public void onTargetPackageEnteredBeforeContentCheck(CustomApp app) {
+                floatingWindowManager.showFloatingWindow(app);
+            }
             
             @Override
             public void onAppLeft(CustomApp app) {

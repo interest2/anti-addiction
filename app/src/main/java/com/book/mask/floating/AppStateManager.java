@@ -36,6 +36,7 @@ public class AppStateManager {
 
     // 应用状态相关
     private CustomApp currentActiveApp = null;
+    private String lastObservedPackage;
     private long contentCheckBurstStartedAt = 0;
     private Runnable pendingPackageConfirmation;
     private long packageConfirmationGeneration = 0;
@@ -77,6 +78,7 @@ public class AppStateManager {
     
     public interface OnAppStateListener {
         void onAppStateChanged(CustomApp app, boolean isTargetInterface);
+        void onTargetPackageEnteredBeforeContentCheck(CustomApp app);
         void onAppLeft(CustomApp app);
         void onPackageTransitionStarted(CustomApp app);
         void onPackageTransitionViewDiscarded(CustomApp app);
@@ -450,6 +452,9 @@ public class AppStateManager {
             return;
         }
 
+        boolean enteredFromSystemUi = SYSTEM_UI_PACKAGE.equals(lastObservedPackage);
+        lastObservedPackage = packageName;
+
         if (packageHideTransition != null) {
             handlePackageDuringHideTransition(packageName, source);
             return;
@@ -471,7 +476,7 @@ public class AppStateManager {
         }
 
         cancelPendingPackageConfirmation();
-        applyConfirmedPackage(packageName, source);
+        applyConfirmedPackage(packageName, source, enteredFromSystemUi);
         setSuspendedForSystemUi(false);
     }
 
@@ -764,7 +769,7 @@ public class AppStateManager {
                 setSuspendedForSystemUi(true);
             } else {
                 Log.d(TAG, "延迟确认后进入其他包名: " + confirmedPackage);
-                applyConfirmedPackage(confirmedPackage, "包名延迟确认");
+                applyConfirmedPackage(confirmedPackage, "包名延迟确认", true);
                 setSuspendedForSystemUi(false);
             }
         };
@@ -801,6 +806,14 @@ public class AppStateManager {
     }
 
     private void applyConfirmedPackage(String packageName, String source) {
+        applyConfirmedPackage(packageName, source, false);
+    }
+
+    private void applyConfirmedPackage(
+            String packageName,
+            String source,
+            boolean enteredFromSystemUi
+    ) {
         CustomApp detectedApp = detectSupportedApp(packageName);
         if (detectedApp != null) {
             if (detectedApp != currentActiveApp) {
@@ -813,7 +826,22 @@ public class AppStateManager {
                 currentActiveApp = detectedApp;
                 Share.currentApp = currentActiveApp;
                 Log.d(TAG, source + "确认进入 APP: " + detectedApp.getAppName());
-                checkTextContentOptimized();
+                boolean shouldShowDouyinBeforeContentCheck = CustomAppManager.DOUYIN_PACKAGE.equals(
+                        detectedApp.getPackageName()
+                ) && !enteredFromSystemUi
+                        && !suspendedForSystemUi
+                        && !Share.isAppManuallyHidden(detectedApp);
+                if (shouldShowDouyinBeforeContentCheck && listener != null) {
+                    Log.d(TAG, "检测到从非目标包名进入抖音，先显示悬浮窗再检测页面文字");
+                    listener.onTargetPackageEnteredBeforeContentCheck(detectedApp);
+                    if (isFloatingShowDetectionPaused()) {
+                        Log.d(TAG, "抖音悬浮窗已先显示，显示防抖结束后检测页面文字");
+                    } else {
+                        checkTextContentOptimized();
+                    }
+                } else {
+                    checkTextContentOptimized();
+                }
             } else {
                 requestContentCheck();
             }
@@ -871,6 +899,7 @@ public class AppStateManager {
         cancelPendingContentCheck();
         cancelPendingPackageConfirmation();
         cancelPackageHideTransition();
+        lastObservedPackage = null;
         floatingShowDetectionPausedUntil = 0;
         if (floatingShowDetectionResumeRunnable != null) {
             handler.removeCallbacks(floatingShowDetectionResumeRunnable);
