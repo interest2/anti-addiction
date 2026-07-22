@@ -9,14 +9,27 @@
     <string name="latest_version_fetch_failed">最新版本获取失败，请稍后重试</string>
     <string name="apk_download_unavailable">没有可用的应用打开下载链接</string>
     <string name="floating_window_settings">悬浮窗改默认大小</string>
+    <string name="special_details">特殊细节问题解决</string>
+    <string name="back">返回</string>
     <string name="keyboard_whitelist">键盘白名单</string>
     <string name="reset_floating_window">重置悬浮窗</string>
     <string name="package_name_log">包名日志</string>
     <string name="update_badge_count" translatable="false">1</string>
     <string name="keyboard_whitelist_hint">遇到键盘出不来或闪现消失（例如想关闭悬浮窗却无法答题），可点击下方按钮给键盘添加白名单</string>
+    <string name="keyboard_whitelist_saved">已手动免屏蔽：%1$s</string>
     <string name="add_current_keyboard">检测并添加当前键盘</string>
     <string name="reset_floating_window_hint">若答题成功解除了屏蔽，但到期后悬浮窗没出现，可尝试点击下方按钮重置</string>
     <string name="reset_all_floating_windows">重置所有APP悬浮窗状态</string>
     <string name="record_package_name">记录包名</string>
     <string name="view_package_name_log">查看包名日志</string>
+    <string name="debounce_settings_title">防抖与复核时间（毫秒）</string>
+    <string name="app_state_debounce_label">目标 APP 动画防抖</string>
+    <string name="app_state_debounce_hint">原有防抖时间，用于过滤目标 APP 进入、返回时的短暂包名变化</string>
+    <string name="floating_exit_confirm_delay_label">悬浮窗隐藏前复核延迟</string>
+    <string name="floating_exit_confirm_delay_hint">普通离开目标 APP 后，等待此时长再复核并决定是否隐藏</string>
+    <string name="debounce_default_hint">默认 350</string>
+    <string name="save_debounce_settings">保存并立即生效</string>
+    <string name="debounce_settings_saved">防抖与复核时间已保存</string>
+    <string name="debounce_value_required">请输入毫秒数</string>
+    <string name="debounce_value_out_of_range">请输入 0–10000 之间的毫秒数</string>
 </resources>

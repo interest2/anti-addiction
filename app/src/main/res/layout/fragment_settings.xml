@@ -149,7 +149,7 @@
                     android:background="#EEEEEE" />
 
                 <LinearLayout
-                    android:id="@+id/row_keyboard_whitelist"
+                    android:id="@+id/row_special_details"
                     android:layout_width="match_parent"
                     android:layout_height="68dp"
                     android:background="?attr/selectableItemBackground"
@@ -164,55 +164,14 @@
                         android:layout_width="28dp"
                         android:layout_height="28dp"
                         android:contentDescription="@null"
-                        android:src="@drawable/ic_menu_keyboard" />
+                        android:src="@drawable/ic_settings" />
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="18dp"
                         android:layout_weight="1"
-                        android:text="@string/keyboard_whitelist"
-                        android:textColor="#252525"
-                        android:textSize="18sp" />
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_menu_chevron" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="66dp"
-                    android:background="#EEEEEE" />
-
-                <LinearLayout
-                    android:id="@+id/row_reset_floating"
-                    android:layout_width="match_parent"
-                    android:layout_height="68dp"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="18dp">
-
-                    <ImageView
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_menu_reset" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="18dp"
-                        android:layout_weight="1"
-                        android:text="@string/reset_floating_window"
+                        android:text="@string/special_details"
                         android:textColor="#252525"
                         android:textSize="18sp" />
 

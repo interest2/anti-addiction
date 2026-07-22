@@ -141,7 +141,7 @@ public class FloatService extends AccessibilityService
      */
     private void initManagers() {
         // 初始化应用状态管理器
-        appStateManager = new AppStateManager(this, relaxManager);
+        appStateManager = new AppStateManager(this, relaxManager, appSettingsManager);
         appStateManager.setOnAppStateListener(new AppStateManager.OnAppStateListener() {
             @Override
             public void onAppStateChanged(CustomApp app, boolean isTargetInterface) {

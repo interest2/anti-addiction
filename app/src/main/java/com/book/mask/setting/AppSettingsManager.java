@@ -49,6 +49,11 @@ public class AppSettingsManager {
     private static final String KEY_APP_FLOATING_TOP_OFFSET = "app_floating_top_offset_";
     private static final String KEY_APP_FLOATING_BOTTOM_OFFSET = "app_floating_bottom_offset_";
 
+    // 特殊细节中的应用状态防抖设置
+    private static final String KEY_APP_STATE_DEBOUNCE_MS = "app_state_debounce_ms";
+    private static final String KEY_FLOATING_WINDOW_EXIT_CONFIRM_DELAY_MS =
+            "floating_window_exit_confirm_delay_ms";
+
     private MMKV mmkv;
 
     public AppSettingsManager(Context context) {
@@ -322,6 +327,37 @@ public class AppSettingsManager {
             return getFloatingBottomOffset();
         }
         return mmkv.getInt(KEY_APP_FLOATING_BOTTOM_OFFSET + packageName, getFloatingBottomOffset());
+    }
+
+    // ===== 应用状态防抖设置 =====
+
+    public int getAppStateDebounceMs() {
+        return normalizeDebounceMs(mmkv.getInt(
+                KEY_APP_STATE_DEBOUNCE_MS,
+                Const.DEFAULT_APP_STATE_DEBOUNCE_MS
+        ));
+    }
+
+    public void setAppStateDebounceMs(int delayMs) {
+        mmkv.putInt(KEY_APP_STATE_DEBOUNCE_MS, normalizeDebounceMs(delayMs)).commit();
+    }
+
+    public int getFloatingWindowExitConfirmDelayMs() {
+        return normalizeDebounceMs(mmkv.getInt(
+                KEY_FLOATING_WINDOW_EXIT_CONFIRM_DELAY_MS,
+                Const.DEFAULT_FLOATING_WINDOW_EXIT_CONFIRM_DELAY_MS
+        ));
+    }
+
+    public void setFloatingWindowExitConfirmDelayMs(int delayMs) {
+        mmkv.putInt(
+                KEY_FLOATING_WINDOW_EXIT_CONFIRM_DELAY_MS,
+                normalizeDebounceMs(delayMs)
+        ).commit();
+    }
+
+    private int normalizeDebounceMs(int delayMs) {
+        return Math.max(0, Math.min(delayMs, Const.MAX_DEBOUNCE_SETTING_MS));
     }
 
     // 题型设置相关常量

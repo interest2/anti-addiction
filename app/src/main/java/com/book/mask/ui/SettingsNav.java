@@ -6,7 +6,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.Settings;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,7 +19,6 @@ import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
 import com.book.mask.setting.RelaxManager;
-import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
 import com.book.mask.network.LatestVersionManager;
@@ -67,12 +65,23 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> showVersionUpdateDialog());
         view.findViewById(R.id.row_floating_settings)
                 .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
-        view.findViewById(R.id.row_keyboard_whitelist)
-                .setOnClickListener(v -> showKeyboardWhitelistDialog());
-        view.findViewById(R.id.row_reset_floating)
-                .setOnClickListener(v -> showResetFloatingDialog());
+        view.findViewById(R.id.row_special_details)
+                .setOnClickListener(v -> openSpecialDetails());
         view.findViewById(R.id.row_package_log)
                 .setOnClickListener(v -> showPackageLogActionsDialog());
+    }
+
+    private void openSpecialDetails() {
+        getParentFragmentManager().beginTransaction()
+                .setCustomAnimations(
+                        R.anim.slide_in_right,
+                        R.anim.slide_out_left,
+                        R.anim.slide_in_left,
+                        R.anim.slide_out_right
+                )
+                .replace(R.id.fragment_container, new SpecialDetailsNav())
+                .addToBackStack(SpecialDetailsNav.class.getSimpleName())
+                .commit();
     }
 
     private void showVersionUpdateDialog() {
@@ -179,44 +188,6 @@ public class SettingsNav extends Fragment {
         }
     }
 
-    private void showKeyboardWhitelistDialog() {
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_keyboard_whitelist, null);
-        TextView keyboardPackageText = dialogView.findViewById(R.id.tv_keyboard_package);
-        Button keyboardAllowButton = dialogView.findViewById(R.id.btn_keyboard_allow);
-
-        updateKeyboardPackageText(keyboardPackageText);
-        keyboardAllowButton.setOnClickListener(v -> detectAndSaveCurrentKeyboard(keyboardPackageText));
-
-        new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("键盘白名单")
-                .setView(dialogView)
-                .setNegativeButton("关闭", null)
-                .show();
-    }
-
-    private void showResetFloatingDialog() {
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_reset_floating, null);
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("重置悬浮窗")
-                .setView(dialogView)
-                .setNegativeButton("关闭", null)
-                .create();
-
-        dialogView.findViewById(R.id.btn_reset_floating_state).setOnClickListener(v -> {
-            java.util.Set<String> keys = Share.appManuallyHidden.keySet();
-            for (String key : keys) {
-                Share.appManuallyHidden.put(key, false);
-            }
-            android.widget.Toast.makeText(requireContext(),
-                    "所有APP悬浮窗状态已重置",
-                    android.widget.Toast.LENGTH_SHORT).show();
-            dialog.dismiss();
-        });
-        dialog.show();
-    }
-
     private void showPackageLogActionsDialog() {
         View dialogView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_package_log_actions, null);
@@ -295,49 +266,6 @@ public class SettingsNav extends Fragment {
         return Share.latestVersion == null || Share.latestVersion.trim().isEmpty();
     }
 
-    private void detectAndSaveCurrentKeyboard(TextView keyboardPackageText) {
-        String packageName = getCurrentKeyboardPackageName();
-        if (packageName.isEmpty()) {
-            android.widget.Toast.makeText(requireContext(),
-                    "未检测到键盘包名，请确认键盘已弹出",
-                    android.widget.Toast.LENGTH_SHORT).show();
-            updateKeyboardPackageText(keyboardPackageText);
-            return;
-        }
-
-        boolean added = InputMethodPackageManager.getInstance().addPackage(packageName);
-        updateKeyboardPackageText(keyboardPackageText);
-        android.widget.Toast.makeText(requireContext(),
-                added ? "已添加键盘包名：" + packageName : "键盘包名已存在：" + packageName,
-                android.widget.Toast.LENGTH_SHORT).show();
-    }
-
-    private String getCurrentKeyboardPackageName() {
-        String inputMethodId = Settings.Secure.getString(
-                requireContext().getContentResolver(),
-                Settings.Secure.DEFAULT_INPUT_METHOD);
-        if (inputMethodId == null || inputMethodId.trim().isEmpty()) {
-            return "";
-        }
-
-        int separatorIndex = inputMethodId.indexOf('/');
-        if (separatorIndex <= 0) {
-            return inputMethodId.trim();
-        }
-        return inputMethodId.substring(0, separatorIndex).trim();
-    }
-
-    private void updateKeyboardPackageText(TextView keyboardPackageText) {
-        List<String> packages = InputMethodPackageManager.getInstance().getPackages();
-        if (packages.isEmpty()) {
-            keyboardPackageText.setVisibility(View.GONE);
-            return;
-        }
-
-        keyboardPackageText.setVisibility(View.VISIBLE);
-        keyboardPackageText.setText("已手动免屏蔽：" + android.text.TextUtils.join("、", packages));
-    }
-    
     @Override
     public void onResume() {
         super.onResume();

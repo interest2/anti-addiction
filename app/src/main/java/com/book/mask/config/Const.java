@@ -35,7 +35,9 @@ public class Const {
 
     public static final long APP_STATE_CHECK_INTERVAL = 2000; // 轮询检查间隔，ms
     public static final long SYSTEM_UI_CONFIRM_DELAY_MS = 100; // 离开目标包名后的确认时长
-    public static final long APP_STATE_DEBOUNCE_MS = 350; // 进入/离开目标 APP 时过滤动画残留事件
+    public static final int DEFAULT_APP_STATE_DEBOUNCE_MS = 350; // 原有的目标 APP 动画残留防抖
+    public static final int DEFAULT_FLOATING_WINDOW_EXIT_CONFIRM_DELAY_MS = 350; // 普通场景隐藏前的复核延迟
+    public static final int MAX_DEBOUNCE_SETTING_MS = 10000;
     public static final long CONTENT_CHECK_DEBOUNCE_MS = 200; // 页面内容变化停止后再检测
     public static final long CONTENT_CHECK_MAX_WAIT_MS = 500; // 连续变化时的最长等待时间
 

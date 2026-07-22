@@ -15,6 +15,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 
 import android.content.Context;
 import android.accessibilityservice.AccessibilityServiceInfo;
@@ -122,6 +123,10 @@ public class MainActivity extends AppCompatActivity {
     private void setupBottomNavigation() {
         bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.setOnNavigationItemSelectedListener(item -> {
+            getSupportFragmentManager().popBackStackImmediate(
+                    null,
+                    FragmentManager.POP_BACK_STACK_INCLUSIVE
+            );
             Fragment selectedFragment = null;
             if (item.getItemId() == R.id.navigation_home) {
                 if (homeNav == null) homeNav = new HomeNav();
@@ -139,6 +144,12 @@ public class MainActivity extends AppCompatActivity {
                     .commit();
             }
             return true;
+        });
+        bottomNav.setOnItemReselectedListener(item -> {
+            if (item.getItemId() == R.id.navigation_settings
+                    && getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                getSupportFragmentManager().popBackStack();
+            }
         });
         // 默认显示首页
         if (homeNav == null) homeNav = new HomeNav();
