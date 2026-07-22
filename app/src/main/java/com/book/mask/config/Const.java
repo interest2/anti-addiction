@@ -11,6 +11,9 @@ public class Const {
     public static final int MUL_FIRST_LEN_DEFAULT = 2;
     public static final int MUL_SECOND_LEN_DEFAULT = 2;
 
+    // 混合题型比例：应用题 12%，其余 88% 为算术题
+    public static final int MIXED_WORD_PROBLEM_PERCENT = 20;
+
     // 算术题-设置：自定义难度 位数范围
     public static final int ADD_LEN_MIN = 4;
     public static final int ADD_LEN_MAX = 7;

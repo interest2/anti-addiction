@@ -27,13 +27,11 @@ import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.config.Const;
 import com.book.mask.config.CustomAppManager;
-import com.book.mask.config.Share;
 import com.book.mask.config.CustomApp;
-import com.book.mask.util.ContentUtils;
+import com.book.mask.network.LatestVersionManager;
 import com.book.mask.util.ArithmeticUtils;
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.io.IOException;
 import java.util.List;
 
 public class HomeNav extends Fragment implements
@@ -70,18 +68,11 @@ public class HomeNav extends Fragment implements
 
         // 设置页的云端最新版本获取
         new Thread(() -> {
-            try {
-                String versionUrl = Const.DOMAIN_URL + Const.LATEST_VERSION_PATH;
-                String response = ContentUtils.doHttpPost(
-                        versionUrl,
-                        null,
-                        java.util.Collections.singletonMap("Content-Type", Const.CONTENT_TYPE)
-                );
-                Share.latestVersion = response;
+            String response = LatestVersionManager.refreshLatestVersion();
+            if (response != null) {
                 Log.d(TAG, "版本接口响应: " + response);
-            } catch (IOException e) {
-                Log.e(TAG, "网络请求失败", e);
-                Share.latestVersion = "获取失败";
+            } else {
+                Log.e(TAG, "最新版本获取失败");
             }
         }).start();
 

@@ -186,37 +186,6 @@ public class SettingsDialogManager {
     }
     
     /**
-     * 显示最新安装包地址对话框
-     */
-    public void showLatestApkDialog(Runnable onClosed) {
-        try {
-            android.view.View dialogView = android.view.LayoutInflater.from(context)
-                    .inflate(R.layout.dialog_latest_apk, null);
-            dialogView.findViewById(R.id.btn_copy_gitee).setOnClickListener(v -> {
-                copyToClipboard(context.getString(R.string.gitee_release_url));
-                Toast.makeText(context, "Gitee 地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
-            });
-            dialogView.findViewById(R.id.btn_copy_github).setOnClickListener(v -> {
-                copyToClipboard(context.getString(R.string.github_release_url));
-                Toast.makeText(context, "GitHub 地址已复制到剪贴板", Toast.LENGTH_SHORT).show();
-            });
-
-            new android.app.AlertDialog.Builder(context)
-                .setTitle(R.string.latest_apk_address)
-                .setView(dialogView)
-                .setNegativeButton("关闭", (dialog, which) -> {
-                    if (onClosed != null) {
-                        onClosed.run();
-                    }
-                })
-                .show();
-        } catch (Exception e) {
-            android.util.Log.e("SettingsDialogManager", "获取版本信息失败", e);
-            Toast.makeText(context, "获取版本信息失败", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
      * 显示目标完成日期选择对话框
      */
     public void showTargetDateSettingDialog(Runnable onSettingChanged) {
@@ -393,15 +362,6 @@ public class SettingsDialogManager {
 
     private interface FloatingPositionSaver {
         void save(int topOffset, int bottomOffset);
-    }
-    
-    /**
-     * 复制文本到剪贴板
-     */
-    private void copyToClipboard(String text) {
-        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-        android.content.ClipData clip = android.content.ClipData.newPlainText("下载地址", text);
-        clipboard.setPrimaryClip(clip);
     }
     
     /**

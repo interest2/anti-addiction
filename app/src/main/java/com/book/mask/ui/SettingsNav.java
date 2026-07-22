@@ -1,5 +1,8 @@
 package com.book.mask.ui;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -20,6 +23,7 @@ import com.book.mask.setting.RelaxManager;
 import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
+import com.book.mask.network.LatestVersionManager;
 
 import java.util.List;
 
@@ -81,10 +85,71 @@ public class SettingsNav extends Fragment {
                 .setView(dialogView)
                 .setNegativeButton("关闭", null)
                 .create();
-        dialogView.findViewById(R.id.btn_latest_apk)
-                .setOnClickListener(v -> settingsDialogManager.showLatestApkDialog(versionDialog::dismiss));
+        Button downloadButton = dialogView.findViewById(R.id.btn_latest_apk);
+        downloadButton.setOnClickListener(v -> downloadLatestApk(
+                versionDialog,
+                versionDetail,
+                downloadButton
+        ));
 
         versionDialog.show();
+    }
+
+    private void downloadLatestApk(android.app.AlertDialog versionDialog,
+                                   TextView versionDetail,
+                                   Button downloadButton) {
+        String freshVersion = LatestVersionManager.getFreshLatestVersion();
+        if (freshVersion != null) {
+            requestApkDownload(freshVersion, versionDialog);
+            return;
+        }
+
+        downloadButton.setEnabled(false);
+        downloadButton.setText(R.string.fetching_latest_version);
+        new Thread(() -> {
+            String latestVersion = LatestVersionManager.getLatestVersionForDownload();
+            versionBadgeHandler.post(() -> {
+                if (!isAdded()) {
+                    return;
+                }
+
+                View view = getView();
+                if (versionDialog.isShowing()) {
+                    downloadButton.setEnabled(true);
+                    downloadButton.setText(R.string.download_latest_apk);
+                    versionDetail.setText(buildVersionDetail());
+                }
+                if (view != null) {
+                    updateVersionBadge(view);
+                }
+                if (latestVersion == null) {
+                    android.widget.Toast.makeText(
+                            requireContext(),
+                            R.string.latest_version_fetch_failed,
+                            android.widget.Toast.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
+                requestApkDownload(latestVersion, versionDialog);
+            });
+        }).start();
+    }
+
+    private void requestApkDownload(String latestVersion,
+                                    android.app.AlertDialog versionDialog) {
+        String downloadUrl = LatestVersionManager.buildLatestApkDownloadUrl(latestVersion);
+        Intent downloadIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl));
+        try {
+            startActivity(downloadIntent);
+            versionDialog.dismiss();
+        } catch (ActivityNotFoundException e) {
+            android.util.Log.e(TAG, "没有可处理安装包下载链接的应用", e);
+            android.widget.Toast.makeText(
+                    requireContext(),
+                    R.string.apk_download_unavailable,
+                    android.widget.Toast.LENGTH_SHORT
+            ).show();
+        }
     }
 
     private String buildVersionDetail() {
