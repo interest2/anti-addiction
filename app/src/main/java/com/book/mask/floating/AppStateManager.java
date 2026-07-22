@@ -43,6 +43,8 @@ public class AppStateManager {
     private PackageHideTransition packageHideTransition;
     private Runnable pendingPackageTransitionStep;
     private long packageTransitionGeneration = 0;
+    private long floatingShowDetectionPausedUntil = 0;
+    private Runnable floatingShowDetectionResumeRunnable;
 
     private enum PackageTransitionPhase {
         WAITING_FOR_INITIAL_CHECK,
@@ -85,6 +87,8 @@ public class AppStateManager {
     public interface OnAppStateListener {
         void onAppStateChanged(CustomApp app, boolean isTargetInterface);
         void onAppLeft(CustomApp app);
+        void onPackageTransitionStarted(CustomApp app);
+        void onPackageTransitionViewDiscarded(CustomApp app);
         void onSystemUiSuspensionChanged(boolean suspended);
         void onTimerTriggered(CustomApp app);
         boolean isMathChallengeActive();
@@ -108,6 +112,10 @@ public class AppStateManager {
      * 处理无障碍事件
      */
     public void handleAccessibilityEvent(AccessibilityEvent event) {
+        if (isFloatingShowDetectionPaused()) {
+            return;
+        }
+
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             handleWindowStateChanged(event);
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
@@ -147,7 +155,7 @@ public class AppStateManager {
      * 处理窗口内容变化
      */
     private void handleWindowContentChanged(AccessibilityEvent event) {
-        if (isPackageDetectionPaused()) {
+        if (isDetectionPaused()) {
             return;
         }
 
@@ -203,8 +211,8 @@ public class AppStateManager {
      */
     public void checkTextContentOptimized(boolean forceCheck) {
         try {
-            if (isPackageDetectionPaused()) {
-                Log.v(TAG, "包名切换过渡尚未结束，暂停页面关键词检测");
+            if (isDetectionPaused()) {
+                Log.v(TAG, "检测防抖尚未结束，暂停页面关键词检测");
                 return;
             }
 
@@ -409,6 +417,10 @@ public class AppStateManager {
      */
     private void checkCurrentAppState() {
         try {
+            if (isFloatingShowDetectionPaused()) {
+                return;
+            }
+
             // 如果数学题验证界面正在显示，暂停状态检测
             if (listener != null && listener.isMathChallengeActive()) {
                 Log.v(TAG, "数学题验证界面活跃，暂停应用状态检测");
@@ -491,7 +503,7 @@ public class AppStateManager {
         );
 
         if (listener != null) {
-            listener.onAppLeft(currentActiveApp);
+            listener.onPackageTransitionStarted(currentActiveApp);
         }
 
         schedulePackageTransitionStep(packageCheckDelay, this::confirmPackageAtInitialCheck);
@@ -526,11 +538,16 @@ public class AppStateManager {
                 now,
                 transition.animationDuration
         )) {
+            discardPackageTransitionView(transition.targetApp);
             cancelPackageHideTransition();
             handleObservedPackage(packageName, source + "（短时重入窗口已结束）");
             return;
         }
 
+        CustomApp observedApp = detectSupportedApp(packageName);
+        if (observedApp != null && observedApp != transition.targetApp) {
+            discardPackageTransitionView(transition.targetApp);
+        }
         applyConfirmedPackage(packageName, source + "（等待原目标短时重入）");
         setSuspendedForSystemUi(false);
     }
@@ -557,7 +574,13 @@ public class AppStateManager {
         transition.phase = PackageTransitionPhase.MONITORING_DIRECT_REENTRY;
         Log.d(TAG, "首次复核仍为非目标包名: " + packageNameForLog(confirmedPackage)
                 + "，开始监听短时重入");
-        applyConfirmedPackage(confirmedPackage, "首次包名复核");
+        CustomApp confirmedApp = detectSupportedApp(confirmedPackage);
+        if (confirmedApp == null) {
+            confirmCurrentAppLeft("首次包名复核", false);
+        } else {
+            discardPackageTransitionView(transition.targetApp);
+            applyConfirmedPackage(confirmedPackage, "首次包名复核");
+        }
         setSuspendedForSystemUi(false);
 
         long deadline = transition.startedAt
@@ -577,9 +600,9 @@ public class AppStateManager {
 
         CustomApp targetApp = transition.targetApp;
         String confirmedPackage = getActiveRootPackage();
-        cancelPackageHideTransition();
 
         if (targetApp.getPackageName().equals(confirmedPackage)) {
+            cancelPackageHideTransition();
             Share.clearAppState(targetApp);
             currentActiveApp = targetApp;
             Share.currentApp = targetApp;
@@ -588,6 +611,8 @@ public class AppStateManager {
             return;
         }
 
+        discardPackageTransitionView(targetApp);
+        cancelPackageHideTransition();
         Log.d(TAG, "提前返回暂停结束，当前为非目标包名: "
                 + packageNameForLog(confirmedPackage));
         applyConfirmedPackage(confirmedPackage, "提前返回暂停结束");
@@ -615,8 +640,12 @@ public class AppStateManager {
         if (listener != null) {
             listener.onAppStateChanged(targetApp, true);
         }
-        Log.d(TAG, "悬浮窗直接显示完成，开始检测页面关键词");
-        checkTextContentOptimized();
+        if (isFloatingShowDetectionPaused()) {
+            Log.d(TAG, "悬浮窗直接显示完成，显示防抖结束后检测页面关键词");
+        } else {
+            Log.d(TAG, "悬浮窗直接显示完成，开始检测页面关键词");
+            checkTextContentOptimized();
+        }
     }
 
     private void finishDirectReentryMonitoring() {
@@ -626,12 +655,69 @@ public class AppStateManager {
             return;
         }
         Log.d(TAG, "短时重入窗口结束，后续进入目标 APP 恢复常规关键词检测");
+        discardPackageTransitionView(transition.targetApp);
         cancelPackageHideTransition();
     }
 
-    private boolean isPackageDetectionPaused() {
+    private void discardPackageTransitionView(CustomApp targetApp) {
+        if (listener != null) {
+            listener.onPackageTransitionViewDiscarded(targetApp);
+        }
+    }
+
+    public void startFloatingShowDetectionDebounce() {
+        floatingShowDetectionPausedUntil = SystemClock.elapsedRealtime()
+                + Const.FLOATING_SHOW_DETECTION_DEBOUNCE_MS;
+        cancelPendingContentCheck();
+
+        if (floatingShowDetectionResumeRunnable != null) {
+            handler.removeCallbacks(floatingShowDetectionResumeRunnable);
+        }
+        floatingShowDetectionResumeRunnable = this::finishFloatingShowDetectionDebounce;
+        handler.postDelayed(
+                floatingShowDetectionResumeRunnable,
+                Const.FLOATING_SHOW_DETECTION_DEBOUNCE_MS
+        );
+        Log.d(TAG, "悬浮窗由无/隐藏变为显示，暂停检测 "
+                + Const.FLOATING_SHOW_DETECTION_DEBOUNCE_MS + "ms");
+    }
+
+    private void finishFloatingShowDetectionDebounce() {
+        long remaining = floatingShowDetectionPausedUntil - SystemClock.elapsedRealtime();
+        if (remaining > 0) {
+            handler.postDelayed(floatingShowDetectionResumeRunnable, remaining);
+            return;
+        }
+
+        floatingShowDetectionPausedUntil = 0;
+        floatingShowDetectionResumeRunnable = null;
+        Log.d(TAG, "悬浮窗显示防抖结束，主动复核当前包名和页面关键词");
+
+        String confirmedPackage = getActiveRootPackage();
+        if (confirmedPackage.isEmpty()) {
+            Log.d(TAG, "悬浮窗显示防抖结束时包名不明确，等待后续事件或轮询复核");
+            return;
+        }
+
+        handleObservedPackage(confirmedPackage, "悬浮窗显示防抖结束");
+        if (currentActiveApp != null
+                && currentActiveApp.getPackageName().equals(confirmedPackage)) {
+            cancelPendingContentCheck();
+            checkTextContentOptimized(true);
+        }
+    }
+
+    private boolean isDetectionPaused() {
+        return isPackageTransitionDetectionPaused() || isFloatingShowDetectionPaused();
+    }
+
+    private boolean isPackageTransitionDetectionPaused() {
         return packageHideTransition != null
                 && packageHideTransition.phase != PackageTransitionPhase.MONITORING_DIRECT_REENTRY;
+    }
+
+    private boolean isFloatingShowDetectionPaused() {
+        return SystemClock.elapsedRealtime() < floatingShowDetectionPausedUntil;
     }
 
     private String packageNameForLog(String packageName) {
@@ -755,13 +841,21 @@ public class AppStateManager {
             return;
         }
 
+        confirmCurrentAppLeft(source, true);
+    }
+
+    private void confirmCurrentAppLeft(String source, boolean notifyListener) {
+        if (currentActiveApp == null) {
+            return;
+        }
+
         CustomApp leftApp = currentActiveApp;
         Log.d(TAG, source + "确认离开 APP: " + leftApp.getAppName());
         Share.clearAppState(leftApp);
         cancelPendingContentCheck();
         currentActiveApp = null;
         Share.currentApp = null;
-        if (listener != null) {
+        if (notifyListener && listener != null) {
             listener.onAppLeft(leftApp);
         }
     }
@@ -794,5 +888,10 @@ public class AppStateManager {
         cancelPendingContentCheck();
         cancelPendingPackageConfirmation();
         cancelPackageHideTransition();
+        floatingShowDetectionPausedUntil = 0;
+        if (floatingShowDetectionResumeRunnable != null) {
+            handler.removeCallbacks(floatingShowDetectionResumeRunnable);
+            floatingShowDetectionResumeRunnable = null;
+        }
     }
 }

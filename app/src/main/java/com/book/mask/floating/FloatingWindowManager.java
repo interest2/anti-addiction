@@ -8,6 +8,7 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.os.Handler;
+import android.os.SystemClock;
 
 import com.book.mask.R;
 import com.book.mask.config.Const;
@@ -32,6 +33,8 @@ public class FloatingWindowManager {
     private WindowManager.LayoutParams layoutParams;
     private boolean isFloatingWindowVisible = false;
     private boolean isSuspendedForSystemUi = false;
+    private boolean isSuspendedForPackageTransition = false;
+    private String packageTransitionTargetPackage;
     
     // 管理器依赖
     private MathChallengeManager mathChallengeManager;
@@ -46,6 +49,7 @@ public class FloatingWindowManager {
     public interface OnFloatingWindowListener {
         void onMathChallengeCorrect();
         void onMathChallengeCancel();
+        void onFloatingWindowShownFromHidden();
     }
     
     public FloatingWindowManager(Context context, WindowManager windowManager, 
@@ -67,6 +71,10 @@ public class FloatingWindowManager {
      * 显示悬浮窗
      */
     public void showFloatingWindow(CustomApp currentActiveApp) {
+        if (tryResumeFromPackageTransition(currentActiveApp)) {
+            return;
+        }
+
         if (isFloatingWindowVisible) {
             Log.v(TAG, "悬浮窗已显示，跳过重复显示");
             return;
@@ -147,8 +155,10 @@ public class FloatingWindowManager {
                 windowManager.addView(floatingView, layoutParams);
                 isFloatingWindowVisible = true;
                 isSuspendedForSystemUi = false;
+                clearPackageTransitionSuspension();
                 Share.isFloatingWindowVisible = true; // 同步状态
                 Log.d(TAG, "悬浮窗显示成功");
+                notifyShownFromHidden();
             } catch (Exception e) {
                 Log.e(TAG, "显示悬浮窗失败", e);
                 isFloatingWindowVisible = false;
@@ -194,8 +204,79 @@ public class FloatingWindowManager {
             
             isFloatingWindowVisible = false;
             isSuspendedForSystemUi = false;
+            clearPackageTransitionSuspension();
             Share.isFloatingWindowVisible = false; // 同步状态
         }
+    }
+
+    /**
+     * 普通包名切换时立即隐藏 View，但继续保留 Window，供短时重入快速恢复。
+     */
+    public void suspendForPackageTransition(CustomApp targetApp) {
+        if (!isFloatingWindowVisible || floatingView == null || isSuspendedForPackageTransition) {
+            return;
+        }
+
+        long startedAt = SystemClock.elapsedRealtimeNanos();
+        if (mathChallengeManager != null && mathChallengeManager.isMathChallengeActive()) {
+            mathChallengeManager.hideMathChallenge();
+        }
+
+        floatingView.setVisibility(View.INVISIBLE);
+        isSuspendedForPackageTransition = true;
+        packageTransitionTargetPackage = targetApp == null ? null : targetApp.getPackageName();
+        Log.d(TAG, "包名切换时悬浮窗已临时隐藏，保留 View，耗时 "
+                + elapsedMillisSince(startedAt) + "ms");
+    }
+
+    /**
+     * 短时重入窗口结束或切换到其他目标 APP 后，销毁临时保留的 View。
+     */
+    public void finishPackageTransitionHide() {
+        if (!isSuspendedForPackageTransition) {
+            return;
+        }
+        Log.d(TAG, "包名切换临时隐藏结束，移除保留的 View");
+        hideFloatingWindow();
+    }
+
+    private boolean tryResumeFromPackageTransition(CustomApp targetApp) {
+        if (!isSuspendedForPackageTransition || floatingView == null) {
+            return false;
+        }
+
+        String targetPackage = targetApp == null ? null : targetApp.getPackageName();
+        if (packageTransitionTargetPackage == null
+                || !packageTransitionTargetPackage.equals(targetPackage)) {
+            finishPackageTransitionHide();
+            return false;
+        }
+
+        long startedAt = SystemClock.elapsedRealtimeNanos();
+        if (mathChallengeManager != null) {
+            mathChallengeManager.setCurrentApp(targetApp);
+        }
+        floatingView.setVisibility(View.VISIBLE);
+        clearPackageTransitionSuspension();
+        Log.d(TAG, "悬浮窗从包名切换临时隐藏中恢复完成，耗时 "
+                + elapsedMillisSince(startedAt) + "ms");
+        notifyShownFromHidden();
+        return true;
+    }
+
+    private void notifyShownFromHidden() {
+        if (listener != null) {
+            listener.onFloatingWindowShownFromHidden();
+        }
+    }
+
+    private void clearPackageTransitionSuspension() {
+        isSuspendedForPackageTransition = false;
+        packageTransitionTargetPackage = null;
+    }
+
+    private double elapsedMillisSince(long startedAtNanos) {
+        return (SystemClock.elapsedRealtimeNanos() - startedAtNanos) / 1_000_000.0;
     }
 
     /**
@@ -346,6 +427,10 @@ public class FloatingWindowManager {
     
     public MathChallengeManager getMathChallengeManager() {
         return mathChallengeManager;
+    }
+
+    public boolean isSuspendedForPackageTransition() {
+        return isSuspendedForPackageTransition;
     }
     
     public void cleanup() {

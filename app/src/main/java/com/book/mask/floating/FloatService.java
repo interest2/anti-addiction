@@ -146,7 +146,8 @@ public class FloatService extends AccessibilityService
             @Override
             public void onAppStateChanged(CustomApp app, boolean isTargetInterface) {
                 if (isTargetInterface) {
-                    if (!floatingWindowManager.isFloatingWindowVisible()) {
+                    if (floatingWindowManager.isSuspendedForPackageTransition()
+                            || !floatingWindowManager.isFloatingWindowVisible()) {
                         floatingWindowManager.showFloatingWindow(app);
                     }
                 } else {
@@ -159,6 +160,16 @@ public class FloatService extends AccessibilityService
             @Override
             public void onAppLeft(CustomApp app) {
                 floatingWindowManager.hideFloatingWindow();
+            }
+
+            @Override
+            public void onPackageTransitionStarted(CustomApp app) {
+                floatingWindowManager.suspendForPackageTransition(app);
+            }
+
+            @Override
+            public void onPackageTransitionViewDiscarded(CustomApp app) {
+                floatingWindowManager.finishPackageTransitionHide();
             }
 
             @Override
@@ -191,6 +202,11 @@ public class FloatService extends AccessibilityService
             @Override
             public void onMathChallengeCancel() {
                 Log.d(TAG, "用户取消数学题验证");
+            }
+
+            @Override
+            public void onFloatingWindowShownFromHidden() {
+                appStateManager.startFloatingShowDetectionDebounce();
             }
         });
         
