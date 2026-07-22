@@ -35,19 +35,13 @@ public class Const {
 
     public static final long APP_STATE_CHECK_INTERVAL = 2000; // 轮询检查间隔，ms
     public static final long SYSTEM_UI_CONFIRM_DELAY_MS = 100; // 离开目标包名后的确认时长
-    public static final int DEFAULT_APP_STATE_DEBOUNCE_MS = 350; // 原有的目标 APP 动画残留防抖
-    public static final int DEFAULT_FLOATING_WINDOW_EXIT_CONFIRM_DELAY_MS = 350; // 普通场景隐藏前的复核延迟
-    public static final int MAX_DEBOUNCE_SETTING_MS = 10000;
+    public static final int DEFAULT_TRANSITION_ANIMATION_DURATION_MS = 1000; // 过渡动画时长 a
+    public static final int DEFAULT_TRANSITION_PACKAGE_CHECK_DELAY_MS = 300; // 首次复核时刻 p
+    public static final int TRANSITION_EARLY_RETURN_BUFFER_MS = 100;
+    public static final int TRANSITION_DIRECT_REENTRY_BUFFER_MS = 300;
+    public static final int MAX_TRANSITION_TIMING_SETTING_MS = 10000;
     public static final long CONTENT_CHECK_DEBOUNCE_MS = 200; // 页面内容变化停止后再检测
     public static final long CONTENT_CHECK_MAX_WAIT_MS = 500; // 连续变化时的最长等待时间
-
-    public enum PackageConfirmationMode {
-        SYSTEM_UI,
-        NON_TARGET
-    }
-
-    // SYSTEM_UI：仅 SystemUI 触发延迟确认；NON_TARGET：任意非当前目标包名触发延迟确认
-    public static final PackageConfirmationMode PACKAGE_CONFIRMATION_MODE = PackageConfirmationMode.SYSTEM_UI;
 
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";

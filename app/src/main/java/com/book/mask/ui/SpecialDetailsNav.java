@@ -44,26 +44,30 @@ public class SpecialDetailsNav extends Fragment {
     }
 
     private void setupDebounceSettings(View view) {
-        EditText appStateInput = view.findViewById(R.id.et_app_state_debounce_ms);
-        EditText exitConfirmInput = view.findViewById(
-                R.id.et_floating_exit_confirm_delay_ms
+        EditText animationDurationInput = view.findViewById(
+                R.id.et_transition_animation_duration_ms
+        );
+        EditText packageCheckDelayInput = view.findViewById(
+                R.id.et_transition_package_check_delay_ms
         );
         View saveButton = view.findViewById(R.id.btn_save_debounce_settings);
 
-        appStateInput.setText(String.valueOf(appSettingsManager.getAppStateDebounceMs()));
-        exitConfirmInput.setText(String.valueOf(
-                appSettingsManager.getFloatingWindowExitConfirmDelayMs()
+        animationDurationInput.setText(String.valueOf(
+                appSettingsManager.getTransitionAnimationDurationMs()
+        ));
+        packageCheckDelayInput.setText(String.valueOf(
+                appSettingsManager.getTransitionPackageCheckDelayMs()
         ));
 
         saveButton.setOnClickListener(v -> {
-            Integer appStateDelay = readDebounceValue(appStateInput);
-            Integer exitConfirmDelay = readDebounceValue(exitConfirmInput);
-            if (appStateDelay == null || exitConfirmDelay == null) {
+            Integer animationDuration = readTransitionTimingValue(animationDurationInput);
+            Integer packageCheckDelay = readTransitionTimingValue(packageCheckDelayInput);
+            if (animationDuration == null || packageCheckDelay == null) {
                 return;
             }
 
-            appSettingsManager.setAppStateDebounceMs(appStateDelay);
-            appSettingsManager.setFloatingWindowExitConfirmDelayMs(exitConfirmDelay);
+            appSettingsManager.setTransitionAnimationDurationMs(animationDuration);
+            appSettingsManager.setTransitionPackageCheckDelayMs(packageCheckDelay);
             Toast.makeText(
                     requireContext(),
                     R.string.debounce_settings_saved,
@@ -71,7 +75,7 @@ public class SpecialDetailsNav extends Fragment {
             ).show();
         });
 
-        exitConfirmInput.setOnEditorActionListener((v, actionId, event) -> {
+        packageCheckDelayInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
                 saveButton.performClick();
                 return true;
@@ -80,7 +84,7 @@ public class SpecialDetailsNav extends Fragment {
         });
     }
 
-    private Integer readDebounceValue(EditText input) {
+    private Integer readTransitionTimingValue(EditText input) {
         String value = input.getText() == null ? "" : input.getText().toString().trim();
         if (value.isEmpty()) {
             input.setError(getString(R.string.debounce_value_required));
@@ -89,7 +93,7 @@ public class SpecialDetailsNav extends Fragment {
 
         try {
             int delayMs = Integer.parseInt(value);
-            if (delayMs < 0 || delayMs > Const.MAX_DEBOUNCE_SETTING_MS) {
+            if (delayMs < 0 || delayMs > Const.MAX_TRANSITION_TIMING_SETTING_MS) {
                 input.setError(getString(R.string.debounce_value_out_of_range));
                 return null;
             }

@@ -169,7 +169,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/app_state_debounce_label"
+                    android:text="@string/transition_animation_duration_label"
                     android:textColor="#252525"
                     android:textSize="17sp" />
 
@@ -177,17 +177,17 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="3dp"
-                    android:text="@string/app_state_debounce_hint"
+                    android:text="@string/transition_animation_duration_hint"
                     android:textColor="#777777"
                     android:textSize="13sp" />
 
                 <EditText
-                    android:id="@+id/et_app_state_debounce_ms"
+                    android:id="@+id/et_transition_animation_duration_ms"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
                     android:layout_marginTop="8dp"
                     android:digits="0123456789"
-                    android:hint="@string/debounce_default_hint"
+                    android:hint="@string/transition_animation_duration_default_hint"
                     android:importantForAutofill="no"
                     android:inputType="number"
                     android:maxLength="5"
@@ -206,7 +206,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/floating_exit_confirm_delay_label"
+                    android:text="@string/transition_package_check_delay_label"
                     android:textColor="#252525"
                     android:textSize="17sp" />
 
@@ -214,17 +214,17 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="3dp"
-                    android:text="@string/floating_exit_confirm_delay_hint"
+                    android:text="@string/transition_package_check_delay_hint"
                     android:textColor="#777777"
                     android:textSize="13sp" />
 
                 <EditText
-                    android:id="@+id/et_floating_exit_confirm_delay_ms"
+                    android:id="@+id/et_transition_package_check_delay_ms"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
                     android:layout_marginTop="8dp"
                     android:digits="0123456789"
-                    android:hint="@string/debounce_default_hint"
+                    android:hint="@string/transition_package_check_delay_default_hint"
                     android:importantForAutofill="no"
                     android:imeOptions="actionDone"
                     android:inputType="number"

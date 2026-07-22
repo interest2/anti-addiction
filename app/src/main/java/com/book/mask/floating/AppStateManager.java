@@ -27,8 +27,6 @@ public class AppStateManager {
     private static final String TAG = "AppStateManager";
     private static final String SYSTEM_UI_PACKAGE = "com.android.systemui";
     private static final long UNKNOWN_PACKAGE_RETRY_DELAY_MS = 150;
-    private static final int HIDE_PACKAGE_LOG_INTERVAL_MS = 100;
-    private static final int HIDE_PACKAGE_LOG_DURATION_MS = 1200;
     
     private AccessibilityService service;
     private Handler handler;
@@ -39,13 +37,38 @@ public class AppStateManager {
     // 应用状态相关
     private CustomApp currentActiveApp = null;
     private long contentCheckBurstStartedAt = 0;
-    private String latestObservedPackage = null;
     private Runnable pendingPackageConfirmation;
     private long packageConfirmationGeneration = 0;
     private boolean suspendedForSystemUi = false;
-    private long lastTargetExitElapsedTime = 0;
-    private Runnable pendingTargetReentryConfirmation;
-    private long targetReentryConfirmationGeneration = 0;
+    private PackageHideTransition packageHideTransition;
+    private Runnable pendingPackageTransitionStep;
+    private long packageTransitionGeneration = 0;
+
+    private enum PackageTransitionPhase {
+        WAITING_FOR_INITIAL_CHECK,
+        PAUSED_AFTER_EARLY_RETURN,
+        MONITORING_DIRECT_REENTRY
+    }
+
+    private static final class PackageHideTransition {
+        private final CustomApp targetApp;
+        private final long startedAt;
+        private final int animationDuration;
+        private final int packageCheckDelay;
+        private PackageTransitionPhase phase = PackageTransitionPhase.WAITING_FOR_INITIAL_CHECK;
+
+        private PackageHideTransition(
+                CustomApp targetApp,
+                long startedAt,
+                int animationDuration,
+                int packageCheckDelay
+        ) {
+            this.targetApp = targetApp;
+            this.startedAt = startedAt;
+            this.animationDuration = animationDuration;
+            this.packageCheckDelay = packageCheckDelay;
+        }
+    }
 
     // 定时器相关
     private Map<CustomApp, Runnable> appTimers = new HashMap<>();
@@ -124,6 +147,10 @@ public class AppStateManager {
      * 处理窗口内容变化
      */
     private void handleWindowContentChanged(AccessibilityEvent event) {
+        if (isPackageDetectionPaused()) {
+            return;
+        }
+
         // 只在支持的APP中检测文本内容
         if (currentActiveApp != null && event.getPackageName() != null) {
             String packageName = event.getPackageName().toString();
@@ -176,6 +203,11 @@ public class AppStateManager {
      */
     public void checkTextContentOptimized(boolean forceCheck) {
         try {
+            if (isPackageDetectionPaused()) {
+                Log.v(TAG, "包名切换过渡尚未结束，暂停页面关键词检测");
+                return;
+            }
+
             if (currentActiveApp == null) {
                 Log.d(TAG, "当前没有活跃的APP，跳过文本检测");
                 return;
@@ -415,31 +447,23 @@ public class AppStateManager {
             return;
         }
 
-        CustomApp observedApp = detectSupportedApp(packageName);
-        latestObservedPackage = packageName;
-
-        long reentryDebounceRemaining = getTargetReentryDebounceRemaining(observedApp);
-        if (reentryDebounceRemaining > 0) {
-            scheduleTargetReentryConfirmation(source, reentryDebounceRemaining);
+        if (packageHideTransition != null) {
+            handlePackageDuringHideTransition(packageName, source);
             return;
         }
-        cancelPendingTargetReentryConfirmation();
 
-        boolean willHideVisibleFloatingWindow = currentActiveApp != null
-                && observedApp == null
+        // SystemUI 沿用原有的延迟确认及 View 暂停/恢复逻辑。
+        if (currentActiveApp != null && SYSTEM_UI_PACKAGE.equals(packageName)) {
+            schedulePackageConfirmation(source, Const.SYSTEM_UI_CONFIRM_DELAY_MS);
+            return;
+        }
+
+        boolean leavesCurrentTargetWithVisibleFloatingWindow = currentActiveApp != null
+                && !currentActiveApp.getPackageName().equals(packageName)
                 && Share.isFloatingWindowVisible
                 && !suspendedForSystemUi;
-        if (willHideVisibleFloatingWindow) {
-            schedulePackageConfirmation(
-                    source + "悬浮窗离开防抖",
-                    appSettingsManager.getFloatingWindowExitConfirmDelayMs(),
-                    true
-            );
-            return;
-        }
-
-        if (shouldDelayPackageConfirmation(packageName)) {
-            schedulePackageConfirmation(source, Const.SYSTEM_UI_CONFIRM_DELAY_MS);
+        if (leavesCurrentTargetWithVisibleFloatingWindow) {
+            startPackageHideTransition(source);
             return;
         }
 
@@ -448,80 +472,197 @@ public class AppStateManager {
         setSuspendedForSystemUi(false);
     }
 
-    private boolean shouldDelayPackageConfirmation(String packageName) {
-        if (currentActiveApp == null) {
-            return false;
-        }
-        if (Const.PACKAGE_CONFIRMATION_MODE == Const.PackageConfirmationMode.SYSTEM_UI) {
-            return SYSTEM_UI_PACKAGE.equals(packageName);
-        }
-        return !currentActiveApp.getPackageName().equals(packageName);
-    }
-
-    private long getTargetReentryDebounceRemaining(CustomApp observedApp) {
-        if (currentActiveApp != null || observedApp == null || lastTargetExitElapsedTime == 0) {
-            return 0;
-        }
-
-        long elapsed = SystemClock.elapsedRealtime() - lastTargetExitElapsedTime;
-        int debounceMs = appSettingsManager.getAppStateDebounceMs();
-        if (elapsed < 0 || elapsed >= debounceMs) {
-            return 0;
-        }
-        return debounceMs - elapsed;
-    }
-
-    private void scheduleTargetReentryConfirmation(String source, long delayMillis) {
-        if (pendingTargetReentryConfirmation != null) {
+    private void startPackageHideTransition(String source) {
+        if (currentActiveApp == null || packageHideTransition != null) {
             return;
         }
 
-        long generation = ++targetReentryConfirmationGeneration;
-        pendingTargetReentryConfirmation = () -> {
-            if (generation != targetReentryConfirmationGeneration) {
-                return;
-            }
-            pendingTargetReentryConfirmation = null;
-            if (currentActiveApp != null) {
-                return;
-            }
+        cancelPendingPackageConfirmation();
+        cancelPendingContentCheck();
+        Share.clearAppState(currentActiveApp);
 
-            String confirmedPackage = getActiveRootPackage();
-            if (confirmedPackage.isEmpty()) {
-                Log.d(TAG, "目标重新进入确认时包名不明确，保持隐藏并稍后重试");
-                scheduleTargetReentryConfirmation("包名不明确重试", UNKNOWN_PACKAGE_RETRY_DELAY_MS);
-                return;
-            }
+        int animationDuration = appSettingsManager.getTransitionAnimationDurationMs();
+        int packageCheckDelay = appSettingsManager.getTransitionPackageCheckDelayMs();
+        packageHideTransition = new PackageHideTransition(
+                currentActiveApp,
+                SystemClock.elapsedRealtime(),
+                animationDuration,
+                packageCheckDelay
+        );
 
-            if (detectSupportedApp(confirmedPackage) == null) {
-                Log.d(TAG, "目标重新进入防抖结束，当前仍为非目标包名: " + confirmedPackage);
-                return;
-            }
+        if (listener != null) {
+            listener.onAppLeft(currentActiveApp);
+        }
 
-            latestObservedPackage = confirmedPackage;
-            applyConfirmedPackage(confirmedPackage, "目标重新进入防抖");
-        };
-
-        handler.postDelayed(pendingTargetReentryConfirmation, delayMillis);
-        Log.d(TAG, source + "防抖观察到目标 APP，" + delayMillis + "ms 后复核，期间保持隐藏");
+        schedulePackageTransitionStep(packageCheckDelay, this::confirmPackageAtInitialCheck);
+        Log.d(TAG, source + "观察到离开目标 APP，悬浮窗已立即隐藏；"
+                + packageCheckDelay + "ms 后首次复核包名");
     }
 
-    private void cancelPendingTargetReentryConfirmation() {
-        targetReentryConfirmationGeneration++;
-        if (pendingTargetReentryConfirmation != null) {
-            handler.removeCallbacks(pendingTargetReentryConfirmation);
-            pendingTargetReentryConfirmation = null;
+    private void handlePackageDuringHideTransition(String packageName, String source) {
+        PackageHideTransition transition = packageHideTransition;
+        if (transition == null) {
+            return;
         }
+
+        if (transition.phase != PackageTransitionPhase.MONITORING_DIRECT_REENTRY) {
+            Log.v(TAG, source + "处于包名检测暂停阶段，忽略包名事件: " + packageName);
+            return;
+        }
+
+        long now = SystemClock.elapsedRealtime();
+        if (transition.targetApp.getPackageName().equals(packageName)
+                && PackageTransitionTiming.isWithinDirectReentryWindow(
+                        transition.startedAt,
+                        now,
+                        transition.animationDuration
+                )) {
+            reenterTargetAndShowBeforeContentCheck(transition.targetApp, source);
+            return;
+        }
+
+        if (!PackageTransitionTiming.isWithinDirectReentryWindow(
+                transition.startedAt,
+                now,
+                transition.animationDuration
+        )) {
+            cancelPackageHideTransition();
+            handleObservedPackage(packageName, source + "（短时重入窗口已结束）");
+            return;
+        }
+
+        applyConfirmedPackage(packageName, source + "（等待原目标短时重入）");
+        setSuspendedForSystemUi(false);
+    }
+
+    private void confirmPackageAtInitialCheck() {
+        PackageHideTransition transition = packageHideTransition;
+        if (transition == null
+                || transition.phase != PackageTransitionPhase.WAITING_FOR_INITIAL_CHECK) {
+            return;
+        }
+
+        String confirmedPackage = getActiveRootPackage();
+        if (transition.targetApp.getPackageName().equals(confirmedPackage)) {
+            transition.phase = PackageTransitionPhase.PAUSED_AFTER_EARLY_RETURN;
+            long pauseDuration = PackageTransitionTiming.getEarlyReturnPauseDuration(
+                    transition.animationDuration,
+                    transition.packageCheckDelay
+            );
+            schedulePackageTransitionStep(pauseDuration, this::resumeAfterEarlyReturnPause);
+            Log.d(TAG, "首次复核已回到目标 APP，继续暂停检测 " + pauseDuration + "ms");
+            return;
+        }
+
+        transition.phase = PackageTransitionPhase.MONITORING_DIRECT_REENTRY;
+        Log.d(TAG, "首次复核仍为非目标包名: " + packageNameForLog(confirmedPackage)
+                + "，开始监听短时重入");
+        applyConfirmedPackage(confirmedPackage, "首次包名复核");
+        setSuspendedForSystemUi(false);
+
+        long deadline = transition.startedAt
+                + PackageTransitionTiming.getDirectReentryWindowDuration(
+                        transition.animationDuration
+                );
+        long remaining = Math.max(0L, deadline - SystemClock.elapsedRealtime());
+        schedulePackageTransitionStep(remaining, this::finishDirectReentryMonitoring);
+    }
+
+    private void resumeAfterEarlyReturnPause() {
+        PackageHideTransition transition = packageHideTransition;
+        if (transition == null
+                || transition.phase != PackageTransitionPhase.PAUSED_AFTER_EARLY_RETURN) {
+            return;
+        }
+
+        CustomApp targetApp = transition.targetApp;
+        String confirmedPackage = getActiveRootPackage();
+        cancelPackageHideTransition();
+
+        if (targetApp.getPackageName().equals(confirmedPackage)) {
+            Share.clearAppState(targetApp);
+            currentActiveApp = targetApp;
+            Share.currentApp = targetApp;
+            Log.d(TAG, "提前返回暂停结束，重新检测目标 APP 页面关键词");
+            checkTextContentOptimized();
+            return;
+        }
+
+        Log.d(TAG, "提前返回暂停结束，当前为非目标包名: "
+                + packageNameForLog(confirmedPackage));
+        applyConfirmedPackage(confirmedPackage, "提前返回暂停结束");
+        setSuspendedForSystemUi(false);
+    }
+
+    private void reenterTargetAndShowBeforeContentCheck(CustomApp targetApp, String source) {
+        cancelPackageHideTransition();
+        cancelPendingPackageConfirmation();
+        cancelPendingContentCheck();
+
+        if (currentActiveApp != null && currentActiveApp != targetApp) {
+            Share.clearAppState(currentActiveApp);
+            if (listener != null) {
+                listener.onAppLeft(currentActiveApp);
+            }
+        }
+
+        currentActiveApp = targetApp;
+        Share.currentApp = targetApp;
+        Share.clearAppState(targetApp);
+        setSuspendedForSystemUi(false);
+
+        Log.d(TAG, source + "在短时窗口内回到目标 APP，先直接显示悬浮窗");
+        if (listener != null) {
+            listener.onAppStateChanged(targetApp, true);
+        }
+        Log.d(TAG, "悬浮窗直接显示完成，开始检测页面关键词");
+        checkTextContentOptimized();
+    }
+
+    private void finishDirectReentryMonitoring() {
+        PackageHideTransition transition = packageHideTransition;
+        if (transition == null
+                || transition.phase != PackageTransitionPhase.MONITORING_DIRECT_REENTRY) {
+            return;
+        }
+        Log.d(TAG, "短时重入窗口结束，后续进入目标 APP 恢复常规关键词检测");
+        cancelPackageHideTransition();
+    }
+
+    private boolean isPackageDetectionPaused() {
+        return packageHideTransition != null
+                && packageHideTransition.phase != PackageTransitionPhase.MONITORING_DIRECT_REENTRY;
+    }
+
+    private String packageNameForLog(String packageName) {
+        return packageName.isEmpty() ? "未知" : packageName;
+    }
+
+    private void schedulePackageTransitionStep(long delayMillis, Runnable step) {
+        long generation = packageTransitionGeneration;
+        pendingPackageTransitionStep = () -> {
+            if (generation != packageTransitionGeneration) {
+                return;
+            }
+            pendingPackageTransitionStep = null;
+            step.run();
+        };
+        handler.postDelayed(pendingPackageTransitionStep, Math.max(0L, delayMillis));
+    }
+
+    private void cancelPackageHideTransition() {
+        packageTransitionGeneration++;
+        if (pendingPackageTransitionStep != null) {
+            handler.removeCallbacks(pendingPackageTransitionStep);
+            pendingPackageTransitionStep = null;
+        }
+        packageHideTransition = null;
     }
 
     /**
      * 第一次观察到待确认包名时启动一次确认；后续同类事件不会延长等待时间。
      */
     private void schedulePackageConfirmation(String source, long delayMillis) {
-        schedulePackageConfirmation(source, delayMillis, false);
-    }
-
-    private void schedulePackageConfirmation(String source, long delayMillis, boolean logPackageSamples) {
         if (pendingPackageConfirmation != null || suspendedForSystemUi) {
             return;
         }
@@ -546,12 +687,10 @@ public class AppStateManager {
                 return;
             }
 
-            latestObservedPackage = confirmedPackage;
             if (expectedApp.getPackageName().equals(confirmedPackage)) {
                 Log.d(TAG, "在确认期限内回到目标 APP，保持悬浮窗");
                 setSuspendedForSystemUi(false);
-            } else if (Const.PACKAGE_CONFIRMATION_MODE == Const.PackageConfirmationMode.SYSTEM_UI
-                    && SYSTEM_UI_PACKAGE.equals(confirmedPackage)) {
+            } else if (SYSTEM_UI_PACKAGE.equals(confirmedPackage)) {
                 Log.d(TAG, "SystemUI 持续超过设定阈值，临时暂停悬浮窗");
                 setSuspendedForSystemUi(true);
             } else {
@@ -562,37 +701,7 @@ public class AppStateManager {
         };
 
         handler.postDelayed(pendingPackageConfirmation, delayMillis);
-        if (logPackageSamples) {
-            startHidePackageLogSampling();
-        }
         Log.d(TAG, source + "观察到待确认包名，" + delayMillis + "ms 后确认，期间保持悬浮窗");
-    }
-
-    private void startHidePackageLogSampling() {
-        for (int elapsedMs = HIDE_PACKAGE_LOG_INTERVAL_MS;
-             elapsedMs <= HIDE_PACKAGE_LOG_DURATION_MS;
-             elapsedMs += HIDE_PACKAGE_LOG_INTERVAL_MS) {
-            final int logElapsedMs = elapsedMs;
-            handler.postDelayed(() ->
-                    Log.d(TAG, "第 " + logElapsedMs + " ms，包名 " + getActiveRootPackageForLog()),
-                    logElapsedMs
-            );
-        }
-    }
-
-    private String getActiveRootPackageForLog() {
-        AccessibilityNodeInfo root = service.getRootInActiveWindow();
-        try {
-            if (root == null || root.getPackageName() == null) {
-                return "未知";
-            }
-            String packageName = root.getPackageName().toString();
-            return packageName.isEmpty() ? "未知" : packageName;
-        } finally {
-            if (root != null) {
-                root.recycle();
-            }
-        }
     }
 
     private String getActiveRootPackage() {
@@ -650,7 +759,6 @@ public class AppStateManager {
         Log.d(TAG, source + "确认离开 APP: " + leftApp.getAppName());
         Share.clearAppState(leftApp);
         cancelPendingContentCheck();
-        lastTargetExitElapsedTime = SystemClock.elapsedRealtime();
         currentActiveApp = null;
         Share.currentApp = null;
         if (listener != null) {
@@ -685,6 +793,6 @@ public class AppStateManager {
         // 清理内容检测Handler
         cancelPendingContentCheck();
         cancelPendingPackageConfirmation();
-        cancelPendingTargetReentryConfirmation();
+        cancelPackageHideTransition();
     }
 }
