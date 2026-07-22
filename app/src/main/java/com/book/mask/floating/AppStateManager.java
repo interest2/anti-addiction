@@ -3,6 +3,7 @@ package com.book.mask.floating;
 import android.accessibilityservice.AccessibilityService;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -24,6 +25,8 @@ import java.util.HashMap;
  */
 public class AppStateManager {
     private static final String TAG = "AppStateManager";
+    private static final String SYSTEM_UI_PACKAGE = "com.android.systemui";
+    private static final long UNKNOWN_PACKAGE_RETRY_DELAY_MS = 150;
     
     private AccessibilityService service;
     private Handler handler;
@@ -32,9 +35,15 @@ public class AppStateManager {
 
     // 应用状态相关
     private CustomApp currentActiveApp = null;
-    private String lastPackageName = null;
-    private long lastContentCheckTime = 0;
-    private long lastWindowCheckTime = 0;
+    private long contentCheckBurstStartedAt = 0;
+    private String latestObservedPackage = null;
+    private Runnable pendingPackageConfirmation;
+    private long packageConfirmationGeneration = 0;
+    private boolean suspendedForSystemUi = false;
+    private long lastTargetEntryElapsedTime = 0;
+    private long lastTargetExitElapsedTime = 0;
+    private Runnable pendingTargetReentryConfirmation;
+    private long targetReentryConfirmationGeneration = 0;
 
     // 定时器相关
     private Map<CustomApp, Runnable> appTimers = new HashMap<>();
@@ -51,6 +60,7 @@ public class AppStateManager {
     public interface OnAppStateListener {
         void onAppStateChanged(CustomApp app, boolean isTargetInterface);
         void onAppLeft(CustomApp app);
+        void onSystemUiSuspensionChanged(boolean suspended);
         void onTimerTriggered(CustomApp app);
         boolean isMathChallengeActive();
     }
@@ -75,86 +85,34 @@ public class AppStateManager {
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             handleWindowContentChanged(event);
         }
-        
-        String eventPackageName = (String)event.getPackageName();
-        // 当前 event 的包名 ≠ 本应用的包名
-        if(eventPackageName != null && !eventPackageName.equals(service.getPackageName())){
-            lastPackageName = (String) event.getPackageName();
-        }
     }
     
     /**
      * 处理窗口状态变化
      */
     private void handleWindowStateChanged(AccessibilityEvent event) {
-        if (event.getPackageName() != null) {
-            String packageName = event.getPackageName().toString();
-            Log.d(TAG, "窗口状态改变，当前应用: " + packageName);
-
-            // 过滤掉我们自己的应用，避免悬浮窗显示时触发状态变化
-            if (packageName.equals(service.getPackageName())) {
-                Log.d(TAG, "忽略自己的应用: " + packageName);
-                return;
-            }
-            
-            // 过滤掉输入法应用，避免输入法弹出时误判
-            if (FloatHelper.isInputMethodApp(packageName)) {
-                Log.d(TAG, "忽略输入法应用: " + packageName);
-                return;
-            }
-
-            // 记录包名访问 LRU（用于"包名日志"调试）
-            com.book.mask.config.PackageLogManager.getInstance().record(packageName);
-
-            // 检测当前是否是支持的APP（包括预定义和自定义）
-            CustomApp detectedApp = detectSupportedApp(packageName);
-
-            Log.d(TAG, "当前应用: " + packageName + "，lastPackageName: " + lastPackageName);
-
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - lastWindowCheckTime < 350
-                    && detectSupportedApp(lastPackageName) != null
-                    && detectedApp == null) {
-                Log.d(TAG, "短时内切换窗口，需忽略");
-                return; // 短时内切换事件直接忽略
-            }
-            lastWindowCheckTime = currentTime;
-            
-            if (detectedApp != null) {
-                String appName = detectedApp.getAppName();
-                Log.d(TAG, "检测到支持的APP: " + appName + " (包名: " + packageName + ")");
-                
-                if (detectedApp != currentActiveApp) {
-                    // 切换到新的APP
-                    if (currentActiveApp != null) {
-                        String oldAppName = currentActiveApp.getAppName();
-                        Log.d(TAG, "离开APP: " + oldAppName);
-                        Share.clearAppState(currentActiveApp);
-                        // 不清理手动隐藏状态，保持到下次自动解除
-                    }
-                    
-                    currentActiveApp = detectedApp;
-                    Share.currentApp = currentActiveApp;
-                    Log.d(TAG, "进入APP: " + appName);
-
-                    // 立即开始检测文本内容
-                    checkTextContentOptimized();
-                }
-            } else {
-                // 离开所有支持的APP
-                if (currentActiveApp != null) {
-                    String oldAppName = currentActiveApp.getAppName();
-                    Log.d(TAG, "离开APP: " + oldAppName);
-                    Share.clearAppState(currentActiveApp);
-                    // 不清理手动隐藏状态，保持到下次自动解除
-                    currentActiveApp = null;
-                    Share.currentApp = null;
-                    if (listener != null) {
-                        listener.onAppLeft(currentActiveApp);
-                    }
-                }
-            }
+        if (event.getPackageName() == null) {
+            return;
         }
+
+        String packageName = event.getPackageName().toString();
+        Log.d(TAG, "窗口状态改变，当前应用: " + packageName);
+
+        // 过滤掉我们自己的应用，避免悬浮窗显示时触发状态变化
+        if (packageName.equals(service.getPackageName())) {
+            Log.d(TAG, "忽略自己的应用: " + packageName);
+            return;
+        }
+
+        // 过滤掉输入法应用，避免输入法弹出时误判
+        if (FloatHelper.isInputMethodApp(packageName)) {
+            Log.d(TAG, "忽略输入法应用: " + packageName);
+            return;
+        }
+
+        // 记录包名访问 LRU（用于"包名日志"调试）
+        com.book.mask.config.PackageLogManager.getInstance().record(packageName);
+        handleObservedPackage(packageName, "窗口事件");
     }
     
     /**
@@ -165,28 +123,38 @@ public class AppStateManager {
         if (currentActiveApp != null && event.getPackageName() != null) {
             String packageName = event.getPackageName().toString();
             if (currentActiveApp.getPackageName().equals(packageName)) {
-                
-                // 防抖机制：避免频繁检测
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastContentCheckTime < 200) {
-                    return; // 200ms内的重复事件直接忽略
-                }
-                lastContentCheckTime = currentTime;
-                
-                // 使用Handler延迟执行，进一步防抖
-                if (contentCheckRunnable == null) {
-                    contentCheckRunnable = new Runnable() {
-                        @Override
-                        public void run() {
-                            checkTextContentOptimized();
-                        }
-                    };
-                }
-                
-                // 取消之前的延迟任务，重新安排
-                handler.removeCallbacks(contentCheckRunnable);
-                handler.postDelayed(contentCheckRunnable, 10); // 300ms防抖延迟
+                requestContentCheck();
             }
+        }
+    }
+
+    /**
+     * 合并同一轮页面变化，在页面稳定后检测；连续变化超过上限时强制执行一次。
+     */
+    private void requestContentCheck() {
+        long now = SystemClock.elapsedRealtime();
+        if (contentCheckBurstStartedAt == 0) {
+            contentCheckBurstStartedAt = now;
+        }
+
+        if (contentCheckRunnable == null) {
+            contentCheckRunnable = () -> {
+                contentCheckBurstStartedAt = 0;
+                checkTextContentOptimized();
+            };
+        }
+
+        long burstElapsed = now - contentCheckBurstStartedAt;
+        long maxWaitRemaining = Math.max(0, Const.CONTENT_CHECK_MAX_WAIT_MS - burstElapsed);
+        long delayMillis = Math.min(Const.CONTENT_CHECK_DEBOUNCE_MS, maxWaitRemaining);
+        handler.removeCallbacks(contentCheckRunnable);
+        handler.postDelayed(contentCheckRunnable, delayMillis);
+    }
+
+    private void cancelPendingContentCheck() {
+        contentCheckBurstStartedAt = 0;
+        if (contentCheckRunnable != null) {
+            handler.removeCallbacks(contentCheckRunnable);
         }
     }
     
@@ -415,46 +383,11 @@ public class AppStateManager {
             if (rootNode != null) {
                 String currentPackage = rootNode.getPackageName() != null ? 
                     rootNode.getPackageName().toString() : "";
-                
-                // 检测当前是否是支持的APP（包括预定义和自定义）
-                CustomApp detectedApp = detectSupportedApp(currentPackage);
-                Log.d(TAG, "detectedApp 包名： " + currentPackage);
-                if(currentActiveApp != null){
-                    Log.d(TAG, "currentActiveApp 包名： " + currentActiveApp.getPackageName());
+                Log.d(TAG, "定时轮询包名: " + currentPackage);
+                if (!currentPackage.equals(service.getPackageName())
+                        && !FloatHelper.isInputMethodApp(currentPackage)) {
+                    handleObservedPackage(currentPackage, "定时轮询");
                 }
-
-                // 多APP状态检测
-                if (detectedApp != null) {
-                    if (detectedApp != currentActiveApp) {
-                        String appName = detectedApp.getAppName();
-                        Log.d(TAG, "应用状态检测：发现支持的APP - " + appName);
-                        currentActiveApp = detectedApp;
-                        Share.currentApp = currentActiveApp;
-                        
-                        // 检查当前APP是否被手动隐藏
-                        boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
-                        Log.d(TAG, "APP " + appName + " 手动隐藏状态: " + appManuallyHidden);
-                        
-                        checkTextContentOptimized();
-                    }
-                } else {
-                    if (currentActiveApp != null) {
-                        String appName = currentActiveApp.getAppName();
-                        Log.d(TAG, "应用状态检测：离开支持的APP - " + appName);
-                        Share.clearAppState(currentActiveApp);
-                        // 不清理手动隐藏状态，保持到下次自动解除
-                        
-                        // 清理该APP的定时器
-                        cancelTimer(currentActiveApp);
-                        
-                        currentActiveApp = null;
-                        Share.currentApp = null;
-                        if (listener != null) {
-                            listener.onAppLeft(currentActiveApp);
-                        }
-                    }
-                }
-                
                 rootNode.recycle();
             }
         } catch (Exception e) {
@@ -467,6 +400,248 @@ public class AppStateManager {
      */
     private CustomApp detectSupportedApp(String packageName) {
         return CustomAppManager.getInstance().detectSupportedApp(packageName, relaxManager);
+    }
+
+    /**
+     * 所有包名观察统一进入这里，避免窗口事件和定时轮询采用不同的离开规则。
+     */
+    private void handleObservedPackage(String packageName, String source) {
+        if (packageName == null || packageName.isEmpty()) {
+            return;
+        }
+        latestObservedPackage = packageName;
+
+        CustomApp observedApp = detectSupportedApp(packageName);
+        long reentryDebounceRemaining = getTargetReentryDebounceRemaining(observedApp);
+        if (reentryDebounceRemaining > 0) {
+            scheduleTargetReentryConfirmation(source, reentryDebounceRemaining);
+            return;
+        }
+        cancelPendingTargetReentryConfirmation();
+
+        long entryDebounceRemaining = getTargetEntryDebounceRemaining(packageName, source);
+        if (entryDebounceRemaining > 0) {
+            schedulePackageConfirmation(source + "目标进入防抖", entryDebounceRemaining);
+            return;
+        }
+
+        if (shouldDelayPackageConfirmation(packageName)) {
+            schedulePackageConfirmation(source, Const.SYSTEM_UI_CONFIRM_DELAY_MS);
+            return;
+        }
+
+        cancelPendingPackageConfirmation();
+        setSuspendedForSystemUi(false);
+        applyConfirmedPackage(packageName, source);
+    }
+
+    private boolean shouldDelayPackageConfirmation(String packageName) {
+        if (currentActiveApp == null) {
+            return false;
+        }
+        if (Const.PACKAGE_CONFIRMATION_MODE == Const.PackageConfirmationMode.SYSTEM_UI) {
+            return SYSTEM_UI_PACKAGE.equals(packageName);
+        }
+        return !currentActiveApp.getPackageName().equals(packageName);
+    }
+
+    private long getTargetEntryDebounceRemaining(String packageName, String source) {
+        if (!"窗口事件".equals(source)
+                || currentActiveApp == null
+                || currentActiveApp.getPackageName().equals(packageName)
+                || SYSTEM_UI_PACKAGE.equals(packageName)
+                || detectSupportedApp(packageName) != null) {
+            return 0;
+        }
+
+        long elapsed = SystemClock.elapsedRealtime() - lastTargetEntryElapsedTime;
+        if (elapsed < 0 || elapsed >= Const.APP_STATE_DEBOUNCE_MS) {
+            return 0;
+        }
+        return Const.APP_STATE_DEBOUNCE_MS - elapsed;
+    }
+
+    private long getTargetReentryDebounceRemaining(CustomApp observedApp) {
+        if (currentActiveApp != null || observedApp == null || lastTargetExitElapsedTime == 0) {
+            return 0;
+        }
+
+        long elapsed = SystemClock.elapsedRealtime() - lastTargetExitElapsedTime;
+        if (elapsed < 0 || elapsed >= Const.APP_STATE_DEBOUNCE_MS) {
+            return 0;
+        }
+        return Const.APP_STATE_DEBOUNCE_MS - elapsed;
+    }
+
+    private void scheduleTargetReentryConfirmation(String source, long delayMillis) {
+        if (pendingTargetReentryConfirmation != null) {
+            return;
+        }
+
+        long generation = ++targetReentryConfirmationGeneration;
+        pendingTargetReentryConfirmation = () -> {
+            if (generation != targetReentryConfirmationGeneration) {
+                return;
+            }
+            pendingTargetReentryConfirmation = null;
+            if (currentActiveApp != null) {
+                return;
+            }
+
+            String confirmedPackage = getActiveRootPackage();
+            if (confirmedPackage.isEmpty()) {
+                Log.d(TAG, "目标重新进入确认时包名不明确，保持隐藏并稍后重试");
+                scheduleTargetReentryConfirmation("包名不明确重试", UNKNOWN_PACKAGE_RETRY_DELAY_MS);
+                return;
+            }
+
+            if (detectSupportedApp(confirmedPackage) == null) {
+                Log.d(TAG, "目标重新进入防抖结束，当前仍为非目标包名: " + confirmedPackage);
+                return;
+            }
+
+            latestObservedPackage = confirmedPackage;
+            applyConfirmedPackage(confirmedPackage, "目标重新进入防抖");
+        };
+
+        handler.postDelayed(pendingTargetReentryConfirmation, delayMillis);
+        Log.d(TAG, source + "防抖观察到目标 APP，" + delayMillis + "ms 后复核，期间保持隐藏");
+    }
+
+    private void cancelPendingTargetReentryConfirmation() {
+        targetReentryConfirmationGeneration++;
+        if (pendingTargetReentryConfirmation != null) {
+            handler.removeCallbacks(pendingTargetReentryConfirmation);
+            pendingTargetReentryConfirmation = null;
+        }
+    }
+
+    /**
+     * 第一次观察到待确认包名时启动一次确认；后续同类事件不会延长等待时间。
+     */
+    private void schedulePackageConfirmation(String source, long delayMillis) {
+        if (pendingPackageConfirmation != null || suspendedForSystemUi) {
+            return;
+        }
+
+        CustomApp expectedApp = currentActiveApp;
+        long generation = ++packageConfirmationGeneration;
+        pendingPackageConfirmation = () -> {
+            if (generation != packageConfirmationGeneration) {
+                return;
+            }
+            pendingPackageConfirmation = null;
+            if (currentActiveApp != expectedApp || currentActiveApp == null) {
+                return;
+            }
+
+            String confirmedPackage = getCurrentRootPackage();
+            if (confirmedPackage.isEmpty()
+                    || confirmedPackage.equals(service.getPackageName())
+                    || FloatHelper.isInputMethodApp(confirmedPackage)) {
+                Log.d(TAG, "延迟确认时包名不明确，保持遮罩并稍后重试");
+                schedulePackageConfirmation("包名不明确重试", UNKNOWN_PACKAGE_RETRY_DELAY_MS);
+                return;
+            }
+
+            latestObservedPackage = confirmedPackage;
+            if (expectedApp.getPackageName().equals(confirmedPackage)) {
+                Log.d(TAG, "在确认期限内回到目标 APP，保持悬浮窗");
+                setSuspendedForSystemUi(false);
+            } else if (Const.PACKAGE_CONFIRMATION_MODE == Const.PackageConfirmationMode.SYSTEM_UI
+                    && SYSTEM_UI_PACKAGE.equals(confirmedPackage)) {
+                Log.d(TAG, "SystemUI 持续超过设定阈值，临时暂停悬浮窗");
+                setSuspendedForSystemUi(true);
+            } else {
+                Log.d(TAG, "延迟确认后进入其他包名: " + confirmedPackage);
+                setSuspendedForSystemUi(false);
+                applyConfirmedPackage(confirmedPackage, "包名延迟确认");
+            }
+        };
+
+        handler.postDelayed(pendingPackageConfirmation, delayMillis);
+        Log.d(TAG, source + "观察到待确认包名，" + delayMillis + "ms 后确认，期间保持悬浮窗");
+    }
+
+    private String getCurrentRootPackage() {
+        String rootPackage = getActiveRootPackage();
+        return rootPackage.isEmpty()
+                ? (latestObservedPackage == null ? "" : latestObservedPackage)
+                : rootPackage;
+    }
+
+    private String getActiveRootPackage() {
+        AccessibilityNodeInfo root = service.getRootInActiveWindow();
+        try {
+            if (root != null && root.getPackageName() != null) {
+                String rootPackage = root.getPackageName().toString();
+                if (!rootPackage.isEmpty()
+                        && !rootPackage.equals(service.getPackageName())
+                        && !FloatHelper.isInputMethodApp(rootPackage)) {
+                    return rootPackage;
+                }
+            }
+            return "";
+        } finally {
+            if (root != null) {
+                root.recycle();
+            }
+        }
+    }
+
+    private void cancelPendingPackageConfirmation() {
+        packageConfirmationGeneration++;
+        if (pendingPackageConfirmation != null) {
+            handler.removeCallbacks(pendingPackageConfirmation);
+            pendingPackageConfirmation = null;
+        }
+    }
+
+    private void applyConfirmedPackage(String packageName, String source) {
+        CustomApp detectedApp = detectSupportedApp(packageName);
+        if (detectedApp != null) {
+            if (detectedApp != currentActiveApp) {
+                if (currentActiveApp != null) {
+                    Log.d(TAG, source + "确认离开 APP: " + currentActiveApp.getAppName());
+                    Share.clearAppState(currentActiveApp);
+                }
+
+                cancelPendingContentCheck();
+                currentActiveApp = detectedApp;
+                Share.currentApp = currentActiveApp;
+                lastTargetEntryElapsedTime = SystemClock.elapsedRealtime();
+                Log.d(TAG, source + "确认进入 APP: " + detectedApp.getAppName());
+                checkTextContentOptimized();
+            } else {
+                requestContentCheck();
+            }
+            return;
+        }
+
+        if (currentActiveApp == null) {
+            return;
+        }
+
+        CustomApp leftApp = currentActiveApp;
+        Log.d(TAG, source + "确认离开 APP: " + leftApp.getAppName());
+        Share.clearAppState(leftApp);
+        cancelPendingContentCheck();
+        lastTargetExitElapsedTime = SystemClock.elapsedRealtime();
+        currentActiveApp = null;
+        Share.currentApp = null;
+        if (listener != null) {
+            listener.onAppLeft(leftApp);
+        }
+    }
+
+    private void setSuspendedForSystemUi(boolean suspended) {
+        if (suspendedForSystemUi == suspended) {
+            return;
+        }
+        suspendedForSystemUi = suspended;
+        if (listener != null) {
+            listener.onSystemUiSuspensionChanged(suspended);
+        }
     }
 
     public void cleanup() {
@@ -484,8 +659,8 @@ public class AppStateManager {
         }
         
         // 清理内容检测Handler
-        if (handler != null && contentCheckRunnable != null) {
-            handler.removeCallbacks(contentCheckRunnable);
-        }
+        cancelPendingContentCheck();
+        cancelPendingPackageConfirmation();
+        cancelPendingTargetReentryConfirmation();
     }
 }

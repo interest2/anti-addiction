@@ -31,6 +31,7 @@ public class FloatingWindowManager {
     private View floatingView;
     private WindowManager.LayoutParams layoutParams;
     private boolean isFloatingWindowVisible = false;
+    private boolean isSuspendedForSystemUi = false;
     
     // 管理器依赖
     private MathChallengeManager mathChallengeManager;
@@ -145,6 +146,7 @@ public class FloatingWindowManager {
             try {
                 windowManager.addView(floatingView, layoutParams);
                 isFloatingWindowVisible = true;
+                isSuspendedForSystemUi = false;
                 Share.isFloatingWindowVisible = true; // 同步状态
                 Log.d(TAG, "悬浮窗显示成功");
             } catch (Exception e) {
@@ -191,8 +193,23 @@ public class FloatingWindowManager {
             }
             
             isFloatingWindowVisible = false;
+            isSuspendedForSystemUi = false;
             Share.isFloatingWindowVisible = false; // 同步状态
         }
+    }
+
+    /**
+     * SystemUI 持续超过确认时间时临时暂停遮罩，但不从 WindowManager 移除。
+     * 回到目标 APP 后直接恢复原 View，避免重新 inflate/addView 产生额外空档。
+     */
+    public void setSuspendedForSystemUi(boolean suspended) {
+        if (!isFloatingWindowVisible || floatingView == null || isSuspendedForSystemUi == suspended) {
+            return;
+        }
+
+        floatingView.setVisibility(suspended ? View.INVISIBLE : View.VISIBLE);
+        isSuspendedForSystemUi = suspended;
+        Log.d(TAG, suspended ? "SystemUI 持续存在，临时暂停悬浮窗" : "回到目标 APP，恢复悬浮窗");
     }
     
     /**

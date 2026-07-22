@@ -26,4 +26,12 @@
         android:textColor="#FFFFFF"
         android:textSize="16sp" />
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/latest_apk_download_hint"
+        android:textColor="#777777"
+        android:textSize="13sp" />
+
 </LinearLayout>

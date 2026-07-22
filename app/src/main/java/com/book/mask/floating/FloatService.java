@@ -160,6 +160,11 @@ public class FloatService extends AccessibilityService
             public void onAppLeft(CustomApp app) {
                 floatingWindowManager.hideFloatingWindow();
             }
+
+            @Override
+            public void onSystemUiSuspensionChanged(boolean suspended) {
+                floatingWindowManager.setSuspendedForSystemUi(suspended);
+            }
             
             @Override
             public void onTimerTriggered(CustomApp app) {

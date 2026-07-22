@@ -34,6 +34,18 @@ public class Const {
     public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
 
     public static final long APP_STATE_CHECK_INTERVAL = 2000; // 轮询检查间隔，ms
+    public static final long SYSTEM_UI_CONFIRM_DELAY_MS = 100; // 离开目标包名后的确认时长
+    public static final long APP_STATE_DEBOUNCE_MS = 350; // 进入/离开目标 APP 时过滤动画残留事件
+    public static final long CONTENT_CHECK_DEBOUNCE_MS = 200; // 页面内容变化停止后再检测
+    public static final long CONTENT_CHECK_MAX_WAIT_MS = 500; // 连续变化时的最长等待时间
+
+    public enum PackageConfirmationMode {
+        SYSTEM_UI,
+        NON_TARGET
+    }
+
+    // SYSTEM_UI：仅 SystemUI 触发延迟确认；NON_TARGET：任意非当前目标包名触发延迟确认
+    public static final PackageConfirmationMode PACKAGE_CONFIRMATION_MODE = PackageConfirmationMode.SYSTEM_UI;
 
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";

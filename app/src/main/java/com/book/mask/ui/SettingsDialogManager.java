@@ -241,7 +241,7 @@ public class SettingsDialogManager {
     public void showFloatingPositionDialog() {
         showFloatingPositionDialog(
                 "调整悬浮窗边缘位置\n（全局默认）",
-                "说明：此处是各 APP 的默认设置，各 APP 还可单独调悬浮窗位置",
+                "说明：此处是各 APP 的默认设置，针对某个的可在首页对应卡片内修改",
                 appSettingsManager.getFloatingTopOffset(),
                 appSettingsManager.getFloatingBottomOffset(),
                 (topOffset, bottomOffset) -> {
