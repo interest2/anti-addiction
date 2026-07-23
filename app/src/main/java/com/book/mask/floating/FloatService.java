@@ -203,6 +203,11 @@ public class FloatService extends AccessibilityService
             }
 
             @Override
+            public boolean onLeisureTimeCloseRequested() {
+                return handleLeisureTimeClose();
+            }
+
+            @Override
             public void onFloatingWindowShownFromHidden() {
                 appStateManager.startFloatingShowDetectionDebounce();
             }
@@ -218,59 +223,62 @@ public class FloatService extends AccessibilityService
     private void handleMathChallengeCorrect() {
         Log.d(TAG, "数学题验证成功，关闭悬浮窗");
 
-        // 获取当前的时间间隔（宽松模式生效一次）
-        long interval;
-        int intervalSeconds;
-        
         CustomApp currentActiveApp = Share.currentApp;
         if (currentActiveApp != null) {
-            // 使用当前APP的时间间隔安排下次显示
-            interval = relaxManager.getAppIntervalMillis(currentActiveApp);
-            intervalSeconds = relaxManager.getAppInterval(currentActiveApp);
-            
-            String appName = currentActiveApp.getAppName();
-            Log.d(TAG, "APP " + appName + " 当前设置的时间间隔: " + intervalSeconds + "秒");
-            
-            // 记录关闭时刻、所用时间间隔
-            relaxManager.recordAppCloseTime(currentActiveApp, intervalSeconds);
-            Share.setAppManuallyHidden(currentActiveApp, true);
-            Log.d(TAG, "设置APP " + appName + " 为手动隐藏状态");
-            
-            // 检查是否是宽松模式
-            boolean isRelaxedMode = relaxManager.isAppRelaxedMode(currentActiveApp);
-            Log.d(TAG, "APP " + appName + " 当前是否宽松模式: " + isRelaxedMode);
-            
-            // 如果是宽松模式，使用次数+1。
-            if (isRelaxedMode) {
-                int currentCount = relaxManager.getAppRelaxedCloseCount(currentActiveApp);
-                relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
-                Log.d(TAG, "APP " + appName + " 宽松模式关闭。之前次数: " + currentCount + ", 现在次数: " + (currentCount + 1));
-                
-                // 通知HomeFragment更新UI显示
-                notifyHomeFragmentUpdate(currentActiveApp);
-                
-                // 注意：不要在这里立即切换时间间隔，保持原来的时间间隔用于定时器
-                // 定时器到期后，在重新检测内容时再切换到严格模式
-                Log.d(TAG, "APP " + appName + " 宽松模式一次性生效，定时器将使用原时间间隔: " + intervalSeconds + "秒");
-            }
-
-            // 隐藏悬浮窗
-            floatingWindowManager.hideFloatingWindow();
-
-            // 启动定时器
-            appStateManager.startTimer(currentActiveApp, interval);
-
-            String intervalText = RelaxManager.getIntervalDisplayText(intervalSeconds);
-            Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗 (APP: " + appName + ")");
-
-            // 显示下次使用的时间间隔
-            int nextIntervalSeconds = currentActiveApp != null ?
-                    relaxManager.getAppInterval(currentActiveApp) :
-                    relaxManager.getDefaultInterval();
-            Log.d(TAG, "下次时长：" + nextIntervalSeconds + "秒 (APP: " + appName + ")");
-
-            Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
+            closeFloatingWindow(currentActiveApp);
         }
+    }
+
+    /**
+     * 尝试使用一次休闲时刻免答题关闭悬浮窗。
+     */
+    private boolean handleLeisureTimeClose() {
+        CustomApp currentActiveApp = Share.currentApp;
+        if (currentActiveApp == null
+                || !appSettingsManager.activateLeisureTimeForClose(
+                        currentActiveApp.getPackageName())) {
+            return false;
+        }
+
+        int leisureSeconds = appSettingsManager.getLeisureDurationMinutes() * 60;
+        Log.d(TAG, "APP " + currentActiveApp.getAppName()
+                + " 已获得 " + RelaxManager.getIntervalDisplayText(leisureSeconds)
+                + " 休闲解禁，今日已消耗 "
+                + appSettingsManager.getLeisureUsedCountToday() + "/"
+                + appSettingsManager.getLeisureDailyCount() + " 次");
+
+        relaxManager.recordAppCloseTime(currentActiveApp, leisureSeconds);
+        Share.setAppManuallyHidden(currentActiveApp, true);
+        Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
+        appStateManager.pauseDetectionForLeisureTime(currentActiveApp);
+        floatingWindowManager.hideFloatingWindow();
+        appStateManager.startLeisureTimer(currentActiveApp, leisureSeconds * 1000L);
+        return true;
+    }
+
+    private void closeFloatingWindow(CustomApp currentActiveApp) {
+        String appName = currentActiveApp.getAppName();
+        boolean isRelaxedMode = relaxManager.isAppRelaxedMode(currentActiveApp);
+        if (isRelaxedMode) {
+            int currentCount = relaxManager.getAppRelaxedCloseCount(currentActiveApp);
+            relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
+            Log.d(TAG, "APP " + appName + " 宽松模式关闭。之前次数: " + currentCount
+                    + ", 现在次数: " + (currentCount + 1));
+            notifyHomeFragmentUpdate(currentActiveApp);
+        }
+
+        int intervalSeconds = relaxManager.getAppInterval(currentActiveApp);
+        long interval = intervalSeconds * 1000L;
+        Log.d(TAG, "APP " + appName + " 本次关闭时长: " + intervalSeconds + "秒");
+
+        relaxManager.recordAppCloseTime(currentActiveApp, intervalSeconds);
+        Share.setAppManuallyHidden(currentActiveApp, true);
+        floatingWindowManager.hideFloatingWindow();
+        appStateManager.startTimer(currentActiveApp, interval);
+        Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
+
+        String intervalText = RelaxManager.getIntervalDisplayText(intervalSeconds);
+        Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗 (APP: " + appName + ")");
     }
     
     /**

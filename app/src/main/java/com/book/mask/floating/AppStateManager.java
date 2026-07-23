@@ -290,13 +290,12 @@ public class AppStateManager {
     }
     
     private boolean stillInHidePeriod() {
-        Long timestamp= Share.getHiddenTimestamp(currentActiveApp.getPackageName());
-        long currentInterval = relaxManager.getAppIntervalMillis(currentActiveApp);
-
-        if(System.currentTimeMillis() - timestamp < currentInterval){
-            Log.d(TAG, "APP " + currentActiveApp.getAppName() + " 被手动隐藏，跳过显示悬浮窗。当前配的使用时长（ms）为" + currentInterval);
+        long remainingMillis = relaxManager.getAppRemainingTime(currentActiveApp);
+        if (remainingMillis > 0) {
+            Log.d(TAG, "APP " + currentActiveApp.getAppName()
+                    + " 被手动隐藏，剩余 " + remainingMillis + "ms");
             return true;
-        }else{
+        } else {
             Log.d(TAG, "虽然状态是手动隐藏，但超过时间了，不该继续隐藏");
             Share.setAppManuallyHidden(currentActiveApp, false);
             return false;
@@ -307,11 +306,28 @@ public class AppStateManager {
      * 创建定时器任务
      */
     public Runnable createTimerTask(CustomApp app) {
+        return createTimerTask(app, true);
+    }
+
+    private Runnable createTimerTask(CustomApp app, boolean resetRelaxedModeOnTrigger) {
         CustomApp appForTimer = app;
 
         Runnable nextShowTask = () -> {
             Log.d(TAG, appForTimer + " 到达预期时间");
             if (appForTimer != null) {
+                long leisureRemainingMillis =
+                        appSettingsManager.getLeisureTimeRemainingMillis();
+                if (appSettingsManager.isLeisureTimeActiveForApp(
+                        appForTimer.getPackageName())) {
+                    scheduleTimer(
+                            appForTimer,
+                            leisureRemainingMillis + 100,
+                            resetRelaxedModeOnTrigger);
+                    Log.d(TAG, "休闲时刻进行中，APP " + appForTimer.getAppName()
+                            + " 的自动显示定时器顺延至休闲结束");
+                    return;
+                }
+
                 boolean beforeState = Share.isAppManuallyHidden(appForTimer);
                 String timerAppName = appForTimer.getAppName();
                 Log.d(TAG, "定时器触发 - APP: " + timerAppName + ", 设置前手动隐藏状态: " + beforeState);
@@ -322,7 +338,8 @@ public class AppStateManager {
                 Log.d(TAG, "解除APP " + timerAppName + " 的手动隐藏状态 - 设置后状态: " + afterState);
 
                 // 如果是宽松模式，现在切换到严格模式
-                if (relaxManager.isAppRelaxedMode(appForTimer)) {
+                if (resetRelaxedModeOnTrigger
+                        && relaxManager.isAppRelaxedMode(appForTimer)) {
                     relaxManager.setAppInterval(appForTimer, relaxManager.getMaxStrictInterval());
                     Log.d(TAG, "APP " + timerAppName + " 宽松模式已切换到严格模式");
                 }
@@ -350,13 +367,28 @@ public class AppStateManager {
      * 启动定时器
      */
     public void startTimer(CustomApp app, long interval) {
+        scheduleTimer(app, interval, true);
+    }
+
+    /**
+     * 启动休闲解禁定时器；到期时不消耗或重置该 APP 的宽松模式。
+     */
+    public void startLeisureTimer(CustomApp app, long interval) {
+        scheduleTimer(app, interval, false);
+    }
+
+    private void scheduleTimer(
+            CustomApp app,
+            long interval,
+            boolean resetRelaxedModeOnTrigger
+    ) {
         // 如果已有当前 APP 的定时显示任务，则移除它
         if (appTimers.get(app) != null) {
             autoShowHandler.removeCallbacks(appTimers.get(app));
         }
 
         // 创建新的定时任务
-        Runnable nextShowTask = createTimerTask(app);
+        Runnable nextShowTask = createTimerTask(app, resetRelaxedModeOnTrigger);
 
         // 使用当前的时间间隔安排下次显示
         autoShowHandler.postDelayed(nextShowTask, interval);
@@ -669,6 +701,21 @@ public class AppStateManager {
                 + Const.FLOATING_SHOW_DETECTION_DEBOUNCE_MS + "ms");
     }
 
+    /**
+     * 当前 APP 的休闲解禁正式开始后，清理它已经排队的页面检测任务。
+     */
+    public void pauseDetectionForLeisureTime(CustomApp app) {
+        cancelPendingContentCheck();
+        cancelPendingPackageConfirmation();
+        cancelPackageHideTransition();
+        floatingShowDetectionPausedUntil = 0;
+        if (floatingShowDetectionResumeRunnable != null) {
+            handler.removeCallbacks(floatingShowDetectionResumeRunnable);
+            floatingShowDetectionResumeRunnable = null;
+        }
+        Log.d(TAG, "APP " + app.getAppName() + " 的休闲解禁已开始，暂停该 APP 页面检测");
+    }
+
     private void finishFloatingShowDetectionDebounce() {
         long remaining = floatingShowDetectionPausedUntil - SystemClock.elapsedRealtime();
         if (remaining > 0) {
@@ -695,7 +742,15 @@ public class AppStateManager {
     }
 
     private boolean isDetectionPaused() {
-        return isPackageTransitionDetectionPaused() || isFloatingShowDetectionPaused();
+        return isLeisureDetectionPaused()
+                || isPackageTransitionDetectionPaused()
+                || isFloatingShowDetectionPaused();
+    }
+
+    private boolean isLeisureDetectionPaused() {
+        return currentActiveApp != null
+                && appSettingsManager.isLeisureTimeActiveForApp(
+                        currentActiveApp.getPackageName());
     }
 
     private boolean isPackageTransitionDetectionPaused() {

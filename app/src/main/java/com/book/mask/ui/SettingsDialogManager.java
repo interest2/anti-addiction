@@ -1,19 +1,27 @@
 package com.book.mask.ui;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
 import android.text.InputFilter;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.book.mask.config.ChallengeType;
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
+import com.book.mask.constant.QuestionConst;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.R;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 /**
  * 设置对话框管理器
@@ -128,6 +136,163 @@ public class SettingsDialogManager {
                .setMessage(explanation.toString())
                 .setPositiveButton("好的", null)
                 .show();
+    }
+
+    /**
+     * 显示休闲时刻设置对话框。
+     */
+    public void showLeisureTimeDialog() {
+        View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_leisure_time, null);
+        TextInputLayout durationLayout = dialogView.findViewById(R.id.layout_leisure_duration);
+        TextInputLayout countLayout = dialogView.findViewById(R.id.layout_leisure_count);
+        TextInputEditText durationInput = dialogView.findViewById(R.id.et_leisure_duration);
+        TextInputEditText countInput = dialogView.findViewById(R.id.et_leisure_count);
+        Button startButton = dialogView.findViewById(R.id.btn_start_leisure_time);
+
+        durationInput.setText(String.valueOf(appSettingsManager.getLeisureDurationMinutes()));
+        countInput.setText(String.valueOf(appSettingsManager.getLeisureDailyCount()));
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("休闲时刻")
+                .setView(dialogView)
+                .setPositiveButton("保存", null)
+                .setNegativeButton("取消", null)
+                .create();
+
+        Handler stateHandler = new Handler(Looper.getMainLooper());
+        Runnable[] refreshStartButton = new Runnable[1];
+        refreshStartButton[0] = () -> {
+            stateHandler.removeCallbacks(refreshStartButton[0]);
+            updateLeisureStartButton(startButton, parseInteger(countInput));
+            long remainingMillis = appSettingsManager.getLeisureTimeRemainingMillis();
+            if (remainingMillis > 0) {
+                stateHandler.postDelayed(refreshStartButton[0], remainingMillis + 100);
+            }
+        };
+        countInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                refreshStartButton[0].run();
+            }
+        });
+
+        dialog.setOnShowListener(ignored -> {
+            refreshStartButton[0].run();
+
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                if (!saveLeisureTimeSettings(
+                        durationLayout, countLayout, durationInput, countInput)) {
+                    return;
+                }
+                Toast.makeText(context, "休闲时刻设置已保存", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            });
+
+            startButton.setOnClickListener(v -> {
+                if (!saveLeisureTimeSettings(
+                        durationLayout, countLayout, durationInput, countInput)) {
+                    return;
+                }
+                if (appSettingsManager.tryStartLeisureTime()) {
+                    Toast.makeText(
+                            context,
+                            "已开启休闲，第一个关闭悬浮窗的APP将免答题解禁",
+                            Toast.LENGTH_SHORT).show();
+                    refreshStartButton[0].run();
+                } else if (appSettingsManager.isLeisureTimeReadyForClose()) {
+                    Toast.makeText(context, "休闲时刻已经开启", Toast.LENGTH_SHORT).show();
+                    refreshStartButton[0].run();
+                } else {
+                    Toast.makeText(context, "今日休闲时刻次数已用完", Toast.LENGTH_SHORT).show();
+                    refreshStartButton[0].run();
+                }
+            });
+        });
+        dialog.setOnDismissListener(ignored ->
+                stateHandler.removeCallbacks(refreshStartButton[0]));
+        dialog.show();
+    }
+
+    private boolean saveLeisureTimeSettings(
+            TextInputLayout durationLayout,
+            TextInputLayout countLayout,
+            EditText durationInput,
+            EditText countInput) {
+        durationLayout.setError(null);
+        countLayout.setError(null);
+
+        Integer durationMinutes = parseInteger(durationInput);
+        Integer dailyCount = parseInteger(countInput);
+        boolean valid = true;
+
+        if (durationMinutes == null
+                || durationMinutes < AppSettingsManager.LEISURE_DURATION_MIN_MINUTES
+                || durationMinutes > AppSettingsManager.LEISURE_DURATION_MAX_MINUTES) {
+            durationLayout.setError("请输入15-30分钟");
+            valid = false;
+        }
+        if (dailyCount == null
+                || dailyCount < AppSettingsManager.LEISURE_DAILY_COUNT_MIN
+                || dailyCount > AppSettingsManager.LEISURE_DAILY_COUNT_MAX) {
+            countLayout.setError("请输入1-2次");
+            valid = false;
+        }
+        if (!valid) {
+            return false;
+        }
+
+        appSettingsManager.setLeisureTimeSettings(durationMinutes, dailyCount);
+        return true;
+    }
+
+    private void updateLeisureStartButton(Button startButton, Integer configuredDailyCount) {
+        if (appSettingsManager.isLeisureTimeActive()) {
+            startButton.setEnabled(false);
+            startButton.setText("休闲时刻进行中");
+            return;
+        }
+
+        if (appSettingsManager.isLeisureTimeArmed()) {
+            startButton.setEnabled(false);
+            startButton.setText("已开启，待关闭悬浮窗");
+            return;
+        }
+
+        if (configuredDailyCount == null
+                || configuredDailyCount < AppSettingsManager.LEISURE_DAILY_COUNT_MIN
+                || configuredDailyCount > AppSettingsManager.LEISURE_DAILY_COUNT_MAX) {
+            startButton.setEnabled(false);
+            startButton.setText("开启休闲时刻");
+            return;
+        }
+
+        int remainingCount = Math.max(
+                0,
+                configuredDailyCount - appSettingsManager.getLeisureUsedCountToday());
+        startButton.setEnabled(remainingCount > 0);
+        startButton.setText(remainingCount > 0
+                ? "开启休闲时刻（今日剩余" + remainingCount + "次）"
+                : "今日次数已用完");
+    }
+
+    private Integer parseInteger(EditText input) {
+        String value = input.getText().toString().trim();
+        if (value.isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
     
     /**
@@ -380,7 +545,7 @@ public class SettingsDialogManager {
      */
     public void showMathDifficultyDialog() {
         ChallengeType[] challengeTypes =
-                ChallengeType.settingsOptions(Const.ENGLISH_READING_ENABLED);
+                ChallengeType.settingsOptions(QuestionConst.ENGLISH_READING_ENABLED);
         String[] difficultyOptions = new String[challengeTypes.length];
         ChallengeType currentType = appSettingsManager.getChallengeType();
         int checkedItem = 0;
@@ -433,11 +598,11 @@ public class SettingsDialogManager {
                 if (!inputText.isEmpty()) {
                     try {
                         int length = Integer.parseInt(inputText);
-                        if (length >= Const.ENGLISH_READING_LENGTH_MIN && length <= Const.ENGLISH_READING_LENGTH_MAX) {
+                        if (length >= QuestionConst.ENGLISH_READING_LENGTH_MIN && length <= QuestionConst.ENGLISH_READING_LENGTH_MAX) {
                             appSettingsManager.setEnglishReadingLength(length);
                             android.widget.Toast.makeText(context, "已设置阅读字数为：" + length, android.widget.Toast.LENGTH_SHORT).show();
                         } else {
-                            android.widget.Toast.makeText(context, "阅读字数必须在" + Const.ENGLISH_READING_LENGTH_MIN + "-" + Const.ENGLISH_READING_LENGTH_MAX + "之间", android.widget.Toast.LENGTH_SHORT).show();
+                            android.widget.Toast.makeText(context, "阅读字数必须在" + QuestionConst.ENGLISH_READING_LENGTH_MIN + "-" + QuestionConst.ENGLISH_READING_LENGTH_MAX + "之间", android.widget.Toast.LENGTH_SHORT).show();
                         }
                     } catch (NumberFormatException e) {
                         android.widget.Toast.makeText(context, "请输入有效数字", android.widget.Toast.LENGTH_SHORT).show();
@@ -531,19 +696,19 @@ public class SettingsDialogManager {
                     int multiplicandDigits = Integer.parseInt(multiplicandInput);
                     
                     // 验证范围
-                    if (additionDigits < Const.ADD_LEN_MIN || additionDigits > Const.ADD_LEN_MAX) {
+                    if (additionDigits < QuestionConst.ADD_LEN_MIN || additionDigits > QuestionConst.ADD_LEN_MAX) {
                         android.widget.Toast.makeText(context, "加法位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (subtractionDigits < Const.ADD_LEN_MIN || subtractionDigits > Const.ADD_LEN_MAX) {
+                    if (subtractionDigits < QuestionConst.ADD_LEN_MIN || subtractionDigits > QuestionConst.ADD_LEN_MAX) {
                         android.widget.Toast.makeText(context, "减法位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (multiplierDigits < Const.MUL_LEN_MIN || multiplierDigits > Const.MUL_LEN_MAX) {
+                    if (multiplierDigits < QuestionConst.MUL_LEN_MIN || multiplierDigits > QuestionConst.MUL_LEN_MAX) {
                         android.widget.Toast.makeText(context, "乘数位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    if (multiplicandDigits < Const.MUL_LEN_MIN || multiplicandDigits > Const.MUL_LEN_MAX) {
+                    if (multiplicandDigits < QuestionConst.MUL_LEN_MIN || multiplicandDigits > QuestionConst.MUL_LEN_MAX) {
                         android.widget.Toast.makeText(context, "被乘数位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
                         return;
                     }

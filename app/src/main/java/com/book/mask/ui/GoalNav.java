@@ -56,6 +56,11 @@ public class GoalNav extends Fragment {
         btnFloatingStrictReminder.setOnClickListener(v -> {
             settingsDialogManager.showFloatingStrictReminderDialog();
         });
+
+        Button btnLeisureTime = view.findViewById(R.id.btn_leisure_time);
+        btnLeisureTime.setOnClickListener(v -> {
+            settingsDialogManager.showLeisureTimeDialog();
+        });
         return view;
     }
 

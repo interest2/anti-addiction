@@ -12,14 +12,12 @@ import android.os.SystemClock;
 
 import com.book.mask.R;
 import com.book.mask.challenge.MathChallengeManager;
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.Share;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.network.TextFetcher;
-
-import org.json.JSONException;
 
 /**
  * 悬浮窗管理器
@@ -63,6 +61,7 @@ public class FloatingWindowManager {
     public interface OnFloatingWindowListener {
         void onMathChallengeCorrect();
         void onMathChallengeCancel();
+        boolean onLeisureTimeCloseRequested();
         void onFloatingWindowShownFromHidden();
     }
     
@@ -85,6 +84,14 @@ public class FloatingWindowManager {
      * 显示悬浮窗
      */
     public void showFloatingWindow(CustomApp currentActiveApp) {
+        if (currentActiveApp != null
+                && appSettingsManager.isLeisureTimeActiveForApp(
+                        currentActiveApp.getPackageName())) {
+            Log.v(TAG, "APP " + currentActiveApp.getAppName()
+                    + " 正在休闲解禁，跳过显示悬浮窗");
+            return;
+        }
+
         if (tryResumeFromPackageTransition(currentActiveApp)) {
             return;
         }
@@ -151,8 +158,12 @@ public class FloatingWindowManager {
             closeButton.setOnClickListener(v -> {
                 Log.d(TAG, "用户点击关闭按钮");
 
+                if (appSettingsManager.isLeisureTimeArmed()
+                        && listener != null
+                        && listener.onLeisureTimeCloseRequested()) {
+                    Log.d(TAG, "使用休闲时刻免答题关闭悬浮窗");
                 // 微信APP直接当作答题通过，不显示数学题
-                if (currentWindowApp != null &&
+                } else if (currentWindowApp != null &&
                     "com.tencent.mm".equals(currentWindowApp.getPackageName())) {
                     Log.d(TAG, "微信APP直接当作答题通过");
                     // 直接调用答题成功的逻辑

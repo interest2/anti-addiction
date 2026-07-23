@@ -26,6 +26,21 @@ public class AppSettingsManager {
     private static final String KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED = "floating_strict_reminder_settings_clicked";
     private static final String KEY_FLOATING_STRICT_REMINDER_FONT_SIZE = "floating_strict_reminder_font_size";
 
+    // 休闲时刻
+    public static final int LEISURE_DURATION_MIN_MINUTES = 15;
+    public static final int LEISURE_DURATION_MAX_MINUTES = 40;
+    public static final int LEISURE_DAILY_COUNT_MIN = 1;
+    public static final int LEISURE_DAILY_COUNT_MAX = 2;
+    private static final int DEFAULT_LEISURE_DURATION_MINUTES = 20;
+    private static final int DEFAULT_LEISURE_DAILY_COUNT = 1;
+    private static final String KEY_LEISURE_DURATION_MINUTES = "leisure_duration_minutes";
+    private static final String KEY_LEISURE_DAILY_COUNT = "leisure_daily_count";
+    private static final String KEY_LEISURE_USED_COUNT = "leisure_used_count";
+    private static final String KEY_LEISURE_LAST_USED_DATE = "leisure_last_used_date";
+    private static final String KEY_LEISURE_ACTIVE_UNTIL = "leisure_active_until";
+    private static final String KEY_LEISURE_ACTIVE_PACKAGE = "leisure_active_package";
+    private static final String KEY_LEISURE_ARMED = "leisure_armed";
+
     // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
             "高考", "考研", "保研", "出国升学", "跳槽", "找工作", "考公务员"
@@ -222,6 +237,137 @@ public class AppSettingsManager {
      */
     public int getFloatingStrictReminderFontSize() {
         return mmkv.getInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, 18); // 默认18sp
+    }
+
+    // ===== 休闲时刻相关方法 =====
+
+    /**
+     * 保存休闲时刻设置。
+     */
+    public void setLeisureTimeSettings(int durationMinutes, int dailyCount) {
+        if (durationMinutes < LEISURE_DURATION_MIN_MINUTES
+                || durationMinutes > LEISURE_DURATION_MAX_MINUTES) {
+            throw new IllegalArgumentException("休闲时刻时长必须在15-30分钟之间");
+        }
+        if (dailyCount < LEISURE_DAILY_COUNT_MIN || dailyCount > LEISURE_DAILY_COUNT_MAX) {
+            throw new IllegalArgumentException("休闲时刻次数必须在1-2次之间");
+        }
+
+        mmkv.putInt(KEY_LEISURE_DURATION_MINUTES, durationMinutes)
+                .putInt(KEY_LEISURE_DAILY_COUNT, dailyCount)
+                .commit();
+    }
+
+    public int getLeisureDurationMinutes() {
+        int durationMinutes = mmkv.getInt(
+                KEY_LEISURE_DURATION_MINUTES, DEFAULT_LEISURE_DURATION_MINUTES);
+        return Math.max(
+                LEISURE_DURATION_MIN_MINUTES,
+                Math.min(durationMinutes, LEISURE_DURATION_MAX_MINUTES));
+    }
+
+    public int getLeisureDailyCount() {
+        int dailyCount = mmkv.getInt(KEY_LEISURE_DAILY_COUNT, DEFAULT_LEISURE_DAILY_COUNT);
+        return Math.max(LEISURE_DAILY_COUNT_MIN, Math.min(dailyCount, LEISURE_DAILY_COUNT_MAX));
+    }
+
+    public int getLeisureUsedCountToday() {
+        String lastUsedDate = mmkv.getString(KEY_LEISURE_LAST_USED_DATE, "");
+        if (!DateUtils.getCurrentDate().equals(lastUsedDate)) {
+            return 0;
+        }
+        return mmkv.getInt(KEY_LEISURE_USED_COUNT, 0);
+    }
+
+    public boolean hasAvailableLeisureTimeToday() {
+        return getLeisureRemainingCountToday() > 0;
+    }
+
+    public int getLeisureRemainingCountToday() {
+        return Math.max(0, getLeisureDailyCount() - getLeisureUsedCountToday());
+    }
+
+    public long getLeisureTimeRemainingMillis() {
+        long remainingMillis = mmkv.getLong(KEY_LEISURE_ACTIVE_UNTIL, 0)
+                - System.currentTimeMillis();
+        return Math.max(remainingMillis, 0);
+    }
+
+    public boolean isLeisureTimeActive() {
+        return getLeisureTimeRemainingMillis() > 0;
+    }
+
+    public boolean isLeisureTimeActiveForApp(String packageName) {
+        return packageName != null
+                && isLeisureTimeActive()
+                && packageName.equals(mmkv.getString(KEY_LEISURE_ACTIVE_PACKAGE, ""));
+    }
+
+    public boolean isLeisureTimeArmed() {
+        return mmkv.getBoolean(KEY_LEISURE_ARMED, false) && !isLeisureTimeActive();
+    }
+
+    public boolean isLeisureTimeReadyForClose() {
+        return isLeisureTimeArmed() || isLeisureTimeActive();
+    }
+
+    /**
+     * 尝试开启一次休闲时刻。此时只进入待触发状态，关闭悬浮窗后才开始计时并消耗次数。
+     *
+     * @return 当前未开启、今日仍有次数并成功开启时返回 true
+     */
+    public boolean tryStartLeisureTime() {
+        synchronized (AppSettingsManager.class) {
+            if (isLeisureTimeReadyForClose()) {
+                return false;
+            }
+
+            if (!hasAvailableLeisureTimeToday()) {
+                return false;
+            }
+
+            mmkv.putLong(KEY_LEISURE_ACTIVE_UNTIL, 0)
+                    .putString(KEY_LEISURE_ACTIVE_PACKAGE, "")
+                    .putBoolean(KEY_LEISURE_ARMED, true)
+                    .commit();
+            return true;
+        }
+    }
+
+    /**
+     * 关闭悬浮窗并正式开始休闲时刻。每段休闲时刻只在首次关闭时消耗一次。
+     *
+     * @return 已开启待触发并成功绑定当前 APP 时返回 true
+     */
+    public boolean activateLeisureTimeForClose(String packageName) {
+        synchronized (AppSettingsManager.class) {
+            if (isLeisureTimeActive()) {
+                return isLeisureTimeActiveForApp(packageName);
+            }
+            if (packageName == null || !isLeisureTimeArmed()) {
+                return false;
+            }
+            if (!hasAvailableLeisureTimeToday()) {
+                mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
+                return false;
+            }
+
+            String currentDate = DateUtils.getCurrentDate();
+            String lastUsedDate = mmkv.getString(KEY_LEISURE_LAST_USED_DATE, "");
+            int usedCount = currentDate.equals(lastUsedDate)
+                    ? mmkv.getInt(KEY_LEISURE_USED_COUNT, 0)
+                    : 0;
+
+            mmkv.putInt(KEY_LEISURE_USED_COUNT, usedCount + 1)
+                    .putString(KEY_LEISURE_LAST_USED_DATE, currentDate)
+                    .putLong(
+                            KEY_LEISURE_ACTIVE_UNTIL,
+                            System.currentTimeMillis() + getLeisureDurationMinutes() * 60_000L)
+                    .putString(KEY_LEISURE_ACTIVE_PACKAGE, packageName)
+                    .putBoolean(KEY_LEISURE_ARMED, false)
+                    .commit();
+            return true;
+        }
     }
 
     // ===== 个人目标相关方法 =====
