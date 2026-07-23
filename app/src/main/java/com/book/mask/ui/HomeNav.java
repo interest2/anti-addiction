@@ -25,7 +25,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.book.mask.R;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
+import com.book.mask.constant.QuestionConst;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.network.LatestVersionManager;
@@ -579,7 +580,7 @@ public class HomeNav extends Fragment implements
             headerText.setText("🔢 回答算术题才能删除APP");
         }
 
-        String question = ArithmeticUtils.customArithmetic(Const.ADD_LEN_CARD, Const.SUB_LEN_CARD, Const.MUL_FIRST_CARD, Const.MUL_SECOND_CARD);
+        String question = ArithmeticUtils.customArithmetic(QuestionConst.ADD_LEN_CARD, QuestionConst.SUB_LEN_CARD, QuestionConst.MUL_FIRST_CARD, QuestionConst.MUL_SECOND_CARD);
         final int[] correctAnswer = {ArithmeticUtils.getMathAnswer(question)};
         questionText.setText(question);
 
@@ -628,7 +629,7 @@ public class HomeNav extends Fragment implements
 
                     new Handler().postDelayed(() -> {
                         String newQuestion = ArithmeticUtils.customArithmetic(
-                                Const.ADD_LEN_MAX, Const.ADD_LEN_MAX, Const.MUL_LEN_MAX, Const.MUL_LEN_MAX);
+                                QuestionConst.ADD_LEN_MAX, QuestionConst.ADD_LEN_MAX, QuestionConst.MUL_LEN_MAX, QuestionConst.MUL_LEN_MAX);
                         correctAnswer[0] = ArithmeticUtils.getMathAnswer(newQuestion);
                         questionText.setText(newQuestion);
                         answerEdit.setText("");
@@ -677,7 +678,7 @@ public class HomeNav extends Fragment implements
         Button cancelButton = dialogView.findViewById(R.id.btn_cancel_close);
         
         // 生成算术题
-        String question = ArithmeticUtils.customArithmetic(Const.ADD_LEN_CARD, Const.SUB_LEN_CARD, Const.MUL_FIRST_CARD, Const.MUL_SECOND_CARD);
+        String question = ArithmeticUtils.customArithmetic(QuestionConst.ADD_LEN_CARD, QuestionConst.SUB_LEN_CARD, QuestionConst.MUL_FIRST_CARD, QuestionConst.MUL_SECOND_CARD);
         final int[] correctAnswer = {ArithmeticUtils.getMathAnswer(question)};
         questionText.setText(question);
         
@@ -727,7 +728,7 @@ public class HomeNav extends Fragment implements
                     // 3秒后生成新题目
                     new Handler().postDelayed(() -> {
                         String newQuestion = ArithmeticUtils.customArithmetic(
-                                Const.ADD_LEN_MAX, Const.ADD_LEN_MAX, Const.MUL_LEN_MAX, Const.MUL_LEN_MAX);
+                                QuestionConst.ADD_LEN_MAX, QuestionConst.ADD_LEN_MAX, QuestionConst.MUL_LEN_MAX, QuestionConst.MUL_LEN_MAX);
                         correctAnswer[0] = ArithmeticUtils.getMathAnswer(newQuestion);
                         questionText.setText(newQuestion);
                         answerEdit.setText("");

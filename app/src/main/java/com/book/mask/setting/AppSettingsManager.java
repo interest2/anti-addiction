@@ -3,8 +3,10 @@ package com.book.mask.setting;
 import android.content.Context;
 
 import com.book.mask.config.ChallengeType;
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
+import com.book.mask.constant.QuestionConst;
 import com.book.mask.config.Share;
+import com.book.mask.util.DateUtils;
 import com.tencent.mmkv.MMKV;
 
 /**
@@ -130,7 +132,7 @@ public class AppSettingsManager {
      * 获取加法数字位数
      */
     public int getMathAdditionDigits() {
-        return mmkv.getInt(KEY_MATH_ADDITION_DIGITS, Const.ADD_LEN_DEFAULT);
+        return mmkv.getInt(KEY_MATH_ADDITION_DIGITS, QuestionConst.ADD_LEN_DEFAULT);
     }
 
     /**
@@ -144,7 +146,7 @@ public class AppSettingsManager {
      * 获取减法数字位数
      */
     public int getMathSubtractionDigits() {
-        return mmkv.getInt(KEY_MATH_SUBTRACTION_DIGITS, Const.SUB_LEN_DEFAULT);
+        return mmkv.getInt(KEY_MATH_SUBTRACTION_DIGITS, QuestionConst.SUB_LEN_DEFAULT);
     }
 
     /**
@@ -158,7 +160,7 @@ public class AppSettingsManager {
      * 获取乘法乘数位数
      */
     public int getMathMultiplicationMultiplierDigits() {
-        return mmkv.getInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, Const.MUL_FIRST_LEN_DEFAULT);
+        return mmkv.getInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, QuestionConst.MUL_FIRST_LEN_DEFAULT);
     }
 
     /**
@@ -172,7 +174,7 @@ public class AppSettingsManager {
      * 获取乘法被乘数位数
      */
     public int getMathMultiplicationMultiplicandDigits() {
-        return mmkv.getInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, Const.MUL_SECOND_LEN_DEFAULT);
+        return mmkv.getInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, QuestionConst.MUL_SECOND_LEN_DEFAULT);
     }
 
     // ===== 悬浮窗额外显示日常提醒相关方法 =====
@@ -338,7 +340,7 @@ public class AppSettingsManager {
         String preferenceValue = mmkv.getString(
                 KEY_MATH_QUESTION_TYPE, ChallengeType.MIXED.getPreferenceValue());
         ChallengeType challengeType = ChallengeType.fromPreferenceValue(preferenceValue);
-        if (!Const.ENGLISH_READING_ENABLED && challengeType == ChallengeType.ENGLISH_READING) {
+        if (!QuestionConst.ENGLISH_READING_ENABLED && challengeType == ChallengeType.ENGLISH_READING) {
             return ChallengeType.MIXED;
         }
         return challengeType;
@@ -355,9 +357,9 @@ public class AppSettingsManager {
      * 获取英文阅读字数（确保至少为最小值200）
      */
     public int getEnglishReadingLength() {
-        int length = mmkv.getInt(KEY_ENGLISH_READING_LENGTH, Const.ENGLISH_READING_LENGTH_DEFAULT);
+        int length = mmkv.getInt(KEY_ENGLISH_READING_LENGTH, QuestionConst.ENGLISH_READING_LENGTH_DEFAULT);
         // 确保返回值至少为最小值
-        return Math.max(length, Const.ENGLISH_READING_LENGTH_MIN);
+        return Math.max(length, QuestionConst.ENGLISH_READING_LENGTH_MIN);
     }
 
     /**
@@ -365,7 +367,7 @@ public class AppSettingsManager {
      */
     public void setEnglishReadingLength(int length) {
         // 确保设置的值至少为最小值
-        int validLength = Math.max(length, Const.ENGLISH_READING_LENGTH_MIN);
+        int validLength = Math.max(length, QuestionConst.ENGLISH_READING_LENGTH_MIN);
         mmkv.putInt(KEY_ENGLISH_READING_LENGTH, validLength).commit();
     }
 }

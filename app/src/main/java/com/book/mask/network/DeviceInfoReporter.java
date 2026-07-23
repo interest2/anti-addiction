@@ -3,26 +3,19 @@ package com.book.mask.network;
 import android.content.Context;
 import android.os.Build;
 import android.provider.Settings;
-import android.telephony.TelephonyManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.util.Log;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
 
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
 import com.book.mask.util.ContentUtils;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 

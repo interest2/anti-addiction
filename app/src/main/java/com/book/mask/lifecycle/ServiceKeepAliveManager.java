@@ -8,7 +8,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
 import com.book.mask.floating.FloatService;
 
 public class ServiceKeepAliveManager {
@@ -121,4 +121,4 @@ public class ServiceKeepAliveManager {
         };
         handler.postDelayed(checkRunnable, Const.CHECK_SERVICE_RUNNING_DELAY);
     }
-} 
+}

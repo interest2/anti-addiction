@@ -7,9 +7,8 @@ import android.view.Gravity;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
 
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
 import com.book.mask.config.InputMethodPackageManager;
-import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
 
 import java.text.SimpleDateFormat;

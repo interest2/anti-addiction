@@ -1,41 +1,8 @@
-package com.book.mask.config;
-
-import java.util.ArrayList;
-import java.util.List;
+package com.book.mask.constant;
 
 public class Const {
 
-    // 算术题-悬浮窗：默认数字位数
-    public static final int ADD_LEN_DEFAULT = 5;
-    public static final int SUB_LEN_DEFAULT = 5;
-    public static final int MUL_FIRST_LEN_DEFAULT = 2;
-    public static final int MUL_SECOND_LEN_DEFAULT = 2;
-
-    // 混合题型比例：云端题 20%，其余 80% 为本地算术题
-    public static final int MIXED_REMOTE_CHALLENGE_PERCENT = 20;
-
-    // 算术题-设置：自定义难度 位数范围
-    public static final int ADD_LEN_MIN = 4;
-    public static final int ADD_LEN_MAX = 7;
-    public static final int MUL_LEN_MIN = 2;
-    public static final int MUL_LEN_MAX = 4;
-
-    // 英文阅读功能开关，默认不启用
-    public static final boolean ENGLISH_READING_ENABLED = false;
-
-    // 英文阅读字数范围
-    public static final int ENGLISH_READING_LENGTH_MIN = 200;
-    public static final int ENGLISH_READING_LENGTH_MAX = 1000;
-    public static final int ENGLISH_READING_LENGTH_DEFAULT = 300;
-
-//    算术题-卡片难度
-    public static final int ADD_LEN_CARD = 7;
-    public static final int SUB_LEN_CARD = 7;
-    public static final int MUL_FIRST_CARD = 4;
-    public static final int MUL_SECOND_CARD = 4;
-
     public static final int CHECK_SERVICE_RUNNING_DELAY = 30000;
-
     public static final long APP_STATE_CHECK_INTERVAL = 2000; // 轮询检查间隔，ms
     public static final long SYSTEM_UI_CONFIRM_DELAY_MS = 100; // 离开目标包名后的确认时长
     public static final int PACKAGE_TRANSITION_ANIMATION_DURATION_MS = 1000; // 过渡动画时长 a

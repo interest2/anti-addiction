@@ -9,14 +9,8 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.Toast;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.Map;
-
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
 import com.book.mask.config.Share;
-import com.book.mask.config.CustomAppManager;
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
@@ -27,8 +21,6 @@ import com.book.mask.util.DateUtils;
 import com.tencent.mmkv.MMKV;
 
 import android.content.Intent;
-
-import androidx.annotation.NonNull;
 
 /**
  * 悬浮窗无障碍服务

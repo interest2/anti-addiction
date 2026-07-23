@@ -5,7 +5,8 @@ import android.provider.Settings;
 import android.util.Log;
 
 import com.book.mask.config.ChallengeType;
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
+import com.book.mask.constant.QuestionConst;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.util.ArithmeticUtils;
 import com.book.mask.util.ContentUtils;
@@ -29,10 +30,9 @@ final class ChallengeQuestionProvider {
     private static final String FIRST_A_MIXED = "15";
     private static final String FIRST_Q_REASON = "甲、乙、丙、丁四人参加比赛，名次各不相同。已知：\n" +
             "①甲、乙中恰有一人是第一名；\n" +
-            "②若甲是第一名，则丙是第二名；\n" +
+            "②若甲是第一名，则丙是第三名；\n" +
             "③若乙是第一名，则丁是第二名；\n" +
-            "④丙排在丁后面。\n" +
-            "问谁是第二名";
+            "④丁比丙高一个名次。问谁是第二名\n";
     private static final String FIRST_A_REASON = "丁";
 
     private static final String FIRST_Q_READING = "Supermarkets were still a California phenomenon; District food shopping "
@@ -77,7 +77,7 @@ final class ChallengeQuestionProvider {
         if (configuredType != ChallengeType.MIXED) {
             return configuredType;
         }
-        return random.nextInt(100) < Const.MIXED_REMOTE_CHALLENGE_PERCENT
+        return random.nextInt(100) < QuestionConst.MIXED_REMOTE_CHALLENGE_PERCENT
                 ? ChallengeType.MIXED
                 : ChallengeType.ARITHMETIC;
     }
@@ -114,10 +114,10 @@ final class ChallengeQuestionProvider {
                     appSettingsManager.getMathMultiplicationMultiplicandDigits());
         } else {
             question = ArithmeticUtils.customArithmetic(
-                    Const.ADD_LEN_DEFAULT,
-                    Const.SUB_LEN_DEFAULT,
-                    Const.MUL_FIRST_LEN_DEFAULT,
-                    Const.MUL_SECOND_LEN_DEFAULT);
+                    QuestionConst.ADD_LEN_DEFAULT,
+                    QuestionConst.SUB_LEN_DEFAULT,
+                    QuestionConst.MUL_FIRST_LEN_DEFAULT,
+                    QuestionConst.MUL_SECOND_LEN_DEFAULT);
         }
         return new Question(question, String.valueOf(ArithmeticUtils.getMathAnswer(question)));
     }
@@ -183,7 +183,7 @@ final class ChallengeQuestionProvider {
                     context.getContentResolver(), Settings.Secure.ANDROID_ID);
             int readingLength = Math.max(
                     appSettingsManager.getEnglishReadingLength(),
-                    Const.ENGLISH_READING_LENGTH_MIN);
+                    QuestionConst.ENGLISH_READING_LENGTH_MIN);
             JSONObject request = new JSONObject();
             request.put("devId", androidId);
             request.put("length", readingLength);

@@ -8,13 +8,12 @@ import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.setting.RelaxManager;
-import com.book.mask.util.DateUtils;
 
 import java.util.Map;
 import java.util.HashMap;

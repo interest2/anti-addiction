@@ -11,7 +11,7 @@ import android.util.Log;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.util.ContentUtils;

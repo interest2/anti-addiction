@@ -1,6 +1,6 @@
 package com.book.mask.network;
 
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
 import com.book.mask.config.Share;
 import com.book.mask.util.ContentUtils;
 

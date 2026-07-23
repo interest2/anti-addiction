@@ -1,6 +1,6 @@
 package com.book.mask.floating;
 
-import com.book.mask.config.Const;
+import com.book.mask.constant.Const;
 
 /**
  * 普通包名切换的时间计算，所有入参和返回值单位均为毫秒。
