@@ -621,7 +621,7 @@ public class HomeNav extends Fragment implements
                     }, 1000);
 
                 } else {
-                    resultText.setText("❌ 答案错误，请重新计算");
+                    resultText.setText("❌ 答案错误，切到下一题");
                     resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_red_light));
                     resultText.setVisibility(View.VISIBLE);
 
@@ -718,7 +718,7 @@ public class HomeNav extends Fragment implements
                     
                 } else {
                     // 答案错误
-                    resultText.setText("❌ 答案错误，请重新计算");
+                    resultText.setText("❌ 答案错误，切到下一题");
                     resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_red_light));
                     resultText.setVisibility(View.VISIBLE);
                     

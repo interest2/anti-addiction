@@ -9,6 +9,7 @@ import android.os.Looper;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.text.style.URLSpan;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -95,6 +96,8 @@ public class SettingsNav extends Fragment {
                 .inflate(R.layout.dialog_version_update, null);
         TextView versionDetail = dialogView.findViewById(R.id.tv_version_detail);
         versionDetail.setText(buildVersionDetail());
+        TextView releaseNotesHint = dialogView.findViewById(R.id.tv_release_notes_hint);
+        enableUrlCopy(releaseNotesHint);
         android.app.AlertDialog versionDialog = new android.app.AlertDialog.Builder(requireContext())
                 .setTitle(R.string.version_update)
                 .setView(dialogView)
@@ -273,13 +276,39 @@ public class SettingsNav extends Fragment {
             .show();
     }
 
-    private void copyToClipboard(String packageName) {
+    private void enableUrlCopy(TextView textView) {
+        CharSequence text = textView.getText();
+        if (!(text instanceof Spanned)) {
+            return;
+        }
+
+        Spanned spanned = (Spanned) text;
+        SpannableString copyableText = new SpannableString(spanned);
+        URLSpan[] urlSpans = spanned.getSpans(0, spanned.length(), URLSpan.class);
+        for (URLSpan urlSpan : urlSpans) {
+            int start = spanned.getSpanStart(urlSpan);
+            int end = spanned.getSpanEnd(urlSpan);
+            int flags = spanned.getSpanFlags(urlSpan);
+            copyableText.removeSpan(urlSpan);
+            copyableText.setSpan(new ClickableSpan() {
+                @Override
+                public void onClick(@NonNull View widget) {
+                    copyToClipboard(urlSpan.getURL());
+                }
+            }, start, end, flags);
+        }
+
+        textView.setText(copyableText);
+        textView.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+
+    private void copyToClipboard(String text) {
         android.content.ClipboardManager cm = (android.content.ClipboardManager)
                 requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
         if (cm != null) {
-            cm.setPrimaryClip(android.content.ClipData.newPlainText("package", packageName));
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("text", text));
             android.widget.Toast.makeText(requireContext(),
-                    "已复制：" + packageName,
+                    "已复制：" + text,
                     android.widget.Toast.LENGTH_SHORT).show();
         }
     }

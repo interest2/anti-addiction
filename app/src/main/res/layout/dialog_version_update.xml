@@ -34,4 +34,14 @@
         android:textColor="#777777"
         android:textSize="13sp" />
 
+    <TextView
+        android:id="@+id/tv_release_notes_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:linksClickable="true"
+        android:text="@string/release_notes_hint"
+        android:textColor="#777777"
+        android:textSize="13sp" />
+
 </LinearLayout>

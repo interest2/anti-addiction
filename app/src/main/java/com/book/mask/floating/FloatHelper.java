@@ -155,6 +155,7 @@ public class FloatHelper {
                 WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH;
         layoutParams.format = PixelFormat.TRANSLUCENT;
         layoutParams.gravity = Gravity.LEFT | Gravity.TOP;
+        layoutParams.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING;
 
         // 计算悬浮窗位置和大小
         DisplayMetrics displayMetrics = new DisplayMetrics();

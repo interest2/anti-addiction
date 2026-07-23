@@ -1,7 +1,9 @@
 package com.book.mask.challenge;
 
 import android.content.Context;
+import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Handler;
 import android.util.Log;
 import android.util.TypedValue;
@@ -11,6 +13,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
+import android.view.ViewTreeObserver;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
@@ -32,6 +36,12 @@ final class ChallengeViewController {
     private static final String TAG = "ChallengeView";
     private static final long KEYBOARD_DELAY_MILLIS = 300L;
     private static final long FOCUS_CHECK_INTERVAL_MILLIS = 1000L;
+    private static final int KEYBOARD_VISIBILITY_THRESHOLD_DP = 100;
+    private static final int KEYBOARD_CHALLENGE_GAP_DP = 8;
+    private static final int MIN_QUESTION_HEIGHT_DP = 72;
+    private static final int MAX_QUESTION_HEIGHT_DP = 300;
+    private static final int ENGLISH_QUESTION_HEIGHT_DP = 500;
+    private static final int CHALLENGE_TOP_MARGIN_DP = 100;
 
     interface Callbacks {
         void onSubmit(String answer);
@@ -51,13 +61,22 @@ final class ChallengeViewController {
     private EditText answerEdit;
     private TextView resultText;
     private ScrollView questionScrollView;
+    private View closeButton;
+    private View topInfoLayout;
 
     private boolean initialized;
     private boolean shown;
     private boolean selectingText;
+    private boolean keyboardLayoutListenerRegistered;
+    private boolean topInfoVisibilityCaptured;
+    private int topInfoVisibilityBeforeChallenge;
+    private ChallengeType currentType = ChallengeType.ARITHMETIC;
 
     private final Runnable focusKeeper = this::keepAnswerInputFocused;
     private final Runnable showKeyboardRunnable = this::showKeyboardAndStartFocusKeeper;
+    private final Runnable keyboardPositionUpdater = this::updateQuestionHeightForKeyboard;
+    private final ViewTreeObserver.OnGlobalLayoutListener keyboardLayoutListener =
+            this::updateQuestionHeightForKeyboard;
 
     ChallengeViewController(
             Context context,
@@ -81,13 +100,19 @@ final class ChallengeViewController {
 
         stopFocusTasks();
         shown = true;
+        hideTopInfo();
         renderQuestion(type, question);
         answerEdit.setText("");
         hideResult();
+        challengeLayout.setTranslationY(0);
         challengeLayout.setVisibility(View.VISIBLE);
+        challengeLayout.bringToFront();
+        closeButton.bringToFront();
 
+        windowLayoutParams.softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING;
         windowLayoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
         windowManager.updateViewLayout(floatingView, windowLayoutParams);
+        startKeyboardAwarePositioning();
 
         answerEdit.setFocusable(true);
         answerEdit.setFocusableInTouchMode(true);
@@ -118,7 +143,7 @@ final class ChallengeViewController {
 
     void showWrongAnswer() {
         showResult(
-                "❌ 答案错误，请重新计算",
+                "❌ 答案错误，切到下一题",
                 context.getColor(android.R.color.holo_red_light));
         answerEdit.setText("");
     }
@@ -142,10 +167,13 @@ final class ChallengeViewController {
         shown = false;
         selectingText = false;
         stopFocusTasks();
+        stopKeyboardAwarePositioning();
         hideKeyboard();
         answerEdit.clearFocus();
         applyQuestionStyle(ChallengeType.ARITHMETIC);
+        challengeLayout.setTranslationY(0);
         challengeLayout.setVisibility(View.GONE);
+        restoreTopInfo();
 
         windowLayoutParams.flags =
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
@@ -172,12 +200,16 @@ final class ChallengeViewController {
         answerEdit = floatingView.findViewById(R.id.et_math_answer);
         resultText = floatingView.findViewById(R.id.tv_math_result);
         questionScrollView = floatingView.findViewById(R.id.sv_math_question);
+        closeButton = floatingView.findViewById(R.id.btn_close);
+        topInfoLayout = floatingView.findViewById(R.id.top_info_layout);
         Button submitButton = floatingView.findViewById(R.id.btn_submit_answer);
         Button cancelButton = floatingView.findViewById(R.id.btn_cancel_close);
         if (challengeLayout == null
                 || questionText == null
                 || answerEdit == null
                 || resultText == null
+                || closeButton == null
+                || topInfoLayout == null
                 || submitButton == null
                 || cancelButton == null) {
             Log.e(TAG, "答题布局懒加载失败");
@@ -211,6 +243,22 @@ final class ChallengeViewController {
 
         initialized = true;
         return true;
+    }
+
+    private void hideTopInfo() {
+        if (!topInfoVisibilityCaptured) {
+            topInfoVisibilityBeforeChallenge = topInfoLayout.getVisibility();
+            topInfoVisibilityCaptured = true;
+        }
+        topInfoLayout.setVisibility(View.GONE);
+    }
+
+    private void restoreTopInfo() {
+        if (!topInfoVisibilityCaptured) {
+            return;
+        }
+        topInfoLayout.setVisibility(topInfoVisibilityBeforeChallenge);
+        topInfoVisibilityCaptured = false;
     }
 
     private void configureQuestionSelection() {
@@ -248,6 +296,7 @@ final class ChallengeViewController {
     private void renderQuestion(
             ChallengeType type,
             ChallengeQuestionProvider.Question question) {
+        currentType = type;
         applyQuestionStyle(type);
         questionText.setText(question.getContent());
     }
@@ -260,31 +309,37 @@ final class ChallengeViewController {
                 : (LinearLayout.LayoutParams) questionScrollView.getLayoutParams();
 
         if (type == ChallengeType.ENGLISH_READING) {
-            challengeLayout.setBackgroundColor(0xFFF5F5F5);
+            challengeLayout.setBackgroundResource(R.drawable.floating_challenge_bg_light);
             questionText.setTextColor(0xFF000000);
             questionText.setTypeface(null, Typeface.NORMAL);
             questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
 
             challengeParams.removeRule(RelativeLayout.BELOW);
             challengeParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-            challengeParams.topMargin = dpToPx(90);
+            challengeParams.topMargin = dpToPx(CHALLENGE_TOP_MARGIN_DP);
             challengeParams.leftMargin = 0;
             challengeParams.rightMargin = 0;
             if (scrollParams != null) {
                 scrollParams.height = dpToPx(500);
             }
         } else {
-            challengeLayout.setBackgroundColor(0xFF333333);
+            challengeLayout.setBackgroundResource(R.drawable.floating_challenge_bg_dark);
             questionText.setTextColor(0xFFFFFFFF);
-            questionText.setTypeface(null, Typeface.BOLD);
+            questionText.setTypeface(null, Typeface.NORMAL);
             int fontSize = type == ChallengeType.MIXED || type == ChallengeType.REASONING
                     ? 16
                     : 20;
             questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
 
-            challengeParams.removeRule(RelativeLayout.ALIGN_PARENT_TOP);
-            challengeParams.addRule(RelativeLayout.BELOW, R.id.top_info_layout);
-            challengeParams.topMargin = dpToPx(10);
+            if (shown) {
+                challengeParams.removeRule(RelativeLayout.BELOW);
+                challengeParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+                challengeParams.topMargin = dpToPx(CHALLENGE_TOP_MARGIN_DP);
+            } else {
+                challengeParams.removeRule(RelativeLayout.ALIGN_PARENT_TOP);
+                challengeParams.addRule(RelativeLayout.BELOW, R.id.top_info_layout);
+                challengeParams.topMargin = dpToPx(10);
+            }
             challengeParams.leftMargin = dpToPx(20);
             challengeParams.rightMargin = dpToPx(20);
             if (scrollParams != null) {
@@ -295,6 +350,126 @@ final class ChallengeViewController {
         challengeLayout.setLayoutParams(challengeParams);
         if (questionScrollView != null) {
             questionScrollView.setLayoutParams(scrollParams);
+        }
+    }
+
+    private void updateQuestionHeightForKeyboard() {
+        if (!shown
+                || challengeLayout.getVisibility() != View.VISIBLE
+                || challengeLayout.getHeight() == 0
+                || floatingView.getHeight() == 0) {
+            return;
+        }
+
+        Rect visibleFrame = new Rect();
+        int[] floatingLocation = new int[2];
+        floatingView.getWindowVisibleDisplayFrame(visibleFrame);
+        floatingView.getLocationOnScreen(floatingLocation);
+
+        int expectedWindowHeight = windowLayoutParams.height > 0
+                ? windowLayoutParams.height
+                : floatingView.getHeight();
+        int availableBottom = Math.min(
+                floatingView.getHeight(),
+                Math.max(0, visibleFrame.bottom - floatingLocation[1]));
+        boolean keyboardVisible = false;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsets insets = floatingView.getRootWindowInsets();
+            if (insets != null && insets.isVisible(WindowInsets.Type.ime())) {
+                int imeBottom = insets.getInsets(WindowInsets.Type.ime()).bottom;
+                if (imeBottom > 0) {
+                    keyboardVisible = true;
+                    availableBottom = Math.min(
+                            availableBottom,
+                            Math.max(0, expectedWindowHeight - imeBottom));
+                }
+            }
+        }
+
+        int obscuredHeight = expectedWindowHeight - availableBottom;
+        if (!keyboardVisible
+                && obscuredHeight < dpToPx(KEYBOARD_VISIBILITY_THRESHOLD_DP)) {
+            restoreQuestionHeight();
+            challengeLayout.setTranslationY(0);
+            return;
+        }
+
+        constrainQuestionHeight(availableBottom);
+        challengeLayout.setTranslationY(0);
+    }
+
+    private int constrainQuestionHeight(int availableBottom) {
+        if (questionScrollView == null || questionScrollView.getHeight() == 0) {
+            return challengeLayout.getHeight();
+        }
+
+        int fixedChallengeHeight =
+                Math.max(0, challengeLayout.getHeight() - questionScrollView.getHeight());
+        int maximumQuestionHeight = Math.max(
+                1,
+                availableBottom
+                        - challengeLayout.getTop()
+                        - dpToPx(KEYBOARD_CHALLENGE_GAP_DP)
+                        - fixedChallengeHeight);
+        int preferredQuestionHeight = currentType == ChallengeType.ENGLISH_READING
+                ? dpToPx(ENGLISH_QUESTION_HEIGHT_DP)
+                : Math.min(
+                        dpToPx(MAX_QUESTION_HEIGHT_DP),
+                        Math.max(questionScrollView.getHeight(), questionText.getMeasuredHeight()));
+        int minimumQuestionHeight = Math.min(
+                preferredQuestionHeight,
+                dpToPx(MIN_QUESTION_HEIGHT_DP));
+        int targetQuestionHeight =
+                Math.min(preferredQuestionHeight, maximumQuestionHeight);
+        if (maximumQuestionHeight >= minimumQuestionHeight) {
+            targetQuestionHeight = Math.max(minimumQuestionHeight, targetQuestionHeight);
+        }
+
+        LinearLayout.LayoutParams params =
+                (LinearLayout.LayoutParams) questionScrollView.getLayoutParams();
+        if (params.height != targetQuestionHeight) {
+            params.height = targetQuestionHeight;
+            questionScrollView.setLayoutParams(params);
+        }
+        return fixedChallengeHeight + targetQuestionHeight;
+    }
+
+    private void restoreQuestionHeight() {
+        if (questionScrollView == null) {
+            return;
+        }
+        int height = currentType == ChallengeType.ENGLISH_READING
+                ? dpToPx(ENGLISH_QUESTION_HEIGHT_DP)
+                : LinearLayout.LayoutParams.WRAP_CONTENT;
+        LinearLayout.LayoutParams params =
+                (LinearLayout.LayoutParams) questionScrollView.getLayoutParams();
+        if (params.height != height) {
+            params.height = height;
+            questionScrollView.setLayoutParams(params);
+        }
+    }
+
+    private void startKeyboardAwarePositioning() {
+        if (!keyboardLayoutListenerRegistered) {
+            ViewTreeObserver observer = floatingView.getViewTreeObserver();
+            if (observer.isAlive()) {
+                observer.addOnGlobalLayoutListener(keyboardLayoutListener);
+                keyboardLayoutListenerRegistered = true;
+            }
+        }
+        floatingView.removeCallbacks(keyboardPositionUpdater);
+        floatingView.post(keyboardPositionUpdater);
+    }
+
+    private void stopKeyboardAwarePositioning() {
+        floatingView.removeCallbacks(keyboardPositionUpdater);
+        if (keyboardLayoutListenerRegistered) {
+            ViewTreeObserver observer = floatingView.getViewTreeObserver();
+            if (observer.isAlive()) {
+                observer.removeOnGlobalLayoutListener(keyboardLayoutListener);
+            }
+            keyboardLayoutListenerRegistered = false;
         }
     }
 

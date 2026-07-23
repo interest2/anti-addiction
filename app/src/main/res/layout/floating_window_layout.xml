@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="16dp"
         android:background="@drawable/floating_window_bg"
         android:gravity="center"
         android:orientation="vertical"
@@ -60,7 +60,7 @@
         android:layout_marginTop="10dp"
         android:layout_marginLeft="20dp"
         android:layout_marginRight="20dp"
-        android:background="#FF333333"
+        android:background="@drawable/floating_challenge_bg_dark"
         android:visibility="gone">
 
         <ViewStub
@@ -116,7 +116,7 @@
         android:layout_height="40dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="16dp"
         android:layout_marginEnd="10dp"
         android:text="关闭"
         android:textColor="#FFFFFF"
