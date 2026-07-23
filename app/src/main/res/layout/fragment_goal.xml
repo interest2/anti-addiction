@@ -77,7 +77,7 @@
             android:id="@+id/btn_math_difficulty"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:backgroundTint="#4CAF50"
+            android:backgroundTint="#9C27B0"
             android:text="修改"
             android:textColor="#FFFFFF"
             android:textSize="16sp" />
@@ -97,7 +97,7 @@
             android:id="@+id/btn_floating_strict_reminder"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:backgroundTint="#9C27B0"
+            android:backgroundTint="#4CAF50"
             android:text="自定义绿色文字"
             android:textColor="#FFFFFF"
             android:textSize="16sp" />

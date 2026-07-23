@@ -54,10 +54,10 @@ public class MathChallengeManager {
 
     static {
         String q = "小红书社区组织挖红薯：\n" +
-                "如果每位主包挖 5 个，地里还剩 90 个；\n" +
-                "如果每位主包挖 17 个，就还缺 66 个。\n" +
+                "如果每位主包挖 12 个，地里还剩 75 个；\n" +
+                "如果每位主包挖 29 个，就还缺 180 个。\n" +
                 "问共有多少位主包参加了挖红薯？";
-        String a = "13";
+        String a = "15";
         challenge.put("question", q);
         challenge.put("answer", a);
     }
