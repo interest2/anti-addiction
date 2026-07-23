@@ -2,6 +2,7 @@ package com.book.mask.setting;
 
 import android.content.Context;
 
+import com.book.mask.config.ChallengeType;
 import com.book.mask.config.Const;
 import com.book.mask.config.Share;
 import com.tencent.mmkv.MMKV;
@@ -326,26 +327,28 @@ public class AppSettingsManager {
 
     // 题型设置相关常量
     private static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
-    private static final String DEFAULT_QUESTION_TYPE = "mixed"; // 默认为混合型
 
     // 英文阅读字数设置相关常量
     private static final String KEY_ENGLISH_READING_LENGTH = "english_reading_length";
 
-    // 英文阅读功能解锁状态
-    private static final String KEY_ENGLISH_READING_UNLOCKED = "english_reading_unlocked";
-
     /**
      * 获取数学题题型
      */
-    public String getMathQuestionType() {
-        return mmkv.getString(KEY_MATH_QUESTION_TYPE, DEFAULT_QUESTION_TYPE);
+    public ChallengeType getChallengeType() {
+        String preferenceValue = mmkv.getString(
+                KEY_MATH_QUESTION_TYPE, ChallengeType.MIXED.getPreferenceValue());
+        ChallengeType challengeType = ChallengeType.fromPreferenceValue(preferenceValue);
+        if (!Const.ENGLISH_READING_ENABLED && challengeType == ChallengeType.ENGLISH_READING) {
+            return ChallengeType.MIXED;
+        }
+        return challengeType;
     }
 
     /**
      * 设置数学题题型
      */
-    public void setMathQuestionType(String questionType) {
-        mmkv.putString(KEY_MATH_QUESTION_TYPE, questionType).commit();
+    public void setChallengeType(ChallengeType challengeType) {
+        mmkv.putString(KEY_MATH_QUESTION_TYPE, challengeType.getPreferenceValue()).commit();
     }
 
     /**
@@ -364,20 +367,5 @@ public class AppSettingsManager {
         // 确保设置的值至少为最小值
         int validLength = Math.max(length, Const.ENGLISH_READING_LENGTH_MIN);
         mmkv.putInt(KEY_ENGLISH_READING_LENGTH, validLength).commit();
-    }
-    
-    /**
-     * 获取英文阅读功能是否已解锁
-     */
-    public boolean isEnglishReadingUnlocked() {
-        return mmkv.getBoolean(KEY_ENGLISH_READING_UNLOCKED, false);
-    }
-    
-    /**
-     * 设置英文阅读功能解锁状态
-     */
-    public void setEnglishReadingUnlocked(boolean unlocked) {
-        mmkv.putBoolean(KEY_ENGLISH_READING_UNLOCKED, unlocked).commit();
-        android.util.Log.d("SettingsManager", "英文阅读功能解锁状态: " + unlocked);
     }
 }

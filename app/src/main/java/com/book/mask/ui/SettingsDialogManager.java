@@ -7,6 +7,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.book.mask.config.ChallengeType;
 import com.book.mask.config.Const;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
@@ -365,16 +366,6 @@ public class SettingsDialogManager {
     }
     
     /**
-     * 更新标签按钮文本
-     */
-    public void updateTagButtonText(Button tagButton) {
-        if (tagButton != null) {
-            String currentTag = appSettingsManager.getMotivationTag();
-            tagButton.setText("目标: " + currentTag);
-        }
-    }
-    
-    /**
      * 更新日期按钮文本
      */
     public void updateDateButtonText(Button dateButton) {
@@ -388,48 +379,31 @@ public class SettingsDialogManager {
      * 显示算术题难度设置对话框
      */
     public void showMathDifficultyDialog() {
-        String typeMixed = "混杂（应用题、算术题）";
-        String typeArithmetic = "算术题";
-        String typeEnglishReading = "英文阅读";
-        
-        // 根据解锁状态决定是否显示英文阅读选项
-        boolean isEnglishReadingUnlocked = appSettingsManager.isEnglishReadingUnlocked();
-        String[] difficultyOptions;
-        
-        if (isEnglishReadingUnlocked) {
-            // 已解锁，显示所有选项
-            difficultyOptions = new String[]{typeMixed, typeArithmetic, typeEnglishReading};
-        } else {
-            // 未解锁，只显示前两个选项
-            difficultyOptions = new String[]{typeMixed, typeArithmetic};
-        }
-        
-        String currentMode = appSettingsManager.getMathQuestionType();
+        ChallengeType[] challengeTypes =
+                ChallengeType.settingsOptions(Const.ENGLISH_READING_ENABLED);
+        String[] difficultyOptions = new String[challengeTypes.length];
+        ChallengeType currentType = appSettingsManager.getChallengeType();
         int checkedItem = 0;
-        if ("arithmetic_only".equals(currentMode)) {
-            checkedItem = 1;
-        } else if ("english_reading".equals(currentMode) && isEnglishReadingUnlocked) {
-            checkedItem = 2;
+        for (int i = 0; i < challengeTypes.length; i++) {
+            difficultyOptions[i] = challengeTypes[i].getDisplayName();
+            if (challengeTypes[i] == currentType) {
+                checkedItem = i;
+            }
         }
 
         new android.app.AlertDialog.Builder(context)
             .setTitle("关闭悬浮窗所需答题的类型")
             .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
-                if (which == 0) {
-                    // 选择混合型
-                    appSettingsManager.setMathQuestionType("mixed");
-                    android.widget.Toast.makeText(context, "已设置为" + typeMixed, android.widget.Toast.LENGTH_SHORT).show();
-                } else if (which == 1) {
-                    // 选择纯算术题
-                    appSettingsManager.setMathQuestionType("arithmetic_only");
-                    android.widget.Toast.makeText(context, "已设置为" + typeArithmetic, android.widget.Toast.LENGTH_SHORT).show();
-                    // 显示次级弹窗（原有的难度设置）
+                ChallengeType selectedType = challengeTypes[which];
+                appSettingsManager.setChallengeType(selectedType);
+                android.widget.Toast.makeText(
+                        context,
+                        "已设置为" + selectedType.getDisplayName(),
+                        android.widget.Toast.LENGTH_SHORT).show();
+
+                if (selectedType == ChallengeType.ARITHMETIC) {
                     showArithmeticDifficultyDialog();
-                } else if (which == 2 && isEnglishReadingUnlocked) {
-                    // 选择英文阅读（仅在已解锁时）
-                    appSettingsManager.setMathQuestionType("english_reading");
-                    android.widget.Toast.makeText(context, "已设置为" + typeEnglishReading, android.widget.Toast.LENGTH_SHORT).show();
-                    // 显示阅读字数设置弹窗
+                } else if (selectedType == ChallengeType.ENGLISH_READING) {
                     showEnglishReadingLengthDialog();
                 }
                 dialog.dismiss();

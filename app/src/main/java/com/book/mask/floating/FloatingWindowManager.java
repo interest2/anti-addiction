@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.os.SystemClock;
 
 import com.book.mask.R;
+import com.book.mask.challenge.MathChallengeManager;
 import com.book.mask.config.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.Share;
