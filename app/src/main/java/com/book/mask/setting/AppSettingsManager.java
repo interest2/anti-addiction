@@ -28,7 +28,7 @@ public class AppSettingsManager {
 
     // 休闲时刻
     public static final int LEISURE_DURATION_MIN_MINUTES = 15;
-    public static final int LEISURE_DURATION_MAX_MINUTES = 40;
+    public static final int LEISURE_DURATION_MAX_MINUTES = 30;
     public static final int LEISURE_DAILY_COUNT_MIN = 1;
     public static final int LEISURE_DAILY_COUNT_MAX = 2;
     private static final int DEFAULT_LEISURE_DURATION_MINUTES = 20;
@@ -241,16 +241,35 @@ public class AppSettingsManager {
 
     // ===== 休闲时刻相关方法 =====
 
+    public static boolean isValidLeisureDurationMinutes(int durationMinutes) {
+        return durationMinutes >= LEISURE_DURATION_MIN_MINUTES
+                && durationMinutes <= LEISURE_DURATION_MAX_MINUTES;
+    }
+
+    public static boolean isValidLeisureDailyCount(int dailyCount) {
+        return dailyCount >= LEISURE_DAILY_COUNT_MIN
+                && dailyCount <= LEISURE_DAILY_COUNT_MAX;
+    }
+
+    public static String getLeisureDurationRangeText() {
+        return LEISURE_DURATION_MIN_MINUTES + "-" + LEISURE_DURATION_MAX_MINUTES;
+    }
+
+    public static String getLeisureDailyCountRangeText() {
+        return LEISURE_DAILY_COUNT_MIN + "-" + LEISURE_DAILY_COUNT_MAX;
+    }
+
     /**
      * 保存休闲时刻设置。
      */
     public void setLeisureTimeSettings(int durationMinutes, int dailyCount) {
-        if (durationMinutes < LEISURE_DURATION_MIN_MINUTES
-                || durationMinutes > LEISURE_DURATION_MAX_MINUTES) {
-            throw new IllegalArgumentException("休闲时刻时长必须在15-30分钟之间");
+        if (!isValidLeisureDurationMinutes(durationMinutes)) {
+            throw new IllegalArgumentException(
+                    "休闲时刻时长必须在" + getLeisureDurationRangeText() + "分钟之间");
         }
-        if (dailyCount < LEISURE_DAILY_COUNT_MIN || dailyCount > LEISURE_DAILY_COUNT_MAX) {
-            throw new IllegalArgumentException("休闲时刻次数必须在1-2次之间");
+        if (!isValidLeisureDailyCount(dailyCount)) {
+            throw new IllegalArgumentException(
+                    "休闲时刻次数必须在" + getLeisureDailyCountRangeText() + "次之间");
         }
 
         mmkv.putInt(KEY_LEISURE_DURATION_MINUTES, durationMinutes)

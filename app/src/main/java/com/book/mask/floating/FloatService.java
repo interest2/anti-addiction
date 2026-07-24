@@ -206,7 +206,7 @@ public class FloatService extends AccessibilityService
 
             @Override
             public void onFloatingWindowShownFromHidden() {
-                appStateManager.startFloatingShowDetectionDebounce();
+                appStateManager.startFloatingShowPackageDetectionDebounce();
             }
         });
         
@@ -244,6 +244,8 @@ public class FloatService extends AccessibilityService
                 + appSettingsManager.getLeisureUsedCountToday() + "/"
                 + appSettingsManager.getLeisureDailyCount() + " 次");
 
+        relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
+        notifyHomeFragmentUpdate(currentActiveApp);
         relaxManager.recordAppCloseTime(currentActiveApp, leisureSeconds);
         Share.setAppManuallyHidden(currentActiveApp, true);
         Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());

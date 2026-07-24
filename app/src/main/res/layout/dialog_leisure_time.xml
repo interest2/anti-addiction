@@ -10,12 +10,38 @@
     android:paddingBottom="8dp">
 
     <TextView
+        android:id="@+id/tv_leisure_description"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
-        android:text="开启后，第一个关闭悬浮窗的APP无需答题即可解禁，一天最多2次"
         android:textColor="#666666"
         android:textSize="14sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_start_leisure_time"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="开启休闲时刻" />
+
+        <TextView
+            android:id="@+id/tv_leisure_remaining_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:gravity="end"
+            android:textColor="#666666"
+            android:textSize="14sp" />
+
+    </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
@@ -31,16 +57,13 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:hint="15-30 分钟"
         app:suffixText="分钟">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_leisure_duration"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:digits="0123456789"
             android:inputType="number"
-            android:maxLength="2"
             android:maxLines="1"
             android:textSize="16sp" />
 
@@ -60,26 +83,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="20dp"
-        android:hint="1-2 次"
         app:suffixText="次">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_leisure_count"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:digits="12"
             android:inputType="number"
-            android:maxLength="1"
             android:maxLines="1"
             android:textSize="16sp" />
 
     </com.google.android.material.textfield.TextInputLayout>
-
-    <Button
-        android:id="@+id/btn_start_leisure_time"
-        style="@style/Widget.Material3.Button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="开启休闲时刻" />
-
 </LinearLayout>

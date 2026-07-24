@@ -6,6 +6,9 @@ import android.os.Looper;
 import android.graphics.Typeface;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
+import android.text.TextPaint;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
@@ -96,11 +99,8 @@ public class HomeNav extends Fragment implements
 
         permissionStatusView = view.findViewById(R.id.tv_description);
         if (permissionStatusView != null) {
-            permissionStatusView.setOnClickListener(v -> {
-                if (getActivity() instanceof MainActivity) {
-                    ((MainActivity) getActivity()).reviewRequiredPermissions();
-                }
-            });
+            permissionStatusView.setMovementMethod(LinkMovementMethod.getInstance());
+            permissionStatusView.setHighlightColor(android.graphics.Color.TRANSPARENT);
             refreshPermissionStatus();
         }
         
@@ -124,35 +124,60 @@ public class HomeNav extends Fragment implements
         appendPermissionStatus(
                 status,
                 "悬浮窗",
-                PermissionStatus.canDrawOverlays(requireContext()));
+                PermissionStatus.canDrawOverlays(requireContext()),
+                MainActivity::reviewOverlayPermission);
         appendPermissionStatus(
                 status,
                 "无障碍服务",
-                PermissionStatus.isAccessibilityServiceEnabled(requireContext()));
+                PermissionStatus.isAccessibilityServiceEnabled(requireContext()),
+                MainActivity::reviewAccessibilityPermission);
         appendPermissionStatus(
                 status,
                 "允许后台运行",
-                PermissionStatus.isBackgroundRunningAllowed(requireContext()));
+                PermissionStatus.isBackgroundRunningAllowed(requireContext()),
+                MainActivity::reviewBackgroundPermission);
         permissionStatusView.setText(status);
     }
 
     private void appendPermissionStatus(
             SpannableStringBuilder text,
             String label,
-            boolean enabled) {
+            boolean enabled,
+            PermissionReviewAction reviewAction) {
         text.append('\n').append(label).append("：");
         int statusStart = text.length();
-        text.append(enabled ? "已开启" : "未开启");
+        text.append(enabled ? "已开启" : "未开启，点这设置");
         int statusColor = MaterialColors.getColor(
                 permissionStatusView,
                 enabled
                         ? com.google.android.material.R.attr.colorPrimary
                         : com.google.android.material.R.attr.colorError);
-        text.setSpan(
-                new ForegroundColorSpan(statusColor),
-                statusStart,
-                text.length(),
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (enabled) {
+            text.setSpan(
+                    new ForegroundColorSpan(statusColor),
+                    statusStart,
+                    text.length(),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            return;
+        }
+        text.setSpan(new ClickableSpan() {
+            @Override
+            public void onClick(@NonNull View widget) {
+                if (getActivity() instanceof MainActivity) {
+                    reviewAction.review((MainActivity) getActivity());
+                }
+            }
+
+            @Override
+            public void updateDrawState(@NonNull TextPaint drawState) {
+                drawState.setColor(statusColor);
+                drawState.setUnderlineText(false);
+            }
+        }, statusStart, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    private interface PermissionReviewAction {
+        void review(MainActivity activity);
     }
 
     private void setupAddButton(View view) {
@@ -672,17 +697,17 @@ public class HomeNav extends Fragment implements
         submitButton.setOnClickListener(v -> {
             String userAnswer = answerEdit.getText().toString().trim();
             if (userAnswer.isEmpty()) {
-                resultText.setText("⚠️ 请输入答案");
-                resultText.setVisibility(View.VISIBLE);
+                UiFeedback.showTemporaryText(resultText, "⚠️ 请输入答案", 0xFFFF5722);
                 return;
             }
 
             try {
                 int answer = Integer.parseInt(userAnswer);
                 if (answer == correctAnswer[0]) {
-                    resultText.setText("✅ 答案正确！");
-                    resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_green_light));
-                    resultText.setVisibility(View.VISIBLE);
+                    UiFeedback.showTemporaryText(
+                            resultText,
+                            "✅ 答案正确！",
+                            requireContext().getColor(android.R.color.holo_green_light));
 
                     new Handler().postDelayed(() -> {
                         dialog.dismiss();
@@ -695,12 +720,13 @@ public class HomeNav extends Fragment implements
                         } else {
                             UiFeedback.showError(requireContext(), "删除失败");
                         }
-                    }, 1000);
+                    }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
 
                 } else {
-                    resultText.setText("❌ 答案错误，切到下一题");
-                    resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_red_light));
-                    resultText.setVisibility(View.VISIBLE);
+                    UiFeedback.showTemporaryText(
+                            resultText,
+                            "❌ 答案错误，切到下一题",
+                            requireContext().getColor(android.R.color.holo_red_light));
 
                     answerEdit.setText("");
 
@@ -711,11 +737,10 @@ public class HomeNav extends Fragment implements
                         questionText.setText(newQuestion);
                         answerEdit.setText("");
                         resultText.setVisibility(View.GONE);
-                    }, 1000);
+                    }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
                 }
             } catch (NumberFormatException e) {
-                resultText.setText("⚠️ 请输入有效数字");
-                resultText.setVisibility(View.VISIBLE);
+                UiFeedback.showTemporaryText(resultText, "⚠️ 请输入有效数字", 0xFFFF5722);
             }
         });
 
@@ -769,8 +794,7 @@ public class HomeNav extends Fragment implements
         submitButton.setOnClickListener(v -> {
             String userAnswer = answerEdit.getText().toString().trim();
             if (userAnswer.isEmpty()) {
-                resultText.setText("⚠️ 请输入答案");
-                resultText.setVisibility(View.VISIBLE);
+                UiFeedback.showTemporaryText(resultText, "⚠️ 请输入答案", 0xFFFF5722);
                 return;
             }
             
@@ -778,9 +802,10 @@ public class HomeNav extends Fragment implements
                 int answer = Integer.parseInt(userAnswer);
                 if (answer == correctAnswer[0]) {
                     // 答案正确，关闭屏蔽
-                    resultText.setText("✅ 答案正确！");
-                    resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_green_light));
-                    resultText.setVisibility(View.VISIBLE);
+                    UiFeedback.showTemporaryText(
+                            resultText,
+                            "✅ 答案正确！",
+                            requireContext().getColor(android.R.color.holo_green_light));
                     
                     // 延迟关闭弹窗并执行关闭屏蔽
                     new Handler().postDelayed(() -> {
@@ -791,13 +816,14 @@ public class HomeNav extends Fragment implements
                         
                         // 更新APP列表显示
                         updateAppCardsDisplay();
-                    }, 1000);
+                    }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
                     
                 } else {
                     // 答案错误
-                    resultText.setText("❌ 答案错误，切到下一题");
-                    resultText.setTextColor(requireContext().getResources().getColor(android.R.color.holo_red_light));
-                    resultText.setVisibility(View.VISIBLE);
+                    UiFeedback.showTemporaryText(
+                            resultText,
+                            "❌ 答案错误，切到下一题",
+                            requireContext().getColor(android.R.color.holo_red_light));
                     
                     // 清空输入框
                     answerEdit.setText("");
@@ -810,11 +836,10 @@ public class HomeNav extends Fragment implements
                         questionText.setText(newQuestion);
                         answerEdit.setText("");
                         resultText.setVisibility(View.GONE);
-                    }, 1000);
+                    }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
                 }
             } catch (NumberFormatException e) {
-                resultText.setText("⚠️ 请输入有效数字");
-                resultText.setVisibility(View.VISIBLE);
+                UiFeedback.showTemporaryText(resultText, "⚠️ 请输入有效数字", 0xFFFF5722);
             }
         });
         
@@ -845,7 +870,7 @@ public class HomeNav extends Fragment implements
 
     private void showDeleteUndo(CustomApp deletedApp) {
         boolean[] restored = {false};
-        Snackbar snackbar = UiFeedback.make(requireView(), "已删除", Snackbar.LENGTH_LONG)
+        Snackbar snackbar = UiFeedback.make(requireView(), "已删除")
                 .setAction("撤销", v -> {
                     restored[0] = customAppManager.addCustomApp(
                             deletedApp.getAppName(),

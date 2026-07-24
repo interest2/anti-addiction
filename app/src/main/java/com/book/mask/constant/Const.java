@@ -9,10 +9,11 @@ public class Const {
     public static final int PACKAGE_TRANSITION_CHECK_DELAY_MS = 300; // 首次复核时刻 p
     public static final int TRANSITION_EARLY_RETURN_BUFFER_MS = 100;
     public static final int TRANSITION_DIRECT_REENTRY_BUFFER_MS = 300;
-    public static final long FLOATING_SHOW_DETECTION_DEBOUNCE_MS = 350;
+    public static final long FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS = 350;
     public static final long PAGE_TRANSITION_WINDOW_REUSE_MS = 1000;
     public static final long CONTENT_CHECK_DEBOUNCE_MS = 200; // 页面内容变化停止后再检测
     public static final long CONTENT_CHECK_MAX_WAIT_MS = 500; // 连续变化时的最长等待时间
+    public static final int TRANSIENT_FEEDBACK_DURATION_MS = 1000; // 非常驻 UI 提示时长
 
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";

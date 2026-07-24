@@ -8,9 +8,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 
+import com.book.mask.constant.Const;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputLayout;
@@ -19,7 +21,6 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 public final class UiFeedback {
-    private static final long INPUT_ERROR_DURATION_MS = 1000L;
     private static final Map<View, Runnable> ERROR_CLEAR_TASKS = new WeakHashMap<>();
 
     private UiFeedback() {
@@ -33,7 +34,7 @@ public final class UiFeedback {
     }
 
     public static void show(View anchor, CharSequence message) {
-        make(anchor, message, Snackbar.LENGTH_LONG).show();
+        make(anchor, message).show();
     }
 
     public static void showError(Context context, CharSequence message) {
@@ -47,7 +48,7 @@ public final class UiFeedback {
     }
 
     public static void showError(View anchor, CharSequence message) {
-        Snackbar snackbar = make(anchor, message, Snackbar.LENGTH_LONG);
+        Snackbar snackbar = make(anchor, message);
         applyErrorStyle(snackbar);
         snackbar.show();
     }
@@ -63,8 +64,11 @@ public final class UiFeedback {
         }
     }
 
-    public static Snackbar make(View anchor, CharSequence message, int duration) {
-        return center(Snackbar.make(anchor, message, duration));
+    public static Snackbar make(View anchor, CharSequence message) {
+        return centerAndSize(Snackbar.make(
+                anchor,
+                message,
+                Const.TRANSIENT_FEEDBACK_DURATION_MS));
     }
 
     public static void showInputError(EditText input, CharSequence message) {
@@ -80,6 +84,19 @@ public final class UiFeedback {
         layout.setError(message);
         input.requestFocus();
         scheduleErrorClear(layout, () -> layout.setError(null));
+    }
+
+    public static void showTemporaryText(
+            TextView textView,
+            CharSequence message,
+            int color) {
+        textView.setText(message);
+        textView.setTextColor(color);
+        textView.setVisibility(View.VISIBLE);
+        scheduleErrorClear(textView, () -> {
+            textView.setText("");
+            textView.setVisibility(View.GONE);
+        });
     }
 
     private static void applyErrorStyle(Snackbar snackbar) {
@@ -107,12 +124,20 @@ public final class UiFeedback {
             return null;
         }
 
-        return make(contentView, message, Snackbar.LENGTH_LONG);
+        return make(contentView, message);
     }
 
-    private static Snackbar center(Snackbar snackbar) {
+    private static Snackbar centerAndSize(Snackbar snackbar) {
         View snackbarView = snackbar.getView();
         ViewGroup.LayoutParams params = snackbarView.getLayoutParams();
+        params.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+        snackbarView.setMinimumWidth(0);
+        if (params instanceof ViewGroup.MarginLayoutParams) {
+            int margin = Math.round(16 * snackbarView.getResources()
+                    .getDisplayMetrics().density);
+            ((ViewGroup.MarginLayoutParams) params).leftMargin = margin;
+            ((ViewGroup.MarginLayoutParams) params).rightMargin = margin;
+        }
         if (params instanceof CoordinatorLayout.LayoutParams) {
             ((CoordinatorLayout.LayoutParams) params).gravity = Gravity.CENTER;
             snackbarView.setLayoutParams(params);
@@ -137,7 +162,7 @@ public final class UiFeedback {
             }
         };
         ERROR_CLEAR_TASKS.put(owner, task[0]);
-        owner.postDelayed(task[0], INPUT_ERROR_DURATION_MS);
+        owner.postDelayed(task[0], Const.TRANSIENT_FEEDBACK_DURATION_MS);
     }
 
     private static Activity findActivity(Context context) {

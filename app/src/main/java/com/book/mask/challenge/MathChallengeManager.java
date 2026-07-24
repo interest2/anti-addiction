@@ -10,6 +10,7 @@ import android.view.WindowManager;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
+import com.book.mask.constant.Const;
 import com.book.mask.floating.FloatService;
 
 /**
@@ -18,7 +19,6 @@ import com.book.mask.floating.FloatService;
 public class MathChallengeManager {
 
     private static final String TAG = "MathChallenge";
-    private static final long RESULT_DISPLAY_MILLIS = 1000L;
 
     public interface OnMathChallengeListener {
         void onAnswerCorrect();
@@ -145,7 +145,7 @@ public class MathChallengeManager {
                 if (listener != null) {
                     listener.onAnswerCorrect();
                 }
-            }, RESULT_DISPLAY_MILLIS);
+            }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
             return;
         }
 
@@ -160,6 +160,6 @@ public class MathChallengeManager {
             currentAnswer = question.getAnswer();
             viewController.updateQuestion(currentType, question);
             Log.d(TAG, "生成新题目，保持输入法显示");
-        }, RESULT_DISPLAY_MILLIS);
+        }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
     }
 }

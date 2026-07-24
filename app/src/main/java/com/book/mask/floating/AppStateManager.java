@@ -47,8 +47,8 @@ public class AppStateManager {
     private long packageTransitionGeneration = 0;
     private Runnable packageNameLogRunnable;
     private int packageNameLogSampleIndex = 0;
-    private long floatingShowDetectionPausedUntil = 0;
-    private Runnable floatingShowDetectionResumeRunnable;
+    private long floatingShowPackageDetectionPausedUntil = 0;
+    private Runnable floatingShowPackageDetectionResumeRunnable;
 
     private enum PackageTransitionPhase {
         WAITING_FOR_INITIAL_CHECK,
@@ -108,11 +108,10 @@ public class AppStateManager {
      * 处理无障碍事件
      */
     public void handleAccessibilityEvent(AccessibilityEvent event) {
-        if (isFloatingShowDetectionPaused()) {
-            return;
-        }
-
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            if (isFloatingShowPackageDetectionPaused()) {
+                return;
+            }
             handleWindowStateChanged(event);
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             handleWindowContentChanged(event);
@@ -445,7 +444,7 @@ public class AppStateManager {
      */
     private void checkCurrentAppState() {
         try {
-            if (isFloatingShowDetectionPaused()) {
+            if (isFloatingShowPackageDetectionPaused()) {
                 return;
             }
 
@@ -484,6 +483,10 @@ public class AppStateManager {
      */
     private void handleObservedPackage(String packageName, String source) {
         if (packageName == null || packageName.isEmpty()) {
+            return;
+        }
+        if (isFloatingShowPackageDetectionPaused()) {
+            Log.v(TAG, source + "处于悬浮窗显示防抖阶段，忽略包名变化: " + packageName);
             return;
         }
 
@@ -664,12 +667,8 @@ public class AppStateManager {
         if (listener != null) {
             listener.onAppStateChanged(targetApp, true);
         }
-        if (isFloatingShowDetectionPaused()) {
-            Log.d(TAG, "悬浮窗直接显示完成，显示防抖结束后检测页面关键词");
-        } else {
-            Log.d(TAG, "悬浮窗直接显示完成，开始检测页面关键词");
-            checkTextContentOptimized();
-        }
+        Log.d(TAG, "悬浮窗直接显示完成，立即检测页面关键词");
+        checkTextContentOptimized();
     }
 
     private void finishDirectReentryMonitoring() {
@@ -689,21 +688,21 @@ public class AppStateManager {
         }
     }
 
-    public void startFloatingShowDetectionDebounce() {
-        floatingShowDetectionPausedUntil = SystemClock.elapsedRealtime()
-                + Const.FLOATING_SHOW_DETECTION_DEBOUNCE_MS;
-        cancelPendingContentCheck();
+    public void startFloatingShowPackageDetectionDebounce() {
+        floatingShowPackageDetectionPausedUntil = SystemClock.elapsedRealtime()
+                + Const.FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS;
 
-        if (floatingShowDetectionResumeRunnable != null) {
-            handler.removeCallbacks(floatingShowDetectionResumeRunnable);
+        if (floatingShowPackageDetectionResumeRunnable != null) {
+            handler.removeCallbacks(floatingShowPackageDetectionResumeRunnable);
         }
-        floatingShowDetectionResumeRunnable = this::finishFloatingShowDetectionDebounce;
+        floatingShowPackageDetectionResumeRunnable =
+                this::finishFloatingShowPackageDetectionDebounce;
         handler.postDelayed(
-                floatingShowDetectionResumeRunnable,
-                Const.FLOATING_SHOW_DETECTION_DEBOUNCE_MS
+                floatingShowPackageDetectionResumeRunnable,
+                Const.FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS
         );
-        Log.d(TAG, "悬浮窗由无/隐藏变为显示，暂停检测 "
-                + Const.FLOATING_SHOW_DETECTION_DEBOUNCE_MS + "ms");
+        Log.d(TAG, "悬浮窗由无/隐藏变为显示，暂停检测包名变化 "
+                + Const.FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS + "ms");
     }
 
     /**
@@ -713,24 +712,19 @@ public class AppStateManager {
         cancelPendingContentCheck();
         cancelPendingPackageConfirmation();
         cancelPackageHideTransition();
-        floatingShowDetectionPausedUntil = 0;
-        if (floatingShowDetectionResumeRunnable != null) {
-            handler.removeCallbacks(floatingShowDetectionResumeRunnable);
-            floatingShowDetectionResumeRunnable = null;
-        }
         Log.d(TAG, "APP " + app.getAppName() + " 的休闲解禁已开始，暂停该 APP 页面检测");
     }
 
-    private void finishFloatingShowDetectionDebounce() {
-        long remaining = floatingShowDetectionPausedUntil - SystemClock.elapsedRealtime();
+    private void finishFloatingShowPackageDetectionDebounce() {
+        long remaining = floatingShowPackageDetectionPausedUntil - SystemClock.elapsedRealtime();
         if (remaining > 0) {
-            handler.postDelayed(floatingShowDetectionResumeRunnable, remaining);
+            handler.postDelayed(floatingShowPackageDetectionResumeRunnable, remaining);
             return;
         }
 
-        floatingShowDetectionPausedUntil = 0;
-        floatingShowDetectionResumeRunnable = null;
-        Log.d(TAG, "悬浮窗显示防抖结束，主动复核当前包名和页面关键词");
+        floatingShowPackageDetectionPausedUntil = 0;
+        floatingShowPackageDetectionResumeRunnable = null;
+        Log.d(TAG, "悬浮窗显示防抖结束，主动复核当前包名");
 
         String confirmedPackage = getActiveRootPackage();
         if (confirmedPackage.isEmpty()) {
@@ -739,17 +733,11 @@ public class AppStateManager {
         }
 
         handleObservedPackage(confirmedPackage, "悬浮窗显示防抖结束");
-        if (currentActiveApp != null
-                && currentActiveApp.getPackageName().equals(confirmedPackage)) {
-            cancelPendingContentCheck();
-            checkTextContentOptimized(true);
-        }
     }
 
     private boolean isDetectionPaused() {
         return isLeisureDetectionPaused()
-                || isPackageTransitionDetectionPaused()
-                || isFloatingShowDetectionPaused();
+                || isPackageTransitionDetectionPaused();
     }
 
     private boolean isLeisureDetectionPaused() {
@@ -763,8 +751,8 @@ public class AppStateManager {
                 && packageHideTransition.phase != PackageTransitionPhase.MONITORING_DIRECT_REENTRY;
     }
 
-    private boolean isFloatingShowDetectionPaused() {
-        return SystemClock.elapsedRealtime() < floatingShowDetectionPausedUntil;
+    private boolean isFloatingShowPackageDetectionPaused() {
+        return SystemClock.elapsedRealtime() < floatingShowPackageDetectionPausedUntil;
     }
 
     private String packageNameForLog(String packageName) {
@@ -921,12 +909,9 @@ public class AppStateManager {
                     Log.d(TAG, "检测到从非目标包名进入 " + detectedApp.getAppName()
                             + "，先显示悬浮窗再检测页面文字");
                     listener.onTargetPackageEnteredBeforeContentCheck(detectedApp);
-                    if (isFloatingShowDetectionPaused()) {
-                        Log.d(TAG, detectedApp.getAppName()
-                                + " 悬浮窗已先显示，显示防抖结束后检测页面文字");
-                    } else {
-                        checkTextContentOptimized();
-                    }
+                    Log.d(TAG, detectedApp.getAppName()
+                            + " 悬浮窗已先显示，立即检测页面文字");
+                    checkTextContentOptimized();
                 } else {
                     checkTextContentOptimized();
                 }
@@ -993,10 +978,10 @@ public class AppStateManager {
         }
         packageNameLogSampleIndex = 0;
         lastObservedPackage = null;
-        floatingShowDetectionPausedUntil = 0;
-        if (floatingShowDetectionResumeRunnable != null) {
-            handler.removeCallbacks(floatingShowDetectionResumeRunnable);
-            floatingShowDetectionResumeRunnable = null;
+        floatingShowPackageDetectionPausedUntil = 0;
+        if (floatingShowPackageDetectionResumeRunnable != null) {
+            handler.removeCallbacks(floatingShowPackageDetectionResumeRunnable);
+            floatingShowPackageDetectionResumeRunnable = null;
         }
     }
 }

@@ -27,6 +27,7 @@ import android.widget.TextView;
 
 import com.book.mask.R;
 import com.book.mask.config.ChallengeType;
+import com.book.mask.constant.Const;
 
 /**
  * 负责答题悬浮层的组件绑定、渲染、输入法与焦点管理。
@@ -75,6 +76,7 @@ final class ChallengeViewController {
     private final Runnable focusKeeper = this::keepAnswerInputFocused;
     private final Runnable showKeyboardRunnable = this::showKeyboardAndStartFocusKeeper;
     private final Runnable keyboardPositionUpdater = this::updateQuestionHeightForKeyboard;
+    private final Runnable resultHider = this::hideResult;
     private final ViewTreeObserver.OnGlobalLayoutListener keyboardLayoutListener =
             this::updateQuestionHeightForKeyboard;
 
@@ -480,9 +482,12 @@ final class ChallengeViewController {
         resultText.setText(message);
         resultText.setTextColor(color);
         resultText.setVisibility(View.VISIBLE);
+        handler.removeCallbacks(resultHider);
+        handler.postDelayed(resultHider, Const.TRANSIENT_FEEDBACK_DURATION_MS);
     }
 
     private void hideResult() {
+        handler.removeCallbacks(resultHider);
         resultText.setText("");
         resultText.setVisibility(View.GONE);
     }
