@@ -29,28 +29,28 @@ public class WindowSuspensionStateTest {
     public void duplicateReasonDoesNotApplyHideTwice() {
         WindowSuspensionState state = new WindowSuspensionState();
 
-        assertTrue(state.suspend(WindowSuspensionState.Reason.PACKAGE_TRANSITION));
-        assertFalse(state.suspend(WindowSuspensionState.Reason.PACKAGE_TRANSITION));
+        assertTrue(state.suspend(WindowSuspensionState.Reason.PAGE_TRANSITION));
+        assertFalse(state.suspend(WindowSuspensionState.Reason.PAGE_TRANSITION));
         assertEquals(
                 WindowSuspensionState.ResumeAction.RESTORE,
-                state.resume(WindowSuspensionState.Reason.PACKAGE_TRANSITION)
+                state.resume(WindowSuspensionState.Reason.PAGE_TRANSITION)
         );
         assertEquals(
                 WindowSuspensionState.ResumeAction.NONE,
-                state.resume(WindowSuspensionState.Reason.PACKAGE_TRANSITION)
+                state.resume(WindowSuspensionState.Reason.PAGE_TRANSITION)
         );
     }
 
     @Test
-    public void pageReasonCanTransferToPackageReasonWithoutRestoring() {
+    public void pageReasonCanTransferToSystemUiReasonWithoutRestoring() {
         WindowSuspensionState state = new WindowSuspensionState();
 
         assertTrue(state.suspend(WindowSuspensionState.Reason.PAGE_TRANSITION));
-        assertFalse(state.suspend(WindowSuspensionState.Reason.PACKAGE_TRANSITION));
+        assertFalse(state.suspend(WindowSuspensionState.Reason.SYSTEM_UI));
         assertEquals(
                 WindowSuspensionState.ResumeAction.KEEP_HIDDEN,
                 state.resume(WindowSuspensionState.Reason.PAGE_TRANSITION)
         );
-        assertTrue(state.hasReason(WindowSuspensionState.Reason.PACKAGE_TRANSITION));
+        assertTrue(state.hasReason(WindowSuspensionState.Reason.SYSTEM_UI));
     }
 }

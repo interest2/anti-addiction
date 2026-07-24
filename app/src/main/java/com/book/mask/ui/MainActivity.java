@@ -41,6 +41,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_ACCESSIBILITY_PERMISSION = 1003;
     private static final int REQUEST_BACKGROUND_PERMISSION = 1004;
     private static final String STATE_PENDING_PERMISSION_REQUEST = "pending_permission_request";
+    private static final String STATE_AUTO_OVERLAY_GUIDED = "auto_overlay_guided";
+    private static final String STATE_AUTO_ACCESSIBILITY_GUIDED = "auto_accessibility_guided";
     private AppLifecycleObserver appLifecycleObserver;
     private DeviceInfoReporter deviceInfoReporter;
     private RelaxManager relaxManager;
@@ -52,6 +54,9 @@ public class MainActivity extends AppCompatActivity {
     private BottomNavigationView bottomNav;
     private AlertDialog permissionDialog;
     private int pendingPermissionRequest = NO_PENDING_PERMISSION_REQUEST;
+    // 打开APP时自动引导前两个权限（悬浮窗、无障碍），每个权限一次启动内最多自动跳转一次，避免用户拒绝后陷入死循环
+    private boolean autoOverlayGuided = false;
+    private boolean autoAccessibilityGuided = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +66,9 @@ public class MainActivity extends AppCompatActivity {
                     STATE_PENDING_PERMISSION_REQUEST,
                     NO_PENDING_PERMISSION_REQUEST
             );
+            autoOverlayGuided = savedInstanceState.getBoolean(STATE_AUTO_OVERLAY_GUIDED, false);
+            autoAccessibilityGuided =
+                    savedInstanceState.getBoolean(STATE_AUTO_ACCESSIBILITY_GUIDED, false);
         }
         // 初始化 MMKV
         String rootDir = MMKV.initialize(this);
@@ -167,24 +175,31 @@ public class MainActivity extends AppCompatActivity {
         
     }
 
+    private Intent overlaySettingsIntent() {
+        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+        intent.setData(Uri.parse("package:" + getPackageName()));
+        return intent;
+    }
+
+    private Intent accessibilitySettingsIntent() {
+        return new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+    }
+
     private void showOverlayPermissionDialog() {
         String title = "需要悬浮窗权限";
         String message = "悬浮窗用于在支持的APP上显示提醒。请在系统设置中允许本应用显示在其他应用上层。";
-        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-        intent.setData(Uri.parse("package:" + getPackageName()));
-        showPermissionDialog(title, message, intent, REQUEST_OVERLAY_PERMISSION);
+        showPermissionDialog(title, message, overlaySettingsIntent(), REQUEST_OVERLAY_PERMISSION);
     }
 
     private void showAccessibilityPermissionDialog() {
         String title = "需要开启无障碍服务";
         String message = "无障碍服务用于检测当前打开的APP。请在系统设置中找到本应用并开启服务。";
-        Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-        showPermissionDialog(title, message, intent, REQUEST_ACCESSIBILITY_PERMISSION);
+        showPermissionDialog(title, message, accessibilitySettingsIntent(), REQUEST_ACCESSIBILITY_PERMISSION);
     }
 
     private void showBackgroundPermissionDialog() {
-        String title = "建议允许后台运行";
-        String message = "允许忽略电池优化后，系统休眠时的后台检测会更稳定。";
+        String title = "忽略电池优化";
+        String message = "开启可能使服务更稳定，若怀疑被杀后台可开启试试";
         Intent intent = new Intent(
                 Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                 Uri.parse("package:" + getPackageName()));
@@ -264,6 +279,29 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * 打开APP时自动引导前两个权限：悬浮窗、无障碍。
+     * 未开启则直接跳到对应系统设置页；两者按顺序逐个引导（返回后由 onPostResume 继续下一个）。
+     * 每个权限一次启动内最多自动跳一次（guided 标记），用户拒绝也不会被反复拉回设置页。
+     */
+    private void advanceAutoPermissionGuide() {
+        if (pendingPermissionRequest != NO_PENDING_PERMISSION_REQUEST) {
+            return;
+        }
+        if (permissionDialog != null && permissionDialog.isShowing()) {
+            return;
+        }
+        if (!autoOverlayGuided && !PermissionStatus.canDrawOverlays(this)) {
+            autoOverlayGuided = true;
+            openPermissionSettings(overlaySettingsIntent(), REQUEST_OVERLAY_PERMISSION);
+            return;
+        }
+        if (!autoAccessibilityGuided && !PermissionStatus.isAccessibilityServiceEnabled(this)) {
+            autoAccessibilityGuided = true;
+            openPermissionSettings(accessibilitySettingsIntent(), REQUEST_ACCESSIBILITY_PERMISSION);
+        }
+    }
+
     @Override
     protected void onPostResume() {
         super.onPostResume();
@@ -271,6 +309,7 @@ public class MainActivity extends AppCompatActivity {
             pendingPermissionRequest = NO_PENDING_PERMISSION_REQUEST;
             refreshHomePermissionStatus();
         }
+        advanceAutoPermissionGuide();
     }
 
     @Override
@@ -290,6 +329,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putInt(STATE_PENDING_PERMISSION_REQUEST, pendingPermissionRequest);
+        outState.putBoolean(STATE_AUTO_OVERLAY_GUIDED, autoOverlayGuided);
+        outState.putBoolean(STATE_AUTO_ACCESSIBILITY_GUIDED, autoAccessibilityGuided);
         super.onSaveInstanceState(outState);
     }
 

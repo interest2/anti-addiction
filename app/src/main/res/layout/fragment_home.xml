@@ -89,7 +89,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="特殊说明：\n微信无法根据关键词屏蔽页面，故整体屏蔽，但关悬浮窗无需答题。另外小程序界面不保证成功弹窗。\n最好也设置开机自启权限"
+            android:text="特殊说明：\n微信无法根据关键词屏蔽页面，故整体屏蔽，但关悬浮窗无需答题。另外小程序界面不保证成功弹窗。"
             android:textSize="12sp"
             android:textColor="#999999"
             android:gravity="left"

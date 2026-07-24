@@ -17,17 +17,4 @@ public final class PackageTransitionTiming {
                         + Const.TRANSITION_EARLY_RETURN_BUFFER_MS
         );
     }
-
-    public static long getDirectReentryWindowDuration() {
-        return (long) Const.PACKAGE_TRANSITION_ANIMATION_DURATION_MS
-                + Const.TRANSITION_DIRECT_REENTRY_BUFFER_MS;
-    }
-
-    public static boolean isWithinDirectReentryWindow(
-            long transitionStartedAt,
-            long now
-    ) {
-        long elapsed = now - transitionStartedAt;
-        return elapsed >= 0 && elapsed <= getDirectReentryWindowDuration();
-    }
 }

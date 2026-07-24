@@ -42,7 +42,7 @@ final class ChallengeViewController {
     private static final int MIN_QUESTION_HEIGHT_DP = 72;
     private static final int MAX_QUESTION_HEIGHT_DP = 300;
     private static final int ENGLISH_QUESTION_HEIGHT_DP = 500;
-    private static final int CHALLENGE_TOP_MARGIN_DP = 55;
+    private static final int CHALLENGE_TOP_MARGIN_DP = 16;
 
     interface Callbacks {
         void onSubmit(String answer);
@@ -58,6 +58,7 @@ final class ChallengeViewController {
     private final Callbacks callbacks;
 
     private View challengeLayout;
+    private TextView challengeTitle;
     private TextView questionText;
     private EditText answerEdit;
     private TextView resultText;
@@ -198,6 +199,7 @@ final class ChallengeViewController {
         }
 
         challengeLayout = floatingView.findViewById(R.id.math_challenge_layout);
+        challengeTitle = floatingView.findViewById(R.id.tv_challenge_title);
         questionText = floatingView.findViewById(R.id.tv_math_question);
         answerEdit = floatingView.findViewById(R.id.et_math_answer);
         resultText = floatingView.findViewById(R.id.tv_math_result);
@@ -312,6 +314,9 @@ final class ChallengeViewController {
 
         if (type == ChallengeType.ENGLISH_READING) {
             challengeLayout.setBackgroundResource(R.drawable.floating_challenge_bg_light);
+            if (challengeTitle != null) {
+                challengeTitle.setTextColor(0xFF000000);
+            }
             questionText.setTextColor(0xFF000000);
             questionText.setTypeface(null, Typeface.NORMAL);
             questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
@@ -326,6 +331,9 @@ final class ChallengeViewController {
             }
         } else {
             challengeLayout.setBackgroundResource(R.drawable.floating_window_bg);
+            if (challengeTitle != null) {
+                challengeTitle.setTextColor(0xFFFFFFFF);
+            }
             questionText.setTextColor(0xFFFFFFFF);
             questionText.setTypeface(null, Typeface.NORMAL);
             int fontSize = type == ChallengeType.MIXED || type == ChallengeType.REASONING

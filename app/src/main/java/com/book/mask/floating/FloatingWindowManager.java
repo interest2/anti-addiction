@@ -36,7 +36,6 @@ public class FloatingWindowManager {
     private SuspensionMode suspensionMode = SuspensionMode.NONE;
     private float suspensionOriginalWindowAlpha = 1.0f;
     private int suspensionOriginalWindowFlags = 0;
-    private String packageTransitionTargetPackage;
     private String pageTransitionTargetPackage;
     private Runnable pageTransitionExpiryRunnable;
     private long pageTransitionGeneration = 0;
@@ -92,9 +91,6 @@ public class FloatingWindowManager {
             return;
         }
 
-        if (tryResumeFromPackageTransition(currentActiveApp)) {
-            return;
-        }
         if (tryResumeFromPageTransition(currentActiveApp)) {
             return;
         }
@@ -233,76 +229,6 @@ public class FloatingWindowManager {
             clearAllSuspensionState();
             Share.isFloatingWindowVisible = false; // 同步状态
         }
-    }
-
-    /**
-     * 普通包名切换时将现有 Window 设为透明且不可触摸，保留已绘制 Surface 供短时重入恢复。
-     */
-    public void suspendForPackageTransition(CustomApp targetApp) {
-        if (!isFloatingWindowVisible || floatingView == null || isSuspendedForPackageTransition()) {
-            return;
-        }
-
-        long startedAt = SystemClock.elapsedRealtimeNanos();
-        if (mathChallengeManager != null && mathChallengeManager.isMathChallengeActive()) {
-            mathChallengeManager.hideMathChallenge();
-        }
-
-        if (!suspendAttachedWindow(WindowSuspensionState.Reason.PACKAGE_TRANSITION)) {
-            Log.w(TAG, "包名切换时无法暂停 Window，直接移除后等待按需重建");
-            hideFloatingWindow();
-            return;
-        }
-
-        // 页面切换已经隐藏窗口时，把暂停原因原子地移交给包名切换，避免页面保留计时器误删窗口。
-        if (windowSuspensionState.hasReason(WindowSuspensionState.Reason.PAGE_TRANSITION)) {
-            resumeAttachedWindow(WindowSuspensionState.Reason.PAGE_TRANSITION);
-            clearPageTransitionMetadata();
-        }
-        packageTransitionTargetPackage = targetApp == null ? null : targetApp.getPackageName();
-        Log.d(TAG, "包名切换时悬浮窗已临时隐藏，方式="
-                + suspensionModeForLog() + "，耗时 "
-                + elapsedMillisSince(startedAt) + "ms");
-    }
-
-    /**
-     * 短时重入窗口结束或切换到其他目标 APP 后，销毁临时保留的 View。
-     */
-    public void finishPackageTransitionHide() {
-        if (!isSuspendedForPackageTransition()) {
-            return;
-        }
-        Log.d(TAG, "包名切换临时隐藏结束，移除保留的 View");
-        hideFloatingWindow();
-    }
-
-    private boolean tryResumeFromPackageTransition(CustomApp targetApp) {
-        if (!isSuspendedForPackageTransition() || floatingView == null) {
-            return false;
-        }
-
-        String targetPackage = targetApp == null ? null : targetApp.getPackageName();
-        if (packageTransitionTargetPackage == null
-                || !packageTransitionTargetPackage.equals(targetPackage)) {
-            finishPackageTransitionHide();
-            return false;
-        }
-
-        long startedAt = SystemClock.elapsedRealtimeNanos();
-        if (mathChallengeManager != null) {
-            mathChallengeManager.setCurrentApp(targetApp);
-        }
-        if (!resumeAttachedWindow(WindowSuspensionState.Reason.PACKAGE_TRANSITION)) {
-            Log.e(TAG, "恢复包名切换保留的 Window 失败，重新创建悬浮窗");
-            finishPackageTransitionHide();
-            return false;
-        }
-        currentWindowApp = targetApp;
-        packageTransitionTargetPackage = null;
-        Log.d(TAG, "悬浮窗从包名切换临时隐藏中恢复完成，耗时 "
-                + elapsedMillisSince(startedAt) + "ms");
-        notifyIfWindowActuallyShown();
-        return true;
     }
 
     /**
@@ -475,7 +401,6 @@ public class FloatingWindowManager {
 
     private void clearAllSuspensionState() {
         windowSuspensionState.clear();
-        packageTransitionTargetPackage = null;
         clearPageTransitionMetadata();
         systemUiRecoveryApp = null;
         resetSuspensionRenderingState();
@@ -669,10 +594,6 @@ public class FloatingWindowManager {
     
     public MathChallengeManager getMathChallengeManager() {
         return mathChallengeManager;
-    }
-
-    public boolean isSuspendedForPackageTransition() {
-        return windowSuspensionState.hasReason(WindowSuspensionState.Reason.PACKAGE_TRANSITION);
     }
 
     public boolean isSuspendedForPageTransition() {

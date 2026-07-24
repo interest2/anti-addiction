@@ -103,7 +103,7 @@ public class HomeNav extends Fragment implements
             permissionStatusView.setHighlightColor(android.graphics.Color.TRANSPARENT);
             refreshPermissionStatus();
         }
-        
+
         // 启动倒计时更新
         startCountdown();
         
@@ -115,7 +115,7 @@ public class HomeNav extends Fragment implements
             return;
         }
 
-        SpannableStringBuilder status = new SpannableStringBuilder("权限状态");
+        SpannableStringBuilder status = new SpannableStringBuilder("必需权限 3 个");
         status.setSpan(
                 new StyleSpan(Typeface.BOLD),
                 0,
@@ -131,12 +131,100 @@ public class HomeNav extends Fragment implements
                 "无障碍服务",
                 PermissionStatus.isAccessibilityServiceEnabled(requireContext()),
                 MainActivity::reviewAccessibilityPermission);
-        appendPermissionStatus(
+        appendPlainPermissionHint(
                 status,
                 "允许后台运行",
-                PermissionStatus.isBackgroundRunningAllowed(requireContext()),
-                MainActivity::reviewBackgroundPermission);
+                "请自行设置");
+
+        status.append("\n\n");
+        int subTitleStart = status.length();
+        status.append("可选权限");
+        status.setSpan(
+                new StyleSpan(Typeface.BOLD),
+                subTitleStart,
+                status.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        status.append(" ");
+        int clickStart = status.length();
+        status.append("点这");
+        int clickColor = MaterialColors.getColor(
+                permissionStatusView,
+                com.google.android.material.R.attr.colorPrimary);
+        status.setSpan(new ClickableSpan() {
+            @Override
+            public void onClick(@NonNull View widget) {
+                showOptionalPermissionsDialog();
+            }
+
+            @Override
+            public void updateDrawState(@NonNull TextPaint drawState) {
+                drawState.setColor(clickColor);
+                drawState.setUnderlineText(false);
+            }
+        }, clickStart, status.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         permissionStatusView.setText(status);
+    }
+
+    private void showOptionalPermissionsDialog() {
+        if (!isAdded()) {
+            return;
+        }
+        android.app.AlertDialog[] dialogHolder = new android.app.AlertDialog[1];
+
+        SpannableStringBuilder message = new SpannableStringBuilder();
+        appendPlainPermissionHint(
+                message,
+                "开机自启",
+                "建议加上，请自行设置");
+        message.append('\n').append("忽略电池优化设置").append("：");
+        int hintStart = message.length();
+        message.append("点击开启");
+        int hintColor = MaterialColors.getColor(
+                permissionStatusView,
+                com.google.android.material.R.attr.colorPrimary);
+        message.setSpan(new ClickableSpan() {
+            @Override
+            public void onClick(@NonNull View widget) {
+                if (dialogHolder[0] != null) {
+                    dialogHolder[0].dismiss();
+                }
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).reviewBackgroundPermission();
+                }
+            }
+
+            @Override
+            public void updateDrawState(@NonNull TextPaint drawState) {
+                drawState.setColor(hintColor);
+                drawState.setUnderlineText(false);
+            }
+        }, hintStart, message.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        // 去掉首行多余的换行
+        if (message.length() > 0 && message.charAt(0) == '\n') {
+            message.delete(0, 1);
+        }
+
+        TextView messageView = new TextView(requireContext());
+        int padding = (int) (20 * getResources().getDisplayMetrics().density);
+        messageView.setPadding(padding, padding, padding, 0);
+        messageView.setTextSize(16);
+        messageView.setLineSpacing(0, 1.3f);
+        messageView.setText(message);
+        messageView.setMovementMethod(LinkMovementMethod.getInstance());
+        messageView.setHighlightColor(android.graphics.Color.TRANSPARENT);
+
+        dialogHolder[0] = new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("可选权限")
+                .setView(messageView)
+                .setPositiveButton("知道了", null)
+                .show();
+    }
+
+    private void appendPlainPermissionHint(
+            SpannableStringBuilder text,
+            String label,
+            String hint) {
+        text.append('\n').append(label).append("：").append(hint);
     }
 
     private void appendPermissionStatus(

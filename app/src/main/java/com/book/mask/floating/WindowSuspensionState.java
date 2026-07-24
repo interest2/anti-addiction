@@ -10,7 +10,6 @@ import java.util.EnumSet;
  */
 final class WindowSuspensionState {
     enum Reason {
-        PACKAGE_TRANSITION,
         SYSTEM_UI,
         PAGE_TRANSITION
     }

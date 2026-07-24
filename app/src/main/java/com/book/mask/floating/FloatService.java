@@ -135,8 +135,7 @@ public class FloatService extends AccessibilityService
             @Override
             public void onAppStateChanged(CustomApp app, boolean isTargetInterface) {
                 if (isTargetInterface) {
-                    if (floatingWindowManager.isSuspendedForPackageTransition()
-                            || floatingWindowManager.isSuspendedForPageTransition()
+                    if (floatingWindowManager.isSuspendedForPageTransition()
                             || !floatingWindowManager.isFloatingWindowVisible()) {
                         floatingWindowManager.showFloatingWindow(app);
                     }
@@ -155,16 +154,6 @@ public class FloatService extends AccessibilityService
             @Override
             public void onAppLeft(CustomApp app) {
                 floatingWindowManager.hideFloatingWindow();
-            }
-
-            @Override
-            public void onPackageTransitionStarted(CustomApp app) {
-                floatingWindowManager.suspendForPackageTransition(app);
-            }
-
-            @Override
-            public void onPackageTransitionViewDiscarded(CustomApp app) {
-                floatingWindowManager.finishPackageTransitionHide();
             }
 
             @Override
