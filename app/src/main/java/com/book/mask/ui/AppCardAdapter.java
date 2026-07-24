@@ -163,7 +163,7 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             long remainingTime = relaxManager.getAppRemainingTime(app);
             String timeText;
             int timeColor;
-            if (remainingTime == -1) {
+            if (remainingTime <= 0) {
                 timeText = "倒计时：00:00";
                 timeColor = 0xFF4CAF50; // 绿色
             } else {
@@ -186,4 +186,4 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         }
     }
 
-} 
+}

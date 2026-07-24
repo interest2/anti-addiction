@@ -25,6 +25,7 @@
         android:layout_marginBottom="8dp" />
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layout_app_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
@@ -53,6 +54,7 @@
         android:layout_marginBottom="8dp" />
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layout_package_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
@@ -81,6 +83,7 @@
         android:layout_marginBottom="8dp" />
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layout_target_word"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
@@ -109,6 +112,7 @@
         android:layout_marginBottom="8dp" />
 
     <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/layout_relaxed_limit_count"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"

@@ -10,7 +10,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
@@ -192,8 +191,8 @@ public class SettingsDialogManager {
                         durationLayout, countLayout, durationInput, countInput)) {
                     return;
                 }
-                Toast.makeText(context, "休闲时刻设置已保存", Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
+                UiFeedback.show(context, "休闲时刻设置已保存");
             });
 
             startButton.setOnClickListener(v -> {
@@ -202,16 +201,15 @@ public class SettingsDialogManager {
                     return;
                 }
                 if (appSettingsManager.tryStartLeisureTime()) {
-                    Toast.makeText(
-                            context,
-                            "已开启休闲，第一个关闭悬浮窗的APP将免答题解禁",
-                            Toast.LENGTH_SHORT).show();
+                    UiFeedback.show(
+                            dialogView,
+                            "已开启休闲，第一个关闭悬浮窗的 APP 将免答题解禁");
                     refreshStartButton[0].run();
                 } else if (appSettingsManager.isLeisureTimeReadyForClose()) {
-                    Toast.makeText(context, "休闲时刻已经开启", Toast.LENGTH_SHORT).show();
+                    UiFeedback.show(dialogView, "休闲时刻已经开启");
                     refreshStartButton[0].run();
                 } else {
-                    Toast.makeText(context, "今日休闲时刻次数已用完", Toast.LENGTH_SHORT).show();
+                    UiFeedback.showError(dialogView, "今日休闲时刻次数已用完");
                     refreshStartButton[0].run();
                 }
             });
@@ -236,13 +234,13 @@ public class SettingsDialogManager {
         if (durationMinutes == null
                 || durationMinutes < AppSettingsManager.LEISURE_DURATION_MIN_MINUTES
                 || durationMinutes > AppSettingsManager.LEISURE_DURATION_MAX_MINUTES) {
-            durationLayout.setError("请输入15-30分钟");
+            UiFeedback.showInputError(durationLayout, durationInput, "请输入15-30分钟");
             valid = false;
         }
         if (dailyCount == null
                 || dailyCount < AppSettingsManager.LEISURE_DAILY_COUNT_MIN
                 || dailyCount > AppSettingsManager.LEISURE_DAILY_COUNT_MAX) {
-            countLayout.setError("请输入1-2次");
+            UiFeedback.showInputError(countLayout, countInput, "请输入1-2次");
             valid = false;
         }
         if (!valid) {
@@ -317,7 +315,7 @@ public class SettingsDialogManager {
                         // 点击了预设标签
                         String selectedTag = dialogOptions[which];
                         appSettingsManager.setMotivationTag(selectedTag);
-                        Toast.makeText(context, "已设置为: " + selectedTag, Toast.LENGTH_SHORT).show();
+                        UiFeedback.show(context, "已设置为：" + selectedTag);
                     }
                     if (onSettingChanged != null) onSettingChanged.run();
                 })
@@ -334,21 +332,26 @@ public class SettingsDialogManager {
         input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(10) });
         input.setHint("不超过 10 个字");
 
-        new android.app.AlertDialog.Builder(context)
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
             .setTitle("定个目标")
             .setView(input)
-            .setPositiveButton("确定", (dialog, which) -> {
+            .setPositiveButton("确定", null)
+            .setNegativeButton("取消", null)
+            .create();
+        dialog.setOnShowListener(ignored ->
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                input.setError(null);
                 String customTag = input.getText().toString().trim();
                 if (customTag.isEmpty()) {
-                    Toast.makeText(context, "目标不能为空", Toast.LENGTH_SHORT).show();
-                } else {
-                    appSettingsManager.setMotivationTag(customTag);
-                    Toast.makeText(context, "已设置为: " + customTag, Toast.LENGTH_SHORT).show();
+                    showInputError(input, "目标不能为空");
+                    return;
                 }
+                appSettingsManager.setMotivationTag(customTag);
+                dialog.dismiss();
+                UiFeedback.show(context, "已设置为：" + customTag);
                 if (onSettingChanged != null) onSettingChanged.run();
-            })
-            .setNegativeButton("取消", null)
-               .show();
+            }));
+        dialog.show();
     }
     
     /**
@@ -365,7 +368,7 @@ public class SettingsDialogManager {
                 // 格式化日期为 yyyy-MM-dd 格式
                 String selectedDate = String.format("%04d-%02d-%02d", year, month + 1, dayOfMonth);
                 appSettingsManager.setTargetCompletionDate(selectedDate);
-                Toast.makeText(context, "目标完成日期已设置为: " + selectedDate, Toast.LENGTH_SHORT).show();
+                UiFeedback.show(context, "目标完成日期已设置为：" + selectedDate);
                 
                 // 通知设置页面更新按钮文本（如果当前在设置页面）
                 if (context instanceof MainActivity) {
@@ -421,7 +424,7 @@ public class SettingsDialogManager {
      */
     public void showFloatingPositionDialogForApp(CustomApp app) {
         if (app == null || app.getPackageName() == null || app.getPackageName().isEmpty()) {
-            Toast.makeText(context, "无法获取当前APP", Toast.LENGTH_SHORT).show();
+            UiFeedback.showError(context, "无法获取当前 APP");
             return;
         }
 
@@ -487,43 +490,41 @@ public class SettingsDialogManager {
         hintText.setTextColor(0xFF666666);
         layout.addView(hintText);
 
-        new android.app.AlertDialog.Builder(context)
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
             .setTitle(title)
             .setView(layout)
-            .setPositiveButton("确定", (dialog, which) -> {
-                try {
-                    String topText = topEdit.getText().toString().trim();
-                    String bottomText = bottomEdit.getText().toString().trim();
-                    
-                    if (topText.isEmpty() || bottomText.isEmpty()) {
-                        Toast.makeText(context, "请填写完整的数值", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    
-                    int topOffset = Integer.parseInt(topText);
-                    int bottomOffset = Integer.parseInt(bottomText);
-                    
-                    // 数值范围检查
-                    if (topOffset < 0 || topOffset > 300) {
-                        Toast.makeText(context, "上边缘距离应在0-300像素之间", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    
-                    if (bottomOffset < 0 || bottomOffset > 400) {
-                        Toast.makeText(context, "下边缘距离应在0-400像素之间", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    
-                    saver.save(topOffset, bottomOffset);
-                    
-                    Toast.makeText(context, "悬浮窗位置已更新", Toast.LENGTH_SHORT).show();
-                    
-                } catch (NumberFormatException e) {
-                    Toast.makeText(context, "请输入有效的数字", Toast.LENGTH_SHORT).show();
-                }
-            })
+            .setPositiveButton("确定", null)
             .setNegativeButton("取消", null)
-            .show();
+            .create();
+        dialog.setOnShowListener(ignored ->
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                topEdit.setError(null);
+                bottomEdit.setError(null);
+
+                Integer topOffset = parseInteger(topEdit);
+                Integer bottomOffset = parseInteger(bottomEdit);
+                if (topOffset == null) {
+                    showInputError(topEdit, "请输入有效的上边缘距离");
+                    return;
+                }
+                if (bottomOffset == null) {
+                    showInputError(bottomEdit, "请输入有效的下边缘距离");
+                    return;
+                }
+                if (topOffset < 0 || topOffset > 300) {
+                    showInputError(topEdit, "请输入 0-300 之间的数字");
+                    return;
+                }
+                if (bottomOffset < 0 || bottomOffset > 400) {
+                    showInputError(bottomEdit, "请输入 0-400 之间的数字");
+                    return;
+                }
+
+                saver.save(topOffset, bottomOffset);
+                dialog.dismiss();
+                UiFeedback.show(context, "悬浮窗位置已更新");
+            }));
+        dialog.show();
     }
 
     private interface FloatingPositionSaver {
@@ -561,15 +562,13 @@ public class SettingsDialogManager {
             .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
                 ChallengeType selectedType = challengeTypes[which];
                 appSettingsManager.setChallengeType(selectedType);
-                android.widget.Toast.makeText(
-                        context,
-                        "已设置为" + selectedType.getDisplayName(),
-                        android.widget.Toast.LENGTH_SHORT).show();
 
                 if (selectedType == ChallengeType.ARITHMETIC) {
                     showArithmeticDifficultyDialog();
                 } else if (selectedType == ChallengeType.ENGLISH_READING) {
                     showEnglishReadingLengthDialog();
+                } else {
+                    UiFeedback.show(context, "已设置为" + selectedType.getDisplayName());
                 }
                 dialog.dismiss();
             })
@@ -589,28 +588,35 @@ public class SettingsDialogManager {
         input.setText(String.valueOf(currentLength));
         input.setSelection(input.getText().length()); // 选中所有文本，方便修改
 
-        new android.app.AlertDialog.Builder(context)
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
             .setTitle("设置阅读字数")
             .setMessage("阅读字数范围：200-1000")
             .setView(input)
-            .setPositiveButton("确定", (dialog, which) -> {
-                String inputText = input.getText().toString().trim();
-                if (!inputText.isEmpty()) {
-                    try {
-                        int length = Integer.parseInt(inputText);
-                        if (length >= QuestionConst.ENGLISH_READING_LENGTH_MIN && length <= QuestionConst.ENGLISH_READING_LENGTH_MAX) {
-                            appSettingsManager.setEnglishReadingLength(length);
-                            android.widget.Toast.makeText(context, "已设置阅读字数为：" + length, android.widget.Toast.LENGTH_SHORT).show();
-                        } else {
-                            android.widget.Toast.makeText(context, "阅读字数必须在" + QuestionConst.ENGLISH_READING_LENGTH_MIN + "-" + QuestionConst.ENGLISH_READING_LENGTH_MAX + "之间", android.widget.Toast.LENGTH_SHORT).show();
-                        }
-                    } catch (NumberFormatException e) {
-                        android.widget.Toast.makeText(context, "请输入有效数字", android.widget.Toast.LENGTH_SHORT).show();
-                    }
-                }
-            })
+            .setPositiveButton("确定", null)
             .setNegativeButton("取消", null)
-            .show();
+            .create();
+        dialog.setOnShowListener(ignored ->
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                input.setError(null);
+                Integer length = parseInteger(input);
+                if (length == null) {
+                    showInputError(input, "请输入有效数字");
+                    return;
+                }
+                if (length < QuestionConst.ENGLISH_READING_LENGTH_MIN
+                        || length > QuestionConst.ENGLISH_READING_LENGTH_MAX) {
+                    showInputError(
+                            input,
+                            "请输入 " + QuestionConst.ENGLISH_READING_LENGTH_MIN
+                                    + "-" + QuestionConst.ENGLISH_READING_LENGTH_MAX + " 之间的数字");
+                    return;
+                }
+
+                appSettingsManager.setEnglishReadingLength(length);
+                dialog.dismiss();
+                UiFeedback.show(context, "已设置阅读字数为：" + length);
+            }));
+        dialog.show();
     }
 
     /**
@@ -627,13 +633,14 @@ public class SettingsDialogManager {
                 if (which == 0) {
                     // 选择默认难度
                     appSettingsManager.setMathDifficultyMode("default");
-                    android.widget.Toast.makeText(context, "已设置为默认难度", android.widget.Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    UiFeedback.show(context, "已设置为默认难度");
                 } else if (which == 1) {
                     // 选择自定义难度
                     appSettingsManager.setMathDifficultyMode("custom");
+                    dialog.dismiss();
                     showCustomMathDifficultyDialog();
                 }
-                dialog.dismiss();
             })
             .setNegativeButton("取消", null)
             .show();
@@ -659,73 +666,97 @@ public class SettingsDialogManager {
         etMultiplicationMultiplierDigits.setText(String.valueOf(appSettingsManager.getMathMultiplicationMultiplierDigits()));
         etMultiplicationMultiplicandDigits.setText(String.valueOf(appSettingsManager.getMathMultiplicationMultiplicandDigits()));
 
-        new android.app.AlertDialog.Builder(context)
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
             .setTitle("数字位数设置")
             .setView(dialogView)
-            .setPositiveButton("保存", (dialog, which) -> {
-                // 验证并保存加法位数
-                String additionInput = etAdditionDigits.getText().toString().trim();
-                if (additionInput.isEmpty()) {
-                    android.widget.Toast.makeText(context, "请输入加法位数", android.widget.Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                // 验证并保存减法位数
-                String subtractionInput = etSubtractionDigits.getText().toString().trim();
-                if (subtractionInput.isEmpty()) {
-                    android.widget.Toast.makeText(context, "请输入减法位数", android.widget.Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                // 验证并保存乘法位数
-                String multiplierInput = etMultiplicationMultiplierDigits.getText().toString().trim();
-                String multiplicandInput = etMultiplicationMultiplicandDigits.getText().toString().trim();
-                if (multiplierInput.isEmpty()) {
-                    android.widget.Toast.makeText(context, "请输入乘数位数", android.widget.Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                if (multiplicandInput.isEmpty()) {
-                    android.widget.Toast.makeText(context, "请输入被乘数位数", android.widget.Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                try {
-                    int additionDigits = Integer.parseInt(additionInput);
-                    int subtractionDigits = Integer.parseInt(subtractionInput);
-                    int multiplierDigits = Integer.parseInt(multiplierInput);
-                    int multiplicandDigits = Integer.parseInt(multiplicandInput);
-                    
-                    // 验证范围
-                    if (additionDigits < QuestionConst.ADD_LEN_MIN || additionDigits > QuestionConst.ADD_LEN_MAX) {
-                        android.widget.Toast.makeText(context, "加法位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (subtractionDigits < QuestionConst.ADD_LEN_MIN || subtractionDigits > QuestionConst.ADD_LEN_MAX) {
-                        android.widget.Toast.makeText(context, "减法位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (multiplierDigits < QuestionConst.MUL_LEN_MIN || multiplierDigits > QuestionConst.MUL_LEN_MAX) {
-                        android.widget.Toast.makeText(context, "乘数位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (multiplicandDigits < QuestionConst.MUL_LEN_MIN || multiplicandDigits > QuestionConst.MUL_LEN_MAX) {
-                        android.widget.Toast.makeText(context, "被乘数位数请输入合理范围数字", android.widget.Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    
-                    // 保存设置
-                    appSettingsManager.setMathAdditionDigits(additionDigits);
-                    appSettingsManager.setMathSubtractionDigits(subtractionDigits);
-                    appSettingsManager.setMathMultiplicationMultiplierDigits(multiplierDigits);
-                    appSettingsManager.setMathMultiplicationMultiplicandDigits(multiplicandDigits);
-                    
-                    android.widget.Toast.makeText(context, "已保存自定义难度设置", android.widget.Toast.LENGTH_SHORT).show();
-                } catch (NumberFormatException e) {
-                    android.widget.Toast.makeText(context, "请输入有效的数字", android.widget.Toast.LENGTH_SHORT).show();
-                }
-            })
+            .setPositiveButton("保存", null)
             .setNegativeButton("取消", null)
-            .show();
+            .create();
+        dialog.setOnShowListener(ignored ->
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                if (!saveCustomMathDifficulty(
+                        etAdditionDigits,
+                        etSubtractionDigits,
+                        etMultiplicationMultiplierDigits,
+                        etMultiplicationMultiplicandDigits)) {
+                    return;
+                }
+                dialog.dismiss();
+                UiFeedback.show(context, "已保存自定义难度设置");
+            }));
+        dialog.show();
+    }
+
+    private boolean saveCustomMathDifficulty(
+            EditText additionInput,
+            EditText subtractionInput,
+            EditText multiplierInput,
+            EditText multiplicandInput) {
+        additionInput.setError(null);
+        subtractionInput.setError(null);
+        multiplierInput.setError(null);
+        multiplicandInput.setError(null);
+
+        Integer additionDigits = parseInteger(additionInput);
+        Integer subtractionDigits = parseInteger(subtractionInput);
+        Integer multiplierDigits = parseInteger(multiplierInput);
+        Integer multiplicandDigits = parseInteger(multiplicandInput);
+
+        boolean valid = true;
+        valid &= validateIntegerInput(
+                additionInput,
+                additionDigits,
+                QuestionConst.ADD_LEN_MIN,
+                QuestionConst.ADD_LEN_MAX,
+                "加法位数");
+        valid &= validateIntegerInput(
+                subtractionInput,
+                subtractionDigits,
+                QuestionConst.ADD_LEN_MIN,
+                QuestionConst.ADD_LEN_MAX,
+                "减法位数");
+        valid &= validateIntegerInput(
+                multiplierInput,
+                multiplierDigits,
+                QuestionConst.MUL_LEN_MIN,
+                QuestionConst.MUL_LEN_MAX,
+                "乘数位数");
+        valid &= validateIntegerInput(
+                multiplicandInput,
+                multiplicandDigits,
+                QuestionConst.MUL_LEN_MIN,
+                QuestionConst.MUL_LEN_MAX,
+                "被乘数位数");
+        if (!valid) {
+            return false;
+        }
+
+        appSettingsManager.setMathAdditionDigits(additionDigits);
+        appSettingsManager.setMathSubtractionDigits(subtractionDigits);
+        appSettingsManager.setMathMultiplicationMultiplierDigits(multiplierDigits);
+        appSettingsManager.setMathMultiplicationMultiplicandDigits(multiplicandDigits);
+        return true;
+    }
+
+    private boolean validateIntegerInput(
+            EditText input,
+            Integer value,
+            int min,
+            int max,
+            String fieldName) {
+        if (value == null) {
+            showInputError(input, "请输入" + fieldName);
+            return false;
+        }
+        if (value < min || value > max) {
+            showInputError(input, "请输入 " + min + "-" + max + " 之间的数字");
+            return false;
+        }
+        return true;
+    }
+
+    private void showInputError(EditText input, String message) {
+        UiFeedback.showInputError(input, message);
     }
 
     /**
@@ -833,9 +864,11 @@ public class SettingsDialogManager {
                 appSettingsManager.setFloatingStrictReminderFontSize(fontSize);
                 
                 if (reminder.isEmpty()) {
-                    Toast.makeText(context, "已清除日常提醒", Toast.LENGTH_SHORT).show();
+                    UiFeedback.show(context, "已清除日常提醒");
                 } else {
-                    Toast.makeText(context, "已保存日常提醒: " + reminder + "，字体大小: " + fontSize + "sp", Toast.LENGTH_SHORT).show();
+                    UiFeedback.show(
+                            context,
+                            "已保存日常提醒：" + reminder + "，字体大小：" + fontSize + "sp");
                 }
             })
             .setNegativeButton("取消", null)

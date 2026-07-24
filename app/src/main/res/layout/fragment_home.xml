@@ -33,7 +33,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="功能：显示悬浮窗遮盖。"
+            android:text="正在检查权限状态"
             android:textAlignment="viewStart"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@+id/tv_apps_subtitle"
@@ -101,4 +101,4 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-</ScrollView> 
+</ScrollView>

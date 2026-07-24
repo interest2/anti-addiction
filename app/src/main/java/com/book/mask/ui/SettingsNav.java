@@ -147,7 +147,7 @@ public class SettingsNav extends Fragment {
                                    Button downloadButton) {
         String freshVersion = LatestVersionManager.getFreshLatestVersion();
         if (freshVersion != null) {
-            requestApkDownload(freshVersion, versionDialog);
+            requestApkDownload(freshVersion, versionDialog, versionDetail);
             return;
         }
 
@@ -170,20 +170,20 @@ public class SettingsNav extends Fragment {
                     updateVersionBadge(view);
                 }
                 if (latestVersion == null) {
-                    android.widget.Toast.makeText(
-                            requireContext(),
-                            R.string.latest_version_fetch_failed,
-                            android.widget.Toast.LENGTH_SHORT
-                    ).show();
+                    UiFeedback.showError(
+                            versionDetail,
+                            getString(R.string.latest_version_fetch_failed)
+                    );
                     return;
                 }
-                requestApkDownload(latestVersion, versionDialog);
+                requestApkDownload(latestVersion, versionDialog, versionDetail);
             });
         }).start();
     }
 
     private void requestApkDownload(String latestVersion,
-                                    android.app.AlertDialog versionDialog) {
+                                    android.app.AlertDialog versionDialog,
+                                    View feedbackAnchor) {
         String downloadUrl = LatestVersionManager.buildLatestApkDownloadUrl(latestVersion);
         Intent downloadIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl));
         try {
@@ -191,11 +191,10 @@ public class SettingsNav extends Fragment {
             versionDialog.dismiss();
         } catch (ActivityNotFoundException e) {
             android.util.Log.e(TAG, "没有可处理安装包下载链接的应用", e);
-            android.widget.Toast.makeText(
-                    requireContext(),
-                    R.string.apk_download_unavailable,
-                    android.widget.Toast.LENGTH_SHORT
-            ).show();
+            UiFeedback.showError(
+                    feedbackAnchor,
+                    getString(R.string.apk_download_unavailable)
+            );
         }
     }
 
@@ -233,9 +232,10 @@ public class SettingsNav extends Fragment {
         packageLogToggle.setChecked(PackageLogManager.getInstance().isEnabled());
         packageLogToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             PackageLogManager.getInstance().setEnabled(isChecked);
-            android.widget.Toast.makeText(requireContext(),
-                    isChecked ? "已开启包名日志" : "已关闭包名日志",
-                    android.widget.Toast.LENGTH_SHORT).show();
+            UiFeedback.show(
+                    dialogView,
+                    isChecked ? "已开启包名日志" : "已关闭包名日志"
+            );
         });
         dialogView.findViewById(R.id.btn_package_log)
                 .setOnClickListener(v -> showPackageLogDialog());
@@ -265,7 +265,7 @@ public class SettingsNav extends Fragment {
                 TextView tvText = itemView.findViewById(R.id.tv_log_text);
                 Button btnCopy = itemView.findViewById(R.id.btn_copy);
                 tvText.setText((i + 1) + ". " + pkg);
-                btnCopy.setOnClickListener(b -> copyToClipboard(pkg));
+                btnCopy.setOnClickListener(b -> copyToClipboard(b, pkg));
                 container.addView(itemView);
             }
         }
@@ -293,7 +293,7 @@ public class SettingsNav extends Fragment {
             copyableText.setSpan(new ClickableSpan() {
                 @Override
                 public void onClick(@NonNull View widget) {
-                    copyToClipboard(urlSpan.getURL());
+                    copyToClipboard(widget, urlSpan.getURL());
                 }
             }, start, end, flags);
         }
@@ -302,14 +302,12 @@ public class SettingsNav extends Fragment {
         textView.setMovementMethod(LinkMovementMethod.getInstance());
     }
 
-    private void copyToClipboard(String text) {
+    private void copyToClipboard(View feedbackAnchor, String text) {
         android.content.ClipboardManager cm = (android.content.ClipboardManager)
                 requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
         if (cm != null) {
             cm.setPrimaryClip(android.content.ClipData.newPlainText("text", text));
-            android.widget.Toast.makeText(requireContext(),
-                    "已复制：" + text,
-                    android.widget.Toast.LENGTH_SHORT).show();
+            UiFeedback.show(feedbackAnchor, "已复制：" + text);
         }
     }
 

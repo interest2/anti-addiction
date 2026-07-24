@@ -26,6 +26,8 @@ public class AppStateManager {
     private static final String TAG = "AppStateManager";
     private static final String SYSTEM_UI_PACKAGE = "com.android.systemui";
     private static final long UNKNOWN_PACKAGE_RETRY_DELAY_MS = 150;
+    private static final long PACKAGE_NAME_LOG_INTERVAL_MS = 100;
+    private static final long PACKAGE_NAME_LOG_DURATION_MS = 1500;
     
     private AccessibilityService service;
     private Handler handler;
@@ -43,6 +45,8 @@ public class AppStateManager {
     private PackageHideTransition packageHideTransition;
     private Runnable pendingPackageTransitionStep;
     private long packageTransitionGeneration = 0;
+    private Runnable packageNameLogRunnable;
+    private int packageNameLogSampleIndex = 0;
     private long floatingShowDetectionPausedUntil = 0;
     private Runnable floatingShowDetectionResumeRunnable;
 
@@ -528,6 +532,7 @@ public class AppStateManager {
         if (listener != null) {
             listener.onPackageTransitionStarted(currentActiveApp);
         }
+        startPackageNameLogging();
 
         schedulePackageTransitionStep(
                 Const.PACKAGE_TRANSITION_CHECK_DELAY_MS,
@@ -766,6 +771,30 @@ public class AppStateManager {
         return packageName.isEmpty() ? "未知" : packageName;
     }
 
+    private void startPackageNameLogging() {
+        if (packageNameLogRunnable != null) {
+            handler.removeCallbacks(packageNameLogRunnable);
+        }
+
+        packageNameLogSampleIndex = 0;
+        packageNameLogRunnable = new Runnable() {
+            @Override
+            public void run() {
+                packageNameLogSampleIndex++;
+                long elapsedMillis = packageNameLogSampleIndex * PACKAGE_NAME_LOG_INTERVAL_MS;
+                Log.d(TAG, "悬浮窗隐藏后当前包名 [" + elapsedMillis + "ms]: "
+                        + packageNameForLog(getRawActiveRootPackage()));
+
+                if (elapsedMillis < PACKAGE_NAME_LOG_DURATION_MS) {
+                    handler.postDelayed(this, PACKAGE_NAME_LOG_INTERVAL_MS);
+                } else {
+                    packageNameLogRunnable = null;
+                }
+            }
+        };
+        handler.postDelayed(packageNameLogRunnable, PACKAGE_NAME_LOG_INTERVAL_MS);
+    }
+
     private void schedulePackageTransitionStep(long delayMillis, Runnable step) {
         long generation = packageTransitionGeneration;
         pendingPackageTransitionStep = () -> {
@@ -833,15 +862,20 @@ public class AppStateManager {
     }
 
     private String getActiveRootPackage() {
+        String rootPackage = getRawActiveRootPackage();
+        if (!rootPackage.isEmpty()
+                && !rootPackage.equals(service.getPackageName())
+                && !FloatHelper.isInputMethodApp(rootPackage)) {
+            return rootPackage;
+        }
+        return "";
+    }
+
+    private String getRawActiveRootPackage() {
         AccessibilityNodeInfo root = service.getRootInActiveWindow();
         try {
             if (root != null && root.getPackageName() != null) {
-                String rootPackage = root.getPackageName().toString();
-                if (!rootPackage.isEmpty()
-                        && !rootPackage.equals(service.getPackageName())
-                        && !FloatHelper.isInputMethodApp(rootPackage)) {
-                    return rootPackage;
-                }
+                return root.getPackageName().toString();
             }
             return "";
         } finally {
@@ -953,6 +987,11 @@ public class AppStateManager {
         cancelPendingContentCheck();
         cancelPendingPackageConfirmation();
         cancelPackageHideTransition();
+        if (packageNameLogRunnable != null) {
+            handler.removeCallbacks(packageNameLogRunnable);
+            packageNameLogRunnable = null;
+        }
+        packageNameLogSampleIndex = 0;
         lastObservedPackage = null;
         floatingShowDetectionPausedUntil = 0;
         if (floatingShowDetectionResumeRunnable != null) {

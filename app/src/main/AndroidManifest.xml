@@ -12,6 +12,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- 前台服务权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- 请求忽略电池优化，用于改善后台运行稳定性 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- 网络权限，用于上报设备信息 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 网络状态权限 -->

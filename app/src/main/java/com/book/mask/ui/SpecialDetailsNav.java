@@ -7,7 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -66,12 +65,8 @@ public class SpecialDetailsNav extends Fragment {
             for (String key : keys) {
                 Share.appManuallyHidden.put(key, false);
             }
-            Toast.makeText(
-                    requireContext(),
-                    "所有APP悬浮窗状态已重置",
-                    Toast.LENGTH_SHORT
-            ).show();
             dialog.dismiss();
+            UiFeedback.show(requireContext(), "所有APP悬浮窗状态已重置");
         });
         dialog.show();
     }
@@ -79,22 +74,20 @@ public class SpecialDetailsNav extends Fragment {
     private void detectAndSaveCurrentKeyboard(TextView keyboardPackageText) {
         String packageName = getCurrentKeyboardPackageName();
         if (packageName.isEmpty()) {
-            Toast.makeText(
-                    requireContext(),
-                    "未检测到键盘包名，请确认键盘已弹出",
-                    Toast.LENGTH_SHORT
-            ).show();
+            UiFeedback.showError(
+                    keyboardPackageText,
+                    "未检测到键盘包名，请确认键盘已弹出"
+            );
             updateKeyboardPackageText(keyboardPackageText);
             return;
         }
 
         boolean added = InputMethodPackageManager.getInstance().addPackage(packageName);
         updateKeyboardPackageText(keyboardPackageText);
-        Toast.makeText(
-                requireContext(),
-                added ? "已添加键盘包名：" + packageName : "键盘包名已存在：" + packageName,
-                Toast.LENGTH_SHORT
-        ).show();
+        UiFeedback.show(
+                keyboardPackageText,
+                added ? "已添加键盘包名：" + packageName : "键盘包名已存在：" + packageName
+        );
     }
 
     private String getCurrentKeyboardPackageName() {

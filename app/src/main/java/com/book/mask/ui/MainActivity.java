@@ -1,15 +1,17 @@
 package com.book.mask.ui;
 
+import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.widget.Toast;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 
 import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -17,28 +19,29 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
-import android.content.Context;
-import android.accessibilityservice.AccessibilityServiceInfo;
-import android.view.accessibility.AccessibilityManager;
-import java.util.List;
 import java.util.Calendar;
+import java.util.List;
 
 import com.book.mask.R;
 import com.book.mask.constant.Const;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.CustomApp;
-import com.book.mask.floating.FloatService;
 import com.book.mask.lifecycle.AppLifecycleObserver;
 import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.network.TextFetcher;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.tencent.mmkv.MMKV;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int NO_PENDING_PERMISSION_REQUEST = 0;
     private static final int REQUEST_OVERLAY_PERMISSION = 1001;
     private static final int REQUEST_ACCESSIBILITY_PERMISSION = 1003;
+    private static final int REQUEST_BACKGROUND_PERMISSION = 1004;
+    private static final String STATE_PENDING_PERMISSION_REQUEST = "pending_permission_request";
+    private static final String STATE_HAS_CHECKED_PERMISSIONS = "has_checked_permissions";
     private AppLifecycleObserver appLifecycleObserver;
     private DeviceInfoReporter deviceInfoReporter;
     private RelaxManager relaxManager;
@@ -48,10 +51,23 @@ public class MainActivity extends AppCompatActivity {
     private SettingsNav settingsNav;
     private BroadcastReceiver relaxedCountUpdateReceiver;
     private BottomNavigationView bottomNav;
+    private AlertDialog permissionDialog;
+    private int pendingPermissionRequest = NO_PENDING_PERMISSION_REQUEST;
+    private boolean hasCheckedPermissions;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (savedInstanceState != null) {
+            pendingPermissionRequest = savedInstanceState.getInt(
+                    STATE_PENDING_PERMISSION_REQUEST,
+                    NO_PENDING_PERMISSION_REQUEST
+            );
+            hasCheckedPermissions = savedInstanceState.getBoolean(
+                    STATE_HAS_CHECKED_PERMISSIONS,
+                    false
+            );
+        }
         // 初始化 MMKV
         String rootDir = MMKV.initialize(this);
         android.util.Log.d("MainActivity", "MMKV initialized, root: " + rootDir);
@@ -74,9 +90,6 @@ public class MainActivity extends AppCompatActivity {
         
         // 注册广播接收器
         registerRelaxedCountUpdateReceiver();
-        
-        // 检查并请求所有必要权限
-        checkAndRequestPermissions();
         
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
@@ -161,90 +174,171 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkAndRequestPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                // 没有悬浮窗权限，引导用户去设置
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION);
-                Toast.makeText(this, "请开启悬浮窗权限以使用此功能", Toast.LENGTH_LONG).show();
-            } else {
-                // 有悬浮窗权限，检查无障碍服务权限
-                checkAccessibilityPermission();
-            }
+        refreshHomePermissionStatus();
+        if (!PermissionStatus.canDrawOverlays(this)) {
+            showOverlayPermissionDialog(false);
         } else {
-            // Android 6.0以下默认有悬浮窗权限
             checkAccessibilityPermission();
         }
     }
 
     private void checkAccessibilityPermission() {
-        if (!isAccessibilityServiceEnabled()) {
-            // 没有无障碍服务权限，引导用户去设置
-            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-            startActivityForResult(intent, REQUEST_ACCESSIBILITY_PERMISSION);
-            Toast.makeText(this, "请开启无障碍服务以检测支持的APP", Toast.LENGTH_LONG).show();
+        if (!PermissionStatus.isAccessibilityServiceEnabled(this)) {
+            showAccessibilityPermissionDialog(false);
         } else {
-            // 已有所有权限，初始化应用生命周期监听器
-            initAppLifecycleObserver();
+            finishCorePermissionSetup();
         }
     }
 
-    private boolean isAccessibilityServiceEnabled() {
-        AccessibilityManager accessibilityManager = (AccessibilityManager) getSystemService(Context.ACCESSIBILITY_SERVICE);
-        List<AccessibilityServiceInfo> accessibilityServices = accessibilityManager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
-        
-        for (AccessibilityServiceInfo info : accessibilityServices) {
-            if (info.getId().equals(getPackageName() + "/" + FloatService.class.getName())) {
-                return true;
-            }
+    private void showOverlayPermissionDialog(boolean denied) {
+        String title = denied ? "悬浮窗权限未开启" : "需要悬浮窗权限";
+        String message = denied
+                ? "尚未获得悬浮窗权限，检测功能暂时无法使用。可前往系统设置重新开启。"
+                : "悬浮窗用于在支持的APP上显示提醒。请在系统设置中允许本应用显示在其他应用上层。";
+        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+        intent.setData(Uri.parse("package:" + getPackageName()));
+        showPermissionDialog(title, message, intent, REQUEST_OVERLAY_PERMISSION);
+    }
+
+    private void showAccessibilityPermissionDialog(boolean denied) {
+        String title = denied ? "无障碍服务未开启" : "需要开启无障碍服务";
+        String message = denied
+                ? "尚未开启无障碍服务，无法检测支持的APP。可前往系统设置重新开启。"
+                : "无障碍服务用于检测当前打开的APP。请在系统设置中找到本应用并开启服务。";
+        Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        showPermissionDialog(title, message, intent, REQUEST_ACCESSIBILITY_PERMISSION);
+    }
+
+    private void showBackgroundPermissionDialog(boolean denied) {
+        String title = denied ? "后台运行尚未允许" : "建议允许后台运行";
+        String message = denied
+                ? "应用仍受电池优化限制，系统休眠后检测可能中断。可重新前往系统设置允许后台运行。"
+                : "核心检测功能已启用。允许忽略电池优化后，系统休眠时的后台检测会更稳定。";
+        Intent intent = new Intent(
+                Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                Uri.parse("package:" + getPackageName()));
+        showPermissionDialog(title, message, intent, REQUEST_BACKGROUND_PERMISSION);
+    }
+
+    private void showPermissionDialog(CharSequence title,
+                                      CharSequence message,
+                                      Intent settingsIntent,
+                                      int requestCode) {
+        if (permissionDialog != null && permissionDialog.isShowing()) {
+            return;
         }
-        
+
+        permissionDialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("去开启", (dialog, which) ->
+                        openPermissionSettings(settingsIntent, requestCode))
+                .setNegativeButton("暂不", null)
+                .setCancelable(false)
+                .create();
+        permissionDialog.setOnDismissListener(dialog -> {
+            permissionDialog = null;
+            refreshHomePermissionStatus();
+        });
+        permissionDialog.show();
+    }
+
+    private void openPermissionSettings(Intent intent, int requestCode) {
+        pendingPermissionRequest = requestCode;
         try {
-            String enabledServices = Settings.Secure.getString(
-                getContentResolver(), 
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-            android.util.Log.d("MainActivity", "系统启用的无障碍服务: " + enabledServices);
-            
-            if (enabledServices != null) {
-                String ourService = getPackageName() + "/" + FloatService.class.getName();
-                boolean found = enabledServices.contains(ourService);
-                android.util.Log.d("MainActivity", "在系统设置中查找 " + ourService + ": " + found);
-                return found;
-            }
-        } catch (Exception e) {
-            android.util.Log.e("MainActivity", "检查系统设置失败", e);
-        }
-        
-        return false;
-    }
-
-    private void initAppLifecycleObserver() {
-        appLifecycleObserver = new AppLifecycleObserver(this);
-        Toast.makeText(this, "检测功能已启用，打开支持的APP时会显示悬浮窗", Toast.LENGTH_LONG).show();
-    }
-
-
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_OVERLAY_PERMISSION) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (Settings.canDrawOverlays(this)) {
-                    // 获得悬浮窗权限，继续检查无障碍服务权限
-                    checkAccessibilityPermission();
-                } else {
-                    Toast.makeText(this, "没有悬浮窗权限，功能无法使用", Toast.LENGTH_LONG).show();
+            startActivityForResult(intent, requestCode);
+        } catch (ActivityNotFoundException e) {
+            if (requestCode == REQUEST_BACKGROUND_PERMISSION) {
+                try {
+                    startActivityForResult(
+                            new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+                            requestCode);
+                    return;
+                } catch (ActivityNotFoundException fallbackError) {
+                    android.util.Log.e(
+                            "MainActivity",
+                            "无法打开电池优化设置页",
+                            fallbackError);
                 }
             }
-        } else if (requestCode == REQUEST_ACCESSIBILITY_PERMISSION) {
-            if (isAccessibilityServiceEnabled()) {
-                // 获得无障碍服务权限，初始化应用生命周期监听器
-                initAppLifecycleObserver();
+            pendingPermissionRequest = NO_PENDING_PERMISSION_REQUEST;
+            android.util.Log.e("MainActivity", "无法打开权限设置页", e);
+            UiFeedback.showError(this, "无法打开系统权限设置");
+        }
+    }
+
+    private void handlePermissionResult(int requestCode) {
+        if (requestCode == REQUEST_OVERLAY_PERMISSION) {
+            if (PermissionStatus.canDrawOverlays(this)) {
+                checkAccessibilityPermission();
             } else {
-                Toast.makeText(this, "没有无障碍服务权限，无法检测支持的APP", Toast.LENGTH_LONG).show();
+                showOverlayPermissionDialog(true);
             }
+        } else if (requestCode == REQUEST_ACCESSIBILITY_PERMISSION) {
+            if (PermissionStatus.isAccessibilityServiceEnabled(this)) {
+                finishCorePermissionSetup();
+            } else {
+                showAccessibilityPermissionDialog(true);
+            }
+        } else if (requestCode == REQUEST_BACKGROUND_PERMISSION) {
+            if (PermissionStatus.isBackgroundRunningAllowed(this)) {
+                UiFeedback.show(this, "已允许后台运行");
+            } else {
+                showBackgroundPermissionDialog(true);
+            }
+        }
+        refreshHomePermissionStatus();
+    }
+
+    private boolean initAppLifecycleObserver() {
+        if (appLifecycleObserver != null) {
+            return false;
+        }
+        appLifecycleObserver = new AppLifecycleObserver(this);
+        return true;
+    }
+
+    private void finishCorePermissionSetup() {
+        boolean initialized = initAppLifecycleObserver();
+        if (!PermissionStatus.isBackgroundRunningAllowed(this)) {
+            showBackgroundPermissionDialog(false);
+        } else if (initialized) {
+            UiFeedback.show(this, "检测功能已启用，打开支持的 APP 时会显示悬浮窗");
+        }
+        refreshHomePermissionStatus();
+    }
+
+    public void reviewRequiredPermissions() {
+        if (PermissionStatus.canDrawOverlays(this)
+                && PermissionStatus.isAccessibilityServiceEnabled(this)
+                && PermissionStatus.isBackgroundRunningAllowed(this)) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("权限状态")
+                    .setMessage("悬浮窗、无障碍服务和后台运行均已开启。")
+                    .setPositiveButton("好的", null)
+                    .show();
+        } else {
+            hasCheckedPermissions = true;
+            checkAndRequestPermissions();
+        }
+    }
+
+    private void refreshHomePermissionStatus() {
+        if (homeNav != null) {
+            homeNav.refreshPermissionStatus();
+        }
+    }
+
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        if (pendingPermissionRequest != NO_PENDING_PERMISSION_REQUEST) {
+            int requestCode = pendingPermissionRequest;
+            pendingPermissionRequest = NO_PENDING_PERMISSION_REQUEST;
+            handlePermissionResult(requestCode);
+        } else if (!hasCheckedPermissions) {
+            hasCheckedPermissions = true;
+            checkAndRequestPermissions();
         }
     }
 
@@ -252,15 +346,23 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // 每次返回时检查权限状态
-        if (isAccessibilityServiceEnabled() && 
-            (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this))) {
-            if (appLifecycleObserver == null) {
-                initAppLifecycleObserver();
-            }
+        if (PermissionStatus.isAccessibilityServiceEnabled(this)
+                && PermissionStatus.canDrawOverlays(this)) {
+            initAppLifecycleObserver();
         }
+        refreshHomePermissionStatus();
         
         // 检测当前时间是否晚于20:00
         checkTimeAndPerformAction();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putInt(STATE_PENDING_PERMISSION_REQUEST, pendingPermissionRequest);
+        boolean permissionPromptHandled = hasCheckedPermissions
+                && (permissionDialog == null || !permissionDialog.isShowing());
+        outState.putBoolean(STATE_HAS_CHECKED_PERMISSIONS, permissionPromptHandled);
+        super.onSaveInstanceState(outState);
     }
 
     private void registerRelaxedCountUpdateReceiver() {

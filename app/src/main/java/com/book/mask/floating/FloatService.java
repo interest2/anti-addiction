@@ -2,12 +2,12 @@ package com.book.mask.floating;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
-import android.widget.Toast;
 
 import com.book.mask.constant.Const;
 import com.book.mask.config.Share;
@@ -19,8 +19,6 @@ import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.network.TextFetcher;
 import com.book.mask.util.DateUtils;
 import com.tencent.mmkv.MMKV;
-
-import android.content.Intent;
 
 /**
  * 悬浮窗无障碍服务
@@ -59,7 +57,6 @@ public class FloatService extends AccessibilityService
         MMKV.initialize(this);
         instance = this;
         Log.d(TAG, "AccessibilityService 已连接！");
-        Toast.makeText(this, "无障碍服务已启动", Toast.LENGTH_LONG).show();
 
         Log.d(TAG, "AccessibilityService 开始连接");
         
@@ -336,8 +333,7 @@ public class FloatService extends AccessibilityService
 
     @Override
     public void onInterrupt() {
-        Log.d(TAG, "AccessibilityService 被中断");
-        Toast.makeText(this, "无障碍服务被中断", Toast.LENGTH_SHORT).show();
+        Log.w(TAG, "AccessibilityService 被中断");
     }
 
     @Override
@@ -375,7 +371,6 @@ public class FloatService extends AccessibilityService
         Share.clearAllAppStates();
 
         Log.d(TAG, "AccessibilityService 已销毁");
-        Toast.makeText(this, "无障碍服务已停止", Toast.LENGTH_SHORT).show();
     }
 
     public static boolean isServiceRunning() {

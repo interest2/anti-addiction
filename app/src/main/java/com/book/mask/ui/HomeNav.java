@@ -3,6 +3,11 @@ package com.book.mask.ui;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.graphics.Typeface;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,7 +15,6 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -32,6 +36,9 @@ import com.book.mask.config.CustomApp;
 import com.book.mask.network.LatestVersionManager;
 import com.book.mask.util.ArithmeticUtils;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
+import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.color.MaterialColors;
 
 import java.util.List;
 
@@ -51,6 +58,7 @@ public class HomeNav extends Fragment implements
     private RecyclerView rvAppCards;
     private AppCardAdapter appCardAdapter;
     private List<CustomApp> allApps; // 包含预定义APP和自定义APP
+    private TextView permissionStatusView;
     
     // 倒计时相关
     private Handler countdownHandler;
@@ -86,19 +94,65 @@ public class HomeNav extends Fragment implements
         // 设置加号按钮点击事件
         setupAddButton(view);
 
-        // 设置HTML文本，让"功能"二字加粗
-        TextView tvDescription = view.findViewById(R.id.tv_description);
-        if (tvDescription != null) {
-            tvDescription.setText(android.text.Html.fromHtml(
-                    "<b>所需权限</b><br/>① 悬浮窗 <br/>② 无障碍服务 <br/>③ 允许后台运行" +
-                            "<br/><small><font color=\"#808080\">最好再加上开机自启（可选）</font></small>"
-            ));
+        permissionStatusView = view.findViewById(R.id.tv_description);
+        if (permissionStatusView != null) {
+            permissionStatusView.setOnClickListener(v -> {
+                if (getActivity() instanceof MainActivity) {
+                    ((MainActivity) getActivity()).reviewRequiredPermissions();
+                }
+            });
+            refreshPermissionStatus();
         }
         
         // 启动倒计时更新
         startCountdown();
         
         return view;
+    }
+
+    public void refreshPermissionStatus() {
+        if (!isAdded() || permissionStatusView == null) {
+            return;
+        }
+
+        SpannableStringBuilder status = new SpannableStringBuilder("权限状态");
+        status.setSpan(
+                new StyleSpan(Typeface.BOLD),
+                0,
+                status.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        appendPermissionStatus(
+                status,
+                "悬浮窗",
+                PermissionStatus.canDrawOverlays(requireContext()));
+        appendPermissionStatus(
+                status,
+                "无障碍服务",
+                PermissionStatus.isAccessibilityServiceEnabled(requireContext()));
+        appendPermissionStatus(
+                status,
+                "允许后台运行",
+                PermissionStatus.isBackgroundRunningAllowed(requireContext()));
+        permissionStatusView.setText(status);
+    }
+
+    private void appendPermissionStatus(
+            SpannableStringBuilder text,
+            String label,
+            boolean enabled) {
+        text.append('\n').append(label).append("：");
+        int statusStart = text.length();
+        text.append(enabled ? "已开启" : "未开启");
+        int statusColor = MaterialColors.getColor(
+                permissionStatusView,
+                enabled
+                        ? com.google.android.material.R.attr.colorPrimary
+                        : com.google.android.material.R.attr.colorError);
+        text.setSpan(
+                new ForegroundColorSpan(statusColor),
+                statusStart,
+                text.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
     }
 
     private void setupAddButton(View view) {
@@ -115,6 +169,11 @@ public class HomeNav extends Fragment implements
         TextInputEditText etPackageName = dialogView.findViewById(R.id.et_package_name);
         TextInputEditText etTargetWord = dialogView.findViewById(R.id.et_target_word);
         TextInputEditText etRelaxedLimitCount = dialogView.findViewById(R.id.et_relaxed_limit_count);
+        TextInputLayout appNameLayout = dialogView.findViewById(R.id.layout_app_name);
+        TextInputLayout packageNameLayout = dialogView.findViewById(R.id.layout_package_name);
+        TextInputLayout targetWordLayout = dialogView.findViewById(R.id.layout_target_word);
+        TextInputLayout relaxedLimitCountLayout =
+                dialogView.findViewById(R.id.layout_relaxed_limit_count);
         Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
         Button btnSave = dialogView.findViewById(R.id.btn_save);
 
@@ -130,20 +189,25 @@ public class HomeNav extends Fragment implements
             String packageName = etPackageName.getText().toString().trim();
             String targetWord = etTargetWord.getText().toString().trim();
             String relaxedLimitCountStr = etRelaxedLimitCount.getText().toString().trim();
-            
+
+            appNameLayout.setError(null);
+            packageNameLayout.setError(null);
+            targetWordLayout.setError(null);
+            relaxedLimitCountLayout.setError(null);
+
             // 验证输入
             if (appName.isEmpty()) {
-                Toast.makeText(requireContext(), "请输入 APP 名称", Toast.LENGTH_SHORT).show();
+                showInputError(appNameLayout, etAppName, "请输入 APP 名称");
                 return;
             }
             
             if (packageName.isEmpty()) {
-                Toast.makeText(requireContext(), "请输入包名", Toast.LENGTH_SHORT).show();
+                showInputError(packageNameLayout, etPackageName, "请输入包名");
                 return;
             }
             
             if (targetWord.isEmpty()) {
-                Toast.makeText(requireContext(), "请输入屏蔽关键词", Toast.LENGTH_SHORT).show();
+                showInputError(targetWordLayout, etTargetWord, "请输入屏蔽关键词");
                 return;
             }
             
@@ -152,11 +216,17 @@ public class HomeNav extends Fragment implements
                 try {
                     relaxedLimitCount = Integer.parseInt(relaxedLimitCountStr);
                     if (relaxedLimitCount <= 0) {
-                        Toast.makeText(requireContext(), "宽松模式次数必须大于0", Toast.LENGTH_SHORT).show();
+                        showInputError(
+                                relaxedLimitCountLayout,
+                                etRelaxedLimitCount,
+                                "宽松模式次数必须大于 0");
                         return;
                     }
                 } catch (NumberFormatException e) {
-                    Toast.makeText(requireContext(), "请输入有效的数字", Toast.LENGTH_SHORT).show();
+                    showInputError(
+                            relaxedLimitCountLayout,
+                            etRelaxedLimitCount,
+                            "请输入有效的数字");
                     return;
                 }
             }
@@ -164,15 +234,18 @@ public class HomeNav extends Fragment implements
             // 保存新APP
             boolean success = customAppManager.addCustomApp(appName, packageName, targetWord, relaxedLimitCount);
             if (success) {
-                Toast.makeText(requireContext(), "APP添加成功", Toast.LENGTH_SHORT).show();
                 dialog.dismiss();
+                UiFeedback.show(requireContext(), "APP 添加成功");
                 // 更新APP列表和卡片显示
                 updateAppList();
                 if (appCardAdapter != null) {
                     appCardAdapter.updateData(allApps);
                 }
             } else {
-                Toast.makeText(requireContext(), "包名已存在，请使用其他包名", Toast.LENGTH_SHORT).show();
+                showInputError(
+                        packageNameLayout,
+                        etPackageName,
+                        "包名无效或已存在，请检查后重试");
             }
         });
         
@@ -222,7 +295,7 @@ public class HomeNav extends Fragment implements
                 
                 // 显示提示
                 String status = isEnabled ? "已开启监测" : "已关闭屏蔽";
-                Toast.makeText(requireContext(), status, Toast.LENGTH_SHORT).show();
+                UiFeedback.show(requireContext(), status);
             }
         }
     }
@@ -231,7 +304,7 @@ public class HomeNav extends Fragment implements
     public void onEditClick(CustomApp app) {
         // 处理编辑图标点击
         String appName = getAppName(app);
-        Toast.makeText(requireContext(), "编辑 " + appName, Toast.LENGTH_SHORT).show();
+        UiFeedback.show(requireContext(), "编辑 " + appName);
         // TODO: 实现编辑功能
     }
 
@@ -330,16 +403,17 @@ public class HomeNav extends Fragment implements
         
         // 保存图标点击事件
         ivSaveRelaxedCount.setOnClickListener(v -> {
+            etRelaxedLimitCount.setError(null);
             String inputText = etRelaxedLimitCount.getText().toString().trim();
             if (inputText.isEmpty()) {
-                Toast.makeText(requireContext(), "请输入数字", Toast.LENGTH_SHORT).show();
+                showInputError(etRelaxedLimitCount, "请输入数字");
                 return;
             }
             
             try {
                 int newLimitCount = Integer.parseInt(inputText);
                 if (newLimitCount < 1 || newLimitCount > 3) {
-                    Toast.makeText(requireContext(), "请输入1-3之间的数字", Toast.LENGTH_SHORT).show();
+                    showInputError(etRelaxedLimitCount, "请输入 1-3 之间的数字");
                     return;
                 }
                 
@@ -349,7 +423,7 @@ public class HomeNav extends Fragment implements
                 // 更新APP的relaxedLimitCount
                 app.setRelaxedLimitCount(newLimitCount);
                 customAppManager.saveCustomAppsChanges(); // 保存到本地存储
-                Toast.makeText(requireContext(), "保存成功", Toast.LENGTH_SHORT).show();
+                UiFeedback.show(dialogView, "保存成功");
                 
                 // 更新APP列表显示
                 updateAppCardsDisplay();
@@ -366,7 +440,7 @@ public class HomeNav extends Fragment implements
                 }
                 
             } catch (NumberFormatException e) {
-                Toast.makeText(requireContext(), "请输入有效的数字", Toast.LENGTH_SHORT).show();
+                showInputError(etRelaxedLimitCount, "请输入有效的数字");
             }
         });
         
@@ -400,9 +474,10 @@ public class HomeNav extends Fragment implements
         
         // targetWord保存图标点击事件
         ivSaveTargetWord.setOnClickListener(v -> {
+            etTargetWord.setError(null);
             String inputText = etTargetWord.getText().toString().trim();
             if (inputText.isEmpty()) {
-                Toast.makeText(requireContext(), "请输入关键词", Toast.LENGTH_SHORT).show();
+                showInputError(etTargetWord, "请输入关键词");
                 return;
             }
             
@@ -415,7 +490,7 @@ public class HomeNav extends Fragment implements
             // 统一使用updatePredefinedApp方法，它会自动判断是否是预定义APP
             customAppManager.updatePredefinedApp(app);
             
-            Toast.makeText(requireContext(), "关键词保存成功", Toast.LENGTH_SHORT).show();
+            UiFeedback.show(dialogView, "关键词保存成功");
             
             // 更新APP列表显示
             updateAppCardsDisplay();
@@ -492,7 +567,7 @@ public class HomeNav extends Fragment implements
                     showCustomTextInputDialog(app);
                 } else if (which == 1) {
                     recordFloatingTextSource(Const.DEFAULT_HINT_SOURCE, app);
-                    Toast.makeText(requireContext(), "已选择大模型作为悬浮窗警示文字来源", Toast.LENGTH_SHORT).show();
+                    UiFeedback.show(requireContext(), "已选择大模型作为悬浮窗警示文字来源");
                 }
                 dialog.dismiss();
             })
@@ -507,22 +582,26 @@ public class HomeNav extends Fragment implements
         EditText input = new EditText(requireContext());
         input.setHint("请输入自定义警示文字（不超过100字）");
         input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(100)});
-        
-        new android.app.AlertDialog.Builder(requireContext())
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
             .setTitle("输入自定义警示文字")
             .setView(input)
-            .setPositiveButton("确定", (dialog, which) -> {
+            .setPositiveButton("确定", null)
+            .setNegativeButton("取消", null)
+            .create();
+        dialog.setOnShowListener(ignored ->
+            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                input.setError(null);
                 String customText = input.getText().toString().trim();
                 if (!customText.isEmpty()) {
-                    // 记录到变量
                     recordFloatingTextSource(Const.CUSTOM_HINT_SOURCE, customText, app);
-                    Toast.makeText(requireContext(), "自定义警示文字设置成功", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    UiFeedback.show(requireContext(), "自定义警示文字设置成功");
                 } else {
-                    Toast.makeText(requireContext(), "请输入内容", Toast.LENGTH_SHORT).show();
+                    showInputError(input, "请输入内容");
                 }
-            })
-            .setNegativeButton("取消", null)
-            .show();
+            }));
+        dialog.show();
     }
 
     /**
@@ -610,13 +689,11 @@ public class HomeNav extends Fragment implements
                         // 删除APP并清理相关持久化设置
                         boolean removed = customAppManager.removeCustomApp(packageName);
                         if (removed) {
-                            relaxManager.clearAppSettings(packageName);
-                            appSettingsManager.clearAppSettings(packageName);
                             android.util.Log.d(TAG, "已删除自定义APP: " + packageName);
-                            Toast.makeText(requireContext(), "已删除", Toast.LENGTH_SHORT).show();
                             updateAppCardsDisplay();
+                            showDeleteUndo(app);
                         } else {
-                            Toast.makeText(requireContext(), "删除失败", Toast.LENGTH_SHORT).show();
+                            UiFeedback.showError(requireContext(), "删除失败");
                         }
                     }, 1000);
 
@@ -710,7 +787,7 @@ public class HomeNav extends Fragment implements
                         dialog.dismiss();
                         relaxManager.setAppMonitoringEnabled(packageName, false);
                         android.util.Log.d("HomeFragment", "算术题验证通过，关闭屏蔽: " + packageName);
-                        Toast.makeText(requireContext(), "已关闭屏蔽", Toast.LENGTH_SHORT).show();
+                        UiFeedback.show(requireContext(), "已关闭屏蔽");
                         
                         // 更新APP列表显示
                         updateAppCardsDisplay();
@@ -766,9 +843,46 @@ public class HomeNav extends Fragment implements
         answerEdit.requestFocus();
     }
 
+    private void showDeleteUndo(CustomApp deletedApp) {
+        boolean[] restored = {false};
+        Snackbar snackbar = UiFeedback.make(requireView(), "已删除", Snackbar.LENGTH_LONG)
+                .setAction("撤销", v -> {
+                    restored[0] = customAppManager.addCustomApp(
+                            deletedApp.getAppName(),
+                            deletedApp.getPackageName(),
+                            deletedApp.getTargetWord(),
+                            deletedApp.getRelaxedLimitCount());
+                    if (restored[0]) {
+                        updateAppCardsDisplay();
+                    }
+                });
+        snackbar.addCallback(new Snackbar.Callback() {
+            @Override
+            public void onDismissed(Snackbar transientBottomBar, int event) {
+                if (!restored[0]) {
+                    relaxManager.clearAppSettings(deletedApp.getPackageName());
+                    appSettingsManager.clearAppSettings(deletedApp.getPackageName());
+                }
+            }
+        });
+        snackbar.show();
+    }
+
+    private void showInputError(
+            TextInputLayout layout,
+            TextInputEditText input,
+            String message) {
+        UiFeedback.showInputError(layout, input, message);
+    }
+
+    private void showInputError(EditText input, String message) {
+        UiFeedback.showInputError(input, message);
+    }
+
     @Override
     public void onResume() {
         super.onResume();
+        refreshPermissionStatus();
         // 更新APP列表
         updateAppList();
         // 更新APP卡片数据
@@ -794,6 +908,12 @@ public class HomeNav extends Fragment implements
         stopCountdown();
         countdownHandler = null;
         countdownRunnable = null;
+    }
+
+    @Override
+    public void onDestroyView() {
+        permissionStatusView = null;
+        super.onDestroyView();
     }
     
     /**
