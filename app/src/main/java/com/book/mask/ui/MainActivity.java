@@ -197,13 +197,10 @@ public class MainActivity extends AppCompatActivity {
         showPermissionDialog(title, message, accessibilitySettingsIntent(), REQUEST_ACCESSIBILITY_PERMISSION);
     }
 
-    private void showBackgroundPermissionDialog() {
-        String title = "忽略电池优化";
-        String message = "开启可能使服务更稳定，若怀疑被杀后台可开启试试";
-        Intent intent = new Intent(
+    private Intent backgroundSettingsIntent() {
+        return new Intent(
                 Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
                 Uri.parse("package:" + getPackageName()));
-        showPermissionDialog(title, message, intent, REQUEST_BACKGROUND_PERMISSION);
     }
 
     private void showPermissionDialog(CharSequence title,
@@ -270,7 +267,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void reviewBackgroundPermission() {
-        showBackgroundPermissionDialog();
+        openPermissionSettings(backgroundSettingsIntent(), REQUEST_BACKGROUND_PERMISSION);
     }
 
     private void refreshHomePermissionStatus() {
@@ -306,7 +303,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onPostResume() {
         super.onPostResume();
         if (pendingPermissionRequest != NO_PENDING_PERMISSION_REQUEST) {
+            int finishedRequest = pendingPermissionRequest;
             pendingPermissionRequest = NO_PENDING_PERMISSION_REQUEST;
+            if (finishedRequest == REQUEST_BACKGROUND_PERMISSION
+                    && PermissionStatus.isBackgroundRunningAllowed(this)) {
+                UiFeedback.show(this, "设置成功");
+            }
             refreshHomePermissionStatus();
         }
         advanceAutoPermissionGuide();
