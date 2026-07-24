@@ -914,16 +914,16 @@ public class AppStateManager {
                 currentActiveApp = detectedApp;
                 Share.currentApp = currentActiveApp;
                 Log.d(TAG, source + "确认进入 APP: " + detectedApp.getAppName());
-                boolean shouldShowDouyinBeforeContentCheck = CustomAppManager.DOUYIN_PACKAGE.equals(
-                        detectedApp.getPackageName()
-                ) && !enteredFromSystemUi
+                boolean shouldShowBeforeContentCheck = !enteredFromSystemUi
                         && !suspendedForSystemUi
                         && !Share.isAppManuallyHidden(detectedApp);
-                if (shouldShowDouyinBeforeContentCheck && listener != null) {
-                    Log.d(TAG, "检测到从非目标包名进入抖音，先显示悬浮窗再检测页面文字");
+                if (shouldShowBeforeContentCheck && listener != null) {
+                    Log.d(TAG, "检测到从非目标包名进入 " + detectedApp.getAppName()
+                            + "，先显示悬浮窗再检测页面文字");
                     listener.onTargetPackageEnteredBeforeContentCheck(detectedApp);
                     if (isFloatingShowDetectionPaused()) {
-                        Log.d(TAG, "抖音悬浮窗已先显示，显示防抖结束后检测页面文字");
+                        Log.d(TAG, detectedApp.getAppName()
+                                + " 悬浮窗已先显示，显示防抖结束后检测页面文字");
                     } else {
                         checkTextContentOptimized();
                     }
