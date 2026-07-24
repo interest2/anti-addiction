@@ -41,7 +41,7 @@ final class ChallengeViewController {
     private static final int MIN_QUESTION_HEIGHT_DP = 72;
     private static final int MAX_QUESTION_HEIGHT_DP = 300;
     private static final int ENGLISH_QUESTION_HEIGHT_DP = 500;
-    private static final int CHALLENGE_TOP_MARGIN_DP = 100;
+    private static final int CHALLENGE_TOP_MARGIN_DP = 55;
 
     interface Callbacks {
         void onSubmit(String answer);
@@ -323,7 +323,7 @@ final class ChallengeViewController {
                 scrollParams.height = dpToPx(500);
             }
         } else {
-            challengeLayout.setBackgroundResource(R.drawable.floating_challenge_bg_dark);
+            challengeLayout.setBackgroundResource(R.drawable.floating_window_bg);
             questionText.setTextColor(0xFFFFFFFF);
             questionText.setTypeface(null, Typeface.NORMAL);
             int fontSize = type == ChallengeType.MIXED || type == ChallengeType.REASONING
@@ -340,8 +340,8 @@ final class ChallengeViewController {
                 challengeParams.addRule(RelativeLayout.BELOW, R.id.top_info_layout);
                 challengeParams.topMargin = dpToPx(10);
             }
-            challengeParams.leftMargin = dpToPx(20);
-            challengeParams.rightMargin = dpToPx(20);
+            challengeParams.leftMargin = 0;
+            challengeParams.rightMargin = 0;
             if (scrollParams != null) {
                 scrollParams.height = LinearLayout.LayoutParams.WRAP_CONTENT;
             }

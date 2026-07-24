@@ -58,9 +58,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/top_info_layout"
         android:layout_marginTop="10dp"
-        android:layout_marginLeft="20dp"
-        android:layout_marginRight="20dp"
-        android:background="@drawable/floating_challenge_bg_dark"
+        android:background="@drawable/floating_window_bg"
         android:visibility="gone">
 
         <ViewStub
@@ -77,7 +75,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/math_challenge_layout"
-        android:layout_marginTop="36dp"
+        android:layout_marginTop="16dp"
         android:layout_marginLeft="5dp"
         android:layout_marginRight="5dp"
         android:background="#FCF8EB"
