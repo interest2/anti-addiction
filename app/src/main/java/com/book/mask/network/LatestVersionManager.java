@@ -1,6 +1,6 @@
 package com.book.mask.network;
 
-import com.book.mask.constant.Const;
+import com.book.mask.constant.CloudConst;
 import com.book.mask.config.Share;
 import com.book.mask.util.ContentUtils;
 
@@ -33,9 +33,9 @@ public final class LatestVersionManager {
     private static String requestLatestVersion() {
         try {
             String response = ContentUtils.doHttpPost(
-                    Const.DOMAIN_URL + Const.LATEST_VERSION_PATH,
+                    CloudConst.DOMAIN_URL + CloudConst.LATEST_VERSION_PATH,
                     null,
-                    Collections.singletonMap("Content-Type", Const.CONTENT_TYPE)
+                    Collections.singletonMap("Content-Type", CloudConst.CONTENT_TYPE)
             );
             String version = response == null ? "" : response.trim();
             if (version.isEmpty()) {

@@ -9,7 +9,7 @@ import android.util.Log;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
 
-import com.book.mask.constant.Const;
+import com.book.mask.constant.CloudConst;
 import com.book.mask.util.ContentUtils;
 
 import org.json.JSONException;
@@ -107,9 +107,9 @@ public class DeviceInfoReporter {
     private void sendDeviceInfo(JSONObject deviceInfo) throws IOException {
         try {
             String response = ContentUtils.doHttpPost(
-                Const.DOMAIN_URL + Const.REPORT_PATH,
+                CloudConst.DOMAIN_URL + CloudConst.REPORT_PATH,
                 deviceInfo.toString(),
-                java.util.Collections.singletonMap("Content-Type", Const.CONTENT_TYPE)
+                java.util.Collections.singletonMap("Content-Type", CloudConst.CONTENT_TYPE)
             );
             Log.d(TAG, "设备信息上报响应: " + response);
             onReportSuccess(response);

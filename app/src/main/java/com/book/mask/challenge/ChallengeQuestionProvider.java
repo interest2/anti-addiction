@@ -5,7 +5,7 @@ import android.provider.Settings;
 import android.util.Log;
 
 import com.book.mask.config.ChallengeType;
-import com.book.mask.constant.Const;
+import com.book.mask.constant.CloudConst;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.util.ArithmeticUtils;
@@ -167,7 +167,7 @@ final class ChallengeQuestionProvider {
             request.put("type", type);
             request.put("devId", androidId);
             String response = ContentUtils.doHttpPost(
-                    Const.DOMAIN_URL + Const.CHALLENGE,
+                    CloudConst.DOMAIN_URL + CloudConst.CHALLENGE,
                     request.toString(),
                     java.util.Collections.singletonMap("Accept", "application/json"));
             return ContentUtils.parseRespJson(response);
@@ -188,7 +188,7 @@ final class ChallengeQuestionProvider {
             request.put("devId", androidId);
             request.put("length", readingLength);
             String response = ContentUtils.doHttpPost(
-                    Const.DOMAIN_URL + Const.ENGLISH_READING,
+                    CloudConst.DOMAIN_URL + CloudConst.ENGLISH_READING,
                     request.toString(),
                     java.util.Collections.singletonMap("Accept", "application/json"));
             return ContentUtils.parseRespJson(response);

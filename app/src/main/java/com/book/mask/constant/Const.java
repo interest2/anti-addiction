@@ -9,7 +9,7 @@ public class Const {
     public static final int PACKAGE_TRANSITION_ANIMATION_DURATION_MS = 1000; // 过渡动画时长 a
     public static final int PACKAGE_TRANSITION_CHECK_DELAY_MS = 300; // 首次复核时刻 p
     public static final int TRANSITION_EARLY_RETURN_BUFFER_MS = 100;
-    public static final long FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS = 350;
+    public static final long FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS = 450;
     public static final long PAGE_TRANSITION_WINDOW_REUSE_MS = 1000;
     public static final long CONTENT_CHECK_DEBOUNCE_MS = 200; // 页面内容变化停止后再检测
     public static final long SHOW_BEFORE_CONTENT_CHECK_DELAY_MS = 100; // 先显示悬浮窗后，延后此时长再跑阻塞式关键词检测，确保首帧先渲染
@@ -19,15 +19,6 @@ public class Const {
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";
     public static final String TARGET_TO_BE_SET = "待设置";
-
-    // 云端接口配置
-    public static final String DOMAIN_URL = "https://www.ratetend.com:5001/antiAddict"; // 请替换为实际的地址
-    public static final String LLM_PATH_V2 = "/llm/v2";
-    public static final String CHALLENGE = "/challenge";
-    public static final String ENGLISH_READING = "/reading";
-    public static final String REPORT_PATH = "/report";
-    public static final String LATEST_VERSION_PATH = "/latestAppVersion";
-    public static final String CONTENT_TYPE = "application/json";
 
     // 广播Action常量
     public static final String ACTION_UPDATE_RELAXED_COUNT = "com.book.mask.ACTION_UPDATE_RELAXED_COUNT";

@@ -11,7 +11,7 @@ import android.util.Log;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.book.mask.constant.Const;
+import com.book.mask.constant.CloudConst;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.util.ContentUtils;
@@ -124,7 +124,7 @@ public class TextFetcher {
             reqJson.put("devId", androidId);
             reqJson.put("version", packageInfo.versionName);
 
-            String response = ContentUtils.doHttpPost(Const.DOMAIN_URL + Const.LLM_PATH_V2,
+            String response = ContentUtils.doHttpPost(CloudConst.DOMAIN_URL + CloudConst.LLM_PATH_V2,
                     reqJson.toString(), java.util.Collections.singletonMap("Accept", "application/json"));
             return ContentUtils.parseRespJson(response);
 

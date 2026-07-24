@@ -154,7 +154,7 @@ public class SettingsDialogManager {
         String durationRange = AppSettingsManager.getLeisureDurationRangeText();
         String countRange = AppSettingsManager.getLeisureDailyCountRangeText();
         description.setText(
-                "开启后，第一个关闭悬浮窗的APP无需答题即可解禁，一天最多"
+                "开启后，首个关闭悬浮窗的APP无需答题即可解禁，一天最多"
                         + AppSettingsManager.LEISURE_DAILY_COUNT_MAX + "次");
         durationLayout.setHint(durationRange + " 分钟");
         countLayout.setHint(countRange + " 次");
@@ -218,7 +218,7 @@ public class SettingsDialogManager {
                 if (appSettingsManager.tryStartLeisureTime()) {
                     UiFeedback.show(
                             dialogView,
-                            "已开启休闲，第一个关闭悬浮窗的 APP 将免答题解禁");
+                            "已开启休闲，首个关闭悬浮窗的 APP 将免答题解禁");
                     refreshLeisureState[0].run();
                 } else if (appSettingsManager.isLeisureTimeReadyForClose()) {
                     UiFeedback.show(dialogView, "休闲时刻已经开启");
