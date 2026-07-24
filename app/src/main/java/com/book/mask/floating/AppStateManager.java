@@ -70,6 +70,7 @@ public class AppStateManager {
         void onAppStateChanged(CustomApp app, boolean isTargetInterface);
         void onTargetPackageEnteredBeforeContentCheck(CustomApp app);
         void onAppLeft(CustomApp app);
+        void onTargetPackageTransitionLeft(CustomApp app);
         void onSystemUiSuspensionChanged(boolean suspended);
         void onTimerTriggered(CustomApp app);
         boolean isMathChallengeActive();
@@ -523,17 +524,18 @@ public class AppStateManager {
             return;
         }
 
-        // 离开目标 APP：先立即隐藏悬浮窗；同时保留目标包名并进入暂停检测阶段，
-        // 用后续复核抑制过渡动画期间的误触发闪现。
+        // 离开目标 APP：先把悬浮窗降级为暖态（保留 Window 资源、透明且不可触摸），
+        // 保留目标包名并进入暂停检测阶段；用后续复核抑制过渡动画期间的误触发闪现，
+        // 复核期及 PACKAGE_TRANSITION_WINDOW_REUSE_MS 内返回目标 APP 可直接复用暖窗口。
         pendingPackageTransition = new PendingPackageTransition(currentActiveApp);
-        confirmCurrentAppLeft(source + "离开目标 APP 立即隐藏悬浮窗", true);
+        confirmCurrentAppLeftKeepingWarmWindow(source + "离开目标 APP，保留窗口资源以便复用");
         setSuspendedForSystemUi(false);
 
         schedulePackageTransitionStep(
                 Const.PACKAGE_TRANSITION_CHECK_DELAY_MS,
                 this::confirmPackageAfterTransitionDelay
         );
-        Log.d(TAG, source + "离开目标 APP 已立即隐藏悬浮窗；"
+        Log.d(TAG, source + "离开目标 APP 已将悬浮窗降级为暖态保留；"
                 + Const.PACKAGE_TRANSITION_CHECK_DELAY_MS + "ms 后复核包名");
     }
 
@@ -825,6 +827,26 @@ public class AppStateManager {
         Share.currentApp = null;
         if (notifyListener && listener != null) {
             listener.onAppLeft(leftApp);
+        }
+    }
+
+    /**
+     * 与 confirmCurrentAppLeft 一致地清理离开状态，但不销毁悬浮窗，而是通知监听方
+     * 将其降级为暖态保留，供 300ms 复核期及后续短时返回复用。
+     */
+    private void confirmCurrentAppLeftKeepingWarmWindow(String source) {
+        if (currentActiveApp == null) {
+            return;
+        }
+
+        CustomApp leftApp = currentActiveApp;
+        Log.d(TAG, source + "确认离开 APP: " + leftApp.getAppName());
+        Share.clearAppState(leftApp);
+        cancelPendingContentCheck();
+        currentActiveApp = null;
+        Share.currentApp = null;
+        if (listener != null) {
+            listener.onTargetPackageTransitionLeft(leftApp);
         }
     }
 

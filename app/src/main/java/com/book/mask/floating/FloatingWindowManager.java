@@ -235,6 +235,18 @@ public class FloatingWindowManager {
      * 同一 APP 暂时离开目标页面时保留已绘制 Window；超过保留期仍未返回则释放。
      */
     public void suspendForPageTransition(CustomApp targetApp) {
+        suspendForTransitionReuse(targetApp, Const.PAGE_TRANSITION_WINDOW_REUSE_MS, "离开目标页面");
+    }
+
+    /**
+     * 300ms 包名复核场景：离开目标 APP 时保留已绘制 Window（透明且不可触摸），
+     * 供复核期及后续短时返回复用；超过保留期仍未返回则释放。
+     */
+    public void suspendForPackageTransition(CustomApp targetApp) {
+        suspendForTransitionReuse(targetApp, Const.PACKAGE_TRANSITION_WINDOW_REUSE_MS, "离开目标 APP");
+    }
+
+    private void suspendForTransitionReuse(CustomApp targetApp, long reuseMs, String leaveLabel) {
         if (!isFloatingWindowVisible || floatingView == null || isSuspendedForPageTransition()) {
             return;
         }
@@ -247,15 +259,15 @@ public class FloatingWindowManager {
         }
 
         if (!suspendAttachedWindow(WindowSuspensionState.Reason.PAGE_TRANSITION)) {
-            Log.w(TAG, "页面切换时无法暂停 Window，直接移除后等待按需重建");
+            Log.w(TAG, leaveLabel + "时无法暂停 Window，直接移除后等待按需重建");
             hideFloatingWindow();
             return;
         }
 
         pageTransitionTargetPackage = targetPackage;
-        schedulePageTransitionExpiry();
-        Log.d(TAG, "离开目标页面，悬浮窗已临时隐藏，方式=" + suspensionModeForLog()
-                + "，保留 " + Const.PAGE_TRANSITION_WINDOW_REUSE_MS + "ms");
+        schedulePageTransitionExpiry(reuseMs);
+        Log.d(TAG, leaveLabel + "，悬浮窗已临时隐藏，方式=" + suspensionModeForLog()
+                + "，保留 " + reuseMs + "ms");
     }
 
     private boolean tryResumeFromPageTransition(CustomApp targetApp) {
@@ -287,7 +299,7 @@ public class FloatingWindowManager {
         return true;
     }
 
-    private void schedulePageTransitionExpiry() {
+    private void schedulePageTransitionExpiry(long reuseMs) {
         clearPageTransitionExpiryCallback();
         long generation = ++pageTransitionGeneration;
         pageTransitionExpiryRunnable = () -> {
@@ -295,10 +307,10 @@ public class FloatingWindowManager {
                 return;
             }
             pageTransitionExpiryRunnable = null;
-            Log.d(TAG, "页面切换保留期结束，移除悬浮窗");
+            Log.d(TAG, "临时保留期结束，移除悬浮窗");
             finishPageTransitionHide();
         };
-        handler.postDelayed(pageTransitionExpiryRunnable, Const.PAGE_TRANSITION_WINDOW_REUSE_MS);
+        handler.postDelayed(pageTransitionExpiryRunnable, reuseMs);
     }
 
     private void finishPageTransitionHide() {

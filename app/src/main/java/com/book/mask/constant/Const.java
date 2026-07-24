@@ -9,8 +9,9 @@ public class Const {
     public static final int PACKAGE_TRANSITION_ANIMATION_DURATION_MS = 1000; // 过渡动画时长 a
     public static final int PACKAGE_TRANSITION_CHECK_DELAY_MS = 300; // 首次复核时刻 p
     public static final int TRANSITION_EARLY_RETURN_BUFFER_MS = 100;
-    public static final long FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS = 450;
-    public static final long PAGE_TRANSITION_WINDOW_REUSE_MS = 1000;
+    public static final long FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS = 500;
+    public static final long PAGE_TRANSITION_WINDOW_REUSE_MS = 1500;
+    public static final long PACKAGE_TRANSITION_WINDOW_REUSE_MS = 2000; // 300ms 包名复核场景：离开目标 APP 后保留暖窗口以便快速复用的截止时刻
     public static final long CONTENT_CHECK_DEBOUNCE_MS = 200; // 页面内容变化停止后再检测
     public static final long SHOW_BEFORE_CONTENT_CHECK_DELAY_MS = 100; // 先显示悬浮窗后，延后此时长再跑阻塞式关键词检测，确保首帧先渲染
     public static final long CONTENT_CHECK_MAX_WAIT_MS = 500; // 连续变化时的最长等待时间

@@ -157,6 +157,11 @@ public class FloatService extends AccessibilityService
             }
 
             @Override
+            public void onTargetPackageTransitionLeft(CustomApp app) {
+                floatingWindowManager.suspendForPackageTransition(app);
+            }
+
+            @Override
             public void onSystemUiSuspensionChanged(boolean suspended) {
                 floatingWindowManager.setSuspendedForSystemUi(suspended);
             }
