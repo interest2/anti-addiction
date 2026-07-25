@@ -1,5 +1,7 @@
 package com.book.mask.config;
 
+import android.content.Context;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -9,7 +11,6 @@ import com.tencent.mmkv.MMKV;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -58,6 +59,31 @@ public class InputMethodPackageManager {
         return true;
     }
 
+    public void registerDefaultInputMethod(Context context) {
+        if (context == null) {
+            return;
+        }
+
+        try {
+            String inputMethodId = Settings.Secure.getString(
+                    context.getContentResolver(),
+                    Settings.Secure.DEFAULT_INPUT_METHOD
+            );
+            String packageName = extractPackageName(inputMethodId);
+            if (packageName.isEmpty()) {
+                Log.w(TAG, "No default input method package detected");
+                return;
+            }
+
+            boolean added = addPackage(packageName);
+            Log.d(TAG, added
+                    ? "Registered default input method: " + packageName
+                    : "Default input method already registered: " + packageName);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Failed to register default input method", e);
+        }
+    }
+
     public synchronized boolean contains(String packageName) {
         String normalizedPackageName = normalize(packageName);
         if (normalizedPackageName.isEmpty()) {
@@ -72,10 +98,6 @@ public class InputMethodPackageManager {
             }
         }
         return false;
-    }
-
-    public synchronized List<String> getPackages() {
-        return Collections.unmodifiableList(new ArrayList<>(packages));
     }
 
     private void load() {
@@ -118,5 +140,14 @@ public class InputMethodPackageManager {
             return "";
         }
         return packageName.trim();
+    }
+
+    private String extractPackageName(String inputMethodId) {
+        String normalizedInputMethodId = normalize(inputMethodId);
+        int separatorIndex = normalizedInputMethodId.indexOf('/');
+        if (separatorIndex <= 0) {
+            return normalizedInputMethodId;
+        }
+        return normalizedInputMethodId.substring(0, separatorIndex).trim();
     }
 }

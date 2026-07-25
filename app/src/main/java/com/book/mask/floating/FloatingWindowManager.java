@@ -14,6 +14,7 @@ import com.book.mask.R;
 import com.book.mask.challenge.MathChallengeManager;
 import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
+import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.config.Share;
 import com.book.mask.setting.AppSettingsManager;
 import com.book.mask.setting.RelaxManager;
@@ -168,6 +169,7 @@ public class FloatingWindowManager {
                     }
                 } else {
                     // 其他APP显示数学题验证界面
+                    InputMethodPackageManager.getInstance().registerDefaultInputMethod(context);
                     mathChallengeManager.showMathChallenge();
                 }
             });

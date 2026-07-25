@@ -1,7 +1,8 @@
 <resources>
     <string name="app_name">防沉迷提醒</string>
     <string name="accessibility_service_description">用于检测APP是否在首页状态的无障碍服务</string>
-    <string name="other_menu_title">其他</string>
+    <string name="personalization_menu_title">个性化</string>
+    <string name="more_menu_title">更多</string>
     <string name="version_update">版本更新</string>
     <string name="install_troubleshooting">安装问题排查</string>
     <string name="install_troubleshooting_message">请参考此博客排查解决</string>
@@ -16,13 +17,9 @@
     <string name="floating_window_settings">悬浮窗改默认大小</string>
     <string name="special_details">冷门问题解决</string>
     <string name="back">返回</string>
-    <string name="keyboard_whitelist">键盘白名单</string>
     <string name="reset_floating_window">重置悬浮窗</string>
     <string name="package_name_log">包名日志</string>
     <string name="update_badge_count" translatable="false">1</string>
-    <string name="keyboard_whitelist_hint">遇到键盘出不来或闪现消失（例如想关闭悬浮窗却无法答题），可点击下方按钮给键盘添加白名单</string>
-    <string name="keyboard_whitelist_saved">已手动免屏蔽：%1$s</string>
-    <string name="add_current_keyboard">检测并添加当前键盘</string>
     <string name="reset_floating_window_hint">若答题成功解除了屏蔽，但到期后悬浮窗没出现，可尝试点击下方按钮重置</string>
     <string name="reset_all_floating_windows">重置所有APP悬浮窗状态</string>
     <string name="record_package_name">记录包名</string>
