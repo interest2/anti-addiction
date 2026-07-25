@@ -102,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
         fetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
             @Override
             public void onTextFetched(String text) {
-                android.util.Log.d("MainActivity", "云端文字获取成功: " + text);
+                android.util.Log.d("MainActivity", "提醒文字获取成功");
             }
 
             @Override

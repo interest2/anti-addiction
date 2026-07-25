@@ -71,8 +71,8 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
                 android:layout_marginBottom="12dp"
                 app:suffixText="分钟">
 
@@ -80,6 +80,7 @@
                     android:id="@+id/et_relaxed_leisure_duration"
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
+                    android:gravity="center_vertical"
                     android:inputType="number"
                     android:maxLines="1"
                     android:minHeight="0dp"
@@ -94,8 +95,8 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
                 android:layout_marginBottom="12dp"
                 app:suffixText="次">
 
@@ -103,6 +104,7 @@
                     android:id="@+id/et_relaxed_leisure_count"
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
+                    android:gravity="center_vertical"
                     android:inputType="number"
                     android:maxLines="1"
                     android:minHeight="0dp"
@@ -165,8 +167,8 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
                 android:layout_marginBottom="12dp"
                 app:suffixText="分钟">
 
@@ -174,6 +176,7 @@
                     android:id="@+id/et_strict_leisure_duration"
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
+                    android:gravity="center_vertical"
                     android:inputType="number"
                     android:maxLines="1"
                     android:minHeight="0dp"
@@ -188,8 +191,8 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
                 android:layout_marginBottom="12dp"
                 app:suffixText="次">
 
@@ -197,6 +200,7 @@
                     android:id="@+id/et_strict_leisure_count"
                     android:layout_width="match_parent"
                     android:layout_height="44dp"
+                    android:gravity="center_vertical"
                     android:inputType="number"
                     android:maxLines="1"
                     android:minHeight="0dp"

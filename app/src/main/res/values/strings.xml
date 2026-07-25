@@ -24,4 +24,32 @@
     <string name="reset_all_floating_windows">重置所有APP悬浮窗状态</string>
     <string name="record_package_name">记录包名</string>
     <string name="view_package_name_log">查看包名日志</string>
+    <string name="reminder_provider_settings">大模型服务</string>
+    <string name="provider_official">官方云服务</string>
+    <string name="provider_custom">自有 Provider</string>
+    <string name="provider_endpoint">Chat Completions 地址</string>
+    <string name="provider_model">模型名称</string>
+    <string name="provider_auth_bearer">Bearer API Key</string>
+    <string name="provider_auth_none">无鉴权</string>
+    <string name="provider_api_key">API Key</string>
+    <string name="provider_api_key_saved">API Key（已安全保存）</string>
+    <string name="provider_refresh_interval">生成频率</string>
+    <string-array name="provider_refresh_intervals">
+        <item>每次显示</item>
+        <item>每 15 分钟</item>
+        <item>每 30 分钟</item>
+        <item>每 1 小时</item>
+    </string-array>
+    <string name="test_provider">测试连接</string>
+    <string name="test_and_enable_provider">测试并启用</string>
+    <string name="enable_official_provider">启用官方云服务</string>
+    <string name="provider_testing">正在测试…</string>
+    <string name="provider_test_success">测试成功\n预览：%1$s</string>
+    <string name="provider_test_failed">测试失败：%1$s</string>
+    <string name="provider_active_official">当前：官方云服务</string>
+    <string name="provider_active_custom">当前：自有 Provider · %1$s</string>
+    <string name="official_provider_enabled">已启用官方云服务</string>
+    <string name="custom_provider_enabled">已启用自有 Provider</string>
+    <string name="provider_key_read_failed">无法读取 API Key，请重新输入</string>
+    <string name="provider_key_save_failed">API Key 安全保存失败</string>
 </resources>

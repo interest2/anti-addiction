@@ -72,10 +72,25 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> showInstallTroubleshootingDialog());
         view.findViewById(R.id.row_floating_settings)
                 .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
+        view.findViewById(R.id.row_reminder_provider)
+                .setOnClickListener(v -> openReminderProviderSettings());
         view.findViewById(R.id.row_special_details)
                 .setOnClickListener(v -> openSpecialDetails());
         view.findViewById(R.id.row_package_log)
                 .setOnClickListener(v -> showPackageLogActionsDialog());
+    }
+
+    private void openReminderProviderSettings() {
+        getParentFragmentManager().beginTransaction()
+                .setCustomAnimations(
+                        R.anim.slide_in_right,
+                        R.anim.slide_out_left,
+                        R.anim.slide_in_left,
+                        R.anim.slide_out_right
+                )
+                .replace(R.id.fragment_container, new ReminderProviderSettingsNav())
+                .addToBackStack(ReminderProviderSettingsNav.class.getSimpleName())
+                .commit();
     }
 
     private void openSpecialDetails() {

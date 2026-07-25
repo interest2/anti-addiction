@@ -397,6 +397,12 @@ public class FloatService extends AccessibilityService
             }
         }
     }
+
+    public static void notifyReminderProviderChanged() {
+        if (instance != null && instance.floatingWindowManager != null) {
+            instance.floatingWindowManager.onReminderProviderChanged();
+        }
+    }
     
     /**
      * 通知HomeFragment更新特定APP的UI显示 - 支持自定义APP

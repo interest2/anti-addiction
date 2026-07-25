@@ -6,12 +6,18 @@ import android.os.Looper;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.TextWatcher;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleEventObserver;
+import androidx.lifecycle.LifecycleOwner;
 
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
@@ -31,6 +37,7 @@ import com.google.android.material.textfield.TextInputLayout;
  * 负责处理所有设置相关的弹窗和文字内容逻辑
  */
 public class SettingsDialogManager {
+    private static final long LEISURE_STATE_REFRESH_INTERVAL_MS = 200;
     
     private final Context context;
     private final RelaxManager relaxManager;
@@ -181,15 +188,25 @@ public class SettingsDialogManager {
                 .create();
 
         Handler stateHandler = new Handler(Looper.getMainLooper());
+        boolean[] leisureRefreshEnabled = {false};
         Runnable[] refreshLeisureState = new Runnable[1];
         refreshLeisureState[0] = () -> {
             stateHandler.removeCallbacks(refreshLeisureState[0]);
+            if (!leisureRefreshEnabled[0]) {
+                return;
+            }
             updateLeisureStartState(relaxedViews);
             updateLeisureStartState(strictViews);
-            long remainingMillis = leisureTimeManager.getLeisureTimeRemainingMillis();
-            if (remainingMillis > 0) {
-                stateHandler.postDelayed(refreshLeisureState[0], remainingMillis + 100);
-            }
+            stateHandler.postDelayed(
+                    refreshLeisureState[0], LEISURE_STATE_REFRESH_INTERVAL_MS);
+        };
+        Runnable startLeisureRefresh = () -> {
+            leisureRefreshEnabled[0] = true;
+            refreshLeisureState[0].run();
+        };
+        Runnable stopLeisureRefresh = () -> {
+            leisureRefreshEnabled[0] = false;
+            stateHandler.removeCallbacks(refreshLeisureState[0]);
         };
         TextWatcher countWatcher = new TextWatcher() {
             @Override
@@ -208,8 +225,26 @@ public class SettingsDialogManager {
         relaxedViews.countInput.addTextChangedListener(countWatcher);
         strictViews.countInput.addTextChangedListener(countWatcher);
 
+        LifecycleOwner lifecycleOwner = context instanceof LifecycleOwner
+                ? (LifecycleOwner) context
+                : null;
+        LifecycleEventObserver[] lifecycleObserver = new LifecycleEventObserver[1];
+        lifecycleObserver[0] = (source, event) -> {
+            if (event == Lifecycle.Event.ON_START && dialog.isShowing()) {
+                startLeisureRefresh.run();
+            } else if (event == Lifecycle.Event.ON_STOP) {
+                stopLeisureRefresh.run();
+            } else if (event == Lifecycle.Event.ON_DESTROY) {
+                stopLeisureRefresh.run();
+                source.getLifecycle().removeObserver(lifecycleObserver[0]);
+            }
+        };
+        if (lifecycleOwner != null) {
+            lifecycleOwner.getLifecycle().addObserver(lifecycleObserver[0]);
+        }
+
         dialog.setOnShowListener(ignored -> {
-            refreshLeisureState[0].run();
+            startLeisureRefresh.run();
 
             dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                 if (!saveLeisureTimeSettings(relaxedViews, strictViews)) {
@@ -224,8 +259,12 @@ public class SettingsDialogManager {
             setLeisureStartListener(
                     strictViews, relaxedViews, dialogView, refreshLeisureState[0]);
         });
-        dialog.setOnDismissListener(ignored ->
-                stateHandler.removeCallbacks(refreshLeisureState[0]));
+        dialog.setOnDismissListener(ignored -> {
+            stopLeisureRefresh.run();
+            if (lifecycleOwner != null) {
+                lifecycleOwner.getLifecycle().removeObserver(lifecycleObserver[0]);
+            }
+        });
         dialog.show();
     }
 
@@ -251,6 +290,8 @@ public class SettingsDialogManager {
                 .replace('-', '~');
         views.durationInput.setHint(durationRange);
         views.countInput.setHint(countRange);
+        centerLeisureInputSuffix(views.durationLayout);
+        centerLeisureInputSuffix(views.countLayout);
         views.durationInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(
                 String.valueOf(
                         LeisureTimeManager.getLeisureDurationMaxMinutes(views.mode)).length())});
@@ -260,6 +301,15 @@ public class SettingsDialogManager {
                 leisureTimeManager.getLeisureDurationMinutes(views.mode)));
         views.countInput.setText(String.valueOf(
                 leisureTimeManager.getLeisureDailyCount(views.mode)));
+    }
+
+    private void centerLeisureInputSuffix(TextInputLayout inputLayout) {
+        TextView suffixText = inputLayout.findViewById(
+                com.google.android.material.R.id.textinput_suffix_text);
+        suffixText.setGravity(Gravity.CENTER_VERTICAL);
+        if (suffixText.getParent() instanceof LinearLayout) {
+            ((LinearLayout) suffixText.getParent()).setGravity(Gravity.CENTER_VERTICAL);
+        }
     }
 
     private void setLeisureStartListener(

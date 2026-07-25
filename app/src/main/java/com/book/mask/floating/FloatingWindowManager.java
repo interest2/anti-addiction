@@ -606,6 +606,33 @@ public class FloatingWindowManager {
             });
         }
     }
+
+    public void onReminderProviderChanged() {
+        if (textFetcher == null) {
+            return;
+        }
+        textFetcher.onProviderConfigurationChanged();
+        if (currentWindowApp == null
+                || !Const.DEFAULT_HINT_SOURCE.equals(
+                        appSettingsManager.getAppHintSource(currentWindowApp.getPackageName()))) {
+            return;
+        }
+
+        updateFloatingWindowContent(currentWindowApp);
+        textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
+            @Override
+            public void onTextFetched(String text) {
+                if (currentWindowApp != null) {
+                    updateFloatingWindowContent(currentWindowApp);
+                }
+            }
+
+            @Override
+            public void onFetchError(String error) {
+                Log.w(TAG, "Provider 切换后获取提醒失败: " + error);
+            }
+        });
+    }
     
     public boolean isFloatingWindowVisible() {
         return isFloatingWindowVisible;

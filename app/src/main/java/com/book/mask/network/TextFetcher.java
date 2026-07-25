@@ -1,160 +1,56 @@
 package com.book.mask.network;
 
 import android.content.Context;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.os.Handler;
-import android.os.Looper;
-import android.provider.Settings;
 import android.util.Log;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import com.book.mask.constant.CloudConst;
-import com.book.mask.personalize.RelaxManager;
-import com.book.mask.personalize.AppSettingsManager;
-import com.book.mask.util.ContentUtils;
-import com.tencent.mmkv.MMKV;
-
-import org.json.JSONObject;
+import com.book.mask.network.reminder.ProviderResult;
+import com.book.mask.network.reminder.ReminderTextRepository;
 
 public class TextFetcher {
-    
     private static final String TAG = "TextFetcher";
-    private static final String PREF_NAME = "floating_text_cache";
-    private static final String PREF_KEY_CACHED_TEXT = "cached_text";
-    private static final String PREF_KEY_LAST_UPDATE = "last_update";
-    
-    private Context context;
-    private ExecutorService executorService;
-    private Handler mainHandler;
-    private MMKV mmkv;
-    private RelaxManager relaxManager;
-    private AppSettingsManager appSettingsManager;
-    
+
+    private final ReminderTextRepository repository;
+
     public interface OnTextFetchListener {
         void onTextFetched(String text);
+
         void onFetchError(String error);
     }
-    
-    public TextFetcher(Context context) {
-        this.context = context;
-        this.executorService = Executors.newSingleThreadExecutor();
-        this.mainHandler = new Handler(Looper.getMainLooper());
-        this.mmkv = MMKV.mmkvWithID(PREF_NAME);
-        this.relaxManager = new RelaxManager(context);
-        this.appSettingsManager = new AppSettingsManager(context);
-    }
-    
-    /**
-     * 获取缓存的文字内容
-     */
-    public String getCachedText() {
-        String cachedText = mmkv.getString(PREF_KEY_CACHED_TEXT, null);
-        if (cachedText != null) {
-            return cachedText;
-        }
-        Log.d(TAG, "没有缓存文字，用默认预置的内容");
-        return "别让指尖滑动成为你人生的绊脚石！\n" +
-                "APP的诱惑不过是虚幻的糖衣，吞噬的是你的黄金时间！\n" +
-                "醒醒吧，自律的缺失，正在将你推向平庸的深渊";
-    }
-    
-    /**
-     * 异步获取最新的文字内容
-     */
-    public void fetchLatestText(OnTextFetchListener listener) {
-        Log.d(TAG, "开始获取最新文字内容");
-        
-        executorService.execute(() -> {
-            try {
-                String reqResult = httpObtainEncourage();
-                if (reqResult == null) {
-                    mainHandler.post(() -> {
-                        Log.w(TAG, "获取文字失败，使用缓存文字");
-                        if (listener != null) {
-                            listener.onFetchError("获取文字失败");
-                        }
-                    });
-                    return;
-                }
-                String result = reqResult.replaceAll("\\n\\s*\\n", "\n");
 
-                mainHandler.post(() -> {
-                    if (result != null) {
-                        // 缓存新文字
-                        cacheText(result);
-                        Log.d(TAG, "获取到新文字");
-                        if (listener != null) {
-                            listener.onTextFetched(result);
-                        }
-                    } else {
-                        Log.w(TAG, "获取文字失败，使用缓存文字");
-                        if (listener != null) {
-                            listener.onFetchError("获取文字失败");
-                        }
-                    }
-                });
-                
-            } catch (Exception e) {
-                Log.e(TAG, "获取文字时发生异常", e);
-                mainHandler.post(() -> {
-                    if (listener != null) {
-                        listener.onFetchError("网络异常: " + e.getMessage());
-                    }
-                });
+    public TextFetcher(Context context) {
+        repository = ReminderTextRepository.getInstance(context);
+    }
+
+    public String getCachedText() {
+        return repository.getCachedText();
+    }
+
+    public void fetchLatestText(OnTextFetchListener listener) {
+        repository.fetchLatestText(new ReminderTextRepository.Callback() {
+            @Override
+            public void onSuccess(String text) {
+                Log.d(TAG, "提醒文字获取成功");
+                if (listener != null) {
+                    listener.onTextFetched(text);
+                }
+            }
+
+            @Override
+            public void onError(ProviderResult result) {
+                Log.w(TAG, "提醒文字获取失败，errorCode=" + result.getErrorCode()
+                        + ", httpStatus=" + result.getHttpStatus());
+                if (listener != null) {
+                    listener.onFetchError(result.toUserMessage());
+                }
             }
         });
     }
 
-
-    /**
-     * http 获取警示文字
-     */
-    private String httpObtainEncourage() {
-        try {
-            String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
-            PackageManager pm = context.getPackageManager();
-            PackageInfo packageInfo = pm.getPackageInfo(context.getPackageName(), 0);
-            String tag = appSettingsManager.getMotivationTag();
-
-            JSONObject reqJson = new JSONObject();
-            reqJson.put("tag", tag);
-            reqJson.put("devId", androidId);
-            reqJson.put("version", packageInfo.versionName);
-
-            String response = ContentUtils.doHttpPost(CloudConst.DOMAIN_URL + CloudConst.LLM_PATH_V2,
-                    reqJson.toString(), java.util.Collections.singletonMap("Accept", "application/json"));
-            return ContentUtils.parseRespJson(response);
-
-        } catch (Exception e) {
-            Log.e(TAG, "HTTP请求异常", e);
-            return null;
-        }
+    public void onProviderConfigurationChanged() {
+        repository.onConfigurationChanged();
     }
 
-
-    /**
-     * 缓存文字内容
-     */
-    private void cacheText(String text) {
-        try {
-            mmkv.putString(PREF_KEY_CACHED_TEXT, text)
-                    .putLong(PREF_KEY_LAST_UPDATE, System.currentTimeMillis())
-                    .commit();
-            Log.d(TAG, "文字已缓存");
-        } catch (Exception e) {
-            Log.e(TAG, "缓存文字失败", e);
-        }
-    }
-
-    /**
-     * 清理资源
-     */
     public void cleanup() {
-        if (executorService != null && !executorService.isShutdown()) {
-            executorService.shutdown();
-        }
+        repository.cancelPendingFetch();
     }
-} 
+}
