@@ -187,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showOverlayPermissionDialog() {
         String title = "需要悬浮窗权限";
-        String message = "悬浮窗用于在支持的APP上显示提醒。请在系统设置中允许本应用显示在其他应用上层。";
+        String message = "悬浮窗用于在支持的 APP 上显示提醒。请在系统设置中允许本应用显示在其他应用上层。";
         showPermissionDialog(title, message, overlaySettingsIntent(), REQUEST_OVERLAY_PERMISSION);
     }
 

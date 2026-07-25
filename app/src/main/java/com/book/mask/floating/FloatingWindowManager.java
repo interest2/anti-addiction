@@ -1,6 +1,7 @@
 package com.book.mask.floating;
 
 import android.content.Context;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -283,13 +284,19 @@ public class FloatingWindowManager {
         }
 
         String targetPackage = targetApp == null ? null : targetApp.getPackageName();
-        if (pageTransitionTargetPackage == null
-                || !pageTransitionTargetPackage.equals(targetPackage)) {
+        if (targetPackage == null) {
             finishPageTransitionHide();
             return false;
         }
 
         long startedAt = SystemClock.elapsedRealtimeNanos();
+        // 暖窗口原本绑定离开时的目标 APP；切到另一个目标 APP 时不再丢弃重建，
+        // 而是就地把已绘制的 Window 重新适配到新 APP（几何、内容、答题上下文）后复用。
+        boolean switchingTargetApp = !targetPackage.equals(pageTransitionTargetPackage);
+        if (switchingTargetApp) {
+            adaptSuspendedWindowToApp(targetApp);
+            updateFloatingWindowContent(targetApp);
+        }
         if (mathChallengeManager != null) {
             mathChallengeManager.setCurrentApp(targetApp);
         }
@@ -300,10 +307,41 @@ public class FloatingWindowManager {
         }
         currentWindowApp = targetApp;
         clearPageTransitionMetadata();
-        Log.d(TAG, "悬浮窗从页面切换临时隐藏中恢复完成，耗时 "
+        Log.d(TAG, (switchingTargetApp
+                        ? "悬浮窗跨目标 APP 复用暖窗口完成，耗时 "
+                        : "悬浮窗从页面切换临时隐藏中恢复完成，耗时 ")
                 + elapsedMillisSince(startedAt) + "ms");
+        if (switchingTargetApp
+                && Const.DEFAULT_HINT_SOURCE.equals(
+                        appSettingsManager.getAppHintSource(targetPackage))) {
+            fetchNew();
+        }
         notifyIfWindowActuallyShown();
         return true;
+    }
+
+    /**
+     * 复用暖窗口切到另一个目标 APP 时，按新 APP 的偏移重算 Window 几何。
+     * layoutParams 被 ChallengeViewController 持有引用，只能原地改写、不能替换。
+     * 此时 Window 仍处暂停态（透明或 INVISIBLE），更新几何不会造成可见跳动。
+     */
+    private void adaptSuspendedWindowToApp(CustomApp targetApp) {
+        if (layoutParams == null || windowManager == null || floatingView == null) {
+            return;
+        }
+
+        String packageName = targetApp.getPackageName();
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+        int topOffset = appSettingsManager.getAppFloatingTopOffset(packageName);
+        int bottomOffset = appSettingsManager.getAppFloatingBottomOffset(packageName);
+        layoutParams.y = topOffset;
+        layoutParams.height = displayMetrics.heightPixels - topOffset - bottomOffset;
+        try {
+            windowManager.updateViewLayout(floatingView, layoutParams);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "跨目标 APP 复用时更新悬浮窗几何失败", e);
+        }
     }
 
     private void schedulePageTransitionExpiry(long reuseMs) {
