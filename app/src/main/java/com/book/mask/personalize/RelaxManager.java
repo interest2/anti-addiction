@@ -245,7 +245,17 @@ public class RelaxManager {
         if (com.book.mask.config.Share.isFloatingWindowVisible && app == com.book.mask.config.Share.currentApp) {
             return 0;
         }
-        
+
+        return getRecordedRemainingTime(app);
+    }
+
+    /**
+     * 仅根据上次关闭时间与解禁间隔计算剩余解禁时间，不受悬浮窗当前挂载/显示状态影响。
+     * 用于判断某个已被手动隐藏的APP是否仍处于解禁时间范围内（暖窗口复用期间
+     * {@code Share.isFloatingWindowVisible} 可能因跨APP复用而残留为 true，不能作为判据）。
+     * @return 剩余时间（毫秒），如果可以自由使用则返回 -1
+     */
+    public long getRecordedRemainingTime(CustomApp app) {
         long lastCloseTime = getAppLastCloseTime(app);
         if (lastCloseTime == 0) {
             // 从未关闭过，可以自由使用

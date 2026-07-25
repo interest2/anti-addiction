@@ -181,10 +181,15 @@ public class SettingsDialogManager {
         setupLeisureModeInputs(relaxedViews);
         setupLeisureModeInputs(strictViews);
 
+        // 点击弹窗空白处，让输入框失焦并收起键盘
+        dialogView.setOnClickListener(v ->
+                clearLeisureInputFocus(dialogView, relaxedViews, strictViews));
+
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("休闲时刻（免答题）")
                 .setView(dialogView)
-                .setPositiveButton("退出", null)
+                .setPositiveButton("保存", null)
+                .setNegativeButton("取消", null)
                 .create();
 
         Handler stateHandler = new Handler(Looper.getMainLooper());
@@ -251,7 +256,7 @@ public class SettingsDialogManager {
                     return;
                 }
                 clearLeisureInputFocus(dialogView, relaxedViews, strictViews);
-                dialog.dismiss();
+                UiFeedback.show(dialogView, "保存成功");
             });
 
             setLeisureStartListener(

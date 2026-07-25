@@ -282,7 +282,10 @@ public class AppStateManager {
     }
     
     private boolean stillInHidePeriod() {
-        long remainingMillis = relaxManager.getAppRemainingTime(currentActiveApp);
+        // 用持久化的关闭时间+间隔判断是否仍在解禁范围内，避免暖窗口跨APP复用时
+        // Share.isFloatingWindowVisible 残留为 true 导致 getAppRemainingTime 返回 0 哨兵值，
+        // 误判为已超时而重新弹出悬浮窗
+        long remainingMillis = relaxManager.getRecordedRemainingTime(currentActiveApp);
         if (remainingMillis > 0) {
             Log.d(TAG, "APP " + currentActiveApp.getAppName()
                     + " 被手动隐藏，剩余 " + remainingMillis + "ms");
