@@ -226,6 +226,19 @@ public class LeisureTimeManager {
     }
 
     /**
+     * 取消尚未通过关闭悬浮窗激活的休闲时刻。
+     */
+    public boolean cancelPendingLeisureTime(LeisureMode mode) {
+        synchronized (LeisureTimeManager.class) {
+            if (!isLeisureTimeArmed(mode)) {
+                return false;
+            }
+            mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
+            return true;
+        }
+    }
+
+    /**
      * 关闭悬浮窗并正式开始休闲时刻。每段休闲时刻只在首次关闭时消耗一次。
      *
      * @return 成功绑定当前 APP 的模式；没有待触发模式时返回 null

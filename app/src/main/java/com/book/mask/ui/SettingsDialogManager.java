@@ -8,6 +8,7 @@ import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -214,6 +215,7 @@ public class SettingsDialogManager {
                 if (!saveLeisureTimeSettings(relaxedViews, strictViews)) {
                     return;
                 }
+                clearLeisureInputFocus(dialogView, relaxedViews, strictViews);
                 UiFeedback.show(dialogView, "保存成功");
             });
 
@@ -225,6 +227,21 @@ public class SettingsDialogManager {
         dialog.setOnDismissListener(ignored ->
                 stateHandler.removeCallbacks(refreshLeisureState[0]));
         dialog.show();
+    }
+
+    private void clearLeisureInputFocus(
+            View dialogView, LeisureModeViews... modeViews) {
+        for (LeisureModeViews views : modeViews) {
+            views.durationInput.clearFocus();
+            views.countInput.clearFocus();
+        }
+        dialogView.requestFocus();
+
+        InputMethodManager inputMethodManager = (InputMethodManager)
+                context.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (inputMethodManager != null) {
+            inputMethodManager.hideSoftInputFromWindow(dialogView.getWindowToken(), 0);
+        }
     }
 
     private void setupLeisureModeInputs(LeisureModeViews views) {
@@ -251,6 +268,11 @@ public class SettingsDialogManager {
             View dialogView,
             Runnable refreshLeisureState) {
         targetViews.startButton.setOnClickListener(v -> {
+            if (leisureTimeManager.isLeisureTimeArmed(targetViews.mode)) {
+                leisureTimeManager.cancelPendingLeisureTime(targetViews.mode);
+                refreshLeisureState.run();
+                return;
+            }
             if (!saveLeisureTimeSettings(targetViews, otherViews)) {
                 return;
             }
@@ -333,7 +355,7 @@ public class SettingsDialogManager {
         }
 
         if (leisureTimeManager.isLeisureTimeArmed(views.mode)) {
-            views.startButton.setEnabled(false);
+            views.startButton.setEnabled(true);
             views.startButton.setText("已开启");
             return;
         }

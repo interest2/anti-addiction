@@ -3,6 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
     android:orientation="vertical"
     android:paddingStart="16dp"
     android:paddingTop="8dp"
@@ -43,9 +45,15 @@
             <Button
                 android:id="@+id/btn_start_relaxed_leisure_time"
                 style="@style/Widget.Material3.Button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_gravity="center_horizontal"
                 android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="14dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="0dp"
                 android:text="开启" />
 
             <TextView
@@ -63,16 +71,21 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginBottom="12dp"
                 app:suffixText="分钟">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_relaxed_leisure_duration"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="44dp"
                     android:inputType="number"
                     android:maxLines="1"
-                    android:textSize="16sp" />
+                    android:minHeight="0dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:textSize="15sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -81,16 +94,21 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginBottom="12dp"
                 app:suffixText="次">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_relaxed_leisure_count"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="44dp"
                     android:inputType="number"
                     android:maxLines="1"
-                    android:textSize="16sp" />
+                    android:minHeight="0dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:textSize="15sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -121,9 +139,15 @@
             <Button
                 android:id="@+id/btn_start_strict_leisure_time"
                 style="@style/Widget.Material3.Button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_gravity="center_horizontal"
                 android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:paddingStart="14dp"
+                android:paddingTop="0dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="0dp"
                 android:text="开启" />
 
             <TextView
@@ -141,16 +165,21 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginBottom="12dp"
                 app:suffixText="分钟">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_strict_leisure_duration"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="44dp"
                     android:inputType="number"
                     android:maxLines="1"
-                    android:textSize="16sp" />
+                    android:minHeight="0dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:textSize="15sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -159,16 +188,21 @@
                 style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginBottom="12dp"
                 app:suffixText="次">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_strict_leisure_count"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="44dp"
                     android:inputType="number"
                     android:maxLines="1"
-                    android:textSize="16sp" />
+                    android:minHeight="0dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:textSize="15sp" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
