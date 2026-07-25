@@ -208,7 +208,7 @@ public class SettingsDialogManager {
                 if (!saveLeisureTimeSettings(relaxedViews, strictViews)) {
                     return;
                 }
-                UiFeedback.show(context, "休闲时刻设置已保存");
+                UiFeedback.show(dialogView, "保存成功");
             });
 
             setLeisureStartListener(
@@ -253,8 +253,8 @@ public class SettingsDialogManager {
                         dialogView,
                         "已开启" + getLeisureModeName(targetViews.mode)
                                 + "，首个关闭悬浮窗的 APP 将免答题解禁");
-            } else if (appSettingsManager.isLeisureTimeReadyForClose()) {
-                UiFeedback.show(dialogView, "休闲时刻已经开启");
+            } else if (appSettingsManager.isLeisureTimeActive(targetViews.mode)) {
+                UiFeedback.show(dialogView, getLeisureModeName(targetViews.mode) + "正在进行中");
             } else {
                 UiFeedback.showError(
                         dialogView,
@@ -320,17 +320,15 @@ public class SettingsDialogManager {
                 ? "今日剩余 -- 次"
                 : "今日剩余 " + remainingCount + " 次");
 
-        if (appSettingsManager.isLeisureTimeActive()) {
+        if (appSettingsManager.isLeisureTimeActive(views.mode)) {
             views.startButton.setEnabled(false);
-            views.startButton.setText(
-                    appSettingsManager.getCurrentLeisureMode() == views.mode ? "进行中" : "开启");
+            views.startButton.setText("进行中");
             return;
         }
 
-        if (appSettingsManager.isLeisureTimeArmed()) {
+        if (appSettingsManager.isLeisureTimeArmed(views.mode)) {
             views.startButton.setEnabled(false);
-            views.startButton.setText(
-                    appSettingsManager.getCurrentLeisureMode() == views.mode ? "已开启" : "开启");
+            views.startButton.setText("已开启");
             return;
         }
 

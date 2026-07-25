@@ -305,7 +305,8 @@ public class AppStateManager {
             Log.d(TAG, appForTimer + " 到达预期时间");
             if (appForTimer != null) {
                 long leisureRemainingMillis =
-                        appSettingsManager.getLeisureTimeRemainingMillis();
+                        appSettingsManager.getLeisureTimeRemainingMillisForApp(
+                                appForTimer.getPackageName());
                 if (appSettingsManager.isLeisureTimeActiveForApp(
                         appForTimer.getPackageName())) {
                     scheduleTimer(

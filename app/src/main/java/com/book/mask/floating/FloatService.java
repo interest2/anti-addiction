@@ -225,14 +225,18 @@ public class FloatService extends AccessibilityService
      */
     private boolean handleLeisureTimeClose() {
         CustomApp currentActiveApp = Share.currentApp;
-        if (currentActiveApp == null
-                || !appSettingsManager.activateLeisureTimeForClose(
-                        currentActiveApp.getPackageName())) {
+        if (currentActiveApp == null) {
             return false;
         }
 
-        AppSettingsManager.LeisureMode leisureMode = appSettingsManager.getCurrentLeisureMode();
-        int leisureSeconds = appSettingsManager.getCurrentLeisureDurationMinutes() * 60;
+        AppSettingsManager.LeisureMode leisureMode =
+                appSettingsManager.activateLeisureTimeForClose(
+                        currentActiveApp.getPackageName());
+        if (leisureMode == null) {
+            return false;
+        }
+
+        int leisureSeconds = appSettingsManager.getLeisureDurationMinutes(leisureMode) * 60;
         Log.d(TAG, "APP " + currentActiveApp.getAppName()
                 + " 已获得 " + RelaxManager.getIntervalDisplayText(leisureSeconds)
                 + " 休闲解禁，今日已消耗 "
