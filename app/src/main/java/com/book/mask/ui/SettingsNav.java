@@ -18,18 +18,28 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
+import com.book.mask.personalize.BackupManager;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
 import com.book.mask.constant.Const;
 import com.book.mask.network.LatestVersionManager;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class SettingsNav extends Fragment {
     private static final String TAG = "SettingsNav";
@@ -37,6 +47,18 @@ public class SettingsNav extends Fragment {
 
     private RelaxManager relaxManager;
     private SettingsDialogManager settingsDialogManager;
+
+    // 待写入用户所选文件的备份 JSON，点击导出时生成、写入完成后清空
+    private String pendingBackupJson;
+    private final ActivityResultLauncher<String> createBackupLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.CreateDocument("application/json"),
+                    this::onBackupDocumentCreated);
+    private final ActivityResultLauncher<String[]> openBackupLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.OpenDocument(),
+                    this::onBackupDocumentPicked);
+
     private final Handler versionBadgeHandler = new Handler(Looper.getMainLooper());
     private final Runnable versionBadgeRefresh = new Runnable() {
         @Override
@@ -73,6 +95,8 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> showInstallTroubleshootingDialog());
         view.findViewById(R.id.row_floating_settings)
                 .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
+        view.findViewById(R.id.row_export_backup)
+                .setOnClickListener(v -> showBackupOptionsDialog());
         View reminderProviderRow = view.findViewById(R.id.row_reminder_provider);
         View reminderProviderDivider = view.findViewById(R.id.divider_reminder_provider);
         int reminderProviderVisibility = Const.REMINDER_PROVIDER_SETTINGS_ENABLED
@@ -87,6 +111,110 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> openSpecialDetails());
         view.findViewById(R.id.row_package_log)
                 .setOnClickListener(v -> showPackageLogActionsDialog());
+    }
+
+    private void showBackupOptionsDialog() {
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.export_backup)
+                .setMessage("可导出备份您的个性化配置数据，以免换机或卸载重装等场景的麻烦")
+                .setPositiveButton("导出", (d, w) -> startBackupExport())
+                .setNegativeButton("导入", (d, w) -> startBackupImport())
+                .setNeutralButton("取消", null)
+                .show();
+    }
+
+    private void startBackupExport() {
+        try {
+            pendingBackupJson = new BackupManager(requireContext()).exportToJson();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "生成备份失败", e);
+            UiFeedback.showError(requireContext(), "生成备份失败");
+            return;
+        }
+
+        String fileName = "mask_backup_"
+                + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date())
+                + ".json";
+        try {
+            createBackupLauncher.launch(fileName);
+        } catch (Exception e) {
+            pendingBackupJson = null;
+            android.util.Log.e(TAG, "无法打开文件保存界面", e);
+            UiFeedback.showError(requireContext(), "无法打开文件保存界面");
+        }
+    }
+
+    private void onBackupDocumentCreated(@Nullable Uri uri) {
+        String json = pendingBackupJson;
+        pendingBackupJson = null;
+        if (uri == null || json == null) {
+            // 用户取消，或没有待写入内容
+            return;
+        }
+
+        try (OutputStream out = requireContext().getContentResolver().openOutputStream(uri)) {
+            if (out == null) {
+                UiFeedback.showError(requireContext(), "导出失败：无法写入所选文件");
+                return;
+            }
+            out.write(json.getBytes(StandardCharsets.UTF_8));
+            out.flush();
+            UiFeedback.show(requireContext(), "备份已导出");
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "写入备份文件失败", e);
+            UiFeedback.showError(requireContext(), "导出失败：" + e.getMessage());
+        }
+    }
+
+    private void startBackupImport() {
+        try {
+            openBackupLauncher.launch(new String[]{"*/*"});
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "无法打开文件选择界面", e);
+            UiFeedback.showError(requireContext(), "无法打开文件选择界面");
+        }
+    }
+
+    private void onBackupDocumentPicked(@Nullable Uri uri) {
+        if (uri == null) {
+            // 用户取消
+            return;
+        }
+
+        String json;
+        try (InputStream in = requireContext().getContentResolver().openInputStream(uri)) {
+            if (in == null) {
+                UiFeedback.showError(requireContext(), "导入失败：无法读取所选文件");
+                return;
+            }
+            json = readAll(in);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "读取备份文件失败", e);
+            UiFeedback.showError(requireContext(), "导入失败：无法读取文件");
+            return;
+        }
+
+        try {
+            BackupManager.ImportResult result =
+                    new BackupManager(requireContext()).importFromJson(json);
+            String message = "导入完成：成功 " + result.imported + " 项"
+                    + (result.skipped > 0 ? "，跳过 " + result.skipped + " 项" : "");
+            UiFeedback.show(requireContext(), message);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "导入备份失败", e);
+            UiFeedback.showError(requireContext(),
+                    "导入失败：" + (e.getMessage() != null ? e.getMessage() : "文件内容无效"));
+        }
+    }
+
+    private static String readAll(InputStream in) throws Exception {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] chunk = new byte[4096];
+        int read;
+        while ((read = in.read(chunk)) != -1) {
+            buffer.write(chunk, 0, read);
+        }
+        return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
     }
 
     private void openReminderProviderSettings() {

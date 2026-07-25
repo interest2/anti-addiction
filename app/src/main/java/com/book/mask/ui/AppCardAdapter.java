@@ -78,47 +78,14 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         notifyDataSetChanged();
     }
 
-    /**
-     * 计算 APP 名称的起始外边距：默认 20dp；当名称过长、按默认外边距会与右侧开关重叠时，
-     * 自动缩小外边距让名称整体左移（下限 0dp），仍放不下才由 ellipsize 兜底截断。
-     */
-    private void adjustAppNameStartMargin(TextView nameView, View deleteBtn, View toggle) {
-        nameView.post(() -> {
-            View row = (View) nameView.getParent();
-            if (row == null || row.getWidth() <= 0) {
-                return;
-            }
-            float density = nameView.getResources().getDisplayMetrics().density;
-            int defaultMargin = (int) (20 * density);
-            int deleteWidth = (deleteBtn != null && deleteBtn.getVisibility() == View.VISIBLE)
-                    ? (int) (20 * density) : 0;
-            int toggleWidth = (int) (36 * density);
-            int available = row.getWidth() - row.getPaddingStart() - row.getPaddingEnd()
-                    - deleteWidth - toggleWidth;
-            float textWidth = nameView.getPaint().measureText(nameView.getText().toString());
-
-            int desiredMargin;
-            if (textWidth + defaultMargin > available) {
-                desiredMargin = Math.max(0, (int) (available - textWidth));
-            } else {
-                desiredMargin = defaultMargin;
-            }
-
-            ViewGroup.MarginLayoutParams lp =
-                    (ViewGroup.MarginLayoutParams) nameView.getLayoutParams();
-            if (lp.getMarginStart() != desiredMargin) {
-                lp.setMarginStart(desiredMargin);
-                nameView.setLayoutParams(lp);
-            }
-        });
-    }
-
     class AppCardViewHolder extends RecyclerView.ViewHolder {
         private TextView tvAppName;
         private TextView tvRemainingTime;
         private TextView tvRelaxedCount;
         private ToggleButton toggleMonitor;
         private TextView btnDeleteApp;
+        // 已完成起始外边距自适应的名称，避免每秒倒计时刷新时重复测量导致名称位置闪烁
+        private String appNameMarginAdjustedFor;
 
         public AppCardViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -183,9 +150,11 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
                 btnDeleteApp.setVisibility(isCustom ? View.VISIBLE : View.GONE);
             }
 
-            // 默认 marginStart 20dp；APP名较长会与右侧开关重叠时，自动左移（缩小起始外边距）
-            if (tvAppName != null) {
-                adjustAppNameStartMargin(tvAppName, btnDeleteApp, toggleMonitor);
+            // 默认 marginStart 20dp；APP名较长会与右侧开关重叠时，自动左移（缩小起始外边距）。
+            // 仅在名称变化时重算，避免每秒倒计时刷新触发重复测量导致位置反复闪烁。
+            if (tvAppName != null && !appName.equals(appNameMarginAdjustedFor)) {
+                appNameMarginAdjustedFor = null;
+                adjustAppNameStartMargin(appName);
             }
 
             // 设置监测开关状态
@@ -223,6 +192,49 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             if (tvRelaxedCount != null) {
                 tvRelaxedCount.setText("宽松剩余: " + remainingCount + "次");
             }
+        }
+
+        /**
+         * APP 名称起始外边距自适应：默认 20dp；名称过长、按默认外边距会与右侧开关重叠时，
+         * 缩小外边距让名称整体左移（下限 0dp），仍放不下才由 ellipsize 兜底截断。
+         * 结果按名称缓存（appNameMarginAdjustedFor），避免每秒倒计时刷新时重复测量抖动。
+         */
+        private void adjustAppNameStartMargin(String appName) {
+            tvAppName.post(() -> {
+                // 视图可能已被回收复用给其它 APP，名称不一致则放弃本次调整
+                if (!appName.contentEquals(tvAppName.getText())) {
+                    return;
+                }
+                View row = (View) tvAppName.getParent();
+                if (row == null || row.getWidth() <= 0) {
+                    // 尚未测量出宽度，保持默认外边距，下次绑定再试
+                    return;
+                }
+                float density = tvAppName.getResources().getDisplayMetrics().density;
+                int defaultMargin = (int) (20 * density);
+                int buffer = (int) (2 * density);
+                int deleteWidth = (btnDeleteApp != null && btnDeleteApp.getVisibility() == View.VISIBLE)
+                        ? (int) (20 * density) : 0;
+                int toggleWidth = (int) (36 * density);
+                int available = row.getWidth() - row.getPaddingStart() - row.getPaddingEnd()
+                        - deleteWidth - toggleWidth;
+                float textWidth = tvAppName.getPaint().measureText(appName);
+
+                int desiredMargin;
+                if (textWidth + defaultMargin > available) {
+                    desiredMargin = Math.max(0, (int) (available - textWidth) - buffer);
+                } else {
+                    desiredMargin = defaultMargin;
+                }
+
+                ViewGroup.MarginLayoutParams lp =
+                        (ViewGroup.MarginLayoutParams) tvAppName.getLayoutParams();
+                if (lp.getMarginStart() != desiredMargin) {
+                    lp.setMarginStart(desiredMargin);
+                    tvAppName.setLayoutParams(lp);
+                }
+                appNameMarginAdjustedFor = appName;
+            });
         }
     }
 

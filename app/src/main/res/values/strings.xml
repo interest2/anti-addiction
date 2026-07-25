@@ -15,6 +15,7 @@
     <string name="latest_version_fetch_failed">最新版本获取失败，请稍后重试</string>
     <string name="apk_download_unavailable">没有可用的应用打开下载链接</string>
     <string name="floating_window_settings">悬浮窗改默认大小</string>
+    <string name="export_backup">导出备份</string>
     <string name="special_details">冷门问题解决</string>
     <string name="back">返回</string>
     <string name="reset_floating_window">重置悬浮窗</string>
