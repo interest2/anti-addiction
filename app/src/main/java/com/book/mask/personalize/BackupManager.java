@@ -25,45 +25,48 @@ public class BackupManager {
 
     public static final int BACKUP_VERSION = 1;
 
-    // 与 CustomAppManager 中的存储标识保持一致（自定义 APP 与预定义 APP 的修改记录）。
-    private static final String CUSTOM_APPS_STORAGE_ID = "custom_apps";
-    private static final String KEY_CUSTOM_APPS_LIST = "custom_apps_list";
-    private static final String KEY_PREDEFINED_MODIFICATIONS = "predefined_apps_modifications";
+    // 与 CustomAppManager 中的存储标识/键保持一致（引用其常量，避免魔法值副本）
+    private static final String CUSTOM_APPS_STORAGE_ID = CustomAppManager.PREF_NAME;
+    private static final String KEY_CUSTOM_APPS_LIST = CustomAppManager.KEY_CUSTOM_APPS;
+    private static final String KEY_PREDEFINED_MODIFICATIONS =
+            CustomAppManager.KEY_DEFAULT_APP_MODIFY;
 
-    // 个性化：字符串型配置键
+    // 个性化：字符串型配置键（均引用各 manager 的原始常量定义）
     private static final String[] PERSONALIZE_STRING_KEYS = {
-            "motivation_tag",            // 目标
-            "target_completion_date",    // 目标日期
-            "floating_strict_reminder",  // 悬浮窗额外文字内容
-            "math_question_type",        // 题目类型
-            "math_difficulty_mode",      // 算术题难度模式（default / custom）
+            AppSettingsManager.KEY_MOTIVATION_TAG,             // 目标
+            AppSettingsManager.KEY_TARGET_COMPLETION_DATE,     // 目标日期
+            AppSettingsManager.KEY_FLOATING_STRICT_REMINDER,   // 悬浮窗额外文字内容
+            ChallengeSettingsManager.KEY_MATH_QUESTION_TYPE,   // 题目类型
+            ChallengeSettingsManager.KEY_MATH_DIFFICULTY_MODE, // 算术题难度模式（default / custom）
     };
 
     // 个性化：整型配置键
     private static final String[] PERSONALIZE_INT_KEYS = {
-            "floating_strict_reminder_font_size",           // 悬浮窗额外文字字号
-            "math_addition_digits",                          // 算术题难度：加法位数
-            "math_subtraction_digits",                       // 算术题难度：减法位数
-            "math_multiplication_multiplier_digits",         // 算术题难度：乘数位数
-            "math_multiplication_multiplicand_digits",       // 算术题难度：被乘数位数
-            "english_reading_length",                        // 英文阅读题长度
-            "leisure_duration_minutes",                      // 休闲时刻·宽松模式：时长
-            "leisure_daily_count",                           // 休闲时刻·宽松模式：次数
-            "strict_leisure_duration_minutes",               // 休闲时刻·严格模式：时长
-            "strict_leisure_daily_count",                    // 休闲时刻·严格模式：次数
+            AppSettingsManager.KEY_FLOATING_STRICT_REMINDER_FONT_SIZE,            // 悬浮窗额外文字字号
+            ChallengeSettingsManager.KEY_MATH_ADDITION_DIGITS,                    // 算术题难度：加法位数
+            ChallengeSettingsManager.KEY_MATH_SUBTRACTION_DIGITS,                 // 算术题难度：减法位数
+            ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS,   // 算术题难度：乘数位数
+            ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, // 算术题难度：被乘数位数
+            ChallengeSettingsManager.KEY_ENGLISH_READING_LENGTH,                  // 英文阅读题长度
+            LeisureTimeManager.KEY_LEISURE_DURATION_MINUTES,                      // 休闲时刻·宽松模式：时长
+            LeisureTimeManager.KEY_LEISURE_DAILY_COUNT,                           // 休闲时刻·宽松模式：次数
+            LeisureTimeManager.KEY_STRICT_LEISURE_DURATION_MINUTES,               // 休闲时刻·严格模式：时长
+            LeisureTimeManager.KEY_STRICT_LEISURE_DAILY_COUNT,                    // 休闲时刻·严格模式：次数
     };
 
     // 更多：悬浮窗默认大小（全局）
     private static final String[] MORE_INT_KEYS = {
-            "floating_top_offset",
-            "floating_bottom_offset",
+            AppSettingsManager.KEY_FLOATING_TOP_OFFSET,
+            AppSettingsManager.KEY_FLOATING_BOTTOM_OFFSET,
     };
 
     // 首页各卡片：每 APP 独立的键前缀
-    private static final String PREFIX_HINT_SOURCE = "app_hint_source_";
-    private static final String PREFIX_HINT_CUSTOM = "app_hint_custom_";
-    private static final String PREFIX_FLOATING_TOP = "app_floating_top_offset_";
-    private static final String PREFIX_FLOATING_BOTTOM = "app_floating_bottom_offset_";
+    private static final String PREFIX_HINT_SOURCE = AppSettingsManager.KEY_APP_HINT_SOURCE;
+    private static final String PREFIX_HINT_CUSTOM = AppSettingsManager.KEY_APP_HINT_CUSTOM;
+    private static final String PREFIX_FLOATING_TOP = AppSettingsManager.KEY_APP_FLOATING_TOP_OFFSET;
+    private static final String PREFIX_FLOATING_BOTTOM =
+            AppSettingsManager.KEY_APP_FLOATING_BOTTOM_OFFSET;
+    private static final String PREFIX_MONITORING = RelaxManager.KEY_APP_MONITORING_ENABLED;
 
     private final MMKV settings;
     private final MMKV customApps;
@@ -120,6 +123,9 @@ public class BackupManager {
             } else if (key.startsWith(PREFIX_FLOATING_BOTTOM)) {
                 perApp(byPackage, key.substring(PREFIX_FLOATING_BOTTOM.length()))
                         .put("floatingBottomOffset", settings.getInt(key, 0));
+            } else if (key.startsWith(PREFIX_MONITORING)) {
+                perApp(byPackage, key.substring(PREFIX_MONITORING.length()))
+                        .put("monitoringEnabled", settings.getBoolean(key, false));
             }
         }
         return byPackage;
@@ -282,6 +288,10 @@ public class BackupManager {
                 if (has(o, "floatingBottomOffset")) {
                     settings.putInt(PREFIX_FLOATING_BOTTOM + pkg,
                             o.get("floatingBottomOffset").getAsInt());
+                }
+                if (has(o, "monitoringEnabled")) {
+                    settings.putBoolean(PREFIX_MONITORING + pkg,
+                            o.get("monitoringEnabled").getAsBoolean());
                 }
                 settings.commit();
                 result.imported++;

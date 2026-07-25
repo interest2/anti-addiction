@@ -111,7 +111,7 @@
                 <LinearLayout
                     android:id="@+id/btn_floating_strict_reminder"
                     android:layout_width="match_parent"
-                    android:layout_height="68dp"
+                    android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
@@ -145,7 +145,7 @@
                 <LinearLayout
                     android:id="@+id/btn_math_difficulty"
                     android:layout_width="match_parent"
-                    android:layout_height="68dp"
+                    android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
@@ -179,7 +179,7 @@
                 <LinearLayout
                     android:id="@+id/btn_leisure_time"
                     android:layout_width="match_parent"
-                    android:layout_height="68dp"
+                    android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"

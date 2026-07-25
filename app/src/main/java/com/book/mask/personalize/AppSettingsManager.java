@@ -13,13 +13,13 @@ import com.tencent.mmkv.MMKV;
 public class AppSettingsManager {
 
     // 每个APP独立的悬浮窗警示文字来源相关
-    private static final String KEY_APP_HINT_SOURCE = "app_hint_source_";
-    private static final String KEY_APP_HINT_CUSTOM = "app_hint_custom_";
+    static final String KEY_APP_HINT_SOURCE = "app_hint_source_";
+    static final String KEY_APP_HINT_CUSTOM = "app_hint_custom_";
 
     // 悬浮窗额外显示日常提醒
-    private static final String KEY_FLOATING_STRICT_REMINDER = "floating_strict_reminder";
-    private static final String KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED = "floating_strict_reminder_settings_clicked";
-    private static final String KEY_FLOATING_STRICT_REMINDER_FONT_SIZE = "floating_strict_reminder_font_size";
+    static final String KEY_FLOATING_STRICT_REMINDER = "floating_strict_reminder";
+    static final String KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED = "floating_strict_reminder_settings_clicked";
+    static final String KEY_FLOATING_STRICT_REMINDER_FONT_SIZE = "floating_strict_reminder_font_size";
 
     // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
@@ -31,14 +31,14 @@ public class AppSettingsManager {
     private static final int DEFAULT_BOTTOM_OFFSET = 230;
 
     // 个人目标相关
-    private static final String KEY_MOTIVATION_TAG = "motivation_tag";
-    private static final String KEY_TARGET_COMPLETION_DATE = "target_completion_date";
+    static final String KEY_MOTIVATION_TAG = "motivation_tag";
+    static final String KEY_TARGET_COMPLETION_DATE = "target_completion_date";
 
     // 悬浮窗位置相关
-    private static final String KEY_FLOATING_TOP_OFFSET = "floating_top_offset";
-    private static final String KEY_FLOATING_BOTTOM_OFFSET = "floating_bottom_offset";
-    private static final String KEY_APP_FLOATING_TOP_OFFSET = "app_floating_top_offset_";
-    private static final String KEY_APP_FLOATING_BOTTOM_OFFSET = "app_floating_bottom_offset_";
+    static final String KEY_FLOATING_TOP_OFFSET = "floating_top_offset";
+    static final String KEY_FLOATING_BOTTOM_OFFSET = "floating_bottom_offset";
+    static final String KEY_APP_FLOATING_TOP_OFFSET = "app_floating_top_offset_";
+    static final String KEY_APP_FLOATING_BOTTOM_OFFSET = "app_floating_bottom_offset_";
 
     private MMKV mmkv;
 

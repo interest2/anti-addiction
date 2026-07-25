@@ -1,23 +1,100 @@
-**APP功能**   
-对各休闲 APP 用悬浮窗遮住首页的推荐内容，但顶部搜索栏、底部其他菜单不做限制。  
-即保留了“搜索引擎”的功能同时，节制了漫无目的的沉迷。 
-想关闭悬浮窗就得做一道难度适中的算术题。  
+<div align="center">
+  <img src="./app/src/main/ic_launcher-playstore.png" width="120" alt="防沉迷提醒图标">
+  <h1>防沉迷提醒 APP</h1>
+  <p><strong>用一层恰到好处的阻力，减少无意识刷推荐流。</strong></p>
+  <p>
+    <a href="https://developer.android.com/"><img src="https://img.shields.io/badge/Android-7.0%2B-3DDC84?logo=android&amp;logoColor=white" alt="Android 7.0+"></a>
+    <a href="https://openjdk.org/"><img src="https://img.shields.io/badge/Java-11-ED8B00?logo=openjdk&amp;logoColor=white" alt="Java 11"></a>
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
+  </p>
+</div>
 
-**适用范围**  
-小红书、知乎、抖音、B 站……，预置支持 6 个APP，还可手动添加其他 APP。  
 
-**apk 安装包**  
-见 github 和 gitee 链接：  
-https://gitee.com/interest2/anti-addiction/releases  
-https://github.com/interest2/anti-addiction/releases  
+## 项目简介
 
-**技术栈**  
-客户端（开源）：Java  
-服务端：Java/SpringBoot。  
-服务端代码未公开，2 个原因：① 本 APP 的业务逻辑基本发生在客户端，服务端做的事情很简单，② 服务端代码与其他项目耦合，故暂不适合发出。  
-提醒文字默认由官方云端大模型生成，也可在“更多 → 大模型服务”中配置使用 HTTPS 的 OpenAI Chat Completions 兼容 Provider。
+此 APP 对常见休闲 APP 用悬浮窗精细遮挡推荐内容，但搜索栏等其他菜单不做限制，即保留了“搜索引擎”的功能同时，规避了漫无目的的沉迷。 解除屏蔽通常需做一道难度适中的算术题或推理题。
 
-**上报服务端的信息**  
-APP版本号、AndroidID、型号之类（不包括通讯录、定位等相对敏感的信息）。
+## 功能亮点
 
-使用自有 Provider 生成提醒时，仅向用户填写的接口发送模型名称、固定提示词和目标标签，不发送 AndroidID、APP版本或受控 APP 包名。API Key 使用 Android Keystore 加密并保存在不参与系统备份的目录中。
+- **精准屏蔽**：识别含关键词的目标页面，用适当大小悬浮窗精准遮挡，不影响搜索功能。
+
+- **解题门槛**：支持答题解禁（算术题、推理题等），防沉迷之余亦可锻炼脑力。
+
+- **个性定制**：悬浮窗提醒文字是基于用户自定义的目标、调大模型得到（下一步将支持用户配置自己的大模型提供方）。
+
+- **灵活可配**：
+  1. 允许针对单个 APP：配置多个关键词，修改悬浮窗大小；
+  2. 允许少量的免答题次数、时长，应对急需或纯休闲场景。
+  3. 允许添加数量不限的其他 APP。
+  
+- **数据自主**：支持个人配置数据的导出与恢复。
+
+- **开源透明**：APP 代码完全开源，apk 安装包未混淆加密，可确保无恶意行为。
+
+## 获取与安装
+
+### 下载 APK
+
+从以下任一发布页下载最新的 `app-release.apk`，安装过程见页面的指引说明：
+
+[GitHub Releases](https://github.com/interest2/anti-addiction/releases)，[Gitee Releases](https://gitee.com/interest2/anti-addiction/releases)
+
+### 从源码构建
+
+用 Android Studio 打开项目，配置 JDK 17 与 Android SDK 35 后即可构建。主要参数：Minimum SDK 24（Android 7.0）、Target/Compile SDK 35、Java 源码兼容级别 11。
+
+## 主要原理
+
+```text
+包名变化
+    ↓
+无障碍服务读取当前应用与窗口内容
+    ↓
+匹配已启用的目标包名和关键词
+    ↓
+显示悬浮遮罩
+    ↓
+答对题目 → 临时关闭悬浮窗 → 到期后恢复遮挡
+```
+
+**检测频率**：由 APP 的切换、页面内容的变化来实时触发，另有 2 秒轮询兜底。
+
+## 权限、隐私与联网说明
+
+### 主要权限
+
+| 权限 / 能力 | 用途 |
+| --- | --- |
+| 显示在其他应用上层 | 在目标页面显示遮罩和答题界面 |
+| 无障碍服务 | 判断是否进入目标 APP、页面是否包含待屏蔽关键词 |
+| 网络访问与网络状态 | 获取大模型提醒文字、题目、版本信息，并上报运行基础信息 |
+
+### 当前版本网络行为
+
+上报云端的信息：
+
+- 基础信息：APP 版本号、AndroidID、型号等等（不包括通讯录、定位等等相对敏感的信息）。
+
+- 用户设置的目标：目前必须发给云端才能用于调大模型，后续支持自定义大模型提供方将不再发送
+
+服务端代码出于安全考虑未开源，在自行部署或分发修改版前，应审查网络逻辑、替换服务端地址，并根据实际数据处理方式提供隐私政策。
+
+## 技术栈
+
+- Java 11
+- AndroidX / Material Components
+- AccessibilityService + WindowManager
+- MMKV（本地配置存储）
+- Gson（JSON 序列化）
+- Gradle Version Catalog
+
+##  请作者喝杯咖啡
+
+如果这个项目对您有帮助，欢迎打赏支持
+
+<img src="0.docs/images/wechat.png" width="250" alt="微信赞赏"><br>
+<b>微信赞赏</b>
+
+## 许可证
+
+本项目基于 [MIT License](./LICENSE) 开源。你可以使用、修改和分发本项目，但须保留原许可证与版权声明。

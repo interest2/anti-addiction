@@ -25,6 +25,7 @@ public class RelaxManager {
     private static final String KEY_LAST_RELAXED_CLOSE_DATE = "app_last_relaxed_close_date_";
     private static final String KEY_LAST_CLOSE_TIME = "app_last_close_time_";
     private static final String KEY_LAST_CLOSE_INTERVAL = "app_last_close_interval_";
+    static final String KEY_APP_MONITORING_ENABLED = "app_monitoring_enabled_";
 
     // 严格、宽松模式的各选项
     private static final int[] strictIntervalArray = {30, 60, 120};
@@ -273,7 +274,7 @@ public class RelaxManager {
      * 获取APP监测开关状态
      */
     public Boolean isAppMonitoringEnabled(String packageName) {
-        String key = "app_monitoring_enabled_" + packageName;
+        String key = KEY_APP_MONITORING_ENABLED + packageName;
         if (!mmkv.contains(key)) {
             return null; // 还没有设置过
         }
@@ -284,7 +285,7 @@ public class RelaxManager {
      * 设置APP监测开关状态
      */
     public void setAppMonitoringEnabled(String packageName, boolean enabled) {
-        String key = "app_monitoring_enabled_" + packageName;
+        String key = KEY_APP_MONITORING_ENABLED + packageName;
         mmkv.putBoolean(key, enabled).commit();
         android.util.Log.d("SettingsManager", "设置APP监测状态: " + packageName + " = " + enabled);
     }
@@ -300,7 +301,7 @@ public class RelaxManager {
                 KEY_LAST_RELAXED_CLOSE_DATE + packageName,
                 KEY_LAST_CLOSE_TIME + packageName,
                 KEY_LAST_CLOSE_INTERVAL + packageName,
-                "app_monitoring_enabled_" + packageName,
+                KEY_APP_MONITORING_ENABLED + packageName,
         };
         for (String key : keys) {
             mmkv.removeValueForKey(key);

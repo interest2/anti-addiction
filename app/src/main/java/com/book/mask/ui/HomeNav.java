@@ -3,6 +3,7 @@ package com.book.mask.ui;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.graphics.Color;
 import android.graphics.Typeface;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
@@ -129,7 +130,7 @@ public class HomeNav extends Fragment implements
                 status.length(),
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         status.setSpan(
-                new RelativeSizeSpan(1.125f),
+                new RelativeSizeSpan(1.0625f),
                 0,
                 status.length(),
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -153,7 +154,7 @@ public class HomeNav extends Fragment implements
                 optional.length(),
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         optional.setSpan(
-                new RelativeSizeSpan(1.125f),
+                new RelativeSizeSpan(1.0625f),
                 0,
                 optional.length(),
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -300,11 +301,11 @@ public class HomeNav extends Fragment implements
         text.append('\n').append(label).append("：");
         int statusStart = text.length();
         text.append(enabled ? "已开启" : "未开启，点这设置");
-        int statusColor = MaterialColors.getColor(
-                permissionStatusView,
-                enabled
-                        ? com.google.android.material.R.attr.colorPrimary
-                        : com.google.android.material.R.attr.colorError);
+        int statusColor = enabled
+                ? Color.parseColor("#2E7D32")
+                : MaterialColors.getColor(
+                        permissionStatusView,
+                        com.google.android.material.R.attr.colorError);
         if (enabled) {
             text.setSpan(
                     new ForegroundColorSpan(statusColor),
@@ -559,6 +560,7 @@ public class HomeNav extends Fragment implements
             .setTitle(appName)
             .setView(dialogView)
             .setNegativeButton("取消", null)
+            .setPositiveButton("确定", null)
             .create();
         
         // 编辑图标点击事件

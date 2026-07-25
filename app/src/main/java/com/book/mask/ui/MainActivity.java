@@ -49,7 +49,6 @@ public class MainActivity extends AppCompatActivity {
     private SettingsDialogManager settingsDialogManager;
     private HomeNav homeNav;
     private GoalNav goalNav;
-    private SettingsNav settingsNav;
     private BroadcastReceiver relaxedCountUpdateReceiver;
     private BottomNavigationView bottomNav;
     private AlertDialog permissionDialog;
@@ -150,8 +149,9 @@ public class MainActivity extends AppCompatActivity {
                 if (goalNav == null) goalNav = new GoalNav();
                 selectedFragment = goalNav;
             } else if (item.getItemId() == R.id.navigation_settings) {
-                if (settingsNav == null) settingsNav = new SettingsNav();
-                selectedFragment = settingsNav;
+                // 每次都新建实例：SettingsNav 的 ActivityResultLauncher 只在首次 attach 时注册，
+                // 复用被 replace 销毁过的旧实例会导致 launcher 未注册而崩溃（导出/导入备份）
+                selectedFragment = new SettingsNav();
             }
             if (selectedFragment != null) {
                 getSupportFragmentManager().beginTransaction()

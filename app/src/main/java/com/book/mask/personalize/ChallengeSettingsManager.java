@@ -11,15 +11,15 @@ import com.tencent.mmkv.MMKV;
  */
 public class ChallengeSettingsManager {
 
-    private static final String KEY_MATH_DIFFICULTY_MODE = "math_difficulty_mode";
-    private static final String KEY_MATH_ADDITION_DIGITS = "math_addition_digits";
-    private static final String KEY_MATH_SUBTRACTION_DIGITS = "math_subtraction_digits";
-    private static final String KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS =
+    static final String KEY_MATH_DIFFICULTY_MODE = "math_difficulty_mode";
+    static final String KEY_MATH_ADDITION_DIGITS = "math_addition_digits";
+    static final String KEY_MATH_SUBTRACTION_DIGITS = "math_subtraction_digits";
+    static final String KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS =
             "math_multiplication_multiplier_digits";
-    private static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS =
+    static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS =
             "math_multiplication_multiplicand_digits";
-    private static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
-    private static final String KEY_ENGLISH_READING_LENGTH = "english_reading_length";
+    static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
+    static final String KEY_ENGLISH_READING_LENGTH = "english_reading_length";
 
     private final MMKV mmkv;
 

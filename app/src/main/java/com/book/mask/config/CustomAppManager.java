@@ -15,9 +15,9 @@ import java.util.List;
 public class CustomAppManager {
     private static final String TAG = "CustomAppManager";
 
-    private static final String PREF_NAME = "custom_apps";
-    private static final String KEY_CUSTOM_APPS = "custom_apps_list";
-    private static final String KEY_DEFAULT_APP_MODIFY = "predefined_apps_modifications";
+    public static final String PREF_NAME = "custom_apps";
+    public static final String KEY_CUSTOM_APPS = "custom_apps_list";
+    public static final String KEY_DEFAULT_APP_MODIFY = "predefined_apps_modifications";
 
     /*预置支持 APP 的包名常量*/
     public static final String XHS_PACKAGE = "com.xingin.xhs";

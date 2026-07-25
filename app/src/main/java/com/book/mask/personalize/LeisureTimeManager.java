@@ -27,24 +27,24 @@ public class LeisureTimeManager {
     private static final int DEFAULT_STRICT_LEISURE_DURATION_MINUTES = 2;
     private static final int DEFAULT_STRICT_LEISURE_DAILY_COUNT = 2;
 
-    private static final String KEY_LEISURE_DURATION_MINUTES = "leisure_duration_minutes";
-    private static final String KEY_LEISURE_DAILY_COUNT = "leisure_daily_count";
-    private static final String KEY_LEISURE_USED_COUNT = "leisure_used_count";
-    private static final String KEY_LEISURE_LAST_USED_DATE = "leisure_last_used_date";
-    private static final String KEY_STRICT_LEISURE_DURATION_MINUTES =
+    static final String KEY_LEISURE_DURATION_MINUTES = "leisure_duration_minutes";
+    static final String KEY_LEISURE_DAILY_COUNT = "leisure_daily_count";
+    static final String KEY_LEISURE_USED_COUNT = "leisure_used_count";
+    static final String KEY_LEISURE_LAST_USED_DATE = "leisure_last_used_date";
+    static final String KEY_STRICT_LEISURE_DURATION_MINUTES =
             "strict_leisure_duration_minutes";
-    private static final String KEY_STRICT_LEISURE_DAILY_COUNT = "strict_leisure_daily_count";
-    private static final String KEY_STRICT_LEISURE_USED_COUNT = "strict_leisure_used_count";
-    private static final String KEY_STRICT_LEISURE_LAST_USED_DATE =
+    static final String KEY_STRICT_LEISURE_DAILY_COUNT = "strict_leisure_daily_count";
+    static final String KEY_STRICT_LEISURE_USED_COUNT = "strict_leisure_used_count";
+    static final String KEY_STRICT_LEISURE_LAST_USED_DATE =
             "strict_leisure_last_used_date";
-    private static final String KEY_LEISURE_ACTIVE_UNTIL = "leisure_active_until";
-    private static final String KEY_LEISURE_ACTIVE_PACKAGE = "leisure_active_package";
-    private static final String KEY_STRICT_LEISURE_ACTIVE_UNTIL =
+    static final String KEY_LEISURE_ACTIVE_UNTIL = "leisure_active_until";
+    static final String KEY_LEISURE_ACTIVE_PACKAGE = "leisure_active_package";
+    static final String KEY_STRICT_LEISURE_ACTIVE_UNTIL =
             "strict_leisure_active_until";
-    private static final String KEY_STRICT_LEISURE_ACTIVE_PACKAGE =
+    static final String KEY_STRICT_LEISURE_ACTIVE_PACKAGE =
             "strict_leisure_active_package";
-    private static final String KEY_LEISURE_ARMED = "leisure_armed";
-    private static final String KEY_LEISURE_ARMED_MODE = "leisure_armed_mode";
+    static final String KEY_LEISURE_ARMED = "leisure_armed";
+    static final String KEY_LEISURE_ARMED_MODE = "leisure_armed_mode";
 
     public enum LeisureMode {
         RELAXED("relaxed"),

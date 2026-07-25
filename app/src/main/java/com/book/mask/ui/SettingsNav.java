@@ -114,13 +114,24 @@ public class SettingsNav extends Fragment {
     }
 
     private void showBackupOptionsDialog() {
-        new android.app.AlertDialog.Builder(requireContext())
+        View dialogView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_backup, null);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
                 .setTitle(R.string.export_backup)
-                .setMessage("可导出备份您的个性化配置数据，以免换机或卸载重装等场景的麻烦")
-                .setPositiveButton("导出", (d, w) -> startBackupExport())
-                .setNegativeButton("导入", (d, w) -> startBackupImport())
-                .setNeutralButton("取消", null)
-                .show();
+                .setView(dialogView)
+                .create();
+
+        dialogView.findViewById(R.id.btn_backup_export).setOnClickListener(v -> {
+            dialog.dismiss();
+            startBackupExport();
+        });
+        dialogView.findViewById(R.id.btn_backup_import).setOnClickListener(v -> {
+            dialog.dismiss();
+            startBackupImport();
+        });
+
+        dialog.show();
     }
 
     private void startBackupExport() {
@@ -132,7 +143,7 @@ public class SettingsNav extends Fragment {
             return;
         }
 
-        String fileName = "mask_backup_"
+        String fileName = "防沉迷提醒_"
                 + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date())
                 + ".json";
         try {

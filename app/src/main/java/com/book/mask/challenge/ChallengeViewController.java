@@ -8,6 +8,7 @@ import android.os.Handler;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.ActionMode;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -358,6 +359,8 @@ final class ChallengeViewController {
         }
 
         challengeLayout.setLayoutParams(challengeParams);
+        questionText.setGravity(
+                type == ChallengeType.ARITHMETIC ? Gravity.CENTER_HORIZONTAL : Gravity.START);
         if (questionScrollView != null) {
             questionScrollView.setLayoutParams(scrollParams);
         }
