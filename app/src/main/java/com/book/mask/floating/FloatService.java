@@ -231,12 +231,13 @@ public class FloatService extends AccessibilityService
             return false;
         }
 
-        int leisureSeconds = appSettingsManager.getLeisureDurationMinutes() * 60;
+        AppSettingsManager.LeisureMode leisureMode = appSettingsManager.getCurrentLeisureMode();
+        int leisureSeconds = appSettingsManager.getCurrentLeisureDurationMinutes() * 60;
         Log.d(TAG, "APP " + currentActiveApp.getAppName()
                 + " 已获得 " + RelaxManager.getIntervalDisplayText(leisureSeconds)
                 + " 休闲解禁，今日已消耗 "
-                + appSettingsManager.getLeisureUsedCountToday() + "/"
-                + appSettingsManager.getLeisureDailyCount() + " 次");
+                + appSettingsManager.getLeisureUsedCountToday(leisureMode) + "/"
+                + appSettingsManager.getLeisureDailyCount(leisureMode) + " 次");
 
         relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
         notifyHomeFragmentUpdate(currentActiveApp);

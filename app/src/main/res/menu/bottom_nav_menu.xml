@@ -7,9 +7,9 @@
     <item
         android:id="@+id/navigation_goal"
         android:icon="@drawable/ic_flag"
-        android:title="个性设置" />
+        android:title="@string/personalization_menu_title" />
     <item
         android:id="@+id/navigation_settings"
         android:icon="@drawable/ic_settings"
-        android:title="@string/other_menu_title" />
-</menu> 
+        android:title="@string/more_menu_title" />
+</menu>

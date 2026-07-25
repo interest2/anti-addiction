@@ -144,26 +144,27 @@ public class SettingsDialogManager {
     public void showLeisureTimeDialog() {
         View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_leisure_time, null);
         TextView description = dialogView.findViewById(R.id.tv_leisure_description);
-        TextInputLayout durationLayout = dialogView.findViewById(R.id.layout_leisure_duration);
-        TextInputLayout countLayout = dialogView.findViewById(R.id.layout_leisure_count);
-        TextInputEditText durationInput = dialogView.findViewById(R.id.et_leisure_duration);
-        TextInputEditText countInput = dialogView.findViewById(R.id.et_leisure_count);
-        Button startButton = dialogView.findViewById(R.id.btn_start_leisure_time);
-        TextView remainingCountText = dialogView.findViewById(R.id.tv_leisure_remaining_count);
+        LeisureModeViews relaxedViews = new LeisureModeViews(
+                AppSettingsManager.LeisureMode.RELAXED,
+                dialogView.findViewById(R.id.layout_relaxed_leisure_duration),
+                dialogView.findViewById(R.id.layout_relaxed_leisure_count),
+                dialogView.findViewById(R.id.et_relaxed_leisure_duration),
+                dialogView.findViewById(R.id.et_relaxed_leisure_count),
+                dialogView.findViewById(R.id.btn_start_relaxed_leisure_time),
+                dialogView.findViewById(R.id.tv_relaxed_leisure_remaining_count));
+        LeisureModeViews strictViews = new LeisureModeViews(
+                AppSettingsManager.LeisureMode.STRICT,
+                dialogView.findViewById(R.id.layout_strict_leisure_duration),
+                dialogView.findViewById(R.id.layout_strict_leisure_count),
+                dialogView.findViewById(R.id.et_strict_leisure_duration),
+                dialogView.findViewById(R.id.et_strict_leisure_count),
+                dialogView.findViewById(R.id.btn_start_strict_leisure_time),
+                dialogView.findViewById(R.id.tv_strict_leisure_remaining_count));
 
-        String durationRange = AppSettingsManager.getLeisureDurationRangeText();
-        String countRange = AppSettingsManager.getLeisureDailyCountRangeText();
         description.setText(
-                "开启后，首个关闭悬浮窗的APP无需答题即可解禁，一天最多"
-                        + AppSettingsManager.LEISURE_DAILY_COUNT_MAX + "次");
-        durationLayout.setHint(durationRange + " 分钟");
-        countLayout.setHint(countRange + " 次");
-        durationInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(
-                String.valueOf(AppSettingsManager.LEISURE_DURATION_MAX_MINUTES).length())});
-        countInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(
-                String.valueOf(AppSettingsManager.LEISURE_DAILY_COUNT_MAX).length())});
-        durationInput.setText(String.valueOf(appSettingsManager.getLeisureDurationMinutes()));
-        countInput.setText(String.valueOf(appSettingsManager.getLeisureDailyCount()));
+                "开启后，首个关闭悬浮窗的 APP 无需答题即可解禁");
+        setupLeisureModeInputs(relaxedViews);
+        setupLeisureModeInputs(strictViews);
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("休闲时刻（免答题）")
@@ -176,14 +177,14 @@ public class SettingsDialogManager {
         Runnable[] refreshLeisureState = new Runnable[1];
         refreshLeisureState[0] = () -> {
             stateHandler.removeCallbacks(refreshLeisureState[0]);
-            updateLeisureStartState(
-                    startButton, remainingCountText, parseInteger(countInput));
+            updateLeisureStartState(relaxedViews);
+            updateLeisureStartState(strictViews);
             long remainingMillis = appSettingsManager.getLeisureTimeRemainingMillis();
             if (remainingMillis > 0) {
                 stateHandler.postDelayed(refreshLeisureState[0], remainingMillis + 100);
             }
         };
-        countInput.addTextChangedListener(new TextWatcher() {
+        TextWatcher countWatcher = new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
             }
@@ -196,113 +197,176 @@ public class SettingsDialogManager {
             public void afterTextChanged(Editable s) {
                 refreshLeisureState[0].run();
             }
-        });
+        };
+        relaxedViews.countInput.addTextChangedListener(countWatcher);
+        strictViews.countInput.addTextChangedListener(countWatcher);
 
         dialog.setOnShowListener(ignored -> {
             refreshLeisureState[0].run();
 
             dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                if (!saveLeisureTimeSettings(
-                        durationLayout, countLayout, durationInput, countInput)) {
+                if (!saveLeisureTimeSettings(relaxedViews, strictViews)) {
                     return;
                 }
-                dialog.dismiss();
                 UiFeedback.show(context, "休闲时刻设置已保存");
             });
 
-            startButton.setOnClickListener(v -> {
-                if (!saveLeisureTimeSettings(
-                        durationLayout, countLayout, durationInput, countInput)) {
-                    return;
-                }
-                if (appSettingsManager.tryStartLeisureTime()) {
-                    UiFeedback.show(
-                            dialogView,
-                            "已开启休闲，首个关闭悬浮窗的 APP 将免答题解禁");
-                    refreshLeisureState[0].run();
-                } else if (appSettingsManager.isLeisureTimeReadyForClose()) {
-                    UiFeedback.show(dialogView, "休闲时刻已经开启");
-                    refreshLeisureState[0].run();
-                } else {
-                    UiFeedback.showError(dialogView, "今日休闲时刻次数已用完");
-                    refreshLeisureState[0].run();
-                }
-            });
+            setLeisureStartListener(
+                    relaxedViews, strictViews, dialogView, refreshLeisureState[0]);
+            setLeisureStartListener(
+                    strictViews, relaxedViews, dialogView, refreshLeisureState[0]);
         });
         dialog.setOnDismissListener(ignored ->
                 stateHandler.removeCallbacks(refreshLeisureState[0]));
         dialog.show();
     }
 
-    private boolean saveLeisureTimeSettings(
-            TextInputLayout durationLayout,
-            TextInputLayout countLayout,
-            EditText durationInput,
-            EditText countInput) {
-        durationLayout.setError(null);
-        countLayout.setError(null);
+    private void setupLeisureModeInputs(LeisureModeViews views) {
+        String durationRange = AppSettingsManager.getLeisureDurationRangeText(views.mode)
+                .replace('-', '~');
+        String countRange = AppSettingsManager.getLeisureDailyCountRangeText(views.mode)
+                .replace('-', '~');
+        views.durationInput.setHint(durationRange);
+        views.countInput.setHint(countRange);
+        views.durationInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(
+                String.valueOf(
+                        AppSettingsManager.getLeisureDurationMaxMinutes(views.mode)).length())});
+        views.countInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(
+                String.valueOf(AppSettingsManager.getLeisureDailyCountMax(views.mode)).length())});
+        views.durationInput.setText(String.valueOf(
+                appSettingsManager.getLeisureDurationMinutes(views.mode)));
+        views.countInput.setText(String.valueOf(
+                appSettingsManager.getLeisureDailyCount(views.mode)));
+    }
 
-        Integer durationMinutes = parseInteger(durationInput);
-        Integer dailyCount = parseInteger(countInput);
+    private void setLeisureStartListener(
+            LeisureModeViews targetViews,
+            LeisureModeViews otherViews,
+            View dialogView,
+            Runnable refreshLeisureState) {
+        targetViews.startButton.setOnClickListener(v -> {
+            if (!saveLeisureTimeSettings(targetViews, otherViews)) {
+                return;
+            }
+            if (appSettingsManager.tryStartLeisureTime(targetViews.mode)) {
+                UiFeedback.show(
+                        dialogView,
+                        "已开启" + getLeisureModeName(targetViews.mode)
+                                + "，首个关闭悬浮窗的 APP 将免答题解禁");
+            } else if (appSettingsManager.isLeisureTimeReadyForClose()) {
+                UiFeedback.show(dialogView, "休闲时刻已经开启");
+            } else {
+                UiFeedback.showError(
+                        dialogView,
+                        getLeisureModeName(targetViews.mode) + "今日次数已用完");
+            }
+            refreshLeisureState.run();
+        });
+    }
+
+    private boolean saveLeisureTimeSettings(LeisureModeViews... modeViews) {
         boolean valid = true;
 
-        if (durationMinutes == null
-                || !AppSettingsManager.isValidLeisureDurationMinutes(durationMinutes)) {
-            UiFeedback.showInputError(
-                    durationLayout,
-                    durationInput,
-                    "请输入" + AppSettingsManager.getLeisureDurationRangeText() + "分钟");
-            valid = false;
-        }
-        if (dailyCount == null || !AppSettingsManager.isValidLeisureDailyCount(dailyCount)) {
-            UiFeedback.showInputError(
-                    countLayout,
-                    countInput,
-                    "请输入" + AppSettingsManager.getLeisureDailyCountRangeText() + "次");
-            valid = false;
+        for (LeisureModeViews views : modeViews) {
+            views.durationLayout.setError(null);
+            views.countLayout.setError(null);
+
+            Integer durationMinutes = parseInteger(views.durationInput);
+            Integer dailyCount = parseInteger(views.countInput);
+            if (durationMinutes == null
+                    || !AppSettingsManager.isValidLeisureDurationMinutes(
+                    views.mode, durationMinutes)) {
+                UiFeedback.showInputError(
+                        views.durationLayout,
+                        views.durationInput,
+                        "请输入" + AppSettingsManager.getLeisureDurationRangeText(views.mode)
+                                + "分钟");
+                valid = false;
+            }
+            if (dailyCount == null
+                    || !AppSettingsManager.isValidLeisureDailyCount(views.mode, dailyCount)) {
+                UiFeedback.showInputError(
+                        views.countLayout,
+                        views.countInput,
+                        "请输入" + AppSettingsManager.getLeisureDailyCountRangeText(views.mode)
+                                + "次");
+                valid = false;
+            }
         }
         if (!valid) {
             return false;
         }
 
-        appSettingsManager.setLeisureTimeSettings(durationMinutes, dailyCount);
+        for (LeisureModeViews views : modeViews) {
+            appSettingsManager.setLeisureTimeSettings(
+                    views.mode,
+                    parseInteger(views.durationInput),
+                    parseInteger(views.countInput));
+        }
         return true;
     }
 
-    private void updateLeisureStartState(
-            Button startButton,
-            TextView remainingCountText,
-            Integer configuredDailyCount) {
+    private void updateLeisureStartState(LeisureModeViews views) {
+        Integer configuredDailyCount = parseInteger(views.countInput);
         Integer remainingCount = configuredDailyCount == null
-                || !AppSettingsManager.isValidLeisureDailyCount(configuredDailyCount)
+                || !AppSettingsManager.isValidLeisureDailyCount(
+                views.mode, configuredDailyCount)
                 ? null
                 : Math.max(
                         0,
-                        configuredDailyCount - appSettingsManager.getLeisureUsedCountToday());
-        remainingCountText.setText(remainingCount == null
+                        configuredDailyCount
+                                - appSettingsManager.getLeisureUsedCountToday(views.mode));
+        views.remainingCountText.setText(remainingCount == null
                 ? "今日剩余 -- 次"
                 : "今日剩余 " + remainingCount + " 次");
 
         if (appSettingsManager.isLeisureTimeActive()) {
-            startButton.setEnabled(false);
-            startButton.setText("休闲时刻进行中");
+            views.startButton.setEnabled(false);
+            views.startButton.setText(
+                    appSettingsManager.getCurrentLeisureMode() == views.mode ? "进行中" : "开启");
             return;
         }
 
         if (appSettingsManager.isLeisureTimeArmed()) {
-            startButton.setEnabled(false);
-            startButton.setText("已开启，待关闭悬浮窗");
+            views.startButton.setEnabled(false);
+            views.startButton.setText(
+                    appSettingsManager.getCurrentLeisureMode() == views.mode ? "已开启" : "开启");
             return;
         }
 
-        if (remainingCount == null) {
-            startButton.setEnabled(false);
-            startButton.setText("开启休闲时刻");
-            return;
-        }
+        views.startButton.setEnabled(remainingCount != null && remainingCount > 0);
+        views.startButton.setText("开启");
+    }
 
-        startButton.setEnabled(remainingCount > 0);
-        startButton.setText("开启休闲时刻");
+    private String getLeisureModeName(AppSettingsManager.LeisureMode mode) {
+        return mode == AppSettingsManager.LeisureMode.STRICT ? "严格模式" : "宽松模式";
+    }
+
+    private static class LeisureModeViews {
+        private final AppSettingsManager.LeisureMode mode;
+        private final TextInputLayout durationLayout;
+        private final TextInputLayout countLayout;
+        private final TextInputEditText durationInput;
+        private final TextInputEditText countInput;
+        private final Button startButton;
+        private final TextView remainingCountText;
+
+        private LeisureModeViews(
+                AppSettingsManager.LeisureMode mode,
+                TextInputLayout durationLayout,
+                TextInputLayout countLayout,
+                TextInputEditText durationInput,
+                TextInputEditText countInput,
+                Button startButton,
+                TextView remainingCountText) {
+            this.mode = mode;
+            this.durationLayout = durationLayout;
+            this.countLayout = countLayout;
+            this.durationInput = durationInput;
+            this.countInput = countInput;
+            this.startButton = startButton;
+            this.remainingCountText = remainingCountText;
+        }
     }
 
     private Integer parseInteger(EditText input) {

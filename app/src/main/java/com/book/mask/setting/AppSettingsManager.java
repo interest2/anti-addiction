@@ -27,19 +27,47 @@ public class AppSettingsManager {
     private static final String KEY_FLOATING_STRICT_REMINDER_FONT_SIZE = "floating_strict_reminder_font_size";
 
     // 休闲时刻
-    public static final int LEISURE_DURATION_MIN_MINUTES = 15;
+    public static final int LEISURE_DURATION_MIN_MINUTES = 10;
     public static final int LEISURE_DURATION_MAX_MINUTES = 30;
     public static final int LEISURE_DAILY_COUNT_MIN = 1;
     public static final int LEISURE_DAILY_COUNT_MAX = 2;
+    public static final int STRICT_LEISURE_DURATION_MIN_MINUTES = 1;
+    public static final int STRICT_LEISURE_DURATION_MAX_MINUTES = 2;
+    public static final int STRICT_LEISURE_DAILY_COUNT_MIN = 1;
+    public static final int STRICT_LEISURE_DAILY_COUNT_MAX = 3;
     private static final int DEFAULT_LEISURE_DURATION_MINUTES = 20;
     private static final int DEFAULT_LEISURE_DAILY_COUNT = 1;
+    private static final int DEFAULT_STRICT_LEISURE_DURATION_MINUTES = 1;
+    private static final int DEFAULT_STRICT_LEISURE_DAILY_COUNT = 1;
     private static final String KEY_LEISURE_DURATION_MINUTES = "leisure_duration_minutes";
     private static final String KEY_LEISURE_DAILY_COUNT = "leisure_daily_count";
     private static final String KEY_LEISURE_USED_COUNT = "leisure_used_count";
     private static final String KEY_LEISURE_LAST_USED_DATE = "leisure_last_used_date";
+    private static final String KEY_STRICT_LEISURE_DURATION_MINUTES =
+            "strict_leisure_duration_minutes";
+    private static final String KEY_STRICT_LEISURE_DAILY_COUNT = "strict_leisure_daily_count";
+    private static final String KEY_STRICT_LEISURE_USED_COUNT = "strict_leisure_used_count";
+    private static final String KEY_STRICT_LEISURE_LAST_USED_DATE =
+            "strict_leisure_last_used_date";
     private static final String KEY_LEISURE_ACTIVE_UNTIL = "leisure_active_until";
     private static final String KEY_LEISURE_ACTIVE_PACKAGE = "leisure_active_package";
     private static final String KEY_LEISURE_ARMED = "leisure_armed";
+    private static final String KEY_LEISURE_MODE = "leisure_mode";
+
+    public enum LeisureMode {
+        RELAXED("relaxed"),
+        STRICT("strict");
+
+        private final String preferenceValue;
+
+        LeisureMode(String preferenceValue) {
+            this.preferenceValue = preferenceValue;
+        }
+
+        private static LeisureMode fromPreferenceValue(String value) {
+            return STRICT.preferenceValue.equals(value) ? STRICT : RELAXED;
+        }
+    }
 
     // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
@@ -241,69 +269,109 @@ public class AppSettingsManager {
 
     // ===== 休闲时刻相关方法 =====
 
-    public static boolean isValidLeisureDurationMinutes(int durationMinutes) {
-        return durationMinutes >= LEISURE_DURATION_MIN_MINUTES
-                && durationMinutes <= LEISURE_DURATION_MAX_MINUTES;
+    public static boolean isValidLeisureDurationMinutes(
+            LeisureMode mode, int durationMinutes) {
+        return durationMinutes >= getLeisureDurationMinMinutes(mode)
+                && durationMinutes <= getLeisureDurationMaxMinutes(mode);
     }
 
-    public static boolean isValidLeisureDailyCount(int dailyCount) {
-        return dailyCount >= LEISURE_DAILY_COUNT_MIN
-                && dailyCount <= LEISURE_DAILY_COUNT_MAX;
+    public static boolean isValidLeisureDailyCount(LeisureMode mode, int dailyCount) {
+        return dailyCount >= getLeisureDailyCountMin(mode)
+                && dailyCount <= getLeisureDailyCountMax(mode);
     }
 
-    public static String getLeisureDurationRangeText() {
-        return LEISURE_DURATION_MIN_MINUTES + "-" + LEISURE_DURATION_MAX_MINUTES;
+    public static int getLeisureDurationMaxMinutes(LeisureMode mode) {
+        return mode == LeisureMode.STRICT
+                ? STRICT_LEISURE_DURATION_MAX_MINUTES
+                : LEISURE_DURATION_MAX_MINUTES;
     }
 
-    public static String getLeisureDailyCountRangeText() {
-        return LEISURE_DAILY_COUNT_MIN + "-" + LEISURE_DAILY_COUNT_MAX;
+    public static int getLeisureDailyCountMax(LeisureMode mode) {
+        return mode == LeisureMode.STRICT
+                ? STRICT_LEISURE_DAILY_COUNT_MAX
+                : LEISURE_DAILY_COUNT_MAX;
+    }
+
+    public static String getLeisureDurationRangeText(LeisureMode mode) {
+        return getLeisureDurationMinMinutes(mode) + "-" + getLeisureDurationMaxMinutes(mode);
+    }
+
+    public static String getLeisureDailyCountRangeText(LeisureMode mode) {
+        return getLeisureDailyCountMin(mode) + "-" + getLeisureDailyCountMax(mode);
+    }
+
+    private static int getLeisureDurationMinMinutes(LeisureMode mode) {
+        return mode == LeisureMode.STRICT
+                ? STRICT_LEISURE_DURATION_MIN_MINUTES
+                : LEISURE_DURATION_MIN_MINUTES;
+    }
+
+    private static int getLeisureDailyCountMin(LeisureMode mode) {
+        return mode == LeisureMode.STRICT
+                ? STRICT_LEISURE_DAILY_COUNT_MIN
+                : LEISURE_DAILY_COUNT_MIN;
     }
 
     /**
      * 保存休闲时刻设置。
      */
-    public void setLeisureTimeSettings(int durationMinutes, int dailyCount) {
-        if (!isValidLeisureDurationMinutes(durationMinutes)) {
+    public void setLeisureTimeSettings(
+            LeisureMode mode, int durationMinutes, int dailyCount) {
+        if (!isValidLeisureDurationMinutes(mode, durationMinutes)) {
             throw new IllegalArgumentException(
-                    "休闲时刻时长必须在" + getLeisureDurationRangeText() + "分钟之间");
+                    "休闲时刻时长必须在" + getLeisureDurationRangeText(mode) + "分钟之间");
         }
-        if (!isValidLeisureDailyCount(dailyCount)) {
+        if (!isValidLeisureDailyCount(mode, dailyCount)) {
             throw new IllegalArgumentException(
-                    "休闲时刻次数必须在" + getLeisureDailyCountRangeText() + "次之间");
+                    "休闲时刻次数必须在" + getLeisureDailyCountRangeText(mode) + "次之间");
         }
 
-        mmkv.putInt(KEY_LEISURE_DURATION_MINUTES, durationMinutes)
-                .putInt(KEY_LEISURE_DAILY_COUNT, dailyCount)
+        mmkv.putInt(getLeisureDurationKey(mode), durationMinutes)
+                .putInt(getLeisureDailyCountKey(mode), dailyCount)
                 .commit();
     }
 
-    public int getLeisureDurationMinutes() {
+    public int getLeisureDurationMinutes(LeisureMode mode) {
         int durationMinutes = mmkv.getInt(
-                KEY_LEISURE_DURATION_MINUTES, DEFAULT_LEISURE_DURATION_MINUTES);
+                getLeisureDurationKey(mode),
+                mode == LeisureMode.STRICT
+                        ? DEFAULT_STRICT_LEISURE_DURATION_MINUTES
+                        : DEFAULT_LEISURE_DURATION_MINUTES);
         return Math.max(
-                LEISURE_DURATION_MIN_MINUTES,
-                Math.min(durationMinutes, LEISURE_DURATION_MAX_MINUTES));
+                getLeisureDurationMinMinutes(mode),
+                Math.min(durationMinutes, getLeisureDurationMaxMinutes(mode)));
     }
 
-    public int getLeisureDailyCount() {
-        int dailyCount = mmkv.getInt(KEY_LEISURE_DAILY_COUNT, DEFAULT_LEISURE_DAILY_COUNT);
-        return Math.max(LEISURE_DAILY_COUNT_MIN, Math.min(dailyCount, LEISURE_DAILY_COUNT_MAX));
+    public int getLeisureDailyCount(LeisureMode mode) {
+        int dailyCount = mmkv.getInt(
+                getLeisureDailyCountKey(mode),
+                mode == LeisureMode.STRICT
+                        ? DEFAULT_STRICT_LEISURE_DAILY_COUNT
+                        : DEFAULT_LEISURE_DAILY_COUNT);
+        return Math.max(
+                getLeisureDailyCountMin(mode),
+                Math.min(dailyCount, getLeisureDailyCountMax(mode)));
     }
 
-    public int getLeisureUsedCountToday() {
-        String lastUsedDate = mmkv.getString(KEY_LEISURE_LAST_USED_DATE, "");
+    public int getLeisureUsedCountToday(LeisureMode mode) {
+        String lastUsedDate = mmkv.getString(getLeisureLastUsedDateKey(mode), "");
         if (!DateUtils.getCurrentDate().equals(lastUsedDate)) {
             return 0;
         }
-        return mmkv.getInt(KEY_LEISURE_USED_COUNT, 0);
+        return mmkv.getInt(getLeisureUsedCountKey(mode), 0);
     }
 
-    public boolean hasAvailableLeisureTimeToday() {
-        return getLeisureRemainingCountToday() > 0;
+    public int getLeisureRemainingCountToday(LeisureMode mode) {
+        return Math.max(0, getLeisureDailyCount(mode) - getLeisureUsedCountToday(mode));
     }
 
-    public int getLeisureRemainingCountToday() {
-        return Math.max(0, getLeisureDailyCount() - getLeisureUsedCountToday());
+    public LeisureMode getCurrentLeisureMode() {
+        return LeisureMode.fromPreferenceValue(
+                mmkv.getString(KEY_LEISURE_MODE, LeisureMode.RELAXED.preferenceValue));
+    }
+
+    public int getCurrentLeisureDurationMinutes() {
+        return getLeisureDurationMinutes(getCurrentLeisureMode());
     }
 
     public long getLeisureTimeRemainingMillis() {
@@ -335,18 +403,19 @@ public class AppSettingsManager {
      *
      * @return 当前未开启、今日仍有次数并成功开启时返回 true
      */
-    public boolean tryStartLeisureTime() {
+    public boolean tryStartLeisureTime(LeisureMode mode) {
         synchronized (AppSettingsManager.class) {
             if (isLeisureTimeReadyForClose()) {
                 return false;
             }
 
-            if (!hasAvailableLeisureTimeToday()) {
+            if (getLeisureRemainingCountToday(mode) <= 0) {
                 return false;
             }
 
             mmkv.putLong(KEY_LEISURE_ACTIVE_UNTIL, 0)
                     .putString(KEY_LEISURE_ACTIVE_PACKAGE, "")
+                    .putString(KEY_LEISURE_MODE, mode.preferenceValue)
                     .putBoolean(KEY_LEISURE_ARMED, true)
                     .commit();
             return true;
@@ -366,27 +435,53 @@ public class AppSettingsManager {
             if (packageName == null || !isLeisureTimeArmed()) {
                 return false;
             }
-            if (!hasAvailableLeisureTimeToday()) {
+            LeisureMode mode = getCurrentLeisureMode();
+            if (getLeisureRemainingCountToday(mode) <= 0) {
                 mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
                 return false;
             }
 
             String currentDate = DateUtils.getCurrentDate();
-            String lastUsedDate = mmkv.getString(KEY_LEISURE_LAST_USED_DATE, "");
+            String lastUsedDate = mmkv.getString(getLeisureLastUsedDateKey(mode), "");
             int usedCount = currentDate.equals(lastUsedDate)
-                    ? mmkv.getInt(KEY_LEISURE_USED_COUNT, 0)
+                    ? mmkv.getInt(getLeisureUsedCountKey(mode), 0)
                     : 0;
 
-            mmkv.putInt(KEY_LEISURE_USED_COUNT, usedCount + 1)
-                    .putString(KEY_LEISURE_LAST_USED_DATE, currentDate)
+            mmkv.putInt(getLeisureUsedCountKey(mode), usedCount + 1)
+                    .putString(getLeisureLastUsedDateKey(mode), currentDate)
                     .putLong(
                             KEY_LEISURE_ACTIVE_UNTIL,
-                            System.currentTimeMillis() + getLeisureDurationMinutes() * 60_000L)
+                            System.currentTimeMillis()
+                                    + getLeisureDurationMinutes(mode) * 60_000L)
                     .putString(KEY_LEISURE_ACTIVE_PACKAGE, packageName)
                     .putBoolean(KEY_LEISURE_ARMED, false)
                     .commit();
             return true;
         }
+    }
+
+    private static String getLeisureDurationKey(LeisureMode mode) {
+        return mode == LeisureMode.STRICT
+                ? KEY_STRICT_LEISURE_DURATION_MINUTES
+                : KEY_LEISURE_DURATION_MINUTES;
+    }
+
+    private static String getLeisureDailyCountKey(LeisureMode mode) {
+        return mode == LeisureMode.STRICT
+                ? KEY_STRICT_LEISURE_DAILY_COUNT
+                : KEY_LEISURE_DAILY_COUNT;
+    }
+
+    private static String getLeisureUsedCountKey(LeisureMode mode) {
+        return mode == LeisureMode.STRICT
+                ? KEY_STRICT_LEISURE_USED_COUNT
+                : KEY_LEISURE_USED_COUNT;
+    }
+
+    private static String getLeisureLastUsedDateKey(LeisureMode mode) {
+        return mode == LeisureMode.STRICT
+                ? KEY_STRICT_LEISURE_LAST_USED_DATE
+                : KEY_LEISURE_LAST_USED_DATE;
     }
 
     // ===== 个人目标相关方法 =====
