@@ -4,7 +4,7 @@
     <string name="personalization_menu_title">个性化</string>
     <string name="more_menu_title">更多</string>
     <string name="version_update">版本更新</string>
-    <string name="install_troubleshooting">安装问题排查</string>
+    <string name="install_troubleshooting">安装&amp;使用问题排查</string>
     <string name="install_troubleshooting_message">请参考此博客排查解决</string>
     <string name="blog_link_text">此博客</string>
     <string name="install_troubleshooting_url" translatable="false">https://blog.csdn.net/qq_35286474/article/details/163083634</string>
@@ -16,7 +16,7 @@
     <string name="apk_download_unavailable">没有可用的应用打开下载链接</string>
     <string name="floating_window_settings">悬浮窗改默认大小</string>
     <string name="export_backup">导出备份</string>
-    <string name="special_details">冷门问题解决</string>
+    <string name="special_details">备用按钮</string>
     <string name="back">返回</string>
     <string name="reset_floating_window">重置悬浮窗</string>
     <string name="package_name_log">包名日志</string>

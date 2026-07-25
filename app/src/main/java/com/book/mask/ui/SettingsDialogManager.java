@@ -184,8 +184,7 @@ public class SettingsDialogManager {
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("休闲时刻（免答题）")
                 .setView(dialogView)
-                .setPositiveButton("保存", null)
-                .setNegativeButton("取消", null)
+                .setPositiveButton("退出", null)
                 .create();
 
         Handler stateHandler = new Handler(Looper.getMainLooper());
@@ -252,7 +251,7 @@ public class SettingsDialogManager {
                     return;
                 }
                 clearLeisureInputFocus(dialogView, relaxedViews, strictViews);
-                UiFeedback.show(dialogView, "保存成功");
+                dialog.dismiss();
             });
 
             setLeisureStartListener(

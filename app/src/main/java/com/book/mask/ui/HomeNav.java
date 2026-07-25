@@ -559,8 +559,7 @@ public class HomeNav extends Fragment implements
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
             .setTitle(appName)
             .setView(dialogView)
-            .setNegativeButton("取消", null)
-            .setPositiveButton("确定", null)
+            .setPositiveButton("退出", null)
             .create();
         
         // 编辑图标点击事件
