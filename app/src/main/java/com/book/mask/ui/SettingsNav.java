@@ -23,7 +23,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
-import com.book.mask.setting.RelaxManager;
+import com.book.mask.personalize.RelaxManager;
 import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
 import com.book.mask.network.LatestVersionManager;

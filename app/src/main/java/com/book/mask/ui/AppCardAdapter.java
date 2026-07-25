@@ -10,7 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.book.mask.R;
-import com.book.mask.setting.RelaxManager;
+import com.book.mask.personalize.RelaxManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;

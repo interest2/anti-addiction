@@ -28,7 +28,7 @@ import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.lifecycle.AppLifecycleObserver;
 import com.book.mask.network.DeviceInfoReporter;
-import com.book.mask.setting.RelaxManager;
+import com.book.mask.personalize.RelaxManager;
 import com.book.mask.network.TextFetcher;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;

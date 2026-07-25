@@ -9,7 +9,7 @@ import android.view.accessibility.AccessibilityNodeInfo;
 
 import com.book.mask.constant.Const;
 import com.book.mask.config.InputMethodPackageManager;
-import com.book.mask.setting.AppSettingsManager;
+import com.book.mask.personalize.AppSettingsManager;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;

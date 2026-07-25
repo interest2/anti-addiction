@@ -13,8 +13,8 @@ import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
-import com.book.mask.setting.LeisureTimeManager;
-import com.book.mask.setting.RelaxManager;
+import com.book.mask.personalize.LeisureTimeManager;
+import com.book.mask.personalize.RelaxManager;
 
 import java.util.Map;
 import java.util.HashMap;

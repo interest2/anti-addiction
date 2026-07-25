@@ -1,4 +1,4 @@
-package com.book.mask.setting;
+package com.book.mask.personalize;
 
 import com.tencent.mmkv.MMKV;
 

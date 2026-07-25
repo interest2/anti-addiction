@@ -1,4 +1,4 @@
-package com.book.mask.setting;
+package com.book.mask.personalize;
 
 import android.content.Context;
 import android.util.Log;

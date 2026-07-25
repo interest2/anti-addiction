@@ -30,8 +30,8 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.book.mask.R;
-import com.book.mask.setting.RelaxManager;
-import com.book.mask.setting.AppSettingsManager;
+import com.book.mask.personalize.RelaxManager;
+import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.config.CustomAppManager;

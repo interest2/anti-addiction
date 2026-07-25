@@ -3,7 +3,7 @@ package com.book.mask.config;
 import android.content.Context;
 import android.util.Log;
 
-import com.book.mask.setting.RelaxManager;
+import com.book.mask.personalize.RelaxManager;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.tencent.mmkv.MMKV;

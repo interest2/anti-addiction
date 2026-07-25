@@ -7,7 +7,7 @@ import android.util.Log;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.CloudConst;
 import com.book.mask.constant.QuestionConst;
-import com.book.mask.setting.ChallengeSettingsManager;
+import com.book.mask.personalize.ChallengeSettingsManager;
 import com.book.mask.util.ArithmeticUtils;
 import com.book.mask.util.ContentUtils;
 

@@ -16,9 +16,9 @@ import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.config.Share;
-import com.book.mask.setting.AppSettingsManager;
-import com.book.mask.setting.LeisureTimeManager;
-import com.book.mask.setting.RelaxManager;
+import com.book.mask.personalize.AppSettingsManager;
+import com.book.mask.personalize.LeisureTimeManager;
+import com.book.mask.personalize.RelaxManager;
 import com.book.mask.network.TextFetcher;
 
 /**

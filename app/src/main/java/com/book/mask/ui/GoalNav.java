@@ -12,8 +12,8 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
-import com.book.mask.setting.RelaxManager;
-import com.book.mask.setting.AppSettingsManager;
+import com.book.mask.personalize.RelaxManager;
+import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.floating.FloatHelper;
 
 public class GoalNav extends Fragment {
