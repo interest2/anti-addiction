@@ -45,6 +45,8 @@ public class AppStateManager {
     private long packageTransitionGeneration = 0;
     private long floatingShowPackageDetectionPausedUntil = 0;
     private Runnable floatingShowPackageDetectionResumeRunnable;
+    private final Map<String, Boolean> lastDetectionMissingTargetWord = new HashMap<>();
+    private final Map<String, Boolean> detectBeforeShowOnNextEntry = new HashMap<>();
 
     private static final class PendingPackageTransition {
         private final CustomApp targetApp;
@@ -243,6 +245,7 @@ public class AppStateManager {
             }
             // 简化界面判断逻辑：只检测目标词
             String currentInterface = hasTargetWord ? "target" : "not target";
+            lastDetectionMissingTargetWord.put(currentPackageName, !hasTargetWord);
 
             // 添加详细调试信息
             Log.d(TAG, "文本检测结果: " + targetWord + "=" + hasTargetWord + ", 当前界面=" + currentInterface + ", APP=" + appName);
@@ -509,7 +512,6 @@ public class AppStateManager {
 
         cancelPendingPackageConfirmation();
         cancelPendingContentCheck();
-        Share.clearAppState(currentActiveApp);
 
         if (!Const.PACKAGE_TRANSITION_RECHECK_ENABLED) {
             Log.d(TAG, source + "第300ms复核机制已关闭，离开目标 APP 立即隐藏悬浮窗");
@@ -779,6 +781,7 @@ public class AppStateManager {
             if (detectedApp != currentActiveApp) {
                 if (currentActiveApp != null) {
                     Log.d(TAG, source + "确认离开 APP: " + currentActiveApp.getAppName());
+                    rememberNextEntryDisplayOrder(currentActiveApp);
                     Share.clearAppState(currentActiveApp);
                 }
 
@@ -786,9 +789,17 @@ public class AppStateManager {
                 currentActiveApp = detectedApp;
                 Share.currentApp = currentActiveApp;
                 Log.d(TAG, source + "确认进入 APP: " + detectedApp.getAppName());
-                boolean shouldShowBeforeContentCheck = !suspendedForSystemUi
+                boolean shouldDetectBeforeShow = detectBeforeShowOnNextEntry.getOrDefault(
+                        detectedApp.getPackageName(), false);
+                lastDetectionMissingTargetWord.remove(detectedApp.getPackageName());
+                boolean shouldShowBeforeContentCheck = !shouldDetectBeforeShow
+                        && !suspendedForSystemUi
                         && !Share.isAppManuallyHidden(detectedApp);
-                if (shouldShowBeforeContentCheck && listener != null) {
+                if (shouldDetectBeforeShow) {
+                    Log.d(TAG, "上次离开 " + detectedApp.getAppName()
+                            + " 时页面未检测到目标关键词，本次先检测页面文字，再决定是否显示悬浮窗");
+                    checkTextContentOptimized();
+                } else if (shouldShowBeforeContentCheck && listener != null) {
                     Log.d(TAG, "确认进入目标 " + detectedApp.getAppName()
                             + "，先显示悬浮窗，再检测页面文字");
                     listener.onTargetPackageEnteredBeforeContentCheck(detectedApp);
@@ -822,6 +833,7 @@ public class AppStateManager {
 
         CustomApp leftApp = currentActiveApp;
         Log.d(TAG, source + "确认离开 APP: " + leftApp.getAppName());
+        rememberNextEntryDisplayOrder(leftApp);
         Share.clearAppState(leftApp);
         cancelPendingContentCheck();
         currentActiveApp = null;
@@ -842,6 +854,7 @@ public class AppStateManager {
 
         CustomApp leftApp = currentActiveApp;
         Log.d(TAG, source + "确认离开 APP: " + leftApp.getAppName());
+        rememberNextEntryDisplayOrder(leftApp);
         Share.clearAppState(leftApp);
         cancelPendingContentCheck();
         currentActiveApp = null;
@@ -849,6 +862,16 @@ public class AppStateManager {
         if (listener != null) {
             listener.onTargetPackageTransitionLeft(leftApp);
         }
+    }
+
+    private void rememberNextEntryDisplayOrder(CustomApp app) {
+        boolean hiddenOnlyForMissingTargetWord = lastDetectionMissingTargetWord.getOrDefault(
+                        app.getPackageName(), false)
+                && !leisureTimeManager.isLeisureTimeActiveForApp(app.getPackageName())
+                && !Share.isAppManuallyHidden(app);
+        detectBeforeShowOnNextEntry.put(app.getPackageName(), hiddenOnlyForMissingTargetWord);
+        Log.d(TAG, "记录 " + app.getAppName() + " 下次进入策略: "
+                + (hiddenOnlyForMissingTargetWord ? "先检测再决定是否显示" : "按常规抢先显示"));
     }
 
     private void setSuspendedForSystemUi(boolean suspended) {
@@ -884,5 +907,7 @@ public class AppStateManager {
             handler.removeCallbacks(floatingShowPackageDetectionResumeRunnable);
             floatingShowPackageDetectionResumeRunnable = null;
         }
+        lastDetectionMissingTargetWord.clear();
+        detectBeforeShowOnNextEntry.clear();
     }
 }
