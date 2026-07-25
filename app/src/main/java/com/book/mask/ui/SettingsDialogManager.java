@@ -252,7 +252,7 @@ public class SettingsDialogManager {
                     return;
                 }
                 clearLeisureInputFocus(dialogView, relaxedViews, strictViews);
-                UiFeedback.show(context, "保存成功");
+                UiFeedback.show(dialogView, "保存成功");
             });
 
             setLeisureStartListener(
@@ -329,14 +329,14 @@ public class SettingsDialogManager {
             }
             if (leisureTimeManager.tryStartLeisureTime(targetViews.mode)) {
                 UiFeedback.show(
-                        context,
+                        dialogView,
                         "已开启" + getLeisureModeName(targetViews.mode)
                                 + "，首个关闭悬浮窗的 APP 将免答题解禁");
             } else if (leisureTimeManager.isLeisureTimeActive(targetViews.mode)) {
-                UiFeedback.show(context, getLeisureModeName(targetViews.mode) + "正在进行中");
+                UiFeedback.show(dialogView, getLeisureModeName(targetViews.mode) + "正在进行中");
             } else {
                 UiFeedback.showError(
-                        context,
+                        dialogView,
                         getLeisureModeName(targetViews.mode) + "今日次数已用完");
             }
             refreshLeisureState.run();
@@ -413,7 +413,9 @@ public class SettingsDialogManager {
             return;
         }
 
-        views.startButton.setEnabled(remainingCount != null && remainingCount > 0);
+        // 次数用完时不禁用开关：开关的禁用态与关闭态外观一致，禁用后点击毫无反馈，
+        // 改为放行点击、由点击回调提示"今日次数已用完"
+        views.startButton.setEnabled(true);
         views.startButton.setTextOff("");
         views.startButton.setChecked(false);
     }

@@ -65,10 +65,9 @@ public final class UiFeedback {
     }
 
     public static Snackbar make(View anchor, CharSequence message) {
-        return centerAndSize(Snackbar.make(
-                anchor,
-                message,
-                Const.TRANSIENT_FEEDBACK_DURATION_MS));
+        return centerAndSize(
+                Snackbar.make(anchor, message, Const.TRANSIENT_FEEDBACK_DURATION_MS),
+                anchor);
     }
 
     public static void showInputError(EditText input, CharSequence message) {
@@ -127,13 +126,12 @@ public final class UiFeedback {
         return make(contentView, message);
     }
 
-    private static Snackbar centerAndSize(Snackbar snackbar) {
+    private static Snackbar centerAndSize(Snackbar snackbar, View anchor) {
         View snackbarView = snackbar.getView();
         ViewGroup.LayoutParams params = snackbarView.getLayoutParams();
         params.width = ViewGroup.LayoutParams.WRAP_CONTENT;
         snackbarView.setMinimumWidth(0);
-        int bottomOffset = Math.round(snackbarView.getResources()
-                .getDisplayMetrics().heightPixels * 2f / 5f);
+        int bottomOffset = Math.round(getFeedbackHostHeight(anchor) * 2f / 5f);
         if (params instanceof ViewGroup.MarginLayoutParams) {
             int margin = Math.round(16 * snackbarView.getResources()
                     .getDisplayMetrics().density);
@@ -150,6 +148,17 @@ public final class UiFeedback {
             snackbarView.setLayoutParams(params);
         }
         return snackbar;
+    }
+
+    /**
+     * 提示的纵向偏移按承载窗口的高度计算：弹窗内锚定时窗口只有弹窗那么高，
+     * 若按整屏高度算偏移会把提示挤出弹窗、被裁剪掉。
+     */
+    private static int getFeedbackHostHeight(View anchor) {
+        int rootHeight = anchor.getRootView().getHeight();
+        return rootHeight > 0
+                ? rootHeight
+                : anchor.getResources().getDisplayMetrics().heightPixels;
     }
 
     private static void scheduleErrorClear(View owner, Runnable clearError) {
