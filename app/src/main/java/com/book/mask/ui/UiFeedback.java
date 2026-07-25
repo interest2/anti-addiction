@@ -131,7 +131,7 @@ public final class UiFeedback {
         ViewGroup.LayoutParams params = snackbarView.getLayoutParams();
         params.width = ViewGroup.LayoutParams.WRAP_CONTENT;
         snackbarView.setMinimumWidth(0);
-        int bottomOffset = Math.round(getFeedbackHostHeight(anchor) * 2f / 5f);
+        int bottomOffset = getFeedbackBottomOffset(anchor);
         if (params instanceof ViewGroup.MarginLayoutParams) {
             int margin = Math.round(16 * snackbarView.getResources()
                     .getDisplayMetrics().density);
@@ -151,14 +151,24 @@ public final class UiFeedback {
     }
 
     /**
-     * 提示的纵向偏移按承载窗口的高度计算：弹窗内锚定时窗口只有弹窗那么高，
-     * 若按整屏高度算偏移会把提示挤出弹窗、被裁剪掉。
+     * 统一让提示落在屏幕自下而上 1/4 处。提示挂在锚点所属窗口内，
+     * 弹窗窗口只有弹窗那么高，需按窗口在屏幕上的位置换算成窗口内的下边距。
      */
-    private static int getFeedbackHostHeight(View anchor) {
-        int rootHeight = anchor.getRootView().getHeight();
-        return rootHeight > 0
-                ? rootHeight
-                : anchor.getResources().getDisplayMetrics().heightPixels;
+    private static int getFeedbackBottomOffset(View anchor) {
+        View host = anchor.getRootView();
+        int screenHeight = anchor.getResources().getDisplayMetrics().heightPixels;
+        int hostHeight = host.getHeight();
+        if (hostHeight <= 0) {
+            return Math.round(screenHeight / 4f);
+        }
+
+        int[] hostLocation = new int[2];
+        host.getLocationOnScreen(hostLocation);
+        int hostBottomGap = screenHeight - (hostLocation[1] + hostHeight);
+        int bottomOffset = Math.round(screenHeight / 4f) - hostBottomGap;
+
+        int reserved = Math.round(96 * anchor.getResources().getDisplayMetrics().density);
+        return Math.max(0, Math.min(bottomOffset, Math.max(0, hostHeight - reserved)));
     }
 
     private static void scheduleErrorClear(View owner, Runnable clearError) {

@@ -10,6 +10,7 @@ import android.text.TextPaint;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -62,6 +63,7 @@ public class HomeNav extends Fragment implements
     private AppCardAdapter appCardAdapter;
     private List<CustomApp> allApps; // 包含预定义APP和自定义APP
     private TextView permissionStatusView;
+    private TextView permissionOptionalView;
     
     // 倒计时相关
     private Handler countdownHandler;
@@ -98,11 +100,16 @@ public class HomeNav extends Fragment implements
         setupAddButton(view);
 
         permissionStatusView = view.findViewById(R.id.tv_description);
+        permissionOptionalView = view.findViewById(R.id.tv_optional_permissions);
         if (permissionStatusView != null) {
             permissionStatusView.setMovementMethod(LinkMovementMethod.getInstance());
             permissionStatusView.setHighlightColor(android.graphics.Color.TRANSPARENT);
-            refreshPermissionStatus();
         }
+        if (permissionOptionalView != null) {
+            permissionOptionalView.setMovementMethod(LinkMovementMethod.getInstance());
+            permissionOptionalView.setHighlightColor(android.graphics.Color.TRANSPARENT);
+        }
+        refreshPermissionStatus();
 
         // 启动倒计时更新
         startCountdown();
@@ -111,7 +118,7 @@ public class HomeNav extends Fragment implements
     }
 
     public void refreshPermissionStatus() {
-        if (!isAdded() || permissionStatusView == null) {
+        if (!isAdded() || permissionStatusView == null || permissionOptionalView == null) {
             return;
         }
 
@@ -121,33 +128,42 @@ public class HomeNav extends Fragment implements
                 0,
                 status.length(),
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        status.setSpan(
+                new RelativeSizeSpan(1.125f),
+                0,
+                status.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         appendPermissionStatus(
                 status,
-                "悬浮窗",
+                "1.悬浮窗",
                 PermissionStatus.canDrawOverlays(requireContext()),
                 MainActivity::reviewOverlayPermission);
         appendPermissionStatus(
                 status,
-                "无障碍服务",
+                "2.无障碍服务",
                 PermissionStatus.isAccessibilityServiceEnabled(requireContext()),
                 MainActivity::reviewAccessibilityPermission);
         appendBackgroundRunHint(status);
+        permissionStatusView.setText(status);
 
-        status.append("\n\n");
-        int subTitleStart = status.length();
-        status.append("可选权限");
-        status.setSpan(
+        SpannableStringBuilder optional = new SpannableStringBuilder("可选权限");
+        optional.setSpan(
                 new StyleSpan(Typeface.BOLD),
-                subTitleStart,
-                status.length(),
+                0,
+                optional.length(),
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        status.append(" ");
-        int clickStart = status.length();
-        status.append("点这");
+        optional.setSpan(
+                new RelativeSizeSpan(1.125f),
+                0,
+                optional.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        optional.append(" ");
+        int clickStart = optional.length();
+        optional.append("点这");
         int clickColor = MaterialColors.getColor(
-                permissionStatusView,
+                permissionOptionalView,
                 com.google.android.material.R.attr.colorPrimary);
-        status.setSpan(new ClickableSpan() {
+        optional.setSpan(new ClickableSpan() {
             @Override
             public void onClick(@NonNull View widget) {
                 showOptionalPermissionsDialog();
@@ -158,13 +174,13 @@ public class HomeNav extends Fragment implements
                 drawState.setColor(clickColor);
                 drawState.setUnderlineText(true);
             }
-        }, clickStart, status.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        status.setSpan(
+        }, clickStart, optional.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        optional.setSpan(
                 new StyleSpan(Typeface.BOLD),
                 clickStart,
-                status.length(),
+                optional.length(),
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        permissionStatusView.setText(status);
+        permissionOptionalView.setText(optional);
     }
 
     private void showOptionalPermissionsDialog() {
@@ -230,7 +246,7 @@ public class HomeNav extends Fragment implements
     }
 
     private void appendBackgroundRunHint(SpannableStringBuilder text) {
-        text.append('\n').append("允许后台活动").append("：");
+        text.append('\n').append("3.允许后台活动").append("：");
         int clickStart = text.length();
         text.append("点这");
         int clickColor = MaterialColors.getColor(
@@ -1075,6 +1091,7 @@ public class HomeNav extends Fragment implements
     @Override
     public void onDestroyView() {
         permissionStatusView = null;
+        permissionOptionalView = null;
         super.onDestroyView();
     }
     

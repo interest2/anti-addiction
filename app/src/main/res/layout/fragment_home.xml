@@ -22,35 +22,58 @@
             android:layout_marginBottom="16dp"
             android:textSize="24sp"
             android:textStyle="bold"
-            app:layout_constraintBottom_toTopOf="@+id/tv_description"
+            app:layout_constraintBottom_toTopOf="@+id/ll_permissions"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_chainStyle="packed" />
 
-        <TextView
-            android:id="@+id/tv_description"
+        <LinearLayout
+            android:id="@+id/ll_permissions"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="正在检查权限状态"
-            android:textAlignment="viewStart"
-            android:textSize="16sp"
-            app:layout_constraintBottom_toTopOf="@+id/tv_apps_subtitle"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:baselineAligned="false"
+            app:layout_constraintBottom_toTopOf="@+id/ll_apps_header"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_title" />
+            app:layout_constraintTop_toBottomOf="@+id/tv_title">
+
+            <TextView
+                android:id="@+id/tv_description"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="3"
+                android:text="正在检查权限状态"
+                android:textAlignment="viewStart"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tv_optional_permissions"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:layout_marginStart="16dp"
+                android:textAlignment="viewStart"
+                android:textSize="16sp" />
+
+        </LinearLayout>
 
         <LinearLayout
             android:id="@+id/ll_apps_header"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="15dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tv_description">
+            app:layout_constraintTop_toBottomOf="@id/ll_permissions">
+
+            <Space
+                android:layout_width="48dp"
+                android:layout_height="1dp" />
 
             <TextView
                 android:id="@+id/tv_apps_subtitle"
@@ -58,8 +81,9 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="支持的 APP"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:textSize="21sp"
+                android:textStyle="bold"
+                android:gravity="center" />
 
             <ImageButton
                 android:id="@+id/btn_add_app"
@@ -76,8 +100,8 @@
             android:id="@+id/rv_app_cards"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="0dp"
-            android:layout_marginBottom="8dp"
+            android:layout_marginTop="-5dp"
+            android:layout_marginBottom="4dp"
             android:nestedScrollingEnabled="false"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

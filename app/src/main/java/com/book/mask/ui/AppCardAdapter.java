@@ -78,6 +78,41 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         notifyDataSetChanged();
     }
 
+    /**
+     * 计算 APP 名称的起始外边距：默认 20dp；当名称过长、按默认外边距会与右侧开关重叠时，
+     * 自动缩小外边距让名称整体左移（下限 0dp），仍放不下才由 ellipsize 兜底截断。
+     */
+    private void adjustAppNameStartMargin(TextView nameView, View deleteBtn, View toggle) {
+        nameView.post(() -> {
+            View row = (View) nameView.getParent();
+            if (row == null || row.getWidth() <= 0) {
+                return;
+            }
+            float density = nameView.getResources().getDisplayMetrics().density;
+            int defaultMargin = (int) (20 * density);
+            int deleteWidth = (deleteBtn != null && deleteBtn.getVisibility() == View.VISIBLE)
+                    ? (int) (20 * density) : 0;
+            int toggleWidth = (int) (36 * density);
+            int available = row.getWidth() - row.getPaddingStart() - row.getPaddingEnd()
+                    - deleteWidth - toggleWidth;
+            float textWidth = nameView.getPaint().measureText(nameView.getText().toString());
+
+            int desiredMargin;
+            if (textWidth + defaultMargin > available) {
+                desiredMargin = Math.max(0, (int) (available - textWidth));
+            } else {
+                desiredMargin = defaultMargin;
+            }
+
+            ViewGroup.MarginLayoutParams lp =
+                    (ViewGroup.MarginLayoutParams) nameView.getLayoutParams();
+            if (lp.getMarginStart() != desiredMargin) {
+                lp.setMarginStart(desiredMargin);
+                nameView.setLayoutParams(lp);
+            }
+        });
+    }
+
     class AppCardViewHolder extends RecyclerView.ViewHolder {
         private TextView tvAppName;
         private TextView tvRemainingTime;
@@ -146,6 +181,11 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
             if (btnDeleteApp != null) {
                 boolean isCustom = CustomAppManager.getInstance().isCustomApp(packageName);
                 btnDeleteApp.setVisibility(isCustom ? View.VISIBLE : View.GONE);
+            }
+
+            // 默认 marginStart 20dp；APP名较长会与右侧开关重叠时，自动左移（缩小起始外边距）
+            if (tvAppName != null) {
+                adjustAppNameStartMargin(tvAppName, btnDeleteApp, toggleMonitor);
             }
 
             // 设置监测开关状态
