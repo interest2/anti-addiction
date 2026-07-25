@@ -17,6 +17,7 @@ import com.book.mask.config.CustomApp;
 import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.config.Share;
 import com.book.mask.setting.AppSettingsManager;
+import com.book.mask.setting.LeisureTimeManager;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.network.TextFetcher;
 
@@ -51,6 +52,7 @@ public class FloatingWindowManager {
     // 管理器依赖
     private MathChallengeManager mathChallengeManager;
     private AppSettingsManager appSettingsManager;
+    private LeisureTimeManager leisureTimeManager;
     private RelaxManager relaxManager;
     private TextFetcher textFetcher;
     private Handler handler;
@@ -66,11 +68,14 @@ public class FloatingWindowManager {
     }
     
     public FloatingWindowManager(Context context, WindowManager windowManager, 
-                                AppSettingsManager appSettingsManager, RelaxManager relaxManager,
+                                AppSettingsManager appSettingsManager,
+                                LeisureTimeManager leisureTimeManager,
+                                RelaxManager relaxManager,
                                 TextFetcher textFetcher, Handler handler) {
         this.context = context;
         this.windowManager = windowManager;
         this.appSettingsManager = appSettingsManager;
+        this.leisureTimeManager = leisureTimeManager;
         this.relaxManager = relaxManager;
         this.textFetcher = textFetcher;
         this.handler = handler;
@@ -85,7 +90,7 @@ public class FloatingWindowManager {
      */
     public void showFloatingWindow(CustomApp currentActiveApp) {
         if (currentActiveApp != null
-                && appSettingsManager.isLeisureTimeActiveForApp(
+                && leisureTimeManager.isLeisureTimeActiveForApp(
                         currentActiveApp.getPackageName())) {
             Log.v(TAG, "APP " + currentActiveApp.getAppName()
                     + " 正在休闲解禁，跳过显示悬浮窗");
@@ -155,7 +160,7 @@ public class FloatingWindowManager {
             closeButton.setOnClickListener(v -> {
                 Log.d(TAG, "用户点击关闭按钮");
 
-                if (appSettingsManager.isLeisureTimeArmed()
+                if (leisureTimeManager.isLeisureTimeArmed()
                         && listener != null
                         && listener.onLeisureTimeCloseRequested()) {
                     Log.d(TAG, "使用休闲时刻免答题关闭悬浮窗");

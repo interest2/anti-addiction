@@ -18,7 +18,6 @@ import java.util.Locale;
 public class RelaxManager {
     private static final String TAG = "RelaxManager";
 
-    private static final String PREFS_NAME = "app_settings";
     // 每个APP独立的设置键名前缀
     private static final String KEY_DEFAULT_SHOW_INTERVAL = "default_show_interval";
     private static final String KEY_SHOW_INTERVAL = "app_show_interval_";
@@ -35,7 +34,7 @@ public class RelaxManager {
     private MMKV mmkv;
 
     public RelaxManager(Context context) {
-        mmkv = MMKV.mmkvWithID(PREFS_NAME);
+        mmkv = SettingsStorage.open();
     }
 
     // 时间格式化器

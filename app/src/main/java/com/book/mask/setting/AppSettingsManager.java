@@ -2,20 +2,15 @@ package com.book.mask.setting;
 
 import android.content.Context;
 
-import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
-import com.book.mask.constant.QuestionConst;
 import com.book.mask.config.Share;
-import com.book.mask.util.DateUtils;
 import com.tencent.mmkv.MMKV;
 
 /**
  * 应用设置管理器
- * 用于管理算术题难度、悬浮窗设置、个人目标等配置参数
+ * 用于管理悬浮窗设置、个人目标等通用配置参数
  */
 public class AppSettingsManager {
-
-    private static final String PREFS_NAME = "app_settings";
 
     // 每个APP独立的悬浮窗警示文字来源相关
     private static final String KEY_APP_HINT_SOURCE = "app_hint_source_";
@@ -26,61 +21,6 @@ public class AppSettingsManager {
     private static final String KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED = "floating_strict_reminder_settings_clicked";
     private static final String KEY_FLOATING_STRICT_REMINDER_FONT_SIZE = "floating_strict_reminder_font_size";
 
-    // 休闲时刻
-      // 宽松模式范围
-    public static final int LEISURE_DURATION_MIN_MINUTES = 10;
-    public static final int LEISURE_DURATION_MAX_MINUTES = 30;
-    public static final int LEISURE_DAILY_COUNT_MIN = 1;
-    public static final int LEISURE_DAILY_COUNT_MAX = 2;
-      // 严格模式范围
-    public static final int STRICT_LEISURE_DURATION_MIN_MINUTES = 1;
-    public static final int STRICT_LEISURE_DURATION_MAX_MINUTES = 2;
-    public static final int STRICT_LEISURE_DAILY_COUNT_MIN = 1;
-    public static final int STRICT_LEISURE_DAILY_COUNT_MAX = 3;
-
-    // 休闲时刻默认值
-    private static final int DEFAULT_LEISURE_DURATION_MINUTES = 15;
-    private static final int DEFAULT_LEISURE_DAILY_COUNT = 2;
-    private static final int DEFAULT_STRICT_LEISURE_DURATION_MINUTES = 2;
-    private static final int DEFAULT_STRICT_LEISURE_DAILY_COUNT = 2;
-
-    private static final String KEY_LEISURE_DURATION_MINUTES = "leisure_duration_minutes";
-    private static final String KEY_LEISURE_DAILY_COUNT = "leisure_daily_count";
-    private static final String KEY_LEISURE_USED_COUNT = "leisure_used_count";
-    private static final String KEY_LEISURE_LAST_USED_DATE = "leisure_last_used_date";
-    private static final String KEY_STRICT_LEISURE_DURATION_MINUTES =
-            "strict_leisure_duration_minutes";
-    private static final String KEY_STRICT_LEISURE_DAILY_COUNT = "strict_leisure_daily_count";
-    private static final String KEY_STRICT_LEISURE_USED_COUNT = "strict_leisure_used_count";
-    private static final String KEY_STRICT_LEISURE_LAST_USED_DATE =
-            "strict_leisure_last_used_date";
-    private static final String KEY_LEISURE_ACTIVE_UNTIL = "leisure_active_until";
-    private static final String KEY_LEISURE_ACTIVE_PACKAGE = "leisure_active_package";
-    private static final String KEY_STRICT_LEISURE_ACTIVE_UNTIL =
-            "strict_leisure_active_until";
-    private static final String KEY_STRICT_LEISURE_ACTIVE_PACKAGE =
-            "strict_leisure_active_package";
-    private static final String KEY_LEISURE_ARMED = "leisure_armed";
-    private static final String KEY_LEISURE_ARMED_MODE = "leisure_armed_mode";
-    private static final String KEY_LEISURE_MODE = "leisure_mode";
-    private static final String KEY_LEISURE_MODE_STATE_MIGRATED =
-            "leisure_mode_state_migrated";
-
-    public enum LeisureMode {
-        RELAXED("relaxed"),
-        STRICT("strict");
-
-        private final String preferenceValue;
-
-        LeisureMode(String preferenceValue) {
-            this.preferenceValue = preferenceValue;
-        }
-
-        private static LeisureMode fromPreferenceValue(String value) {
-            return STRICT.preferenceValue.equals(value) ? STRICT : RELAXED;
-        }
-    }
-
     // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
             "高考", "考研", "保研", "出国升学", "跳槽", "找工作", "考公务员"
@@ -89,13 +29,6 @@ public class AppSettingsManager {
     // 悬浮窗位置默认值（像素）
     private static final int DEFAULT_TOP_OFFSET = 130;
     private static final int DEFAULT_BOTTOM_OFFSET = 230;
-
-    // 算术题难度设置相关常量
-    private static final String KEY_MATH_DIFFICULTY_MODE = "math_difficulty_mode";
-    private static final String KEY_MATH_ADDITION_DIGITS = "math_addition_digits";
-    private static final String KEY_MATH_SUBTRACTION_DIGITS = "math_subtraction_digits";
-    private static final String KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS = "math_multiplication_multiplier_digits";
-    private static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS = "math_multiplication_multiplicand_digits";
 
     // 个人目标相关
     private static final String KEY_MOTIVATION_TAG = "motivation_tag";
@@ -110,31 +43,7 @@ public class AppSettingsManager {
     private MMKV mmkv;
 
     public AppSettingsManager(Context context) {
-        mmkv = MMKV.mmkvWithID(PREFS_NAME);
-        migrateLeisureModeStateIfNeeded();
-    }
-
-    private void migrateLeisureModeStateIfNeeded() {
-        synchronized (AppSettingsManager.class) {
-            if (mmkv.getBoolean(KEY_LEISURE_MODE_STATE_MIGRATED, false)) {
-                return;
-            }
-
-            LeisureMode legacyMode = LeisureMode.fromPreferenceValue(
-                    mmkv.getString(KEY_LEISURE_MODE, LeisureMode.RELAXED.preferenceValue));
-            long legacyActiveUntil = mmkv.getLong(KEY_LEISURE_ACTIVE_UNTIL, 0);
-            String legacyActivePackage = mmkv.getString(KEY_LEISURE_ACTIVE_PACKAGE, "");
-            if (legacyMode == LeisureMode.STRICT && legacyActiveUntil > System.currentTimeMillis()) {
-                mmkv.putLong(KEY_STRICT_LEISURE_ACTIVE_UNTIL, legacyActiveUntil)
-                        .putString(KEY_STRICT_LEISURE_ACTIVE_PACKAGE, legacyActivePackage)
-                        .putLong(KEY_LEISURE_ACTIVE_UNTIL, 0)
-                        .putString(KEY_LEISURE_ACTIVE_PACKAGE, "");
-            }
-            if (mmkv.getBoolean(KEY_LEISURE_ARMED, false)) {
-                mmkv.putString(KEY_LEISURE_ARMED_MODE, legacyMode.preferenceValue);
-            }
-            mmkv.putBoolean(KEY_LEISURE_MODE_STATE_MIGRATED, true).commit();
-        }
+        mmkv = SettingsStorage.open();
     }
 
     // ===== 悬浮窗警示文字来源相关方法 =====
@@ -179,81 +88,6 @@ public class AppSettingsManager {
         mmkv.removeValueForKey(KEY_APP_FLOATING_TOP_OFFSET + packageName);
         mmkv.removeValueForKey(KEY_APP_FLOATING_BOTTOM_OFFSET + packageName);
         android.util.Log.d("SettingsManager", "清除APP在AppSettingsManager中的所有设置: " + packageName);
-    }
-
-    // ===== 算术题难度设置相关方法 =====
-
-    /**
-     * 设置算术题难度模式
-     *
-     * @param mode "default" 或 "custom"
-     */
-    public void setMathDifficultyMode(String mode) {
-        android.util.Log.d("SettingsManager", "设置难度模式: " + mode);
-        mmkv.putString(KEY_MATH_DIFFICULTY_MODE, mode).commit();
-        android.util.Log.d("SettingsManager", "难度模式设置完成");
-    }
-
-    public String getMathDifficultyMode() {
-        String mode = mmkv.getString(KEY_MATH_DIFFICULTY_MODE, "default");
-        android.util.Log.d("SettingsManager", "获取难度模式: " + mode);
-        return mode;
-    }
-
-    /**
-     * 设置加法数字位数
-     */
-    public void setMathAdditionDigits(int digits) {
-        mmkv.putInt(KEY_MATH_ADDITION_DIGITS, digits).commit();
-    }
-
-    /**
-     * 获取加法数字位数
-     */
-    public int getMathAdditionDigits() {
-        return mmkv.getInt(KEY_MATH_ADDITION_DIGITS, QuestionConst.ADD_LEN_DEFAULT);
-    }
-
-    /**
-     * 设置减法数字位数
-     */
-    public void setMathSubtractionDigits(int digits) {
-        mmkv.putInt(KEY_MATH_SUBTRACTION_DIGITS, digits).commit();
-    }
-
-    /**
-     * 获取减法数字位数
-     */
-    public int getMathSubtractionDigits() {
-        return mmkv.getInt(KEY_MATH_SUBTRACTION_DIGITS, QuestionConst.SUB_LEN_DEFAULT);
-    }
-
-    /**
-     * 设置乘法乘数位数
-     */
-    public void setMathMultiplicationMultiplierDigits(int digits) {
-        mmkv.putInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, digits).commit();
-    }
-
-    /**
-     * 获取乘法乘数位数
-     */
-    public int getMathMultiplicationMultiplierDigits() {
-        return mmkv.getInt(KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS, QuestionConst.MUL_FIRST_LEN_DEFAULT);
-    }
-
-    /**
-     * 设置乘法被乘数位数
-     */
-    public void setMathMultiplicationMultiplicandDigits(int digits) {
-        mmkv.putInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, digits).commit();
-    }
-
-    /**
-     * 获取乘法被乘数位数
-     */
-    public int getMathMultiplicationMultiplicandDigits() {
-        return mmkv.getInt(KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, QuestionConst.MUL_SECOND_LEN_DEFAULT);
     }
 
     // ===== 悬浮窗额外显示日常提醒相关方法 =====
@@ -301,258 +135,6 @@ public class AppSettingsManager {
      */
     public int getFloatingStrictReminderFontSize() {
         return mmkv.getInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, 18); // 默认18sp
-    }
-
-    // ===== 休闲时刻相关方法 =====
-
-    public static boolean isValidLeisureDurationMinutes(
-            LeisureMode mode, int durationMinutes) {
-        return durationMinutes >= getLeisureDurationMinMinutes(mode)
-                && durationMinutes <= getLeisureDurationMaxMinutes(mode);
-    }
-
-    public static boolean isValidLeisureDailyCount(LeisureMode mode, int dailyCount) {
-        return dailyCount >= getLeisureDailyCountMin(mode)
-                && dailyCount <= getLeisureDailyCountMax(mode);
-    }
-
-    public static int getLeisureDurationMaxMinutes(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? STRICT_LEISURE_DURATION_MAX_MINUTES
-                : LEISURE_DURATION_MAX_MINUTES;
-    }
-
-    public static int getLeisureDailyCountMax(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? STRICT_LEISURE_DAILY_COUNT_MAX
-                : LEISURE_DAILY_COUNT_MAX;
-    }
-
-    public static String getLeisureDurationRangeText(LeisureMode mode) {
-        return getLeisureDurationMinMinutes(mode) + "-" + getLeisureDurationMaxMinutes(mode);
-    }
-
-    public static String getLeisureDailyCountRangeText(LeisureMode mode) {
-        return getLeisureDailyCountMin(mode) + "-" + getLeisureDailyCountMax(mode);
-    }
-
-    private static int getLeisureDurationMinMinutes(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? STRICT_LEISURE_DURATION_MIN_MINUTES
-                : LEISURE_DURATION_MIN_MINUTES;
-    }
-
-    private static int getLeisureDailyCountMin(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? STRICT_LEISURE_DAILY_COUNT_MIN
-                : LEISURE_DAILY_COUNT_MIN;
-    }
-
-    /**
-     * 保存休闲时刻设置。
-     */
-    public void setLeisureTimeSettings(
-            LeisureMode mode, int durationMinutes, int dailyCount) {
-        if (!isValidLeisureDurationMinutes(mode, durationMinutes)) {
-            throw new IllegalArgumentException(
-                    "休闲时刻时长必须在" + getLeisureDurationRangeText(mode) + "分钟之间");
-        }
-        if (!isValidLeisureDailyCount(mode, dailyCount)) {
-            throw new IllegalArgumentException(
-                    "休闲时刻次数必须在" + getLeisureDailyCountRangeText(mode) + "次之间");
-        }
-
-        mmkv.putInt(getLeisureDurationKey(mode), durationMinutes)
-                .putInt(getLeisureDailyCountKey(mode), dailyCount)
-                .commit();
-    }
-
-    public int getLeisureDurationMinutes(LeisureMode mode) {
-        int durationMinutes = mmkv.getInt(
-                getLeisureDurationKey(mode),
-                mode == LeisureMode.STRICT
-                        ? DEFAULT_STRICT_LEISURE_DURATION_MINUTES
-                        : DEFAULT_LEISURE_DURATION_MINUTES);
-        return Math.max(
-                getLeisureDurationMinMinutes(mode),
-                Math.min(durationMinutes, getLeisureDurationMaxMinutes(mode)));
-    }
-
-    public int getLeisureDailyCount(LeisureMode mode) {
-        int dailyCount = mmkv.getInt(
-                getLeisureDailyCountKey(mode),
-                mode == LeisureMode.STRICT
-                        ? DEFAULT_STRICT_LEISURE_DAILY_COUNT
-                        : DEFAULT_LEISURE_DAILY_COUNT);
-        return Math.max(
-                getLeisureDailyCountMin(mode),
-                Math.min(dailyCount, getLeisureDailyCountMax(mode)));
-    }
-
-    public int getLeisureUsedCountToday(LeisureMode mode) {
-        String lastUsedDate = mmkv.getString(getLeisureLastUsedDateKey(mode), "");
-        if (!DateUtils.getCurrentDate().equals(lastUsedDate)) {
-            return 0;
-        }
-        return mmkv.getInt(getLeisureUsedCountKey(mode), 0);
-    }
-
-    public int getLeisureRemainingCountToday(LeisureMode mode) {
-        return Math.max(0, getLeisureDailyCount(mode) - getLeisureUsedCountToday(mode));
-    }
-
-    public long getLeisureTimeRemainingMillis() {
-        long relaxedRemaining = getLeisureTimeRemainingMillis(LeisureMode.RELAXED);
-        long strictRemaining = getLeisureTimeRemainingMillis(LeisureMode.STRICT);
-        if (relaxedRemaining == 0) {
-            return strictRemaining;
-        }
-        if (strictRemaining == 0) {
-            return relaxedRemaining;
-        }
-        return Math.min(relaxedRemaining, strictRemaining);
-    }
-
-    public long getLeisureTimeRemainingMillisForApp(String packageName) {
-        long remainingMillis = 0;
-        for (LeisureMode mode : LeisureMode.values()) {
-            if (isLeisureTimeActiveForApp(mode, packageName)) {
-                remainingMillis = Math.max(
-                        remainingMillis, getLeisureTimeRemainingMillis(mode));
-            }
-        }
-        return remainingMillis;
-    }
-
-    public boolean isLeisureTimeActive(LeisureMode mode) {
-        return getLeisureTimeRemainingMillis(mode) > 0;
-    }
-
-    public boolean isLeisureTimeActiveForApp(String packageName) {
-        return isLeisureTimeActiveForApp(LeisureMode.RELAXED, packageName)
-                || isLeisureTimeActiveForApp(LeisureMode.STRICT, packageName);
-    }
-
-    public boolean isLeisureTimeArmed() {
-        return mmkv.getBoolean(KEY_LEISURE_ARMED, false);
-    }
-
-    public boolean isLeisureTimeArmed(LeisureMode mode) {
-        return isLeisureTimeArmed() && getArmedLeisureMode() == mode;
-    }
-
-    /**
-     * 尝试开启一次休闲时刻。此时只进入待触发状态，关闭悬浮窗后才开始计时并消耗次数。
-     *
-     * @return 当前未开启、今日仍有次数并成功开启时返回 true
-     */
-    public boolean tryStartLeisureTime(LeisureMode mode) {
-        synchronized (AppSettingsManager.class) {
-            if (isLeisureTimeActive(mode)) {
-                return false;
-            }
-
-            if (getLeisureRemainingCountToday(mode) <= 0) {
-                return false;
-            }
-
-            mmkv.putString(KEY_LEISURE_ARMED_MODE, mode.preferenceValue)
-                    .putBoolean(KEY_LEISURE_ARMED, true)
-                    .commit();
-            return true;
-        }
-    }
-
-    /**
-     * 关闭悬浮窗并正式开始休闲时刻。每段休闲时刻只在首次关闭时消耗一次。
-     *
-     * @return 成功绑定当前 APP 的模式；没有待触发模式时返回 null
-     */
-    public LeisureMode activateLeisureTimeForClose(String packageName) {
-        synchronized (AppSettingsManager.class) {
-            if (packageName == null || !isLeisureTimeArmed()) {
-                return null;
-            }
-            LeisureMode mode = getArmedLeisureMode();
-            if (isLeisureTimeActive(mode)) {
-                mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
-                return null;
-            }
-            if (getLeisureRemainingCountToday(mode) <= 0) {
-                mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
-                return null;
-            }
-
-            String currentDate = DateUtils.getCurrentDate();
-            String lastUsedDate = mmkv.getString(getLeisureLastUsedDateKey(mode), "");
-            int usedCount = currentDate.equals(lastUsedDate)
-                    ? mmkv.getInt(getLeisureUsedCountKey(mode), 0)
-                    : 0;
-
-            mmkv.putInt(getLeisureUsedCountKey(mode), usedCount + 1)
-                    .putString(getLeisureLastUsedDateKey(mode), currentDate)
-                    .putLong(
-                            getLeisureActiveUntilKey(mode),
-                            System.currentTimeMillis()
-                                    + getLeisureDurationMinutes(mode) * 60_000L)
-                    .putString(getLeisureActivePackageKey(mode), packageName)
-                    .putBoolean(KEY_LEISURE_ARMED, false)
-                    .commit();
-            return mode;
-        }
-    }
-
-    private LeisureMode getArmedLeisureMode() {
-        return LeisureMode.fromPreferenceValue(mmkv.getString(
-                KEY_LEISURE_ARMED_MODE, LeisureMode.RELAXED.preferenceValue));
-    }
-
-    private long getLeisureTimeRemainingMillis(LeisureMode mode) {
-        long remainingMillis = mmkv.getLong(getLeisureActiveUntilKey(mode), 0)
-                - System.currentTimeMillis();
-        return Math.max(remainingMillis, 0);
-    }
-
-    private boolean isLeisureTimeActiveForApp(LeisureMode mode, String packageName) {
-        return packageName != null
-                && isLeisureTimeActive(mode)
-                && packageName.equals(mmkv.getString(getLeisureActivePackageKey(mode), ""));
-    }
-
-    private static String getLeisureDurationKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_DURATION_MINUTES
-                : KEY_LEISURE_DURATION_MINUTES;
-    }
-
-    private static String getLeisureDailyCountKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_DAILY_COUNT
-                : KEY_LEISURE_DAILY_COUNT;
-    }
-
-    private static String getLeisureUsedCountKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_USED_COUNT
-                : KEY_LEISURE_USED_COUNT;
-    }
-
-    private static String getLeisureLastUsedDateKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_LAST_USED_DATE
-                : KEY_LEISURE_LAST_USED_DATE;
-    }
-
-    private static String getLeisureActiveUntilKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_ACTIVE_UNTIL
-                : KEY_LEISURE_ACTIVE_UNTIL;
-    }
-
-    private static String getLeisureActivePackageKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_ACTIVE_PACKAGE
-                : KEY_LEISURE_ACTIVE_PACKAGE;
     }
 
     // ===== 个人目标相关方法 =====
@@ -658,47 +240,4 @@ public class AppSettingsManager {
         return mmkv.getInt(KEY_APP_FLOATING_BOTTOM_OFFSET + packageName, getFloatingBottomOffset());
     }
 
-    // 题型设置相关常量
-    private static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
-
-    // 英文阅读字数设置相关常量
-    private static final String KEY_ENGLISH_READING_LENGTH = "english_reading_length";
-
-    /**
-     * 获取数学题题型
-     */
-    public ChallengeType getChallengeType() {
-        String preferenceValue = mmkv.getString(
-                KEY_MATH_QUESTION_TYPE, ChallengeType.MIXED.getPreferenceValue());
-        ChallengeType challengeType = ChallengeType.fromPreferenceValue(preferenceValue);
-        if (!QuestionConst.ENGLISH_READING_ENABLED && challengeType == ChallengeType.ENGLISH_READING) {
-            return ChallengeType.MIXED;
-        }
-        return challengeType;
-    }
-
-    /**
-     * 设置数学题题型
-     */
-    public void setChallengeType(ChallengeType challengeType) {
-        mmkv.putString(KEY_MATH_QUESTION_TYPE, challengeType.getPreferenceValue()).commit();
-    }
-
-    /**
-     * 获取英文阅读字数（确保至少为最小值200）
-     */
-    public int getEnglishReadingLength() {
-        int length = mmkv.getInt(KEY_ENGLISH_READING_LENGTH, QuestionConst.ENGLISH_READING_LENGTH_DEFAULT);
-        // 确保返回值至少为最小值
-        return Math.max(length, QuestionConst.ENGLISH_READING_LENGTH_MIN);
-    }
-
-    /**
-     * 设置英文阅读字数（确保至少为最小值200）
-     */
-    public void setEnglishReadingLength(int length) {
-        // 确保设置的值至少为最小值
-        int validLength = Math.max(length, QuestionConst.ENGLISH_READING_LENGTH_MIN);
-        mmkv.putInt(KEY_ENGLISH_READING_LENGTH, validLength).commit();
-    }
 }

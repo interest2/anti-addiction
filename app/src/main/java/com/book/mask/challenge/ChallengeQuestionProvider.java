@@ -7,7 +7,7 @@ import android.util.Log;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.CloudConst;
 import com.book.mask.constant.QuestionConst;
-import com.book.mask.setting.AppSettingsManager;
+import com.book.mask.setting.ChallengeSettingsManager;
 import com.book.mask.util.ArithmeticUtils;
 import com.book.mask.util.ContentUtils;
 
@@ -64,16 +64,16 @@ final class ChallengeQuestionProvider {
     }
 
     private final Context context;
-    private final AppSettingsManager appSettingsManager;
+    private final ChallengeSettingsManager challengeSettingsManager;
     private final Random random = new Random();
 
     ChallengeQuestionProvider(Context context) {
         this.context = context;
-        this.appSettingsManager = new AppSettingsManager(context);
+        this.challengeSettingsManager = new ChallengeSettingsManager(context);
     }
 
     ChallengeType selectType() {
-        ChallengeType configuredType = appSettingsManager.getChallengeType();
+        ChallengeType configuredType = challengeSettingsManager.getChallengeType();
         if (configuredType != ChallengeType.MIXED) {
             return configuredType;
         }
@@ -104,14 +104,14 @@ final class ChallengeQuestionProvider {
     }
 
     private Question generateArithmeticQuestion() {
-        String difficultyMode = appSettingsManager.getMathDifficultyMode();
+        String difficultyMode = challengeSettingsManager.getMathDifficultyMode();
         String question;
         if ("custom".equals(difficultyMode)) {
             question = ArithmeticUtils.customArithmetic(
-                    appSettingsManager.getMathAdditionDigits(),
-                    appSettingsManager.getMathSubtractionDigits(),
-                    appSettingsManager.getMathMultiplicationMultiplierDigits(),
-                    appSettingsManager.getMathMultiplicationMultiplicandDigits());
+                    challengeSettingsManager.getMathAdditionDigits(),
+                    challengeSettingsManager.getMathSubtractionDigits(),
+                    challengeSettingsManager.getMathMultiplicationMultiplierDigits(),
+                    challengeSettingsManager.getMathMultiplicationMultiplicandDigits());
         } else {
             question = ArithmeticUtils.customArithmetic(
                     QuestionConst.ADD_LEN_DEFAULT,
@@ -181,9 +181,7 @@ final class ChallengeQuestionProvider {
         try {
             String androidId = Settings.Secure.getString(
                     context.getContentResolver(), Settings.Secure.ANDROID_ID);
-            int readingLength = Math.max(
-                    appSettingsManager.getEnglishReadingLength(),
-                    QuestionConst.ENGLISH_READING_LENGTH_MIN);
+            int readingLength = challengeSettingsManager.getEnglishReadingLength();
             JSONObject request = new JSONObject();
             request.put("devId", androidId);
             request.put("length", readingLength);

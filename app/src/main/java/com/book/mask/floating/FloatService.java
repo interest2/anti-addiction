@@ -14,6 +14,7 @@ import com.book.mask.config.Share;
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
+import com.book.mask.setting.LeisureTimeManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.network.TextFetcher;
@@ -40,6 +41,7 @@ public class FloatService extends AccessibilityService
     // 设置管理器
     private RelaxManager relaxManager;
     private AppSettingsManager appSettingsManager;
+    private LeisureTimeManager leisureTimeManager;
     
     // 设备信息上报器
     private DeviceInfoReporter deviceInfoReporter;
@@ -76,6 +78,7 @@ public class FloatService extends AccessibilityService
         // 初始化设置管理器
         relaxManager = new RelaxManager(this);
         appSettingsManager = new AppSettingsManager(this);
+        leisureTimeManager = new LeisureTimeManager(this);
         
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
@@ -130,7 +133,7 @@ public class FloatService extends AccessibilityService
      */
     private void initManagers() {
         // 初始化应用状态管理器
-        appStateManager = new AppStateManager(this, relaxManager, appSettingsManager);
+        appStateManager = new AppStateManager(this, relaxManager, leisureTimeManager);
         appStateManager.setOnAppStateListener(new AppStateManager.OnAppStateListener() {
             @Override
             public void onAppStateChanged(CustomApp app, boolean isTargetInterface) {
@@ -180,7 +183,8 @@ public class FloatService extends AccessibilityService
         
         // 初始化悬浮窗管理器
         floatingWindowManager = new FloatingWindowManager(this, windowManager, 
-                                                        appSettingsManager, relaxManager, 
+                                                        appSettingsManager, leisureTimeManager,
+                                                        relaxManager,
                                                         textFetcher, handler);
         floatingWindowManager.setOnFloatingWindowListener(new FloatingWindowManager.OnFloatingWindowListener() {
             @Override
@@ -229,19 +233,19 @@ public class FloatService extends AccessibilityService
             return false;
         }
 
-        AppSettingsManager.LeisureMode leisureMode =
-                appSettingsManager.activateLeisureTimeForClose(
+        LeisureTimeManager.LeisureMode leisureMode =
+                leisureTimeManager.activateLeisureTimeForClose(
                         currentActiveApp.getPackageName());
         if (leisureMode == null) {
             return false;
         }
 
-        int leisureSeconds = appSettingsManager.getLeisureDurationMinutes(leisureMode) * 60;
+        int leisureSeconds = leisureTimeManager.getLeisureDurationMinutes(leisureMode) * 60;
         Log.d(TAG, "APP " + currentActiveApp.getAppName()
                 + " 已获得 " + RelaxManager.getIntervalDisplayText(leisureSeconds)
                 + " 休闲解禁，今日已消耗 "
-                + appSettingsManager.getLeisureUsedCountToday(leisureMode) + "/"
-                + appSettingsManager.getLeisureDailyCount(leisureMode) + " 次");
+                + leisureTimeManager.getLeisureUsedCountToday(leisureMode) + "/"
+                + leisureTimeManager.getLeisureDailyCount(leisureMode) + " 次");
 
         relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
         notifyHomeFragmentUpdate(currentActiveApp);

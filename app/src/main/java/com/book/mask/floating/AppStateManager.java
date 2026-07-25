@@ -13,7 +13,7 @@ import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
-import com.book.mask.setting.AppSettingsManager;
+import com.book.mask.setting.LeisureTimeManager;
 import com.book.mask.setting.RelaxManager;
 
 import java.util.Map;
@@ -32,7 +32,7 @@ public class AppStateManager {
     private Handler handler;
     private Handler autoShowHandler;
     private RelaxManager relaxManager;
-    private AppSettingsManager appSettingsManager;
+    private LeisureTimeManager leisureTimeManager;
 
     // 应用状态相关
     private CustomApp currentActiveApp = null;
@@ -78,10 +78,10 @@ public class AppStateManager {
     
     public AppStateManager(AccessibilityService service,
                            RelaxManager relaxManager,
-                           AppSettingsManager appSettingsManager) {
+                           LeisureTimeManager leisureTimeManager) {
         this.service = service;
         this.relaxManager = relaxManager;
-        this.appSettingsManager = appSettingsManager;
+        this.leisureTimeManager = leisureTimeManager;
         this.handler = new Handler(Looper.getMainLooper());
         this.autoShowHandler = new Handler(Looper.getMainLooper());
     }
@@ -305,9 +305,9 @@ public class AppStateManager {
             Log.d(TAG, appForTimer + " 到达预期时间");
             if (appForTimer != null) {
                 long leisureRemainingMillis =
-                        appSettingsManager.getLeisureTimeRemainingMillisForApp(
+                        leisureTimeManager.getLeisureTimeRemainingMillisForApp(
                                 appForTimer.getPackageName());
-                if (appSettingsManager.isLeisureTimeActiveForApp(
+                if (leisureTimeManager.isLeisureTimeActiveForApp(
                         appForTimer.getPackageName())) {
                     scheduleTimer(
                             appForTimer,
@@ -659,7 +659,7 @@ public class AppStateManager {
 
     private boolean isLeisureDetectionPaused() {
         return currentActiveApp != null
-                && appSettingsManager.isLeisureTimeActiveForApp(
+                && leisureTimeManager.isLeisureTimeActiveForApp(
                         currentActiveApp.getPackageName());
     }
 

@@ -17,6 +17,8 @@ import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.setting.RelaxManager;
 import com.book.mask.setting.AppSettingsManager;
+import com.book.mask.setting.ChallengeSettingsManager;
+import com.book.mask.setting.LeisureTimeManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.R;
@@ -32,6 +34,8 @@ public class SettingsDialogManager {
     private final Context context;
     private final RelaxManager relaxManager;
     private final AppSettingsManager appSettingsManager;
+    private final ChallengeSettingsManager challengeSettingsManager;
+    private final LeisureTimeManager leisureTimeManager;
 
     private static String[] appOptions;
     private static CustomApp[] apps; // 改为CustomApp类型
@@ -40,6 +44,8 @@ public class SettingsDialogManager {
         this.context = context;
         this.relaxManager = relaxManager;
         this.appSettingsManager = new AppSettingsManager(context);
+        this.challengeSettingsManager = new ChallengeSettingsManager(context);
+        this.leisureTimeManager = new LeisureTimeManager(context);
         updateAppOptions(); // 动态更新APP选项
     }
 
@@ -145,7 +151,7 @@ public class SettingsDialogManager {
         View dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_leisure_time, null);
         TextView description = dialogView.findViewById(R.id.tv_leisure_description);
         LeisureModeViews relaxedViews = new LeisureModeViews(
-                AppSettingsManager.LeisureMode.RELAXED,
+                LeisureTimeManager.LeisureMode.RELAXED,
                 dialogView.findViewById(R.id.layout_relaxed_leisure_duration),
                 dialogView.findViewById(R.id.layout_relaxed_leisure_count),
                 dialogView.findViewById(R.id.et_relaxed_leisure_duration),
@@ -153,7 +159,7 @@ public class SettingsDialogManager {
                 dialogView.findViewById(R.id.btn_start_relaxed_leisure_time),
                 dialogView.findViewById(R.id.tv_relaxed_leisure_remaining_count));
         LeisureModeViews strictViews = new LeisureModeViews(
-                AppSettingsManager.LeisureMode.STRICT,
+                LeisureTimeManager.LeisureMode.STRICT,
                 dialogView.findViewById(R.id.layout_strict_leisure_duration),
                 dialogView.findViewById(R.id.layout_strict_leisure_count),
                 dialogView.findViewById(R.id.et_strict_leisure_duration),
@@ -179,7 +185,7 @@ public class SettingsDialogManager {
             stateHandler.removeCallbacks(refreshLeisureState[0]);
             updateLeisureStartState(relaxedViews);
             updateLeisureStartState(strictViews);
-            long remainingMillis = appSettingsManager.getLeisureTimeRemainingMillis();
+            long remainingMillis = leisureTimeManager.getLeisureTimeRemainingMillis();
             if (remainingMillis > 0) {
                 stateHandler.postDelayed(refreshLeisureState[0], remainingMillis + 100);
             }
@@ -222,21 +228,21 @@ public class SettingsDialogManager {
     }
 
     private void setupLeisureModeInputs(LeisureModeViews views) {
-        String durationRange = AppSettingsManager.getLeisureDurationRangeText(views.mode)
+        String durationRange = LeisureTimeManager.getLeisureDurationRangeText(views.mode)
                 .replace('-', '~');
-        String countRange = AppSettingsManager.getLeisureDailyCountRangeText(views.mode)
+        String countRange = LeisureTimeManager.getLeisureDailyCountRangeText(views.mode)
                 .replace('-', '~');
         views.durationInput.setHint(durationRange);
         views.countInput.setHint(countRange);
         views.durationInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(
                 String.valueOf(
-                        AppSettingsManager.getLeisureDurationMaxMinutes(views.mode)).length())});
+                        LeisureTimeManager.getLeisureDurationMaxMinutes(views.mode)).length())});
         views.countInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(
-                String.valueOf(AppSettingsManager.getLeisureDailyCountMax(views.mode)).length())});
+                String.valueOf(LeisureTimeManager.getLeisureDailyCountMax(views.mode)).length())});
         views.durationInput.setText(String.valueOf(
-                appSettingsManager.getLeisureDurationMinutes(views.mode)));
+                leisureTimeManager.getLeisureDurationMinutes(views.mode)));
         views.countInput.setText(String.valueOf(
-                appSettingsManager.getLeisureDailyCount(views.mode)));
+                leisureTimeManager.getLeisureDailyCount(views.mode)));
     }
 
     private void setLeisureStartListener(
@@ -248,12 +254,12 @@ public class SettingsDialogManager {
             if (!saveLeisureTimeSettings(targetViews, otherViews)) {
                 return;
             }
-            if (appSettingsManager.tryStartLeisureTime(targetViews.mode)) {
+            if (leisureTimeManager.tryStartLeisureTime(targetViews.mode)) {
                 UiFeedback.show(
                         dialogView,
                         "已开启" + getLeisureModeName(targetViews.mode)
                                 + "，首个关闭悬浮窗的 APP 将免答题解禁");
-            } else if (appSettingsManager.isLeisureTimeActive(targetViews.mode)) {
+            } else if (leisureTimeManager.isLeisureTimeActive(targetViews.mode)) {
                 UiFeedback.show(dialogView, getLeisureModeName(targetViews.mode) + "正在进行中");
             } else {
                 UiFeedback.showError(
@@ -274,21 +280,21 @@ public class SettingsDialogManager {
             Integer durationMinutes = parseInteger(views.durationInput);
             Integer dailyCount = parseInteger(views.countInput);
             if (durationMinutes == null
-                    || !AppSettingsManager.isValidLeisureDurationMinutes(
+                    || !LeisureTimeManager.isValidLeisureDurationMinutes(
                     views.mode, durationMinutes)) {
                 UiFeedback.showInputError(
                         views.durationLayout,
                         views.durationInput,
-                        "请输入" + AppSettingsManager.getLeisureDurationRangeText(views.mode)
+                        "请输入" + LeisureTimeManager.getLeisureDurationRangeText(views.mode)
                                 + "分钟");
                 valid = false;
             }
             if (dailyCount == null
-                    || !AppSettingsManager.isValidLeisureDailyCount(views.mode, dailyCount)) {
+                    || !LeisureTimeManager.isValidLeisureDailyCount(views.mode, dailyCount)) {
                 UiFeedback.showInputError(
                         views.countLayout,
                         views.countInput,
-                        "请输入" + AppSettingsManager.getLeisureDailyCountRangeText(views.mode)
+                        "请输入" + LeisureTimeManager.getLeisureDailyCountRangeText(views.mode)
                                 + "次");
                 valid = false;
             }
@@ -298,7 +304,7 @@ public class SettingsDialogManager {
         }
 
         for (LeisureModeViews views : modeViews) {
-            appSettingsManager.setLeisureTimeSettings(
+            leisureTimeManager.setLeisureTimeSettings(
                     views.mode,
                     parseInteger(views.durationInput),
                     parseInteger(views.countInput));
@@ -309,24 +315,24 @@ public class SettingsDialogManager {
     private void updateLeisureStartState(LeisureModeViews views) {
         Integer configuredDailyCount = parseInteger(views.countInput);
         Integer remainingCount = configuredDailyCount == null
-                || !AppSettingsManager.isValidLeisureDailyCount(
+                || !LeisureTimeManager.isValidLeisureDailyCount(
                 views.mode, configuredDailyCount)
                 ? null
                 : Math.max(
                         0,
                         configuredDailyCount
-                                - appSettingsManager.getLeisureUsedCountToday(views.mode));
+                                - leisureTimeManager.getLeisureUsedCountToday(views.mode));
         views.remainingCountText.setText(remainingCount == null
                 ? "今日剩余 -- 次"
                 : "今日剩余 " + remainingCount + " 次");
 
-        if (appSettingsManager.isLeisureTimeActive(views.mode)) {
+        if (leisureTimeManager.isLeisureTimeActive(views.mode)) {
             views.startButton.setEnabled(false);
             views.startButton.setText("进行中");
             return;
         }
 
-        if (appSettingsManager.isLeisureTimeArmed(views.mode)) {
+        if (leisureTimeManager.isLeisureTimeArmed(views.mode)) {
             views.startButton.setEnabled(false);
             views.startButton.setText("已开启");
             return;
@@ -336,12 +342,12 @@ public class SettingsDialogManager {
         views.startButton.setText("开启");
     }
 
-    private String getLeisureModeName(AppSettingsManager.LeisureMode mode) {
-        return mode == AppSettingsManager.LeisureMode.STRICT ? "严格模式" : "宽松模式";
+    private String getLeisureModeName(LeisureTimeManager.LeisureMode mode) {
+        return mode == LeisureTimeManager.LeisureMode.STRICT ? "严格模式" : "宽松模式";
     }
 
     private static class LeisureModeViews {
-        private final AppSettingsManager.LeisureMode mode;
+        private final LeisureTimeManager.LeisureMode mode;
         private final TextInputLayout durationLayout;
         private final TextInputLayout countLayout;
         private final TextInputEditText durationInput;
@@ -350,7 +356,7 @@ public class SettingsDialogManager {
         private final TextView remainingCountText;
 
         private LeisureModeViews(
-                AppSettingsManager.LeisureMode mode,
+                LeisureTimeManager.LeisureMode mode,
                 TextInputLayout durationLayout,
                 TextInputLayout countLayout,
                 TextInputEditText durationInput,
@@ -634,7 +640,7 @@ public class SettingsDialogManager {
         ChallengeType[] challengeTypes =
                 ChallengeType.settingsOptions(QuestionConst.ENGLISH_READING_ENABLED);
         String[] difficultyOptions = new String[challengeTypes.length];
-        ChallengeType currentType = appSettingsManager.getChallengeType();
+        ChallengeType currentType = challengeSettingsManager.getChallengeType();
         int checkedItem = 0;
         for (int i = 0; i < challengeTypes.length; i++) {
             difficultyOptions[i] = challengeTypes[i].getDisplayName();
@@ -647,7 +653,7 @@ public class SettingsDialogManager {
             .setTitle("关闭悬浮窗所需答题的类型")
             .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
                 ChallengeType selectedType = challengeTypes[which];
-                appSettingsManager.setChallengeType(selectedType);
+                challengeSettingsManager.setChallengeType(selectedType);
 
                 if (selectedType == ChallengeType.ARITHMETIC) {
                     showArithmeticDifficultyDialog();
@@ -670,7 +676,7 @@ public class SettingsDialogManager {
         android.widget.EditText input = new android.widget.EditText(context);
         input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         input.setHint("请输入阅读字数");
-        int currentLength = appSettingsManager.getEnglishReadingLength();
+        int currentLength = challengeSettingsManager.getEnglishReadingLength();
         input.setText(String.valueOf(currentLength));
         input.setSelection(input.getText().length()); // 选中所有文本，方便修改
 
@@ -698,7 +704,7 @@ public class SettingsDialogManager {
                     return;
                 }
 
-                appSettingsManager.setEnglishReadingLength(length);
+                challengeSettingsManager.setEnglishReadingLength(length);
                 dialog.dismiss();
                 UiFeedback.show(context, "已设置阅读字数为：" + length);
             }));
@@ -710,7 +716,7 @@ public class SettingsDialogManager {
      */
     private void showArithmeticDifficultyDialog() {
         String[] difficultyOptions = {"默认难度", "自定义难度"};
-        String currentMode = appSettingsManager.getMathDifficultyMode();
+        String currentMode = challengeSettingsManager.getMathDifficultyMode();
         int checkedItem = "custom".equals(currentMode) ? 1 : 0;
 
         new android.app.AlertDialog.Builder(context)
@@ -718,12 +724,12 @@ public class SettingsDialogManager {
             .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
                 if (which == 0) {
                     // 选择默认难度
-                    appSettingsManager.setMathDifficultyMode("default");
+                    challengeSettingsManager.setMathDifficultyMode("default");
                     dialog.dismiss();
                     UiFeedback.show(context, "已设置为默认难度");
                 } else if (which == 1) {
                     // 选择自定义难度
-                    appSettingsManager.setMathDifficultyMode("custom");
+                    challengeSettingsManager.setMathDifficultyMode("custom");
                     dialog.dismiss();
                     showCustomMathDifficultyDialog();
                 }
@@ -747,10 +753,12 @@ public class SettingsDialogManager {
         android.widget.EditText etMultiplicationMultiplicandDigits = dialogView.findViewById(R.id.et_multiplication_multiplicand_digits);
         
         // 设置当前值
-        etAdditionDigits.setText(String.valueOf(appSettingsManager.getMathAdditionDigits()));
-        etSubtractionDigits.setText(String.valueOf(appSettingsManager.getMathSubtractionDigits()));
-        etMultiplicationMultiplierDigits.setText(String.valueOf(appSettingsManager.getMathMultiplicationMultiplierDigits()));
-        etMultiplicationMultiplicandDigits.setText(String.valueOf(appSettingsManager.getMathMultiplicationMultiplicandDigits()));
+        etAdditionDigits.setText(String.valueOf(challengeSettingsManager.getMathAdditionDigits()));
+        etSubtractionDigits.setText(String.valueOf(challengeSettingsManager.getMathSubtractionDigits()));
+        etMultiplicationMultiplierDigits.setText(String.valueOf(
+                challengeSettingsManager.getMathMultiplicationMultiplierDigits()));
+        etMultiplicationMultiplicandDigits.setText(String.valueOf(
+                challengeSettingsManager.getMathMultiplicationMultiplicandDigits()));
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
             .setTitle("数字位数设置")
@@ -817,10 +825,10 @@ public class SettingsDialogManager {
             return false;
         }
 
-        appSettingsManager.setMathAdditionDigits(additionDigits);
-        appSettingsManager.setMathSubtractionDigits(subtractionDigits);
-        appSettingsManager.setMathMultiplicationMultiplierDigits(multiplierDigits);
-        appSettingsManager.setMathMultiplicationMultiplicandDigits(multiplicandDigits);
+        challengeSettingsManager.setMathAdditionDigits(additionDigits);
+        challengeSettingsManager.setMathSubtractionDigits(subtractionDigits);
+        challengeSettingsManager.setMathMultiplicationMultiplierDigits(multiplierDigits);
+        challengeSettingsManager.setMathMultiplicationMultiplicandDigits(multiplicandDigits);
         return true;
     }
 
