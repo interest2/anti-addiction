@@ -132,17 +132,21 @@ public final class UiFeedback {
         ViewGroup.LayoutParams params = snackbarView.getLayoutParams();
         params.width = ViewGroup.LayoutParams.WRAP_CONTENT;
         snackbarView.setMinimumWidth(0);
+        int bottomOffset = Math.round(snackbarView.getResources()
+                .getDisplayMetrics().heightPixels * 2f / 5f);
         if (params instanceof ViewGroup.MarginLayoutParams) {
             int margin = Math.round(16 * snackbarView.getResources()
                     .getDisplayMetrics().density);
             ((ViewGroup.MarginLayoutParams) params).leftMargin = margin;
             ((ViewGroup.MarginLayoutParams) params).rightMargin = margin;
+            ((ViewGroup.MarginLayoutParams) params).bottomMargin = bottomOffset;
         }
+        int gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
         if (params instanceof CoordinatorLayout.LayoutParams) {
-            ((CoordinatorLayout.LayoutParams) params).gravity = Gravity.CENTER;
+            ((CoordinatorLayout.LayoutParams) params).gravity = gravity;
             snackbarView.setLayoutParams(params);
         } else if (params instanceof FrameLayout.LayoutParams) {
-            ((FrameLayout.LayoutParams) params).gravity = Gravity.CENTER;
+            ((FrameLayout.LayoutParams) params).gravity = gravity;
             snackbarView.setLayoutParams(params);
         }
         return snackbar;

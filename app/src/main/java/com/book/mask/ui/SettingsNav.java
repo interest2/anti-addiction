@@ -26,6 +26,7 @@ import com.book.mask.R;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
+import com.book.mask.constant.Const;
 import com.book.mask.network.LatestVersionManager;
 
 import java.util.List;
@@ -72,8 +73,16 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> showInstallTroubleshootingDialog());
         view.findViewById(R.id.row_floating_settings)
                 .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
-        view.findViewById(R.id.row_reminder_provider)
-                .setOnClickListener(v -> openReminderProviderSettings());
+        View reminderProviderRow = view.findViewById(R.id.row_reminder_provider);
+        View reminderProviderDivider = view.findViewById(R.id.divider_reminder_provider);
+        int reminderProviderVisibility = Const.REMINDER_PROVIDER_SETTINGS_ENABLED
+                ? View.VISIBLE
+                : View.GONE;
+        reminderProviderRow.setVisibility(reminderProviderVisibility);
+        reminderProviderDivider.setVisibility(reminderProviderVisibility);
+        if (Const.REMINDER_PROVIDER_SETTINGS_ENABLED) {
+            reminderProviderRow.setOnClickListener(v -> openReminderProviderSettings());
+        }
         view.findViewById(R.id.row_special_details)
                 .setOnClickListener(v -> openSpecialDetails());
         view.findViewById(R.id.row_package_log)
@@ -248,7 +257,7 @@ public class SettingsNav extends Fragment {
         packageLogToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
             PackageLogManager.getInstance().setEnabled(isChecked);
             UiFeedback.show(
-                    dialogView,
+                    requireContext(),
                     isChecked ? "已开启包名日志" : "已关闭包名日志"
             );
         });

@@ -99,7 +99,7 @@
             android:id="@+id/tv_strict_reminder_hint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="修改绿色文字途径：APP底栏的个性化->悬浮窗…"
+            android:text="修改绿色文字途径：APP底栏-个性化->悬浮窗…"
             android:textColor="#4CAF50"
             android:textSize="14sp"
             android:layout_marginTop="4dp"

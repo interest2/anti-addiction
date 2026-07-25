@@ -1,37 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 开启状态 - 绿色背景，右端白色圆点 -->
+    <!-- 开启状态 - 绿色轨道，右端白色圆形滑块 -->
     <item android:state_checked="true">
         <layer-list>
             <item>
                 <shape android:shape="rectangle">
                     <solid android:color="#4CAF50" />
-                    <corners android:radius="14dp" />
+                    <corners android:radius="11dp" />
                 </shape>
             </item>
-            <item android:gravity="end" android:right="3dp">
+            <item
+                android:width="16dp"
+                android:height="16dp"
+                android:end="3dp"
+                android:gravity="end|center_vertical">
                 <shape android:shape="oval">
                     <solid android:color="#FFFFFF" />
-                    <size android:width="16dp" android:height="16dp" />
+                </shape>
+            </item>
+            <item
+                android:width="4dp"
+                android:height="4dp"
+                android:end="9dp"
+                android:gravity="end|center_vertical">
+                <shape android:shape="oval">
+                    <solid android:color="#4CAF50" />
                 </shape>
             </item>
         </layer-list>
     </item>
 
-    <!-- 关闭状态 - 白色背景，左端灰色圆点 -->
+    <!-- 关闭状态 - 灰色轨道，左端白色圆形滑块 -->
     <item android:state_checked="false">
         <layer-list>
             <item>
                 <shape android:shape="rectangle">
-                    <solid android:color="#FFFFFF" />
-                    <stroke android:width="1dp" android:color="#CCCCCC" />
-                    <corners android:radius="14dp" />
+                    <solid android:color="#E0E0E0" />
+                    <corners android:radius="11dp" />
                 </shape>
             </item>
-            <item android:gravity="start" android:left="3dp">
+            <item
+                android:width="16dp"
+                android:height="16dp"
+                android:gravity="start|center_vertical"
+                android:start="3dp">
                 <shape android:shape="oval">
-                    <solid android:color="#CCCCCC" />
-                    <size android:width="16dp" android:height="16dp" />
+                    <solid android:color="#FFFFFF" />
+                </shape>
+            </item>
+            <item
+                android:width="4dp"
+                android:height="4dp"
+                android:gravity="start|center_vertical"
+                android:start="9dp">
+                <shape android:shape="oval">
+                    <solid android:color="#E0E0E0" />
                 </shape>
             </item>
         </layer-list>

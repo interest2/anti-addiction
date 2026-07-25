@@ -131,10 +131,7 @@ public class HomeNav extends Fragment implements
                 "无障碍服务",
                 PermissionStatus.isAccessibilityServiceEnabled(requireContext()),
                 MainActivity::reviewAccessibilityPermission);
-        appendPlainPermissionHint(
-                status,
-                "允许后台运行",
-                "请自行设置");
+        appendBackgroundRunHint(status);
 
         status.append("\n\n");
         int subTitleStart = status.length();
@@ -159,9 +156,14 @@ public class HomeNav extends Fragment implements
             @Override
             public void updateDrawState(@NonNull TextPaint drawState) {
                 drawState.setColor(clickColor);
-                drawState.setUnderlineText(false);
+                drawState.setUnderlineText(true);
             }
         }, clickStart, status.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        status.setSpan(
+                new StyleSpan(Typeface.BOLD),
+                clickStart,
+                status.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         permissionStatusView.setText(status);
     }
 
@@ -225,6 +227,53 @@ public class HomeNav extends Fragment implements
             String label,
             String hint) {
         text.append('\n').append(label).append("：").append(hint);
+    }
+
+    private void appendBackgroundRunHint(SpannableStringBuilder text) {
+        text.append('\n').append("允许后台活动").append("：");
+        int clickStart = text.length();
+        text.append("点这");
+        int clickColor = MaterialColors.getColor(
+                permissionStatusView,
+                com.google.android.material.R.attr.colorPrimary);
+        text.setSpan(new ClickableSpan() {
+            @Override
+            public void onClick(@NonNull View widget) {
+                showBackgroundRunDialog();
+            }
+
+            @Override
+            public void updateDrawState(@NonNull TextPaint drawState) {
+                drawState.setColor(clickColor);
+                drawState.setUnderlineText(true);
+            }
+        }, clickStart, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        text.setSpan(
+                new StyleSpan(Typeface.BOLD),
+                clickStart,
+                text.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    private void showBackgroundRunDialog() {
+        if (!isAdded()) {
+            return;
+        }
+        String message = "1、该权限不同手机设置方式不同，请自行了解设置；\n"
+                + "2、某些场景易丢失，或需重设它：重启手机、卸载重装本 APP。";
+
+        TextView messageView = new TextView(requireContext());
+        int padding = (int) (20 * getResources().getDisplayMetrics().density);
+        messageView.setPadding(padding, padding, padding, 0);
+        messageView.setTextSize(16);
+        messageView.setLineSpacing(0, 1.3f);
+        messageView.setText(message);
+
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("允许后台活动")
+                .setView(messageView)
+                .setPositiveButton("知道了", null)
+                .show();
     }
 
     private void appendPermissionStatus(
@@ -536,7 +585,7 @@ public class HomeNav extends Fragment implements
                 // 更新APP的relaxedLimitCount
                 app.setRelaxedLimitCount(newLimitCount);
                 customAppManager.saveCustomAppsChanges(); // 保存到本地存储
-                UiFeedback.show(dialogView, "保存成功");
+                UiFeedback.show(requireContext(), "保存成功");
                 
                 // 更新APP列表显示
                 updateAppCardsDisplay();
@@ -603,7 +652,7 @@ public class HomeNav extends Fragment implements
             // 统一使用updatePredefinedApp方法，它会自动判断是否是预定义APP
             customAppManager.updatePredefinedApp(app);
             
-            UiFeedback.show(dialogView, "关键词保存成功");
+            UiFeedback.show(requireContext(), "关键词保存成功");
             
             // 更新APP列表显示
             updateAppCardsDisplay();

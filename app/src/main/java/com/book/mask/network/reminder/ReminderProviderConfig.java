@@ -5,7 +5,7 @@ import java.util.Locale;
 public final class ReminderProviderConfig {
     public static final String OFFICIAL_PROFILE_ID = "official";
     public static final String CUSTOM_PROFILE_ID = "custom_default";
-    public static final int DEFAULT_REFRESH_INTERVAL_MINUTES = 30;
+    public static final int DEFAULT_REFRESH_INTERVAL_MINUTES = 0;
 
     public enum ProviderType {
         OFFICIAL("official"),

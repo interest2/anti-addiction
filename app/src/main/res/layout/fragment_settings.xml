@@ -225,6 +225,7 @@
                 </LinearLayout>
 
                 <View
+                    android:id="@+id/divider_reminder_provider"
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginStart="66dp"

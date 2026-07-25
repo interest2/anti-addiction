@@ -14,6 +14,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
@@ -251,13 +252,13 @@ public class SettingsDialogManager {
                     return;
                 }
                 clearLeisureInputFocus(dialogView, relaxedViews, strictViews);
-                UiFeedback.show(dialogView, "保存成功");
+                UiFeedback.show(context, "保存成功");
             });
 
             setLeisureStartListener(
-                    relaxedViews, strictViews, dialogView, refreshLeisureState[0]);
+                    relaxedViews, dialogView, refreshLeisureState[0]);
             setLeisureStartListener(
-                    strictViews, relaxedViews, dialogView, refreshLeisureState[0]);
+                    strictViews, dialogView, refreshLeisureState[0]);
         });
         dialog.setOnDismissListener(ignored -> {
             stopLeisureRefresh.run();
@@ -314,7 +315,6 @@ public class SettingsDialogManager {
 
     private void setLeisureStartListener(
             LeisureModeViews targetViews,
-            LeisureModeViews otherViews,
             View dialogView,
             Runnable refreshLeisureState) {
         targetViews.startButton.setOnClickListener(v -> {
@@ -323,19 +323,20 @@ public class SettingsDialogManager {
                 refreshLeisureState.run();
                 return;
             }
-            if (!saveLeisureTimeSettings(targetViews, otherViews)) {
+            if (!saveLeisureTimeSettings(targetViews)) {
+                refreshLeisureState.run();
                 return;
             }
             if (leisureTimeManager.tryStartLeisureTime(targetViews.mode)) {
                 UiFeedback.show(
-                        dialogView,
+                        context,
                         "已开启" + getLeisureModeName(targetViews.mode)
                                 + "，首个关闭悬浮窗的 APP 将免答题解禁");
             } else if (leisureTimeManager.isLeisureTimeActive(targetViews.mode)) {
-                UiFeedback.show(dialogView, getLeisureModeName(targetViews.mode) + "正在进行中");
+                UiFeedback.show(context, getLeisureModeName(targetViews.mode) + "正在进行中");
             } else {
                 UiFeedback.showError(
-                        dialogView,
+                        context,
                         getLeisureModeName(targetViews.mode) + "今日次数已用完");
             }
             refreshLeisureState.run();
@@ -400,18 +401,21 @@ public class SettingsDialogManager {
 
         if (leisureTimeManager.isLeisureTimeActive(views.mode)) {
             views.startButton.setEnabled(false);
-            views.startButton.setText("进行中");
+            views.startButton.setTextOn("进行中");
+            views.startButton.setChecked(true);
             return;
         }
 
         if (leisureTimeManager.isLeisureTimeArmed(views.mode)) {
             views.startButton.setEnabled(true);
-            views.startButton.setText("已开启");
+            views.startButton.setTextOn("");
+            views.startButton.setChecked(true);
             return;
         }
 
         views.startButton.setEnabled(remainingCount != null && remainingCount > 0);
-        views.startButton.setText("开启");
+        views.startButton.setTextOff("");
+        views.startButton.setChecked(false);
     }
 
     private String getLeisureModeName(LeisureTimeManager.LeisureMode mode) {
@@ -424,7 +428,7 @@ public class SettingsDialogManager {
         private final TextInputLayout countLayout;
         private final TextInputEditText durationInput;
         private final TextInputEditText countInput;
-        private final Button startButton;
+        private final ToggleButton startButton;
         private final TextView remainingCountText;
 
         private LeisureModeViews(
@@ -433,7 +437,7 @@ public class SettingsDialogManager {
                 TextInputLayout countLayout,
                 TextInputEditText durationInput,
                 TextInputEditText countInput,
-                Button startButton,
+                ToggleButton startButton,
                 TextView remainingCountText) {
             this.mode = mode;
             this.durationLayout = durationLayout;

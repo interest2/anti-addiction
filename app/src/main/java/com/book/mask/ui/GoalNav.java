@@ -46,19 +46,20 @@ public class GoalNav extends Fragment {
         });
 
         // 设置算术题难度设置按钮
-        Button btnMathDifficulty = view.findViewById(R.id.btn_math_difficulty);
-        btnMathDifficulty.setOnClickListener(v -> {
+        View mathDifficultyRow = view.findViewById(R.id.btn_math_difficulty);
+        mathDifficultyRow.setOnClickListener(v -> {
             settingsDialogManager.showMathDifficultyDialog();
         });
         
         // 设置悬浮窗额外显示日常提醒按钮
-        Button btnFloatingStrictReminder = view.findViewById(R.id.btn_floating_strict_reminder);
-        btnFloatingStrictReminder.setOnClickListener(v -> {
+        View floatingStrictReminderRow = view.findViewById(
+                R.id.btn_floating_strict_reminder);
+        floatingStrictReminderRow.setOnClickListener(v -> {
             settingsDialogManager.showFloatingStrictReminderDialog();
         });
 
-        Button btnLeisureTime = view.findViewById(R.id.btn_leisure_time);
-        btnLeisureTime.setOnClickListener(v -> {
+        View leisureTimeRow = view.findViewById(R.id.btn_leisure_time);
+        leisureTimeRow.setOnClickListener(v -> {
             settingsDialogManager.showLeisureTimeDialog();
         });
         return view;

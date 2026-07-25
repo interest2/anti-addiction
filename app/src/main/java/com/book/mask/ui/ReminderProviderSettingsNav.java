@@ -324,7 +324,7 @@ public class ReminderProviderSettingsNav extends Fragment {
                 return i;
             }
         }
-        return 2;
+        return 0;
     }
 
     private static void setToggleEnabled(MaterialButtonToggleGroup group, boolean enabled) {
