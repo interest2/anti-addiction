@@ -128,6 +128,10 @@ public class BackupManager {
                         .put("monitoringEnabled", settings.getBoolean(key, false));
             }
         }
+        // 剔除孤儿包名：删除自定义 APP 但残留的每-APP 设置，不应污染备份。
+        // 只保留当前真实存在的 APP（预定义 + 当前自定义列表）。
+        CustomAppManager appManager = CustomAppManager.getInstance();
+        byPackage.keySet().removeIf(pkg -> !appManager.isPackageNameExists(pkg));
         return byPackage;
     }
 

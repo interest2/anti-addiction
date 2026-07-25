@@ -480,11 +480,44 @@ public class SettingsNav extends Fragment {
         if (remoteVersion != null
                 && !remoteVersion.trim().isEmpty()
                 && !"获取失败".equals(remoteVersion)) {
-            hasUpdate = !remoteVersion.equals(getLocalVersion());
+            hasUpdate = compareVersion(remoteVersion, getLocalVersion()) > 0;
         }
 
         View redDot = view.findViewById(R.id.iv_version_update_red_dot);
         redDot.setVisibility(hasUpdate ? View.VISIBLE : View.GONE);
+    }
+
+    /**
+     * 比较两个形如 "2.8.0" 的版本号。
+     * 返回正数表示 left 更新（更大），0 表示相等，负数表示 left 更旧。
+     * 任一版本无法解析为数字段时，回退为字符串不等即视为有更新。
+     */
+    private static int compareVersion(String left, String right) {
+        String[] leftParts = left.trim().split("\\.");
+        String[] rightParts = right.trim().split("\\.");
+        int length = Math.max(leftParts.length, rightParts.length);
+        for (int i = 0; i < length; i++) {
+            Integer leftPart = parseVersionPart(leftParts, i);
+            Integer rightPart = parseVersionPart(rightParts, i);
+            if (leftPart == null || rightPart == null) {
+                return left.trim().equals(right.trim()) ? 0 : 1;
+            }
+            if (!leftPart.equals(rightPart)) {
+                return leftPart > rightPart ? 1 : -1;
+            }
+        }
+        return 0;
+    }
+
+    private static Integer parseVersionPart(String[] parts, int index) {
+        if (index >= parts.length) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(parts[index].trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private boolean isVersionStatusPending() {

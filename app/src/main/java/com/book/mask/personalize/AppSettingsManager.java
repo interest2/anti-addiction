@@ -90,6 +90,48 @@ public class AppSettingsManager {
         android.util.Log.d("SettingsManager", "清除APP在AppSettingsManager中的所有设置: " + packageName);
     }
 
+    /**
+     * 把指定APP在本管理器中已显式设置过的每-APP项读入快照（未设置的键保持 null）。
+     */
+    public void captureInto(AppSettingsSnapshot snapshot, String packageName) {
+        if (packageName == null) return;
+        String hintSourceKey = KEY_APP_HINT_SOURCE + packageName;
+        if (mmkv.contains(hintSourceKey)) {
+            snapshot.hintSource = mmkv.getString(hintSourceKey, Const.DEFAULT_HINT_SOURCE);
+        }
+        String hintCustomKey = KEY_APP_HINT_CUSTOM + packageName;
+        if (mmkv.contains(hintCustomKey)) {
+            snapshot.hintCustom = mmkv.getString(hintCustomKey, "");
+        }
+        String topKey = KEY_APP_FLOATING_TOP_OFFSET + packageName;
+        if (mmkv.contains(topKey)) {
+            snapshot.floatingTopOffset = mmkv.getInt(topKey, getFloatingTopOffset());
+        }
+        String bottomKey = KEY_APP_FLOATING_BOTTOM_OFFSET + packageName;
+        if (mmkv.contains(bottomKey)) {
+            snapshot.floatingBottomOffset = mmkv.getInt(bottomKey, getFloatingBottomOffset());
+        }
+    }
+
+    /**
+     * 从快照恢复指定APP的每-APP项（仅恢复删除前确实设置过的项）。
+     */
+    public void restoreFrom(AppSettingsSnapshot snapshot, String packageName) {
+        if (packageName == null) return;
+        if (snapshot.hintSource != null) {
+            setAppHintSource(packageName, snapshot.hintSource);
+        }
+        if (snapshot.hintCustom != null) {
+            setAppHintCustomText(packageName, snapshot.hintCustom);
+        }
+        if (snapshot.floatingTopOffset != null) {
+            setAppFloatingTopOffset(packageName, snapshot.floatingTopOffset);
+        }
+        if (snapshot.floatingBottomOffset != null) {
+            setAppFloatingBottomOffset(packageName, snapshot.floatingBottomOffset);
+        }
+    }
+
     // ===== 悬浮窗额外显示日常提醒相关方法 =====
 
     /**

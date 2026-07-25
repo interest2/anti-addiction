@@ -320,6 +320,28 @@ public class RelaxManager {
     }
 
     /**
+     * 把指定APP的监测开关读入快照（未设置过则保持 null）。
+     * 仅快照用户配置项，间隔 / 关闭记录 / 宽松计数等运行态数据不纳入。
+     */
+    public void captureInto(AppSettingsSnapshot snapshot, String packageName) {
+        if (packageName == null) return;
+        Boolean monitoring = isAppMonitoringEnabled(packageName);
+        if (monitoring != null) {
+            snapshot.monitoringEnabled = monitoring;
+        }
+    }
+
+    /**
+     * 从快照恢复指定APP的监测开关（仅恢复删除前确实设置过的项）。
+     */
+    public void restoreFrom(AppSettingsSnapshot snapshot, String packageName) {
+        if (packageName == null) return;
+        if (snapshot.monitoringEnabled != null) {
+            setAppMonitoringEnabled(packageName, snapshot.monitoringEnabled);
+        }
+    }
+
+    /**
      * 检查APP是否应该被监测
      */
     public boolean shouldMonitorApp(String packageName) {

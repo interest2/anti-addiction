@@ -34,6 +34,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.book.mask.R;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.personalize.AppSettingsManager;
+import com.book.mask.personalize.AppSettingsSnapshot;
 import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.config.CustomAppManager;
@@ -193,9 +194,13 @@ public class HomeNav extends Fragment implements
         SpannableStringBuilder message = new SpannableStringBuilder();
         appendPlainPermissionHint(
                 message,
-                "开机自启",
+                "1.开机自启",
                 "建议加上，请自行设置");
-        message.append('\n').append("忽略电池优化设置").append("：");
+        appendPlainPermissionHint(
+                message,
+                "2.省电模式",
+                "可能导致悬浮窗延迟出现，也未必，如需排查可尝试关省电模式");
+        message.append('\n').append("3.忽略电池优化设置").append("：");
         int hintStart = message.length();
         message.append("点击开启");
         int hintColor = MaterialColors.getColor(
@@ -277,7 +282,7 @@ public class HomeNav extends Fragment implements
             return;
         }
         String message = "1、该权限不同手机设置方式不同，请自行了解设置；\n"
-                + "2、某些场景易丢失，或需重设它：重启手机、卸载重装本 APP。";
+                + "2、重启手机、或卸载重装本 APP 时，该权限易丢失，或需重设它。";
 
         TextView messageView = new TextView(requireContext());
         int padding = (int) (20 * getResources().getDisplayMetrics().density);
@@ -865,12 +870,17 @@ public class HomeNav extends Fragment implements
 
                     new Handler().postDelayed(() -> {
                         dialog.dismiss();
-                        // 删除APP并清理相关持久化设置
+                        // 删除APP并立即清理每-APP设置；先快照以便撤销时恢复
                         boolean removed = customAppManager.removeCustomApp(packageName);
                         if (removed) {
                             android.util.Log.d(TAG, "已删除自定义APP: " + packageName);
+                            AppSettingsSnapshot snapshot = new AppSettingsSnapshot();
+                            appSettingsManager.captureInto(snapshot, packageName);
+                            relaxManager.captureInto(snapshot, packageName);
+                            appSettingsManager.clearAppSettings(packageName);
+                            relaxManager.clearAppSettings(packageName);
                             updateAppCardsDisplay();
-                            showDeleteUndo(app);
+                            showDeleteUndo(app, snapshot);
                         } else {
                             UiFeedback.showError(requireContext(), "删除失败");
                         }
@@ -1022,28 +1032,21 @@ public class HomeNav extends Fragment implements
         answerEdit.requestFocus();
     }
 
-    private void showDeleteUndo(CustomApp deletedApp) {
-        boolean[] restored = {false};
+    private void showDeleteUndo(CustomApp deletedApp, AppSettingsSnapshot snapshot) {
         Snackbar snackbar = UiFeedback.make(requireView(), "已删除")
                 .setAction("撤销", v -> {
-                    restored[0] = customAppManager.addCustomApp(
+                    boolean restored = customAppManager.addCustomApp(
                             deletedApp.getAppName(),
                             deletedApp.getPackageName(),
                             deletedApp.getTargetWord(),
                             deletedApp.getRelaxedLimitCount());
-                    if (restored[0]) {
+                    if (restored) {
+                        // 每-APP设置已在删除时清理，此处从快照一并恢复
+                        appSettingsManager.restoreFrom(snapshot, deletedApp.getPackageName());
+                        relaxManager.restoreFrom(snapshot, deletedApp.getPackageName());
                         updateAppCardsDisplay();
                     }
                 });
-        snackbar.addCallback(new Snackbar.Callback() {
-            @Override
-            public void onDismissed(Snackbar transientBottomBar, int event) {
-                if (!restored[0]) {
-                    relaxManager.clearAppSettings(deletedApp.getPackageName());
-                    appSettingsManager.clearAppSettings(deletedApp.getPackageName());
-                }
-            }
-        });
         snackbar.show();
     }
 
