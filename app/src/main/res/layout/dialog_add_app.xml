@@ -15,63 +15,69 @@
         android:gravity="center"
         android:layout_marginBottom="8dp" />
 
-    <!-- APP 名称 -->
-    <TextView
-        android:layout_width="match_parent"
+    <!-- 从已安装 APP 选择：自动填入 APP 名称与包名 -->
+    <Button
+        android:id="@+id/btn_pick_installed_app"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="APP 名称"
-        android:textSize="14sp"
-        android:textColor="@android:color/black"
-        android:layout_marginBottom="8dp" />
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/layout_app_name"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="从已安装 APP 选择"
+        android:textColor="@android:color/white"
+        android:backgroundTint="#4CAF50"
+        app:icon="@drawable/ic_menu_log"
+        app:iconTint="@android:color/white"
         android:layout_marginBottom="16dp"
-        android:hint="请输入 APP 名称"
-        app:hintTextColor="#757575"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+        style="@style/Widget.Material3.Button" />
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_app_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text"
-            android:maxLines="1"
-            android:textSize="14sp"
-            android:padding="12dp" />
-
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- 包名 -->
-    <TextView
+    <!-- 已选应用展示（选中后才显示名称与包名，只读） -->
+    <LinearLayout
+        android:id="@+id/layout_selected_app"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="包名"
-        android:textSize="14sp"
-        android:textColor="@android:color/black"
-        android:layout_marginBottom="8dp" />
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:id="@+id/layout_package_name"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
         android:layout_marginBottom="16dp"
-        android:hint="是英文形式，可上网搜XX APP的包名"
-        app:hintTextColor="#757575"
-        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+        android:visibility="gone"
+        android:background="@drawable/bg_selected_app">
 
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_package_name"
-            android:layout_width="match_parent"
+        <ImageView
+            android:id="@+id/iv_selected_icon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="12dp"
+            android:contentDescription="@null" />
+
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:inputType="text"
-            android:maxLines="1"
-            android:textSize="14sp"
-            android:padding="12dp" />
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-    </com.google.android.material.textfield.TextInputLayout>
+            <TextView
+                android:id="@+id/tv_selected_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="未选择应用"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@android:color/black" />
+
+            <TextView
+                android:id="@+id/tv_selected_package"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="请点击上方按钮选择应用"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="#757575" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
     <!-- 屏蔽关键词 -->
     <TextView

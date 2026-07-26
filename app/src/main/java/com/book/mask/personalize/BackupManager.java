@@ -19,7 +19,7 @@ import java.util.Map;
  * 备份导出：把用户可自定义的配置（首页、个性化、更多）汇总为 JSON 文本。
  * <p>
  * 只导出用户主动配置的项，刻意排除运行态数据（休闲时刻已用次数 / 悬浮窗关闭记录 /
- * 监测开关 / 各 APP 的解禁间隔与计时等），避免把临时状态一并带走。
+ * 各 APP 的解禁计时等），避免把临时状态一并带走。各 APP 的解禁间隔档位属用户配置，纳入备份。
  */
 public class BackupManager {
 
@@ -67,6 +67,7 @@ public class BackupManager {
     private static final String PREFIX_FLOATING_BOTTOM =
             AppSettingsManager.KEY_APP_FLOATING_BOTTOM_OFFSET;
     private static final String PREFIX_MONITORING = RelaxManager.KEY_APP_MONITORING_ENABLED;
+    private static final String PREFIX_SHOW_INTERVAL = RelaxManager.KEY_SHOW_INTERVAL;
 
     private final MMKV settings;
     private final MMKV customApps;
@@ -126,6 +127,9 @@ public class BackupManager {
             } else if (key.startsWith(PREFIX_MONITORING)) {
                 perApp(byPackage, key.substring(PREFIX_MONITORING.length()))
                         .put("monitoringEnabled", settings.getBoolean(key, false));
+            } else if (key.startsWith(PREFIX_SHOW_INTERVAL)) {
+                perApp(byPackage, key.substring(PREFIX_SHOW_INTERVAL.length()))
+                        .put("showInterval", settings.getInt(key, 0));
             }
         }
         // 剔除孤儿包名：删除自定义 APP 但残留的每-APP 设置，不应污染备份。
@@ -296,6 +300,9 @@ public class BackupManager {
                 if (has(o, "monitoringEnabled")) {
                     settings.putBoolean(PREFIX_MONITORING + pkg,
                             o.get("monitoringEnabled").getAsBoolean());
+                }
+                if (has(o, "showInterval")) {
+                    settings.putInt(PREFIX_SHOW_INTERVAL + pkg, o.get("showInterval").getAsInt());
                 }
                 settings.commit();
                 result.imported++;

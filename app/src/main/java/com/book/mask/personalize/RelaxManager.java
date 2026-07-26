@@ -20,7 +20,7 @@ public class RelaxManager {
 
     // 每个APP独立的设置键名前缀
     private static final String KEY_DEFAULT_SHOW_INTERVAL = "default_show_interval";
-    private static final String KEY_SHOW_INTERVAL = "app_show_interval_";
+    static final String KEY_SHOW_INTERVAL = "app_show_interval_";
     private static final String KEY_RELAXED_CLOSE_COUNT = "app_relaxed_close_count_";
     private static final String KEY_LAST_RELAXED_CLOSE_DATE = "app_last_relaxed_close_date_";
     private static final String KEY_LAST_CLOSE_TIME = "app_last_close_time_";

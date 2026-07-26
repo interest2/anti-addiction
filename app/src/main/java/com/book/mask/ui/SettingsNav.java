@@ -16,7 +16,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.ToggleButton;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -27,7 +26,6 @@ import androidx.fragment.app.Fragment;
 import com.book.mask.R;
 import com.book.mask.personalize.BackupManager;
 import com.book.mask.personalize.RelaxManager;
-import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
 import com.book.mask.constant.Const;
 import com.book.mask.network.LatestVersionManager;
@@ -38,7 +36,6 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 
 public class SettingsNav extends Fragment {
@@ -109,8 +106,6 @@ public class SettingsNav extends Fragment {
         }
         view.findViewById(R.id.row_special_details)
                 .setOnClickListener(v -> openSpecialDetails());
-        view.findViewById(R.id.row_package_log)
-                .setOnClickListener(v -> showPackageLogActionsDialog());
     }
 
     private void showBackupOptionsDialog() {
@@ -386,57 +381,6 @@ public class SettingsNav extends Fragment {
             android.util.Log.w(TAG, "读取本地版本失败", e);
             return "未成功获取";
         }
-    }
-
-    private void showPackageLogActionsDialog() {
-        View dialogView = LayoutInflater.from(requireContext())
-                .inflate(R.layout.dialog_package_log_actions, null);
-        ToggleButton packageLogToggle = dialogView.findViewById(R.id.toggle_package_log);
-        packageLogToggle.setChecked(PackageLogManager.getInstance().isEnabled());
-        packageLogToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            PackageLogManager.getInstance().setEnabled(isChecked);
-            UiFeedback.show(
-                    requireContext(),
-                    isChecked ? "已开启包名日志" : "已关闭包名日志"
-            );
-        });
-        dialogView.findViewById(R.id.btn_package_log)
-                .setOnClickListener(v -> showPackageLogDialog());
-
-        new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("包名日志")
-                .setView(dialogView)
-                .setNegativeButton("关闭", null)
-                .show();
-    }
-
-    private void showPackageLogDialog() {
-        List<String> logs = PackageLogManager.getInstance().getLogs();
-        LayoutInflater inflater = LayoutInflater.from(requireContext());
-        View dialogView = inflater.inflate(R.layout.dialog_package_log, null);
-        android.widget.LinearLayout container = dialogView.findViewById(R.id.ll_log_items);
-
-        if (logs.isEmpty()) {
-            TextView emptyText = new TextView(requireContext());
-            emptyText.setText("（暂无记录，请打开记录包名的开关）");
-            emptyText.setTextSize(14);
-            container.addView(emptyText);
-        } else {
-            for (int i = 0; i < logs.size(); i++) {
-                final String pkg = logs.get(i);
-                View itemView = inflater.inflate(R.layout.item_package_log, container, false);
-                TextView tvText = itemView.findViewById(R.id.tv_log_text);
-                Button btnCopy = itemView.findViewById(R.id.btn_copy);
-                tvText.setText((i + 1) + ". " + pkg);
-                btnCopy.setOnClickListener(b -> copyToClipboard(b, pkg));
-                container.addView(itemView);
-            }
-        }
-
-        new android.app.AlertDialog.Builder(requireContext())
-            .setView(dialogView)
-            .setPositiveButton("确定", null)
-            .show();
     }
 
     private void enableUrlCopy(TextView textView) {

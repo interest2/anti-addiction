@@ -349,17 +349,21 @@ public class HomeNav extends Fragment implements
     private void showAddAppDialog() {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_app, null);
 
-        TextInputEditText etAppName = dialogView.findViewById(R.id.et_app_name);
-        TextInputEditText etPackageName = dialogView.findViewById(R.id.et_package_name);
         TextInputEditText etTargetWord = dialogView.findViewById(R.id.et_target_word);
         TextInputEditText etRelaxedLimitCount = dialogView.findViewById(R.id.et_relaxed_limit_count);
-        TextInputLayout appNameLayout = dialogView.findViewById(R.id.layout_app_name);
-        TextInputLayout packageNameLayout = dialogView.findViewById(R.id.layout_package_name);
         TextInputLayout targetWordLayout = dialogView.findViewById(R.id.layout_target_word);
         TextInputLayout relaxedLimitCountLayout =
                 dialogView.findViewById(R.id.layout_relaxed_limit_count);
+        ImageView ivSelectedIcon = dialogView.findViewById(R.id.iv_selected_icon);
+        TextView tvSelectedName = dialogView.findViewById(R.id.tv_selected_name);
+        TextView tvSelectedPackage = dialogView.findViewById(R.id.tv_selected_package);
+        View layoutSelectedApp = dialogView.findViewById(R.id.layout_selected_app);
         Button btnCancel = dialogView.findViewById(R.id.btn_cancel);
         Button btnSave = dialogView.findViewById(R.id.btn_save);
+        Button btnPickInstalledApp = dialogView.findViewById(R.id.btn_pick_installed_app);
+
+        // 已选应用（通过“从已安装 APP 选择”得到），保存前必须已选择
+        final InstalledAppInfo[] selectedApp = {null};
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
             .setView(dialogView)
@@ -367,34 +371,33 @@ public class HomeNav extends Fragment implements
             .create();
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
-        
+
+        btnPickInstalledApp.setOnClickListener(v -> showInstalledAppPicker(installedApp -> {
+            selectedApp[0] = installedApp;
+            ivSelectedIcon.setImageDrawable(installedApp.icon);
+            tvSelectedName.setText(installedApp.label);
+            tvSelectedPackage.setText(installedApp.packageName);
+            layoutSelectedApp.setVisibility(View.VISIBLE);
+        }));
+
         btnSave.setOnClickListener(v -> {
-            String appName = etAppName.getText().toString().trim();
-            String packageName = etPackageName.getText().toString().trim();
             String targetWord = etTargetWord.getText().toString().trim();
             String relaxedLimitCountStr = etRelaxedLimitCount.getText().toString().trim();
 
-            appNameLayout.setError(null);
-            packageNameLayout.setError(null);
             targetWordLayout.setError(null);
             relaxedLimitCountLayout.setError(null);
 
             // 验证输入
-            if (appName.isEmpty()) {
-                showInputError(appNameLayout, etAppName, "请输入 APP 名称");
+            if (selectedApp[0] == null) {
+                UiFeedback.show(requireContext(), "请先从已安装 APP 中选择一个 APP");
                 return;
             }
-            
-            if (packageName.isEmpty()) {
-                showInputError(packageNameLayout, etPackageName, "请输入包名");
-                return;
-            }
-            
+
             if (targetWord.isEmpty()) {
                 showInputError(targetWordLayout, etTargetWord, "请输入屏蔽关键词");
                 return;
             }
-            
+
             int relaxedLimitCount = 1;
             if (!relaxedLimitCountStr.isEmpty()) {
                 try {
@@ -414,26 +417,188 @@ public class HomeNav extends Fragment implements
                     return;
                 }
             }
-            
+
             // 保存新APP
-            boolean success = customAppManager.addCustomApp(appName, packageName, targetWord, relaxedLimitCount);
+            boolean success = customAppManager.addCustomApp(
+                    selectedApp[0].label, selectedApp[0].packageName, targetWord, relaxedLimitCount);
             if (success) {
                 dialog.dismiss();
                 UiFeedback.show(requireContext(), "APP 添加成功");
+                // 新增 APP 默认开启监测，卡片右上角开关随之置为打开
+                relaxManager.setAppMonitoringEnabled(selectedApp[0].packageName, true);
                 // 更新APP列表和卡片显示
                 updateAppList();
                 if (appCardAdapter != null) {
                     appCardAdapter.updateData(allApps);
                 }
             } else {
-                showInputError(
-                        packageNameLayout,
-                        etPackageName,
-                        "包名无效或已存在，请检查后重试");
+                UiFeedback.show(requireContext(), "该应用无效或已添加，请重新选择");
             }
         });
-        
+
         dialog.show();
+    }
+
+    /**
+     * 已安装 APP 信息（用于“从已安装 APP 选择”选择器）
+     */
+    private static class InstalledAppInfo {
+        final String label;
+        final String packageName;
+        final android.graphics.drawable.Drawable icon;
+
+        InstalledAppInfo(String label, String packageName, android.graphics.drawable.Drawable icon) {
+            this.label = label;
+            this.packageName = packageName;
+            this.icon = icon;
+        }
+    }
+
+    /**
+     * 弹出已安装 APP 选择器：先显示加载动画，在后台线程读取应用列表，加载完成后展示列表。
+     * 已添加过的应用与本应用自身不出现在列表中。
+     */
+    private void showInstalledAppPicker(java.util.function.Consumer<InstalledAppInfo> onPicked) {
+        View loadingView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_loading, null);
+        android.app.AlertDialog loadingDialog = new android.app.AlertDialog.Builder(requireContext())
+                .setView(loadingView)
+                .setCancelable(false)
+                .create();
+        loadingDialog.show();
+
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+        new Thread(() -> {
+            List<InstalledAppInfo> allInstalled = loadInstalledApps();
+            mainHandler.post(() -> {
+                // Fragment 已脱离时不再操作 UI
+                if (!isAdded()) {
+                    return;
+                }
+                loadingDialog.dismiss();
+                if (allInstalled.isEmpty()) {
+                    UiFeedback.show(requireContext(), "未获取到可选择的应用");
+                    return;
+                }
+                displayInstalledAppPicker(allInstalled, onPicked);
+            });
+        }).start();
+    }
+
+    /**
+     * 展示已加载好的应用列表（带名称/包名搜索过滤），选中后回调。
+     */
+    private void displayInstalledAppPicker(
+            List<InstalledAppInfo> allInstalled,
+            java.util.function.Consumer<InstalledAppInfo> onPicked) {
+        View pickerView = LayoutInflater.from(requireContext())
+                .inflate(R.layout.dialog_app_picker, null);
+        EditText etFilter = pickerView.findViewById(R.id.et_app_filter);
+        android.widget.ListView listView = pickerView.findViewById(R.id.lv_installed_apps);
+
+        final List<InstalledAppInfo> shown = new java.util.ArrayList<>(allInstalled);
+        android.widget.BaseAdapter adapter = new android.widget.BaseAdapter() {
+            @Override
+            public int getCount() {
+                return shown.size();
+            }
+
+            @Override
+            public Object getItem(int position) {
+                return shown.get(position);
+            }
+
+            @Override
+            public long getItemId(int position) {
+                return position;
+            }
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                View row = convertView;
+                if (row == null) {
+                    row = LayoutInflater.from(requireContext())
+                            .inflate(R.layout.item_app_picker, parent, false);
+                }
+                InstalledAppInfo item = shown.get(position);
+                ImageView ivIcon = row.findViewById(R.id.iv_app_icon);
+                TextView tvLabel = row.findViewById(R.id.tv_app_label);
+                TextView tvPackage = row.findViewById(R.id.tv_app_package);
+                ivIcon.setImageDrawable(item.icon);
+                tvLabel.setText(item.label);
+                tvPackage.setText(item.packageName);
+                return row;
+            }
+        };
+        listView.setAdapter(adapter);
+
+        android.app.AlertDialog pickerDialog = new android.app.AlertDialog.Builder(requireContext())
+                .setView(pickerView)
+                .setNegativeButton("取消", null)
+                .create();
+
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            InstalledAppInfo picked = shown.get(position);
+            pickerDialog.dismiss();
+            onPicked.accept(picked);
+        });
+
+        etFilter.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                String keyword = s.toString().trim().toLowerCase();
+                shown.clear();
+                if (keyword.isEmpty()) {
+                    shown.addAll(allInstalled);
+                } else {
+                    for (InstalledAppInfo info : allInstalled) {
+                        if (info.label.toLowerCase().contains(keyword)
+                                || info.packageName.toLowerCase().contains(keyword)) {
+                            shown.add(info);
+                        }
+                    }
+                }
+                adapter.notifyDataSetChanged();
+            }
+        });
+
+        pickerDialog.show();
+    }
+
+    /**
+     * 读取系统中可启动的应用列表，排除本应用及已添加过的应用，按名称排序。
+     */
+    private List<InstalledAppInfo> loadInstalledApps() {
+        List<InstalledAppInfo> result = new java.util.ArrayList<>();
+        android.content.pm.PackageManager pm = requireContext().getPackageManager();
+        android.content.Intent launcherIntent =
+                new android.content.Intent(android.content.Intent.ACTION_MAIN)
+                        .addCategory(android.content.Intent.CATEGORY_LAUNCHER);
+        List<android.content.pm.ResolveInfo> resolved =
+                pm.queryIntentActivities(launcherIntent, 0);
+        String ownPackage = requireContext().getPackageName();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (android.content.pm.ResolveInfo info : resolved) {
+            if (info.activityInfo == null) continue;
+            String pkg = info.activityInfo.packageName;
+            if (pkg == null || pkg.equals(ownPackage)) continue;
+            if (!seen.add(pkg)) continue;
+            if (customAppManager.isPackageNameExists(pkg)) continue;
+            String label = info.loadLabel(pm).toString();
+            android.graphics.drawable.Drawable icon = info.loadIcon(pm);
+            result.add(new InstalledAppInfo(label, pkg, icon));
+        }
+        java.util.Collections.sort(result,
+                (a, b) -> a.label.compareToIgnoreCase(b.label));
+        return result;
     }
 
     private void updateAppList() {
@@ -606,7 +771,7 @@ public class HomeNav extends Fragment implements
                 
                 // 更新APP的relaxedLimitCount
                 app.setRelaxedLimitCount(newLimitCount);
-                customAppManager.saveCustomAppsChanges(); // 保存到本地存储
+                customAppManager.persistAppChange(app); // 按 APP 种别保存到本地存储
                 UiFeedback.show(requireContext(), "保存成功");
                 
                 // 更新APP列表显示
@@ -670,9 +835,9 @@ public class HomeNav extends Fragment implements
             
             // 更新APP的targetWord
             app.setTargetWord(inputText);
-            
-            // 统一使用updatePredefinedApp方法，它会自动判断是否是预定义APP
-            customAppManager.updatePredefinedApp(app);
+
+            // 按 APP 种别（自定义 / 预定义）落到正确的存储
+            customAppManager.persistAppChange(app);
             
             UiFeedback.show(requireContext(), "关键词保存成功");
             

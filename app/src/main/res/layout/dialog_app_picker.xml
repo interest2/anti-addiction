@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="选择已安装 APP"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:paddingHorizontal="16dp"
+        android:layout_marginBottom="12dp" />
+
+    <EditText
+        android:id="@+id/et_app_filter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="搜索应用名称"
+        android:inputType="text"
+        android:maxLines="1"
+        android:textSize="14sp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="8dp" />
+
+    <ListView
+        android:id="@+id/lv_installed_apps"
+        android:layout_width="match_parent"
+        android:layout_height="360dp"
+        android:divider="@null"
+        android:dividerHeight="0dp" />
+
+</LinearLayout>

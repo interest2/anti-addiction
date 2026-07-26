@@ -362,6 +362,21 @@ public class CustomAppManager {
     public void saveCustomAppsChanges() {
         saveCustomApps();
     }
+
+    /**
+     * 持久化对某个 APP 字段（关键词 / 宽松次数等）的修改，自动按 APP 种别选择存储：
+     * 用户自定义 APP 写回 {@link #KEY_CUSTOM_APPS}，预定义 APP 写入其修改记录
+     * {@link #KEY_DEFAULT_APP_MODIFY}。避免调用方误用单一保存路径而导致某类 APP 的
+     * 修改不落盘（进而备份导出丢失）。
+     */
+    public void persistAppChange(CustomApp app) {
+        if (app == null) return;
+        if (isCustomApp(app.getPackageName())) {
+            saveCustomApps();
+        } else {
+            updatePredefinedApp(app);
+        }
+    }
     
     /**
      * 更新预定义APP（保存修改）

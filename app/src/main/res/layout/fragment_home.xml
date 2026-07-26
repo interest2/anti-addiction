@@ -89,6 +89,7 @@
                 android:id="@+id/btn_add_app"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
+                android:layout_marginEnd="12dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@android:drawable/ic_input_add"
                 android:contentDescription="添加 APP"
