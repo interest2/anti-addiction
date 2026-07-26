@@ -282,7 +282,7 @@ public class HomeNav extends Fragment implements
             return;
         }
         String message =
-                "1、该权限很重要，不设置可能导致无障碍也异常\n"
+                "1、该权限很重要，不设置可能导致无障碍也异常；\n"
                 + "2、不同手机设置它的方式不同，请自行了解；\n"
                 + "3、某些场景该权限可能被重置，或需手动重设它，如：手机系统升级引起的重启，卸载重装本 APP";
 
