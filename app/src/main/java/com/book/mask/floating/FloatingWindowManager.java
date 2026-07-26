@@ -609,7 +609,7 @@ public class FloatingWindowManager {
             
             // 如果用户没有设置过提醒文字，显示默认文字
             if (strictReminder.isEmpty()) {
-                strictReminderText.setText("玩手机？不如——\n多喝水、多起身活动");
+                strictReminderText.setText(Const.DEFAULT_STRICT_REMINDER);
                 strictReminderLayout.setVisibility(android.view.View.VISIBLE);
                 
                 // 如果用户没有点击过设置按钮，显示小字提示

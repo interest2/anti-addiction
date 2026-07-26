@@ -967,7 +967,7 @@ public class SettingsDialogManager {
         final EditText input = new EditText(context);
         // 设置输入长度限制为50
         input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(50) });
-        input.setHint("例如：玩手机？不如去喝水");
+        input.setHint("例如：" + Const.DEFAULT_STRICT_REMINDER);
         input.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
             android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));

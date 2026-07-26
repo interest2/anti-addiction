@@ -281,8 +281,10 @@ public class HomeNav extends Fragment implements
         if (!isAdded()) {
             return;
         }
-        String message = "1、该权限不同手机设置方式不同，请自行了解设置；\n"
-                + "2、重启手机、或卸载重装本 APP 时，该权限易丢失，或需重设它。";
+        String message =
+                "1、该权限很关键，不设置可能导致无障碍也异常"
+                + "2、该权限不同手机设置方式不同，请自行了解设置；\n"
+                + "3、重启手机、或卸载重装本 APP 时，该权限易丢失，或需重设它。";
 
         TextView messageView = new TextView(requireContext());
         int padding = (int) (20 * getResources().getDisplayMetrics().density);

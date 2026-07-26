@@ -22,6 +22,9 @@ public class Const {
     public static final String CUSTOM_HINT_SOURCE = "自定义";
     public static final String TARGET_TO_BE_SET = "待设置";
 
+    // 悬浮窗良好习惯提醒默认文字（默认展示 + 输入框示例共用）
+    public static final String DEFAULT_STRICT_REMINDER = "加油吧！";
+
     // 广播Action常量
     public static final String ACTION_UPDATE_RELAXED_COUNT = "com.book.mask.ACTION_UPDATE_RELAXED_COUNT";
 
