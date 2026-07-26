@@ -17,6 +17,13 @@ public class CustomApp {
         this.targetWord = targetWord;
         this.relaxedLimitCount = relaxedLimitCount;
     }
+
+    /**
+     * 拷贝构造：用于从只读默认模板生成可变副本，避免调用方就地改写共享模板对象。
+     */
+    public CustomApp(CustomApp other) {
+        this(other.appName, other.packageName, other.targetWord, other.relaxedLimitCount);
+    }
     
     public String getAppName() {
         return appName;

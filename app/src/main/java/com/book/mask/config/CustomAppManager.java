@@ -32,11 +32,22 @@ public class CustomAppManager {
     private final Gson gson;
     private List<CustomApp> customApps;
     
-    // 预定义的应用列表
+    // 预定义的应用列表：只读模板，作为「真正的默认值」来源，永不就地改写。
     private static final List<CustomApp> PREDEFINED_APPS = new ArrayList<>();
+    // 对外服务/查找用的可变副本（一次性由模板深拷贝而来）。编辑预定义 APP 时改写的是副本，
+    // 静态模板保持纯净；且副本实例稳定（每次返回同一对象），不破坏依赖引用相等的运行时判断。
+    private final List<CustomApp> defaultApps = buildDefaultApps();
     // 预定义APP的修改记录
     private List<CustomApp> predefinedAppModifications;
-    
+
+    private static List<CustomApp> buildDefaultApps() {
+        List<CustomApp> copies = new ArrayList<>();
+        for (CustomApp template : PREDEFINED_APPS) {
+            copies.add(new CustomApp(template));
+        }
+        return copies;
+    }
+
     static {
         // 初始化预定义应用
         PREDEFINED_APPS.add(new CustomApp("小红书", XHS_PACKAGE, "发现", 3));
@@ -137,7 +148,7 @@ public class CustomAppManager {
     public List<CustomApp> getAllApps() {
         List<CustomApp> allApps = new ArrayList<>();
         // 添加预定义应用（优先使用修改后的版本）
-        for (CustomApp predefinedApp : PREDEFINED_APPS) {
+        for (CustomApp predefinedApp : defaultApps) {
             CustomApp modifiedApp = getModifiedPredefinedApp(predefinedApp.getPackageName());
             allApps.add(modifiedApp != null ? modifiedApp : predefinedApp);
         }
@@ -158,7 +169,7 @@ public class CustomAppManager {
         }
         
         // 再检查原始预定义应用
-        for (CustomApp app : PREDEFINED_APPS) {
+        for (CustomApp app : defaultApps) {
             if (app.getPackageName().equals(packageName)) {
                 return app;
             }
@@ -212,7 +223,7 @@ public class CustomAppManager {
      */
     public boolean isCustomApp(String packageName) {
         if (packageName == null) return false;
-        for (CustomApp predefinedApp : PREDEFINED_APPS) {
+        for (CustomApp predefinedApp : defaultApps) {
             if (predefinedApp.getPackageName().equals(packageName)) {
                 return false;
             }
@@ -249,7 +260,7 @@ public class CustomAppManager {
      */
     public boolean isPackageNameExists(String packageName) {
         // 检查预定义应用
-        for (CustomApp app : PREDEFINED_APPS) {
+        for (CustomApp app : defaultApps) {
             if (app.getPackageName().equals(packageName)) {
                 return true;
             }
@@ -393,7 +404,7 @@ public class CustomAppManager {
 
         // 检查是否是预定义APP
         boolean isPredefined = false;
-        for (CustomApp predefinedApp : PREDEFINED_APPS) {
+        for (CustomApp predefinedApp : defaultApps) {
             if (predefinedApp.getPackageName().equals(modifiedApp.getPackageName())) {
                 isPredefined = true;
                 break;

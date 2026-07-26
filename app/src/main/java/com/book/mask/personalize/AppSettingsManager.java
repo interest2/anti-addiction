@@ -176,7 +176,7 @@ public class AppSettingsManager {
      * 获取悬浮窗良好习惯提醒字体大小
      */
     public int getFloatingStrictReminderFontSize() {
-        return mmkv.getInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, 18); // 默认18sp
+        return mmkv.getInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, 28); // 默认28sp
     }
 
     // ===== 个人目标相关方法 =====
