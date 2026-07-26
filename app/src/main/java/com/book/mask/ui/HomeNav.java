@@ -369,7 +369,6 @@ public class HomeNav extends Fragment implements
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
             .setView(dialogView)
-            .setCancelable(false)
             .create();
 
         btnCancel.setOnClickListener(v -> dialog.dismiss());
@@ -899,6 +898,17 @@ public class HomeNav extends Fragment implements
                 settingsDialogManager.showFloatingPositionDialogForApp(app));
         
         dialog.show();
+
+        // 缩小底部"退出"按钮的上下边距
+        Button exitButton = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE);
+        if (exitButton != null) {
+            int vPad = (int) (4 * getResources().getDisplayMetrics().density);
+            exitButton.setMinHeight(0);
+            exitButton.setMinimumHeight(0);
+            exitButton.setPadding(
+                    exitButton.getPaddingLeft(), vPad,
+                    exitButton.getPaddingRight(), vPad);
+        }
     }
 
     /**
@@ -1023,7 +1033,6 @@ public class HomeNav extends Fragment implements
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
             .setTitle("删除前验证")
             .setView(dialogView)
-            .setCancelable(false)
             .create();
 
         submitButton.setOnClickListener(v -> {
@@ -1124,7 +1133,6 @@ public class HomeNav extends Fragment implements
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
             .setTitle("关闭屏蔽验证")
             .setView(dialogView)
-            .setCancelable(false)
             .create();
         
         // 提交答案按钮
