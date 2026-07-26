@@ -282,9 +282,9 @@ public class HomeNav extends Fragment implements
             return;
         }
         String message =
-                "1、该权限很关键，不设置可能导致无障碍也异常\n"
-                + "2、该权限不同手机设置方式不同，请自行了解设置；\n"
-                + "3、重启手机、或卸载重装本 APP 时，该权限易丢失，或需重设它。";
+                "1、该权限很重要，不设置可能导致无障碍也异常\n"
+                + "2、不同手机设置它的方式不同，请自行了解；\n"
+                + "3、某些场景该权限可能被重置，或需手动重设它，如：手机系统升级引起的重启，卸载重装本 APP";
 
         TextView messageView = new TextView(requireContext());
         int padding = (int) (20 * getResources().getDisplayMetrics().density);
@@ -389,35 +389,41 @@ public class HomeNav extends Fragment implements
             targetWordLayout.setError(null);
             relaxedLimitCountLayout.setError(null);
 
-            // 验证输入
-            if (selectedApp[0] == null) {
-                UiFeedback.show(requireContext(), "请先从已安装 APP 中选择一个 APP");
-                return;
-            }
+            // 逐项校验，所有未填写/非法字段一次性全部提示，而非只提示第一个
+            boolean valid = true;
 
             if (targetWord.isEmpty()) {
                 showInputError(targetWordLayout, etTargetWord, "请输入屏蔽关键词");
-                return;
+                valid = false;
             }
 
             int relaxedLimitCount = 1;
             if (!relaxedLimitCountStr.isEmpty()) {
                 try {
                     relaxedLimitCount = Integer.parseInt(relaxedLimitCountStr);
-                    if (relaxedLimitCount <= 0) {
+                    if (relaxedLimitCount < 1 || relaxedLimitCount > 3) {
                         showInputError(
                                 relaxedLimitCountLayout,
                                 etRelaxedLimitCount,
-                                "宽松模式次数必须大于 0");
-                        return;
+                                "请输入 1-3 之间的数字");
+                        valid = false;
                     }
                 } catch (NumberFormatException e) {
                     showInputError(
                             relaxedLimitCountLayout,
                             etRelaxedLimitCount,
                             "请输入有效的数字");
-                    return;
+                    valid = false;
                 }
+            }
+
+            if (selectedApp[0] == null) {
+                UiFeedback.show(requireContext(), "请先从已安装 APP 中选择一个 APP");
+                valid = false;
+            }
+
+            if (!valid) {
+                return;
             }
 
             // 保存新APP
