@@ -295,8 +295,8 @@ public class FloatingWindowManager {
         boolean switchingTargetApp = !targetPackage.equals(pageTransitionTargetPackage);
         if (switchingTargetApp) {
             adaptSuspendedWindowToApp(targetApp);
-            updateFloatingWindowContent(targetApp);
         }
+        updateFloatingWindowContent(targetApp);
         if (mathChallengeManager != null) {
             mathChallengeManager.setCurrentApp(targetApp);
         }
@@ -311,9 +311,8 @@ public class FloatingWindowManager {
                         ? "悬浮窗跨目标 APP 复用暖窗口完成，耗时 "
                         : "悬浮窗从页面切换临时隐藏中恢复完成，耗时 ")
                 + elapsedMillisSince(startedAt) + "ms");
-        if (switchingTargetApp
-                && Const.DEFAULT_HINT_SOURCE.equals(
-                        appSettingsManager.getAppHintSource(targetPackage))) {
+        if (Const.DEFAULT_HINT_SOURCE.equals(
+                appSettingsManager.getAppHintSource(targetPackage))) {
             fetchNew();
         }
         notifyIfWindowActuallyShown();

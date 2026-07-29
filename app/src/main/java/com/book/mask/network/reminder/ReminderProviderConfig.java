@@ -28,30 +28,11 @@ public final class ReminderProviderConfig {
         }
     }
 
-    public enum AuthType {
-        BEARER("bearer"),
-        NONE("none");
-
-        private final String storageValue;
-
-        AuthType(String storageValue) {
-            this.storageValue = storageValue;
-        }
-
-        public String getStorageValue() {
-            return storageValue;
-        }
-
-        public static AuthType fromStorageValue(String value) {
-            return NONE.storageValue.equals(value) ? NONE : BEARER;
-        }
-    }
-
     private final String profileId;
     private final ProviderType providerType;
+    private final String providerName;
     private final String endpointUrl;
     private final String model;
-    private final AuthType authType;
     private final int refreshIntervalMinutes;
     private final long configRevision;
     private final long lastVerifiedAt;
@@ -59,17 +40,17 @@ public final class ReminderProviderConfig {
     public ReminderProviderConfig(
             String profileId,
             ProviderType providerType,
+            String providerName,
             String endpointUrl,
             String model,
-            AuthType authType,
             int refreshIntervalMinutes,
             long configRevision,
             long lastVerifiedAt) {
         this.profileId = profileId;
         this.providerType = providerType;
+        this.providerName = providerName;
         this.endpointUrl = endpointUrl;
         this.model = model;
-        this.authType = authType;
         this.refreshIntervalMinutes = Math.max(0, refreshIntervalMinutes);
         this.configRevision = Math.max(1, configRevision);
         this.lastVerifiedAt = Math.max(0, lastVerifiedAt);
@@ -81,7 +62,7 @@ public final class ReminderProviderConfig {
                 ProviderType.OFFICIAL,
                 "",
                 "",
-                AuthType.NONE,
+                "",
                 0,
                 1,
                 0);
@@ -95,16 +76,16 @@ public final class ReminderProviderConfig {
         return providerType;
     }
 
+    public String getProviderName() {
+        return providerName;
+    }
+
     public String getEndpointUrl() {
         return endpointUrl;
     }
 
     public String getModel() {
         return model;
-    }
-
-    public AuthType getAuthType() {
-        return authType;
     }
 
     public int getRefreshIntervalMinutes() {

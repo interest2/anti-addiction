@@ -23,7 +23,6 @@ import com.book.mask.network.reminder.ReminderProviderConfigStore;
 import com.book.mask.network.reminder.ReminderProviderConfigValidator;
 import com.book.mask.network.reminder.ReminderTextRepository;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -32,24 +31,50 @@ import java.security.GeneralSecurityException;
 
 public class ReminderProviderSettingsNav extends Fragment {
     private static final int[] REFRESH_INTERVAL_VALUES = {0, 15, 30, 60};
+    private static final ProviderPreset[] PROVIDER_PRESETS = {
+            new ProviderPreset(
+                    R.string.provider_preset_openai,
+                    "https://api.openai.com/v1/chat/completions",
+                    "gpt-4.1-mini"),
+            new ProviderPreset(
+                    R.string.provider_preset_deepseek,
+                    "https://api.deepseek.com/chat/completions",
+                    "deepseek-v4-flash"),
+            new ProviderPreset(
+                    R.string.provider_preset_moonshot,
+                    "https://api.moonshot.cn/v1/chat/completions",
+                    "kimi-k2.6"),
+            new ProviderPreset(
+                    R.string.provider_preset_dashscope,
+                    "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+                    "qwen-plus"),
+            new ProviderPreset(
+                    R.string.provider_preset_zhipu,
+                    "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+                    "glm-4-flash"),
+            new ProviderPreset(
+                    R.string.provider_preset_mistral,
+                    "https://api.mistral.ai/v1/chat/completions",
+                    "mistral-small-latest")
+    };
 
     private ReminderProviderConfigStore configStore;
     private ProviderSecretStore secretStore;
     private ReminderTextRepository repository;
 
     private View rootView;
-    private View customSettings;
     private View progressIndicator;
-    private MaterialButtonToggleGroup providerToggle;
     private MaterialButton testButton;
     private MaterialButton saveButton;
+    private TextInputLayout nameLayout;
     private TextInputLayout endpointLayout;
     private TextInputLayout modelLayout;
     private TextInputLayout apiKeyLayout;
+    private TextInputEditText nameInput;
     private TextInputEditText endpointInput;
     private TextInputEditText modelInput;
     private TextInputEditText apiKeyInput;
-    private MaterialButtonToggleGroup authToggle;
+    private MaterialAutoCompleteTextView presetInput;
     private MaterialAutoCompleteTextView refreshIntervalInput;
     private TextView activeStatus;
     private TextView testStatus;
@@ -74,18 +99,18 @@ public class ReminderProviderSettingsNav extends Fragment {
     }
 
     private void bindViews() {
-        customSettings = rootView.findViewById(R.id.group_custom_provider_settings);
         progressIndicator = rootView.findViewById(R.id.progress_provider_test);
-        providerToggle = rootView.findViewById(R.id.toggle_provider_type);
         testButton = rootView.findViewById(R.id.btn_test_provider);
         saveButton = rootView.findViewById(R.id.btn_save_provider);
+        nameLayout = rootView.findViewById(R.id.layout_provider_name);
         endpointLayout = rootView.findViewById(R.id.layout_provider_endpoint);
         modelLayout = rootView.findViewById(R.id.layout_provider_model);
         apiKeyLayout = rootView.findViewById(R.id.layout_provider_api_key);
+        nameInput = rootView.findViewById(R.id.input_provider_name);
         endpointInput = rootView.findViewById(R.id.input_provider_endpoint);
         modelInput = rootView.findViewById(R.id.input_provider_model);
         apiKeyInput = rootView.findViewById(R.id.input_provider_api_key);
-        authToggle = rootView.findViewById(R.id.toggle_provider_auth);
+        presetInput = rootView.findViewById(R.id.input_provider_preset);
         refreshIntervalInput = rootView.findViewById(R.id.input_provider_refresh_interval);
         activeStatus = rootView.findViewById(R.id.tv_provider_active_status);
         testStatus = rootView.findViewById(R.id.tv_provider_test_status);
@@ -101,26 +126,16 @@ public class ReminderProviderSettingsNav extends Fragment {
         rootView.findViewById(R.id.btn_provider_settings_back)
                 .setOnClickListener(v -> getParentFragmentManager().popBackStack());
 
-        providerToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) {
-                return;
-            }
-            boolean customSelected = checkedId == R.id.btn_provider_custom;
-            customSettings.setVisibility(customSelected ? View.VISIBLE : View.GONE);
-            testButton.setVisibility(customSelected ? View.VISIBLE : View.GONE);
-            saveButton.setText(customSelected
-                    ? R.string.test_and_enable_provider
-                    : R.string.enable_official_provider);
-            clearTestStatus();
-        });
-
-        authToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
-            if (!isChecked) {
-                return;
-            }
-            boolean bearer = checkedId == R.id.btn_provider_auth_bearer;
-            apiKeyLayout.setVisibility(bearer ? View.VISIBLE : View.GONE);
-        });
+        String[] presetNames = new String[PROVIDER_PRESETS.length];
+        for (int i = 0; i < PROVIDER_PRESETS.length; i++) {
+            presetNames[i] = getString(PROVIDER_PRESETS[i].nameResId);
+        }
+        presetInput.setAdapter(new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                presetNames));
+        presetInput.setOnItemClickListener((parent, view, position, id) ->
+                applyPreset(PROVIDER_PRESETS[position]));
 
         String[] intervalLabels = getResources().getStringArray(R.array.provider_refresh_intervals);
         refreshIntervalInput.setAdapter(new ArrayAdapter<>(
@@ -131,17 +146,12 @@ public class ReminderProviderSettingsNav extends Fragment {
                 selectedRefreshInterval = REFRESH_INTERVAL_VALUES[position]);
 
         testButton.setOnClickListener(v -> testCustomProvider(false));
-        saveButton.setOnClickListener(v -> {
-            if (providerToggle.getCheckedButtonId() == R.id.btn_provider_official) {
-                activateOfficialProvider();
-            } else {
-                testCustomProvider(true);
-            }
-        });
+        saveButton.setOnClickListener(v -> testCustomProvider(true));
     }
 
     private void populateSavedConfiguration() {
         ReminderProviderConfig customConfig = configStore.getCustomConfig();
+        nameInput.setText(customConfig.getProviderName());
         endpointInput.setText(customConfig.getEndpointUrl());
         modelInput.setText(customConfig.getModel());
         selectedRefreshInterval = customConfig.getRefreshIntervalMinutes();
@@ -152,36 +162,20 @@ public class ReminderProviderSettingsNav extends Fragment {
                         refreshIntervalPosition],
                 false);
 
-        authToggle.check(customConfig.getAuthType() == ReminderProviderConfig.AuthType.NONE
-                ? R.id.btn_provider_auth_none
-                : R.id.btn_provider_auth_bearer);
         if (secretStore.hasApiKey()) {
             apiKeyLayout.setHint(R.string.provider_api_key_saved);
         }
 
-        providerToggle.check(configStore.isCustomActive()
-                ? R.id.btn_provider_custom
-                : R.id.btn_provider_official);
         updateActiveStatus();
-    }
-
-    private void activateOfficialProvider() {
-        configStore.activateOfficial();
-        applyConfigurationChange();
-        updateActiveStatus();
-        UiFeedback.show(rootView, getString(R.string.official_provider_enabled));
     }
 
     private void testCustomProvider(boolean activateAfterSuccess) {
+        String providerName = textOf(nameInput);
         String endpoint = textOf(endpointInput);
         String model = textOf(modelInput);
-        ReminderProviderConfig.AuthType authType =
-                authToggle.getCheckedButtonId() == R.id.btn_provider_auth_none
-                        ? ReminderProviderConfig.AuthType.NONE
-                        : ReminderProviderConfig.AuthType.BEARER;
         String apiKey;
         try {
-            apiKey = resolveApiKey(authType);
+            apiKey = resolveApiKey(endpoint);
         } catch (GeneralSecurityException e) {
             UiFeedback.showError(rootView, getString(R.string.provider_key_read_failed));
             return;
@@ -190,13 +184,14 @@ public class ReminderProviderSettingsNav extends Fragment {
         ReminderProviderConfig draft = new ReminderProviderConfig(
                 ReminderProviderConfig.CUSTOM_PROFILE_ID,
                 ReminderProviderConfig.ProviderType.OPENAI_COMPATIBLE,
+                providerName,
                 endpoint,
                 model,
-                authType,
                 selectedRefreshInterval,
                 configStore.getCustomConfig().getConfigRevision() + 1,
                 0);
-        String validationError = ReminderProviderConfigValidator.validate(draft, apiKey);
+        ReminderProviderConfigValidator.Error validationError =
+                ReminderProviderConfigValidator.validate(draft, apiKey);
         if (validationError != null) {
             showValidationError(validationError);
             return;
@@ -233,21 +228,15 @@ public class ReminderProviderSettingsNav extends Fragment {
 
     private void persistCustomProvider(ReminderProviderConfig draft, String apiKey) {
         try {
-            if (draft.getAuthType() == ReminderProviderConfig.AuthType.BEARER) {
-                secretStore.saveApiKey(apiKey.trim());
-            } else {
-                secretStore.deleteApiKey();
-            }
+            secretStore.saveApiKey(apiKey.trim());
             configStore.saveAndActivateCustom(
+                    draft.getProviderName(),
                     draft.getEndpointUrl(),
                     draft.getModel(),
-                    draft.getAuthType(),
                     draft.getRefreshIntervalMinutes(),
                     System.currentTimeMillis());
             apiKeyInput.setText("");
-            apiKeyLayout.setHint(draft.getAuthType() == ReminderProviderConfig.AuthType.BEARER
-                    ? getString(R.string.provider_api_key_saved)
-                    : getString(R.string.provider_api_key));
+            apiKeyLayout.setHint(R.string.provider_api_key_saved);
             applyConfigurationChange();
             updateActiveStatus();
             UiFeedback.show(rootView, getString(R.string.custom_provider_enabled));
@@ -256,24 +245,47 @@ public class ReminderProviderSettingsNav extends Fragment {
         }
     }
 
-    private String resolveApiKey(ReminderProviderConfig.AuthType authType)
-            throws GeneralSecurityException {
-        if (authType == ReminderProviderConfig.AuthType.NONE) {
-            return null;
-        }
+    private String resolveApiKey(String endpoint) throws GeneralSecurityException {
         String enteredKey = textOf(apiKeyInput);
-        return enteredKey.isEmpty() ? secretStore.getApiKey() : enteredKey;
+        if (!enteredKey.isEmpty()) {
+            return enteredKey;
+        }
+        ReminderProviderConfig savedConfig = configStore.getCustomConfig();
+        return endpoint.equals(savedConfig.getEndpointUrl()) ? secretStore.getApiKey() : null;
     }
 
-    private void showValidationError(String message) {
-        if (message.contains("地址")) {
-            UiFeedback.showInputError(endpointLayout, endpointInput, message);
-        } else if (message.contains("模型")) {
-            UiFeedback.showInputError(modelLayout, modelInput, message);
-        } else if (message.contains("API Key")) {
-            UiFeedback.showInputError(apiKeyLayout, apiKeyInput, message);
-        } else {
-            UiFeedback.showError(rootView, message);
+    private void applyPreset(ProviderPreset preset) {
+        nameInput.setText(preset.nameResId);
+        endpointInput.setText(preset.endpoint);
+        modelInput.setText(preset.model);
+        clearTestStatus();
+    }
+
+    private void showValidationError(ReminderProviderConfigValidator.Error error) {
+        String message = error.getMessage();
+        switch (error) {
+            case EMPTY_NAME:
+            case NAME_TOO_LONG:
+                UiFeedback.showInputError(nameLayout, nameInput, message);
+                break;
+            case EMPTY_ENDPOINT:
+            case ENDPOINT_TOO_LONG:
+            case ENDPOINT_REQUIRES_HTTPS:
+            case ENDPOINT_MISSING_HOST:
+            case ENDPOINT_HAS_UNSUPPORTED_PARTS:
+            case INVALID_ENDPOINT:
+                UiFeedback.showInputError(endpointLayout, endpointInput, message);
+                break;
+            case EMPTY_MODEL:
+            case MODEL_TOO_LONG:
+                UiFeedback.showInputError(modelLayout, modelInput, message);
+                break;
+            case EMPTY_API_KEY:
+                UiFeedback.showInputError(apiKeyLayout, apiKeyInput, message);
+                break;
+            default:
+                UiFeedback.showError(rootView, message);
+                break;
         }
     }
 
@@ -286,15 +298,17 @@ public class ReminderProviderSettingsNav extends Fragment {
         ReminderProviderConfig active = configStore.getActiveConfig();
         activeStatus.setText(active.isOfficial()
                 ? getString(R.string.provider_active_official)
-                : getString(R.string.provider_active_custom, active.getModel()));
+                : getString(
+                        R.string.provider_active_custom,
+                        active.getProviderName(),
+                        active.getModel()));
     }
 
     private void setBusy(boolean busy) {
         progressIndicator.setVisibility(busy ? View.VISIBLE : View.GONE);
         testButton.setEnabled(!busy);
         saveButton.setEnabled(!busy);
-        setToggleEnabled(providerToggle, !busy);
-        setToggleEnabled(authToggle, !busy);
+        presetInput.setEnabled(!busy);
     }
 
     private void showTestStatus(String message, boolean success) {
@@ -327,10 +341,15 @@ public class ReminderProviderSettingsNav extends Fragment {
         return 0;
     }
 
-    private static void setToggleEnabled(MaterialButtonToggleGroup group, boolean enabled) {
-        group.setEnabled(enabled);
-        for (int i = 0; i < group.getChildCount(); i++) {
-            group.getChildAt(i).setEnabled(enabled);
+    private static final class ProviderPreset {
+        private final int nameResId;
+        private final String endpoint;
+        private final String model;
+
+        private ProviderPreset(int nameResId, String endpoint, String model) {
+            this.nameResId = nameResId;
+            this.endpoint = endpoint;
+            this.model = model;
         }
     }
 

@@ -1,6 +1,7 @@
 package com.book.mask.challenge;
 
 import android.content.Context;
+import android.content.pm.PackageInfo;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -161,11 +162,8 @@ final class ChallengeQuestionProvider {
 
     private String httpObtainChallenge(int type) {
         try {
-            String androidId = Settings.Secure.getString(
-                    context.getContentResolver(), Settings.Secure.ANDROID_ID);
-            JSONObject request = new JSONObject();
+            JSONObject request = createBaseRequest();
             request.put("type", type);
-            request.put("devId", androidId);
             String response = ContentUtils.doHttpPost(
                     CloudConst.DOMAIN_URL + CloudConst.CHALLENGE,
                     request.toString(),
@@ -179,11 +177,8 @@ final class ChallengeQuestionProvider {
 
     private String httpObtainEnglishReading() {
         try {
-            String androidId = Settings.Secure.getString(
-                    context.getContentResolver(), Settings.Secure.ANDROID_ID);
             int readingLength = challengeSettingsManager.getEnglishReadingLength();
-            JSONObject request = new JSONObject();
-            request.put("devId", androidId);
+            JSONObject request = createBaseRequest();
             request.put("length", readingLength);
             String response = ContentUtils.doHttpPost(
                     CloudConst.DOMAIN_URL + CloudConst.ENGLISH_READING,
@@ -194,6 +189,17 @@ final class ChallengeQuestionProvider {
             Log.e(TAG, "HTTP请求英文阅读题异常", e);
             return null;
         }
+    }
+
+    private JSONObject createBaseRequest() throws Exception {
+        String androidId = Settings.Secure.getString(
+                context.getContentResolver(), Settings.Secure.ANDROID_ID);
+        PackageInfo packageInfo = context.getPackageManager()
+                .getPackageInfo(context.getPackageName(), 0);
+        JSONObject request = new JSONObject();
+        request.put("devId", androidId);
+        request.put("version", packageInfo.versionName);
+        return request;
     }
 
     static final class Question {

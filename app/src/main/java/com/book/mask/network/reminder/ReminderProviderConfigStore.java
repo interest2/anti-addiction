@@ -5,9 +5,9 @@ import com.tencent.mmkv.MMKV;
 public final class ReminderProviderConfigStore {
     private static final String STORAGE_ID = "reminder_provider_config";
     private static final String KEY_ACTIVE_TYPE = "active_type";
+    private static final String KEY_CUSTOM_NAME = "custom_name";
     private static final String KEY_CUSTOM_ENDPOINT = "custom_endpoint";
     private static final String KEY_CUSTOM_MODEL = "custom_model";
-    private static final String KEY_CUSTOM_AUTH_TYPE = "custom_auth_type";
     private static final String KEY_CUSTOM_REFRESH_INTERVAL = "custom_refresh_interval";
     private static final String KEY_CUSTOM_REVISION = "custom_revision";
     private static final String KEY_CUSTOM_LAST_VERIFIED = "custom_last_verified";
@@ -33,12 +33,9 @@ public final class ReminderProviderConfigStore {
         return new ReminderProviderConfig(
                 ReminderProviderConfig.CUSTOM_PROFILE_ID,
                 ReminderProviderConfig.ProviderType.OPENAI_COMPATIBLE,
+                mmkv.getString(KEY_CUSTOM_NAME, "自定义服务"),
                 mmkv.getString(KEY_CUSTOM_ENDPOINT, ""),
                 mmkv.getString(KEY_CUSTOM_MODEL, ""),
-                ReminderProviderConfig.AuthType.fromStorageValue(
-                        mmkv.getString(
-                                KEY_CUSTOM_AUTH_TYPE,
-                                ReminderProviderConfig.AuthType.BEARER.getStorageValue())),
                 mmkv.getInt(
                         KEY_CUSTOM_REFRESH_INTERVAL,
                         ReminderProviderConfig.DEFAULT_REFRESH_INTERVAL_MINUTES),
@@ -46,23 +43,16 @@ public final class ReminderProviderConfigStore {
                 mmkv.getLong(KEY_CUSTOM_LAST_VERIFIED, 0));
     }
 
-    public void activateOfficial() {
-        mmkv.putString(
-                        KEY_ACTIVE_TYPE,
-                        ReminderProviderConfig.ProviderType.OFFICIAL.getStorageValue())
-                .commit();
-    }
-
     public ReminderProviderConfig saveAndActivateCustom(
+            String providerName,
             String endpointUrl,
             String model,
-            ReminderProviderConfig.AuthType authType,
             int refreshIntervalMinutes,
             long verifiedAt) {
         long revision = mmkv.getLong(KEY_CUSTOM_REVISION, 1) + 1;
-        mmkv.putString(KEY_CUSTOM_ENDPOINT, endpointUrl)
+        mmkv.putString(KEY_CUSTOM_NAME, providerName)
+                .putString(KEY_CUSTOM_ENDPOINT, endpointUrl)
                 .putString(KEY_CUSTOM_MODEL, model)
-                .putString(KEY_CUSTOM_AUTH_TYPE, authType.getStorageValue())
                 .putInt(KEY_CUSTOM_REFRESH_INTERVAL, Math.max(0, refreshIntervalMinutes))
                 .putLong(KEY_CUSTOM_REVISION, revision)
                 .putLong(KEY_CUSTOM_LAST_VERIFIED, verifiedAt)
@@ -71,10 +61,5 @@ public final class ReminderProviderConfigStore {
                         ReminderProviderConfig.ProviderType.OPENAI_COMPATIBLE.getStorageValue())
                 .commit();
         return getCustomConfig();
-    }
-
-    public boolean isCustomActive() {
-        return getActiveConfig().getProviderType()
-                == ReminderProviderConfig.ProviderType.OPENAI_COMPATIBLE;
     }
 }

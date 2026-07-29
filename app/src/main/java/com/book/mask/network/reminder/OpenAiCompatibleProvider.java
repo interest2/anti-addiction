@@ -5,7 +5,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,6 +12,8 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
     private static final String SYSTEM_PROMPT =
             "你是防沉迷提醒助手。请用简洁、有力度但不侮辱用户的中文，生成一条帮助用户停止刷手机、回到目标的提醒。"
                     + "最多三行，总长度不超过120个汉字；不要使用Markdown、标题、编号、引号或解释。";
+    private static final String SYSTEM_PROMPT_2 = "我的目标是{tag}，请你说一段话提醒我，不要沉迷于各种APP浪费时间，篇幅大概3句话。" +
+            "其他要求：风格{严厉}，说辞有新意，每句换行";
 
     private final ReminderProviderConfig config;
     private final String apiKey;
@@ -29,7 +30,8 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
 
     @Override
     public ProviderResult generate(ReminderRequest request) {
-        String validationError = ReminderProviderConfigValidator.validate(config, apiKey);
+        ReminderProviderConfigValidator.Error validationError =
+                ReminderProviderConfigValidator.validate(config, apiKey);
         if (validationError != null) {
             return ProviderResult.failure(ProviderResult.ErrorCode.INVALID_CONFIG);
         }
@@ -49,11 +51,8 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
             requestJson.put("max_tokens", 180);
             requestJson.put("temperature", 0.8);
 
-            Map<String, String> headers = Collections.emptyMap();
-            if (config.getAuthType() == ReminderProviderConfig.AuthType.BEARER) {
-                headers = new HashMap<>();
-                headers.put("Authorization", "Bearer " + apiKey.trim());
-            }
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Authorization", "Bearer " + apiKey.trim());
 
             ProviderHttpClient.HttpResponse response = httpClient.postJson(
                     config.getEndpointUrl().trim(),

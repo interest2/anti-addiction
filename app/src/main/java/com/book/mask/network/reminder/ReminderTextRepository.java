@@ -118,7 +118,8 @@ public final class ReminderTextRepository {
             ReminderProviderConfig config,
             String apiKey,
             Callback callback) {
-        String validationError = ReminderProviderConfigValidator.validate(config, apiKey);
+        ReminderProviderConfigValidator.Error validationError =
+                ReminderProviderConfigValidator.validate(config, apiKey);
         if (validationError != null) {
             postError(callback, ProviderResult.failure(ProviderResult.ErrorCode.INVALID_CONFIG));
             return;
@@ -219,10 +220,7 @@ public final class ReminderTextRepository {
             return new OfficialCloudProvider(context, httpClient);
         }
         try {
-            String apiKey = config.getAuthType() == ReminderProviderConfig.AuthType.BEARER
-                    ? secretStore.getApiKey()
-                    : null;
-            return new OpenAiCompatibleProvider(config, apiKey, httpClient);
+            return new OpenAiCompatibleProvider(config, secretStore.getApiKey(), httpClient);
         } catch (GeneralSecurityException e) {
             return request -> ProviderResult.failure(ProviderResult.ErrorCode.INTERNAL);
         }

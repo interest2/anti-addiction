@@ -96,11 +96,13 @@ public class AppStateManager {
      * 处理无障碍事件
      */
     public void handleAccessibilityEvent(AccessibilityEvent event) {
+        // 情况 1：界面状态变化
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             if (isFloatingShowPackageDetectionPaused()) {
                 return;
             }
             handleWindowStateChanged(event);
+        // 情况 2：界面内容变化
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             handleWindowContentChanged(event);
         }
@@ -117,7 +119,7 @@ public class AppStateManager {
         String packageName = event.getPackageName().toString();
         Log.d(TAG, "窗口状态改变，当前应用: " + packageName);
 
-        // 过滤掉我们自己的应用，避免悬浮窗显示时触发状态变化
+        // 过滤掉此 APP 自身，避免悬浮窗显示时触发状态变化
         if (packageName.equals(service.getPackageName())) {
             Log.d(TAG, "忽略自己的应用: " + packageName);
             return;
@@ -300,9 +302,6 @@ public class AppStateManager {
     /**
      * 创建定时器任务
      */
-    public Runnable createTimerTask(CustomApp app) {
-        return createTimerTask(app, true);
-    }
 
     private Runnable createTimerTask(CustomApp app, boolean resetRelaxedModeOnTrigger) {
         CustomApp appForTimer = app;

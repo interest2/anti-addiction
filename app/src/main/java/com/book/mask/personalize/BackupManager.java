@@ -222,6 +222,9 @@ public class BackupManager {
             importInts(more, MORE_INT_KEYS, result);
         }
 
+        // 手动导入备份说明用户已熟悉个性化设置，不再显示悬浮窗设置途径提示
+        settings.putBoolean(AppSettingsManager.KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, true)
+                .commit();
         // 目标/日期等可能已变化，标记让首页倒计时与激励文案重新计算
         Share.MOTIVATE_CHANGE = true;
         return result;
