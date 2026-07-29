@@ -485,12 +485,13 @@ public class SettingsDialogManager {
                     if (which == predefinedTags.length) {
                         // 点击了"自定义..."
                         showCustomTagInputDialog(onSettingChanged);
-                    } else {
-                        // 点击了预设标签
-                        String selectedTag = dialogOptions[which];
-                        appSettingsManager.setMotivationTag(selectedTag);
-                        UiFeedback.show(context, "已设置为：" + selectedTag);
+                        return;
                     }
+
+                    // 点击了预设标签
+                    String selectedTag = dialogOptions[which];
+                    appSettingsManager.setMotivationTag(selectedTag);
+                    UiFeedback.show(context, "已设置为：" + selectedTag);
                     if (onSettingChanged != null) onSettingChanged.run();
                 })
                 .setNegativeButton("取消", null)
@@ -575,7 +576,24 @@ public class SettingsDialogManager {
         }
         
         datePickerDialog.setTitle("选择目标完成日期");
+        // 日期组件里已高亮所选日期，隐藏顶栏下方冗余的日期回显，并削减组件与按钮间的大段留白
+        datePickerDialog.setOnShowListener(d -> trimDatePickerChrome(datePickerDialog.getDatePicker()));
         datePickerDialog.show();
+    }
+
+    /**
+     * 精简日期选择器的多余视觉元素：
+     * 1. 隐藏顶部显示所选日期的 header（日历里已高亮，无需重复展示）；
+     * 2. 去掉日历组件底部的留白，使其贴近“取消/确定”按钮。
+     */
+    private void trimDatePickerChrome(android.widget.DatePicker datePicker) {
+        if (datePicker == null) return;
+        int headerId = context.getResources().getIdentifier("date_picker_header", "id", "android");
+        if (headerId != 0) {
+            View header = datePicker.findViewById(headerId);
+            if (header != null) header.setVisibility(View.GONE);
+        }
+        datePicker.setPadding(datePicker.getPaddingLeft(), 0, datePicker.getPaddingRight(), 0);
     }
     
     /**
@@ -949,7 +967,7 @@ public class SettingsDialogManager {
 
         // 添加说明文字
         android.widget.TextView messageText = new android.widget.TextView(context);
-        messageText.setText("设置的文字将在悬浮窗上额外显示");
+        messageText.setText("设置的座右铭将在悬浮窗中间常态化展示");
         messageText.setTextSize(14);
         messageText.setTextColor(0xFF666666);
         messageText.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
@@ -1029,18 +1047,23 @@ public class SettingsDialogManager {
             public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
         });
 
+        // 添加字体颜色设置区域
+        final int[] selectedFontColor = { appSettingsManager.getFloatingStrictReminderFontColor() };
+        addStrictReminderColorPicker(layout, selectedFontColor);
+
         new android.app.AlertDialog.Builder(context)
-            .setTitle("自定义提醒")
+            .setTitle("座右铭")
             .setView(layout)
             .setPositiveButton("保存", (dialog, which) -> {
                 String reminder = input.getText().toString().trim();
                 int fontSize = fontSizeSeekBar.getProgress() + 12; // 获取当前字体大小
-                
+
                 appSettingsManager.setFloatingStrictReminder(reminder);
                 appSettingsManager.setFloatingStrictReminderFontSize(fontSize);
-                
+                appSettingsManager.setFloatingStrictReminderFontColor(selectedFontColor[0]);
+
                 if (reminder.isEmpty()) {
-                    UiFeedback.show(context, "已清除日常提醒");
+                    UiFeedback.show(context, "已保存");
                 } else {
                     UiFeedback.show(
                             context,
@@ -1049,6 +1072,87 @@ public class SettingsDialogManager {
             })
             .setNegativeButton("取消", null)
             .show();
+    }
+
+    /**
+     * 座右铭字体颜色候选（10 种常见颜色，第一种为默认绿色）
+     */
+    private static final int[] STRICT_REMINDER_FONT_COLORS = {
+            AppSettingsManager.DEFAULT_STRICT_REMINDER_FONT_COLOR, // 绿色（默认）
+            0xFF000000, // 黑色
+            0xFFF44336, // 红色
+            0xFFFFC107, // 琥珀
+            0xFF2196F3, // 蓝色
+            0xFF3F51B5, // 靛蓝
+            0xFF9C27B0, // 紫色
+            0xFFE91E63, // 粉色
+    };
+
+    /**
+     * 在座右铭设置对话框中追加字体颜色选择区域。
+     * 展示 10 个圆形色块，点击切换选中态，选中结果写回 selectedColor[0]。
+     */
+    private void addStrictReminderColorPicker(LinearLayout parent, final int[] selectedColor) {
+        float density = context.getResources().getDisplayMetrics().density;
+        int swatchSize = (int) (26 * density);
+        int swatchMargin = (int) (6 * density);
+        int borderWidth = (int) (3 * density);
+
+        View spacer = new View(context);
+        spacer.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (int) (20 * density)));
+        parent.addView(spacer);
+
+        TextView title = new TextView(context);
+        title.setText("字体颜色设置");
+        title.setTextSize(14);
+        title.setTextColor(0xFF666666);
+        parent.addView(title);
+
+        final View[] swatches = new View[STRICT_REMINDER_FONT_COLORS.length];
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowParams.topMargin = swatchMargin;
+        row.setLayoutParams(rowParams);
+        parent.addView(row);
+        for (int i = 0; i < STRICT_REMINDER_FONT_COLORS.length; i++) {
+            final int color = STRICT_REMINDER_FONT_COLORS[i];
+            View swatch = new View(context);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(swatchSize, swatchSize);
+            p.rightMargin = swatchMargin;
+            swatch.setLayoutParams(p);
+            swatch.setBackground(makeSwatchDrawable(color, color == selectedColor[0], borderWidth));
+            swatch.setOnClickListener(v -> {
+                selectedColor[0] = color;
+                for (int j = 0; j < swatches.length; j++) {
+                    swatches[j].setBackground(makeSwatchDrawable(
+                            STRICT_REMINDER_FONT_COLORS[j],
+                            STRICT_REMINDER_FONT_COLORS[j] == color,
+                            borderWidth));
+                }
+            });
+            swatches[i] = swatch;
+            row.addView(swatch);
+        }
+    }
+
+    /**
+     * 构造圆形色块背景：选中态描橙色边，未选中描浅灰细边。
+     */
+    private android.graphics.drawable.GradientDrawable makeSwatchDrawable(
+            int color, boolean selected, int borderWidth) {
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+        d.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        d.setColor(color);
+        if (selected) {
+            d.setStroke(borderWidth, 0xFFFF9800);
+        } else {
+            d.setStroke((int) (context.getResources().getDisplayMetrics().density), 0xFFBBBBBB);
+        }
+        return d;
     }
 
 }

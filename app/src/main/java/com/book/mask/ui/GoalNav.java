@@ -16,12 +16,14 @@ import com.book.mask.constant.Const;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.floating.FloatHelper;
+import com.book.mask.network.TextFetcher;
 
 public class GoalNav extends Fragment {
 
     private RelaxManager relaxManager;
     private AppSettingsManager appSettingsManager;
     private SettingsDialogManager settingsDialogManager;
+    private TextFetcher textFetcher;
     private TextView tvGoalCountdown;
     private Button btnTagSetting, btnTargetDateSetting;
 
@@ -32,6 +34,7 @@ public class GoalNav extends Fragment {
         relaxManager = new RelaxManager(requireContext());
         appSettingsManager = new AppSettingsManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), relaxManager);
+        textFetcher = new TextFetcher(requireContext());
 
         // 初始化控件
         tvGoalCountdown = view.findViewById(R.id.tv_goal_countdown);
@@ -39,9 +42,8 @@ public class GoalNav extends Fragment {
         btnTargetDateSetting = view.findViewById(R.id.btn_target_date_setting);
 
         // 设置按钮点击事件
-        btnTagSetting.setOnClickListener(v -> {
-            settingsDialogManager.showTagSettingDialog(this::updateGoalInfo);
-        });
+        btnTagSetting.setOnClickListener(v ->
+                settingsDialogManager.showTagSettingDialog(this::onMotivationTagChanged));
         btnTargetDateSetting.setOnClickListener(v -> {
             settingsDialogManager.showTargetDateSettingDialog(this::updateGoalInfo);
         });
@@ -79,6 +81,7 @@ public class GoalNav extends Fragment {
 
     private void openReminderProviderSettings() {
         getParentFragmentManager().beginTransaction()
+                .setReorderingAllowed(true)
                 .setCustomAnimations(
                         R.anim.slide_in_right,
                         R.anim.slide_out_left,
@@ -96,6 +99,21 @@ public class GoalNav extends Fragment {
         updateGoalInfo();
     }
 
+    private void onMotivationTagChanged() {
+        updateGoalInfo();
+        textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
+            @Override
+            public void onTextFetched(String text) {
+                android.util.Log.d("GoalNav", "目标变更后提醒文字生成成功");
+            }
+
+            @Override
+            public void onFetchError(String error) {
+                android.util.Log.w("GoalNav", "目标变更后提醒文字生成失败: " + error);
+            }
+        });
+    }
+
     private void updateGoalInfo() {
         // 目标标签
         String tag = appSettingsManager.getMotivationTag();
@@ -104,7 +122,6 @@ public class GoalNav extends Fragment {
         String date = appSettingsManager.getTargetCompletionDate();
         btnTargetDateSetting.setText((date == null || date.isEmpty() || "待设置".equals(date)) ? "目标日期" : date);
         // 倒计时
-        String countdown = FloatHelper.hintDate(date);
-        tvGoalCountdown.setText(countdown.isEmpty() ? "距离目标：--天" : countdown);
+        tvGoalCountdown.setText(FloatHelper.countdownDate(date));
     }
 }

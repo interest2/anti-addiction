@@ -4,54 +4,37 @@ import java.util.Locale;
 
 public final class ReminderProviderConfig {
     public static final String OFFICIAL_PROFILE_ID = "official";
-    public static final String CUSTOM_PROFILE_ID = "custom_default";
-    public static final int DEFAULT_REFRESH_INTERVAL_MINUTES = 0;
+    public static final String OFFICIAL_PRESET_ID = "official";
 
     public enum ProviderType {
-        OFFICIAL("official"),
-        OPENAI_COMPATIBLE("openai_compatible");
-
-        private final String storageValue;
-
-        ProviderType(String storageValue) {
-            this.storageValue = storageValue;
-        }
-
-        public String getStorageValue() {
-            return storageValue;
-        }
-
-        public static ProviderType fromStorageValue(String value) {
-            return OPENAI_COMPATIBLE.storageValue.equals(value)
-                    ? OPENAI_COMPATIBLE
-                    : OFFICIAL;
-        }
+        OFFICIAL,
+        OPENAI_CHAT
     }
 
     private final String profileId;
+    private final String presetId;
     private final ProviderType providerType;
     private final String providerName;
     private final String endpointUrl;
     private final String model;
-    private final int refreshIntervalMinutes;
     private final long configRevision;
     private final long lastVerifiedAt;
 
     public ReminderProviderConfig(
             String profileId,
+            String presetId,
             ProviderType providerType,
             String providerName,
             String endpointUrl,
             String model,
-            int refreshIntervalMinutes,
             long configRevision,
             long lastVerifiedAt) {
         this.profileId = profileId;
+        this.presetId = presetId;
         this.providerType = providerType;
         this.providerName = providerName;
         this.endpointUrl = endpointUrl;
         this.model = model;
-        this.refreshIntervalMinutes = Math.max(0, refreshIntervalMinutes);
         this.configRevision = Math.max(1, configRevision);
         this.lastVerifiedAt = Math.max(0, lastVerifiedAt);
     }
@@ -59,17 +42,21 @@ public final class ReminderProviderConfig {
     public static ReminderProviderConfig official() {
         return new ReminderProviderConfig(
                 OFFICIAL_PROFILE_ID,
+                OFFICIAL_PRESET_ID,
                 ProviderType.OFFICIAL,
                 "",
                 "",
                 "",
-                0,
                 1,
                 0);
     }
 
     public String getProfileId() {
         return profileId;
+    }
+
+    public String getPresetId() {
+        return presetId;
     }
 
     public ProviderType getProviderType() {
@@ -86,10 +73,6 @@ public final class ReminderProviderConfig {
 
     public String getModel() {
         return model;
-    }
-
-    public int getRefreshIntervalMinutes() {
-        return refreshIntervalMinutes;
     }
 
     public long getConfigRevision() {
@@ -109,7 +92,7 @@ public final class ReminderProviderConfig {
                 Locale.US,
                 "%s|%s|%s|%s|%d",
                 profileId,
-                providerType.getStorageValue(),
+                providerType.name(),
                 endpointUrl,
                 model,
                 configRevision);

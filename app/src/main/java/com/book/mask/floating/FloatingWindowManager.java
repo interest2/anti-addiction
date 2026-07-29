@@ -194,16 +194,9 @@ public class FloatingWindowManager {
                 currentWindowApp = null;
                 Share.isFloatingWindowVisible = false; // 同步状态
             }
-            
-            // 获取下次的文字
-            if (currentActiveApp != null) {
-                String packageName = currentActiveApp.getPackageName();
-                String source = appSettingsManager.getAppHintSource(packageName);
-                // 默认来源（大模型）
-                if (Const.DEFAULT_HINT_SOURCE.equals(source)){
-                    fetchNew();
-                }
-            }
+
+            // 展示已用上次预取的缓存文字渲染；此处静默预取下次文字，不刷新当前窗口
+            prefetchReminderText(currentActiveApp);
         }
     }
     
@@ -311,10 +304,7 @@ public class FloatingWindowManager {
                         ? "悬浮窗跨目标 APP 复用暖窗口完成，耗时 "
                         : "悬浮窗从页面切换临时隐藏中恢复完成，耗时 ")
                 + elapsedMillisSince(startedAt) + "ms");
-        if (Const.DEFAULT_HINT_SOURCE.equals(
-                appSettingsManager.getAppHintSource(targetPackage))) {
-            fetchNew();
-        }
+        prefetchReminderText(targetApp);
         notifyIfWindowActuallyShown();
         return true;
     }
@@ -602,9 +592,12 @@ public class FloatingWindowManager {
             String strictReminder = appSettingsManager.getFloatingStrictReminder();
             boolean hasClickedSettings = appSettingsManager.getFloatingStrictReminderSettingsClicked();
             int fontSize = appSettingsManager.getFloatingStrictReminderFontSize();
-            
+            int fontColor = appSettingsManager.getFloatingStrictReminderFontColor();
+
             // 应用自定义字体大小
             strictReminderText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, fontSize);
+            // 应用自定义字体颜色
+            strictReminderText.setTextColor(fontColor);
             
             // 如果用户没有设置过提醒文字，显示默认文字
             if (strictReminder.isEmpty()) {
@@ -626,22 +619,33 @@ public class FloatingWindowManager {
             }
         }
     }
-    
-    private void fetchNew() {
-        // 异步获取最新的动态文字内容
-        if (textFetcher != null) {
-            textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
-                @Override
-                public void onTextFetched(String text) {
-                    Log.d(TAG, "获取到新的动态文字");
-                }
-                @Override
-                public void onFetchError(String error) {
-                    Log.w(TAG, "获取动态文字失败: " + error);
-                    // 保持使用缓存的文字，不做额外处理
-                }
-            });
+
+    /**
+     * 悬浮窗展示（首次显示或暖窗口复用）时，为“大模型”来源预取下次提醒文字。
+     * 窗口在变为可见前已用缓存（上次预取结果）渲染，本次预取只静默更新缓存，
+     * 供下次展示使用；不在当前可见窗口上做替换，避免用户看到文字刷新过程。
+     * 缓存按（服务配置+目标）为 key，旧目标的迟到预取只会写入各自 key，不会污染当前显示。
+     */
+    private void prefetchReminderText(CustomApp app) {
+        if (textFetcher == null || app == null) {
+            return;
         }
+        String packageName = app.getPackageName();
+        if (!Const.DEFAULT_HINT_SOURCE.equals(appSettingsManager.getAppHintSource(packageName))) {
+            return;
+        }
+        textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
+            @Override
+            public void onTextFetched(String text) {
+                Log.d(TAG, "提醒文字预取完成，已更新缓存供下次展示");
+            }
+
+            @Override
+            public void onFetchError(String error) {
+                Log.w(TAG, "预取提醒文字失败: " + error);
+                // 保持使用缓存的文字，不做额外处理
+            }
+        });
     }
 
     public void onReminderProviderChanged() {

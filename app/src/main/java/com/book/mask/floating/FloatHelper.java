@@ -54,57 +54,59 @@ public class FloatHelper {
     }
 
     public static String hintDate(String targetDateStr){
-        String dateHint = "";
-        // 获取目标完成日期
+        Integer daysRemaining = getDaysRemaining(targetDateStr);
+        if (daysRemaining == null) {
+            return "";
+        }
 
-        // 如果不是默认值，则计算剩余天数
-        if (!Const.TARGET_TO_BE_SET.equals(targetDateStr) && !targetDateStr.isEmpty()) {
-            try {
-                // 解析目标日期
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-                Date targetDate = sdf.parse(targetDateStr);
+        String dateHint;
+        if (daysRemaining > 0) {
+            dateHint = "距离目标只剩 " + daysRemaining + " 天！";
+        } else if (daysRemaining == 0) {
+            dateHint = "今天是目标日期！";
+        } else {
+            dateHint = "目标日期已过期 " + Math.abs(daysRemaining) + " 天！";
+        }
+        Log.d(TAG, "日期提示: " + dateHint);
+        return dateHint + "\n";
+    }
 
-                if (targetDate != null) {
-                    // 获取今天的日期（去掉时间部分）
-                    Calendar today = Calendar.getInstance();
-                    today.set(Calendar.HOUR_OF_DAY, 0);
-                    today.set(Calendar.MINUTE, 0);
-                    today.set(Calendar.SECOND, 0);
-                    today.set(Calendar.MILLISECOND, 0);
+    public static String countdownDate(String targetDateStr) {
+        Integer daysRemaining = getDaysRemaining(targetDateStr);
+        return daysRemaining == null ? "倒计时 -- 天" : "倒计时 " + daysRemaining + " 天";
+    }
 
-                    // 获取目标日期的日历对象
-                    Calendar targetCalendar = Calendar.getInstance();
-                    targetCalendar.setTime(targetDate);
-                    targetCalendar.set(Calendar.HOUR_OF_DAY, 0);
-                    targetCalendar.set(Calendar.MINUTE, 0);
-                    targetCalendar.set(Calendar.SECOND, 0);
-                    targetCalendar.set(Calendar.MILLISECOND, 0);
+    private static Integer getDaysRemaining(String targetDateStr) {
+        if (Const.TARGET_TO_BE_SET.equals(targetDateStr) || targetDateStr.isEmpty()) {
+            return null;
+        }
 
-                    // 计算天数差（毫秒转换为天）
-                    long timeDiff = targetCalendar.getTimeInMillis() - today.getTimeInMillis();
-                    int daysRemaining = (int) (timeDiff / (24 * 60 * 60 * 1000));
-
-                    // 根据剩余天数生成提示文本
-                    if (daysRemaining > 0) {
-                        dateHint = "距离目标只剩 " + daysRemaining + " 天！";
-                    } else if (daysRemaining == 0) {
-                        dateHint = "今天是目标日期！";
-                    } else {
-                        dateHint = "目标日期已过期 " + Math.abs(daysRemaining) + " 天！";
-                    }
-
-                    // 使用 dateHint 变量
-                    Log.d(TAG, "日期提示: " + dateHint);
-
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "计算剩余天数失败", e);
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            Date targetDate = sdf.parse(targetDateStr);
+            if (targetDate == null) {
+                return null;
             }
+
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+
+            Calendar targetCalendar = Calendar.getInstance();
+            targetCalendar.setTime(targetDate);
+            targetCalendar.set(Calendar.HOUR_OF_DAY, 0);
+            targetCalendar.set(Calendar.MINUTE, 0);
+            targetCalendar.set(Calendar.SECOND, 0);
+            targetCalendar.set(Calendar.MILLISECOND, 0);
+
+            long timeDiff = targetCalendar.getTimeInMillis() - today.getTimeInMillis();
+            return (int) (timeDiff / (24 * 60 * 60 * 1000));
+        } catch (Exception e) {
+            Log.e(TAG, "计算剩余天数失败", e);
+            return null;
         }
-        if(!dateHint.isEmpty()){
-            dateHint = dateHint + "\n";
-        }
-        return dateHint;
     }
 
 //    static boolean findTextInNode(AccessibilityNodeInfo node, HashSet targetText) {

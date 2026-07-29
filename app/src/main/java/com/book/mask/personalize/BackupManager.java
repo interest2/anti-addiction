@@ -35,14 +35,15 @@ public class BackupManager {
     private static final String[] PERSONALIZE_STRING_KEYS = {
             AppSettingsManager.KEY_MOTIVATION_TAG,             // 目标
             AppSettingsManager.KEY_TARGET_COMPLETION_DATE,     // 目标日期
-            AppSettingsManager.KEY_FLOATING_STRICT_REMINDER,   // 悬浮窗额外文字内容
+            AppSettingsManager.KEY_FLOATING_STRICT_REMINDER,   // 座右铭内容
             ChallengeSettingsManager.KEY_MATH_QUESTION_TYPE,   // 题目类型
             ChallengeSettingsManager.KEY_MATH_DIFFICULTY_MODE, // 算术题难度模式（default / custom）
     };
 
     // 个性化：整型配置键
     private static final String[] PERSONALIZE_INT_KEYS = {
-            AppSettingsManager.KEY_FLOATING_STRICT_REMINDER_FONT_SIZE,            // 悬浮窗额外文字字号
+            AppSettingsManager.KEY_FLOATING_STRICT_REMINDER_FONT_SIZE,            // 座右铭字号
+            AppSettingsManager.KEY_FLOATING_STRICT_REMINDER_FONT_COLOR,           // 座右铭字体颜色
             ChallengeSettingsManager.KEY_MATH_ADDITION_DIGITS,                    // 算术题难度：加法位数
             ChallengeSettingsManager.KEY_MATH_SUBTRACTION_DIGITS,                 // 算术题难度：减法位数
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS,   // 算术题难度：乘数位数

@@ -79,12 +79,6 @@ public final class ReminderTextRepository {
         ReminderProviderConfig config = configStore.getActiveConfig();
         String tag = appSettingsManager.getMotivationTag();
         String requestKey = cache.buildKey(config, tag);
-        String cachedText = cache.getText(config, tag);
-
-        if (isFresh(config, tag, cachedText)) {
-            postSuccess(callback, cachedText);
-            return;
-        }
 
         List<Callback> replacedCallbacks = null;
         long generation;
@@ -220,22 +214,13 @@ public final class ReminderTextRepository {
             return new OfficialCloudProvider(context, httpClient);
         }
         try {
-            return new OpenAiCompatibleProvider(config, secretStore.getApiKey(), httpClient);
+            return new OpenAiCompatibleProvider(
+                    config,
+                    secretStore.getApiKey(config.getProfileId()),
+                    httpClient);
         } catch (GeneralSecurityException e) {
             return request -> ProviderResult.failure(ProviderResult.ErrorCode.INTERNAL);
         }
-    }
-
-    private boolean isFresh(
-            ReminderProviderConfig config,
-            String tag,
-            String cachedText) {
-        int intervalMinutes = config.getRefreshIntervalMinutes();
-        if (cachedText == null || intervalMinutes <= 0) {
-            return false;
-        }
-        long ageMillis = System.currentTimeMillis() - cache.getUpdatedAt(config, tag);
-        return ageMillis >= 0 && ageMillis < intervalMinutes * 60_000L;
     }
 
     private void postSuccess(Callback callback, String text) {

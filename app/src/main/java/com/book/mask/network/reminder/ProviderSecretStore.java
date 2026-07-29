@@ -12,6 +12,8 @@ import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -20,27 +22,28 @@ import javax.crypto.spec.GCMParameterSpec;
 
 public final class ProviderSecretStore {
     private static final String KEYSTORE_NAME = "AndroidKeyStore";
-    private static final String KEY_ALIAS = "reminder_provider_key_v1";
+    private static final String KEY_ALIAS_PREFIX = "reminder_provider_key_v2_";
+    private static final String FILE_PREFIX = "reminder_provider_secret_v2_";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int FILE_VERSION = 1;
     private static final int GCM_TAG_LENGTH_BITS = 128;
 
-    private final AtomicFile secretFile;
+    private final Context context;
 
     public ProviderSecretStore(Context context) {
-        File file = new File(context.getApplicationContext().getNoBackupFilesDir(),
-                "reminder_provider_secret_v1");
-        secretFile = new AtomicFile(file);
+        this.context = context.getApplicationContext();
     }
 
-    public synchronized void saveApiKey(String apiKey) throws GeneralSecurityException {
+    public synchronized void saveApiKey(String profileId, String apiKey)
+            throws GeneralSecurityException {
+        AtomicFile secretFile = secretFile(profileId);
         if (apiKey == null || apiKey.isEmpty()) {
-            deleteApiKey();
+            deleteApiKey(profileId);
             return;
         }
 
         Cipher cipher = Cipher.getInstance(TRANSFORMATION);
-        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey());
+        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey(profileId));
         byte[] encrypted = cipher.doFinal(apiKey.getBytes(StandardCharsets.UTF_8));
         byte[] iv = cipher.getIV();
 
@@ -64,7 +67,8 @@ public final class ProviderSecretStore {
         }
     }
 
-    public synchronized String getApiKey() throws GeneralSecurityException {
+    public synchronized String getApiKey(String profileId) throws GeneralSecurityException {
+        AtomicFile secretFile = secretFile(profileId);
         if (!secretFile.getBaseFile().exists()) {
             return null;
         }
@@ -89,7 +93,7 @@ public final class ProviderSecretStore {
             Cipher cipher = Cipher.getInstance(TRANSFORMATION);
             cipher.init(
                     Cipher.DECRYPT_MODE,
-                    getExistingKey(),
+                    getExistingKey(profileId),
                     new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
             return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
         } catch (GeneralSecurityException e) {
@@ -99,17 +103,27 @@ public final class ProviderSecretStore {
         }
     }
 
-    public synchronized boolean hasApiKey() {
-        return secretFile.getBaseFile().exists();
+    public synchronized boolean hasApiKey(String profileId) {
+        return secretFile(profileId).getBaseFile().exists();
     }
 
-    public synchronized void deleteApiKey() {
-        secretFile.delete();
+    public synchronized void deleteApiKey(String profileId) {
+        secretFile(profileId).delete();
+        try {
+            KeyStore keyStore = loadKeyStore();
+            String alias = keyAlias(profileId);
+            if (keyStore.containsAlias(alias)) {
+                keyStore.deleteEntry(alias);
+            }
+        } catch (GeneralSecurityException ignored) {
+            // 删除配置不应因系统密钥库异常而阻塞。
+        }
     }
 
-    private SecretKey getOrCreateKey() throws GeneralSecurityException {
+    private SecretKey getOrCreateKey(String profileId) throws GeneralSecurityException {
         KeyStore keyStore = loadKeyStore();
-        java.security.Key existing = keyStore.getKey(KEY_ALIAS, null);
+        String alias = keyAlias(profileId);
+        java.security.Key existing = keyStore.getKey(alias, null);
         if (existing instanceof SecretKey) {
             return (SecretKey) existing;
         }
@@ -118,7 +132,7 @@ public final class ProviderSecretStore {
                 KeyProperties.KEY_ALGORITHM_AES,
                 KEYSTORE_NAME);
         keyGenerator.init(new KeyGenParameterSpec.Builder(
-                KEY_ALIAS,
+                alias,
                 KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
                 .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
@@ -127,8 +141,8 @@ public final class ProviderSecretStore {
         return keyGenerator.generateKey();
     }
 
-    private SecretKey getExistingKey() throws GeneralSecurityException {
-        java.security.Key key = loadKeyStore().getKey(KEY_ALIAS, null);
+    private SecretKey getExistingKey(String profileId) throws GeneralSecurityException {
+        java.security.Key key = loadKeyStore().getKey(keyAlias(profileId), null);
         if (!(key instanceof SecretKey)) {
             throw new GeneralSecurityException("API Key 加密密钥不存在，请重新输入");
         }
@@ -142,6 +156,33 @@ public final class ProviderSecretStore {
             return keyStore;
         } catch (Exception e) {
             throw new GeneralSecurityException("系统密钥库不可用", e);
+        }
+    }
+
+    private AtomicFile secretFile(String profileId) {
+        return new AtomicFile(new File(
+                context.getNoBackupFilesDir(),
+                FILE_PREFIX + profileKey(profileId)));
+    }
+
+    private static String keyAlias(String profileId) {
+        return KEY_ALIAS_PREFIX + profileKey(profileId);
+    }
+
+    private static String profileKey(String profileId) {
+        if (profileId == null || profileId.trim().isEmpty()) {
+            throw new IllegalArgumentException("profileId 不能为空");
+        }
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(profileId.getBytes(StandardCharsets.UTF_8));
+            StringBuilder value = new StringBuilder(digest.length * 2);
+            for (byte item : digest) {
+                value.append(String.format("%02x", item & 0xff));
+            }
+            return value.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
         }
     }
 }

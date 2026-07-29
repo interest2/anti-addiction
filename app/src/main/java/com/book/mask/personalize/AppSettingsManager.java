@@ -20,6 +20,10 @@ public class AppSettingsManager {
     static final String KEY_FLOATING_STRICT_REMINDER = "floating_strict_reminder";
     static final String KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED = "floating_strict_reminder_settings_clicked";
     static final String KEY_FLOATING_STRICT_REMINDER_FONT_SIZE = "floating_strict_reminder_font_size";
+    static final String KEY_FLOATING_STRICT_REMINDER_FONT_COLOR = "floating_strict_reminder_font_color";
+
+    // 座右铭默认字体颜色（与布局 floating_window_layout.xml 中 tv_strict_reminder 一致）
+    public static final int DEFAULT_STRICT_REMINDER_FONT_COLOR = 0xFF399C3F;
 
     // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
@@ -177,6 +181,21 @@ public class AppSettingsManager {
      */
     public int getFloatingStrictReminderFontSize() {
         return mmkv.getInt(KEY_FLOATING_STRICT_REMINDER_FONT_SIZE, 28); // 默认28sp
+    }
+
+    /**
+     * 设置悬浮窗座右铭字体颜色
+     */
+    public void setFloatingStrictReminderFontColor(int color) {
+        mmkv.putInt(KEY_FLOATING_STRICT_REMINDER_FONT_COLOR, color).commit();
+        android.util.Log.d("SettingsManager", "设置悬浮窗座右铭字体颜色: " + color);
+    }
+
+    /**
+     * 获取悬浮窗座右铭字体颜色
+     */
+    public int getFloatingStrictReminderFontColor() {
+        return mmkv.getInt(KEY_FLOATING_STRICT_REMINDER_FONT_COLOR, DEFAULT_STRICT_REMINDER_FONT_COLOR);
     }
 
     // ===== 个人目标相关方法 =====

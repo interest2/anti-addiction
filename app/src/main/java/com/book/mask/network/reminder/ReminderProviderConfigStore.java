@@ -1,65 +1,145 @@
 package com.book.mask.network.reminder;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.tencent.mmkv.MMKV;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+
 public final class ReminderProviderConfigStore {
-    private static final String STORAGE_ID = "reminder_provider_config";
-    private static final String KEY_ACTIVE_TYPE = "active_type";
-    private static final String KEY_CUSTOM_NAME = "custom_name";
-    private static final String KEY_CUSTOM_ENDPOINT = "custom_endpoint";
-    private static final String KEY_CUSTOM_MODEL = "custom_model";
-    private static final String KEY_CUSTOM_REFRESH_INTERVAL = "custom_refresh_interval";
-    private static final String KEY_CUSTOM_REVISION = "custom_revision";
-    private static final String KEY_CUSTOM_LAST_VERIFIED = "custom_last_verified";
+    private static final String STORAGE_ID = "reminder_provider_profiles_v1";
+    private static final String KEY_ACTIVE_PROFILE_ID = "active_profile_id";
+    private static final String KEY_PROFILES = "profiles";
 
     private final MMKV mmkv;
+    private final Gson gson = new Gson();
 
     public ReminderProviderConfigStore() {
         mmkv = MMKV.mmkvWithID(STORAGE_ID);
     }
 
-    public ReminderProviderConfig getActiveConfig() {
-        ReminderProviderConfig.ProviderType activeType =
-                ReminderProviderConfig.ProviderType.fromStorageValue(
-                        mmkv.getString(
-                                KEY_ACTIVE_TYPE,
-                                ReminderProviderConfig.ProviderType.OFFICIAL.getStorageValue()));
-        return activeType == ReminderProviderConfig.ProviderType.OPENAI_COMPATIBLE
-                ? getCustomConfig()
-                : ReminderProviderConfig.official();
+    public synchronized ReminderProviderConfig getActiveConfig() {
+        String activeProfileId = mmkv.getString(
+                KEY_ACTIVE_PROFILE_ID,
+                ReminderProviderConfig.OFFICIAL_PROFILE_ID);
+        if (ReminderProviderConfig.OFFICIAL_PROFILE_ID.equals(activeProfileId)) {
+            return ReminderProviderConfig.official();
+        }
+        ReminderProviderConfig profile = getProfile(activeProfileId);
+        return profile == null ? ReminderProviderConfig.official() : profile;
     }
 
-    public ReminderProviderConfig getCustomConfig() {
-        return new ReminderProviderConfig(
-                ReminderProviderConfig.CUSTOM_PROFILE_ID,
-                ReminderProviderConfig.ProviderType.OPENAI_COMPATIBLE,
-                mmkv.getString(KEY_CUSTOM_NAME, "自定义服务"),
-                mmkv.getString(KEY_CUSTOM_ENDPOINT, ""),
-                mmkv.getString(KEY_CUSTOM_MODEL, ""),
-                mmkv.getInt(
-                        KEY_CUSTOM_REFRESH_INTERVAL,
-                        ReminderProviderConfig.DEFAULT_REFRESH_INTERVAL_MINUTES),
-                mmkv.getLong(KEY_CUSTOM_REVISION, 1),
-                mmkv.getLong(KEY_CUSTOM_LAST_VERIFIED, 0));
+    public synchronized List<ReminderProviderConfig> getProfiles() {
+        ReminderProviderConfig[] profiles = readProfiles();
+        if (profiles.length == 0) {
+            return Collections.emptyList();
+        }
+        return new ArrayList<>(Arrays.asList(profiles));
     }
 
-    public ReminderProviderConfig saveAndActivateCustom(
-            String providerName,
-            String endpointUrl,
-            String model,
-            int refreshIntervalMinutes,
-            long verifiedAt) {
-        long revision = mmkv.getLong(KEY_CUSTOM_REVISION, 1) + 1;
-        mmkv.putString(KEY_CUSTOM_NAME, providerName)
-                .putString(KEY_CUSTOM_ENDPOINT, endpointUrl)
-                .putString(KEY_CUSTOM_MODEL, model)
-                .putInt(KEY_CUSTOM_REFRESH_INTERVAL, Math.max(0, refreshIntervalMinutes))
-                .putLong(KEY_CUSTOM_REVISION, revision)
-                .putLong(KEY_CUSTOM_LAST_VERIFIED, verifiedAt)
-                .putString(
-                        KEY_ACTIVE_TYPE,
-                        ReminderProviderConfig.ProviderType.OPENAI_COMPATIBLE.getStorageValue())
+    public synchronized ReminderProviderConfig getProfile(String profileId) {
+        if (profileId == null || ReminderProviderConfig.OFFICIAL_PROFILE_ID.equals(profileId)) {
+            return null;
+        }
+        for (ReminderProviderConfig profile : readProfiles()) {
+            if (profileId.equals(profile.getProfileId())) {
+                return profile;
+            }
+        }
+        return null;
+    }
+
+    public String newProfileId() {
+        return UUID.randomUUID().toString();
+    }
+
+    public synchronized ReminderProviderConfig saveAndActivate(ReminderProviderConfig draft) {
+        List<ReminderProviderConfig> profiles = new ArrayList<>(Arrays.asList(readProfiles()));
+        int index = indexOf(profiles, draft.getProfileId());
+        long revision = index < 0 ? 1 : profiles.get(index).getConfigRevision() + 1;
+        ReminderProviderConfig saved = new ReminderProviderConfig(
+                draft.getProfileId(),
+                draft.getPresetId(),
+                ReminderProviderConfig.ProviderType.OPENAI_CHAT,
+                draft.getProviderName(),
+                draft.getEndpointUrl(),
+                draft.getModel(),
+                revision,
+                draft.getLastVerifiedAt());
+        if (index < 0) {
+            profiles.add(saved);
+        } else {
+            profiles.set(index, saved);
+        }
+        mmkv.putString(KEY_PROFILES, gson.toJson(profiles))
+                .putString(KEY_ACTIVE_PROFILE_ID, saved.getProfileId())
                 .commit();
-        return getCustomConfig();
+        return saved;
+    }
+
+    public synchronized boolean activate(String profileId) {
+        if (ReminderProviderConfig.OFFICIAL_PROFILE_ID.equals(profileId)) {
+            activateOfficial();
+            return true;
+        }
+        if (getProfile(profileId) == null) {
+            return false;
+        }
+        mmkv.putString(KEY_ACTIVE_PROFILE_ID, profileId).commit();
+        return true;
+    }
+
+    public synchronized void activateOfficial() {
+        mmkv.putString(
+                KEY_ACTIVE_PROFILE_ID,
+                ReminderProviderConfig.OFFICIAL_PROFILE_ID).commit();
+    }
+
+    public synchronized boolean delete(String profileId) {
+        if (profileId == null || ReminderProviderConfig.OFFICIAL_PROFILE_ID.equals(profileId)) {
+            return false;
+        }
+        List<ReminderProviderConfig> profiles = new ArrayList<>(Arrays.asList(readProfiles()));
+        int index = indexOf(profiles, profileId);
+        if (index < 0) {
+            return false;
+        }
+        profiles.remove(index);
+        String activeProfileId = mmkv.getString(
+                KEY_ACTIVE_PROFILE_ID,
+                ReminderProviderConfig.OFFICIAL_PROFILE_ID);
+        mmkv.putString(KEY_PROFILES, gson.toJson(profiles));
+        if (profileId.equals(activeProfileId)) {
+            mmkv.putString(
+                    KEY_ACTIVE_PROFILE_ID,
+                    ReminderProviderConfig.OFFICIAL_PROFILE_ID);
+        }
+        mmkv.commit();
+        return true;
+    }
+
+    private ReminderProviderConfig[] readProfiles() {
+        String json = mmkv.getString(KEY_PROFILES, "[]");
+        try {
+            ReminderProviderConfig[] profiles = gson.fromJson(
+                    json,
+                    ReminderProviderConfig[].class);
+            return profiles == null ? new ReminderProviderConfig[0] : profiles;
+        } catch (JsonSyntaxException e) {
+            return new ReminderProviderConfig[0];
+        }
+    }
+
+    private static int indexOf(List<ReminderProviderConfig> profiles, String profileId) {
+        for (int i = 0; i < profiles.size(); i++) {
+            if (profiles.get(i).getProfileId().equals(profileId)) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

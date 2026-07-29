@@ -27,6 +27,16 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginBottom="10dp"
+            android:text="警示文字"
+            android:textColor="#252525"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -49,12 +59,33 @@
                     android:paddingEnd="18dp"
                     android:paddingBottom="8dp">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="目标设置"
-                        android:textColor="#252525"
-                        android:textSize="18sp" />
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="6dp"
+                            android:layout_weight="1"
+                            android:text="目标设置"
+                            android:textColor="#252525"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:id="@+id/tv_goal_countdown"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:layout_weight="1"
+                            android:gravity="start"
+                            android:text="倒计时 -- 天"
+                            android:textColor="#E91E63"
+                            android:textSize="16sp" />
+
+                    </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -90,15 +121,6 @@
                             android:textAllCaps="false" />
 
                     </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tv_goal_countdown"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="距离目标：--天"
-                        android:textColor="#E91E63"
-                        android:textSize="16sp" />
 
                 </LinearLayout>
 
@@ -159,7 +181,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="悬浮窗额外文字"
+                        android:text="座右铭"
                         android:textColor="#252525"
                         android:textSize="18sp" />
 
@@ -171,11 +193,33 @@
 
                 </LinearLayout>
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginStart="20dp"
-                    android:background="#EEEEEE" />
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="10dp"
+            android:text="答题"
+            android:textColor="#252525"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="0dp"
+            app:cardPreventCornerOverlap="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:id="@+id/btn_math_difficulty"
