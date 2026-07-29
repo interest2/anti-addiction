@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
+import com.book.mask.constant.Const;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.floating.FloatHelper;
@@ -45,6 +46,17 @@ public class GoalNav extends Fragment {
             settingsDialogManager.showTargetDateSettingDialog(this::updateGoalInfo);
         });
 
+        View reminderProviderRow = view.findViewById(R.id.btn_reminder_provider);
+        View reminderProviderDivider = view.findViewById(R.id.divider_reminder_provider);
+        int reminderProviderVisibility = Const.REMINDER_PROVIDER_SETTINGS_ENABLED
+                ? View.VISIBLE
+                : View.GONE;
+        reminderProviderRow.setVisibility(reminderProviderVisibility);
+        reminderProviderDivider.setVisibility(reminderProviderVisibility);
+        if (Const.REMINDER_PROVIDER_SETTINGS_ENABLED) {
+            reminderProviderRow.setOnClickListener(v -> openReminderProviderSettings());
+        }
+
         // 设置算术题难度设置按钮
         View mathDifficultyRow = view.findViewById(R.id.btn_math_difficulty);
         mathDifficultyRow.setOnClickListener(v -> {
@@ -63,6 +75,19 @@ public class GoalNav extends Fragment {
             settingsDialogManager.showLeisureTimeDialog();
         });
         return view;
+    }
+
+    private void openReminderProviderSettings() {
+        getParentFragmentManager().beginTransaction()
+                .setCustomAnimations(
+                        R.anim.slide_in_right,
+                        R.anim.slide_out_left,
+                        R.anim.slide_in_left,
+                        R.anim.slide_out_right
+                )
+                .replace(R.id.fragment_container, new ReminderProviderSettingsNav())
+                .addToBackStack(ReminderProviderSettingsNav.class.getSimpleName())
+                .commit();
     }
 
     @Override

@@ -27,7 +27,6 @@ import com.book.mask.R;
 import com.book.mask.personalize.BackupManager;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.config.Share;
-import com.book.mask.constant.Const;
 import com.book.mask.network.LatestVersionManager;
 
 import java.io.ByteArrayOutputStream;
@@ -94,16 +93,6 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
         view.findViewById(R.id.row_export_backup)
                 .setOnClickListener(v -> showBackupOptionsDialog());
-        View reminderProviderRow = view.findViewById(R.id.row_reminder_provider);
-        View reminderProviderDivider = view.findViewById(R.id.divider_reminder_provider);
-        int reminderProviderVisibility = Const.REMINDER_PROVIDER_SETTINGS_ENABLED
-                ? View.VISIBLE
-                : View.GONE;
-        reminderProviderRow.setVisibility(reminderProviderVisibility);
-        reminderProviderDivider.setVisibility(reminderProviderVisibility);
-        if (Const.REMINDER_PROVIDER_SETTINGS_ENABLED) {
-            reminderProviderRow.setOnClickListener(v -> openReminderProviderSettings());
-        }
         view.findViewById(R.id.row_special_details)
                 .setOnClickListener(v -> openSpecialDetails());
     }
@@ -221,19 +210,6 @@ public class SettingsNav extends Fragment {
             buffer.write(chunk, 0, read);
         }
         return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
-    }
-
-    private void openReminderProviderSettings() {
-        getParentFragmentManager().beginTransaction()
-                .setCustomAnimations(
-                        R.anim.slide_in_right,
-                        R.anim.slide_out_left,
-                        R.anim.slide_in_left,
-                        R.anim.slide_out_right
-                )
-                .replace(R.id.fragment_container, new ReminderProviderSettingsNav())
-                .addToBackStack(ReminderProviderSettingsNav.class.getSimpleName())
-                .commit();
     }
 
     private void openSpecialDetails() {

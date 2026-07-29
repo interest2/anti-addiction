@@ -16,7 +16,7 @@ public class Const {
     public static final long SHOW_BEFORE_CONTENT_CHECK_DELAY_MS = 100; // 先显示悬浮窗后，延后此时长再跑阻塞式关键词检测，确保首帧先渲染
     public static final long CONTENT_CHECK_MAX_WAIT_MS = 500; // 连续变化时的最长等待时间
     public static final int TRANSIENT_FEEDBACK_DURATION_MS = 1000; // 非常驻 UI 提示时长
-    public static final boolean REMINDER_PROVIDER_SETTINGS_ENABLED = false;
+    public static final boolean REMINDER_PROVIDER_SETTINGS_ENABLED = true;
 
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";
