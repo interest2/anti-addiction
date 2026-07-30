@@ -6,4 +6,9 @@
     </style>
 
     <style name="Theme.Basic" parent="Base.Theme.Basic" />
+
+    <!-- 让 API Key 输入框内占位提示与正式输入内容同为 14sp -->
+    <style name="TextAppearance.Provider.Placeholder" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textSize">13sp</item>
+    </style>
 </resources>

@@ -164,11 +164,17 @@ public class MainActivity extends AppCompatActivity {
                             FragmentManager.POP_BACK_STACK_INCLUSIVE
                     );
                 }
-                fragmentManager.beginTransaction()
-                        .setReorderingAllowed(true)
-                        .replace(R.id.fragment_container, selectedFragment)
-                        .runOnCommit(() -> fragmentContainer.setVisibility(View.VISIBLE))
-                        .commit();
+                if (hasDetailPage) {
+                    fragmentManager.beginTransaction()
+                            .setReorderingAllowed(true)
+                            .replace(R.id.fragment_container, selectedFragment)
+                            .commitNow();
+                    fragmentContainer.setVisibility(View.VISIBLE);
+                } else {
+                    fragmentManager.beginTransaction()
+                            .replace(R.id.fragment_container, selectedFragment)
+                            .commit();
+                }
             }
             return true;
         });

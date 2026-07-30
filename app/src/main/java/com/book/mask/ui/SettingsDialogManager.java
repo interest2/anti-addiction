@@ -768,6 +768,8 @@ public class SettingsDialogManager {
                 0xFF00A6A6, 0xFF7856C8, 0xFF4C9C58
         };
         TagFlowLayout styleFlow = new TagFlowLayout(context, dpToPx(8), dpToPx(10));
+        styleFlow.setClipChildren(false);
+        styleFlow.setClipToPadding(false);
         styleFlow.setPadding(dpToPx(24), dpToPx(18), dpToPx(24), 0);
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("警示语风格")

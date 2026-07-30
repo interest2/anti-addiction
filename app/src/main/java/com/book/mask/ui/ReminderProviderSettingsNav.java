@@ -66,6 +66,9 @@ public class ReminderProviderSettingsNav extends Fragment {
     private String editingProfileId;
     private boolean apiKeyMasked;
     private String selectedPresetId = ReminderProviderConfig.OFFICIAL_PROFILE_ID;
+    // Owner key of the models currently shown (preset id, or a custom provider's
+    // profileId); used to add/remove that owner's saved custom models.
+    private String currentModelOwnerKey;
     private int requestGeneration;
 
     @Nullable
@@ -157,8 +160,6 @@ public class ReminderProviderSettingsNav extends Fragment {
         rootView.findViewById(R.id.btn_provider_settings_back)
                 .setOnClickListener(v -> getParentFragmentManager().popBackStack());
 
-        buildPresetChips();
-
         deleteButton.setOnClickListener(v -> confirmDeleteSelectedProfile());
         testButton.setOnClickListener(v -> testCustomProvider());
         saveButton.setOnClickListener(v -> saveCustomProvider());
@@ -171,6 +172,12 @@ public class ReminderProviderSettingsNav extends Fragment {
                 getString(R.string.provider_official_name));
         for (ProviderPreset preset : ProviderPresetCatalog.getAll()) {
             addPresetChip(inflater, preset.getId(), getString(preset.getNameResId()));
+        }
+        for (ReminderProviderConfig profile : configStore.getProfiles()) {
+            if (ProviderPresetCatalog.CUSTOM_PRESET_ID.equals(profile.getPresetId())
+                    && !ProviderPresetCatalog.CUSTOM_PRESET_ID.equals(profile.getProfileId())) {
+                addPresetChip(inflater, profile.getProfileId(), profile.getProviderName());
+            }
         }
         addPresetChip(inflater, ProviderPresetCatalog.CUSTOM_PRESET_ID,
                 getString(R.string.provider_preset_custom));
@@ -202,12 +209,20 @@ public class ReminderProviderSettingsNav extends Fragment {
     }
 
     private void showActiveProfile() {
+        buildPresetChips();
         ReminderProviderConfig active = configStore.getActiveConfig();
-        String presetId = active.isOfficial()
-                ? ReminderProviderConfig.OFFICIAL_PROFILE_ID
-                : active.getPresetId();
-        selectedPresetId = presetId;
-        checkPresetChip(presetId);
+        String chipTag;
+        if (active.isOfficial()) {
+            selectedPresetId = ReminderProviderConfig.OFFICIAL_PROFILE_ID;
+            chipTag = ReminderProviderConfig.OFFICIAL_PROFILE_ID;
+        } else if (ProviderPresetCatalog.CUSTOM_PRESET_ID.equals(active.getPresetId())) {
+            selectedPresetId = ProviderPresetCatalog.CUSTOM_PRESET_ID;
+            chipTag = active.getProfileId();
+        } else {
+            selectedPresetId = active.getPresetId();
+            chipTag = active.getPresetId();
+        }
+        checkPresetChip(chipTag);
         collapseDetails();
     }
 
@@ -220,18 +235,32 @@ public class ReminderProviderSettingsNav extends Fragment {
         clearTestStatus();
     }
 
-    private void selectPreset(String presetId) {
-        selectedPresetId = presetId;
-        if (ReminderProviderConfig.OFFICIAL_PROFILE_ID.equals(presetId)) {
+    private void selectPreset(String id) {
+        if (ReminderProviderConfig.OFFICIAL_PROFILE_ID.equals(id)) {
+            selectedPresetId = ReminderProviderConfig.OFFICIAL_PROFILE_ID;
             selectOfficial();
             return;
         }
-        ReminderProviderConfig saved = configStore.getProfile(presetId);
-        if (saved != null) {
-            loadSavedConfig(saved);
-        } else {
-            loadPresetDefaults(presetId);
+        if (ProviderPresetCatalog.CUSTOM_PRESET_ID.equals(id)) {
+            // The "添加" chip always starts a brand-new custom provider. Real saved
+            // custom providers carry a unique profileId (UUID) as their chip tag, so
+            // we must not look one up here — otherwise stale data stored under the
+            // legacy profileId "custom" would hijack this into edit-mode and every
+            // save would overwrite that one hidden profile instead of adding a chip.
+            selectedPresetId = ProviderPresetCatalog.CUSTOM_PRESET_ID;
+            loadPresetDefaults(ProviderPresetCatalog.CUSTOM_PRESET_ID);
+            return;
         }
+        ReminderProviderConfig saved = configStore.getProfile(id);
+        if (saved != null) {
+            // A saved profile carries its own presetId ("custom" for user-added
+            // providers, the catalog id otherwise); the tapped chip tag is its profileId.
+            selectedPresetId = saved.getPresetId();
+            loadSavedConfig(saved);
+            return;
+        }
+        selectedPresetId = id;
+        loadPresetDefaults(id);
     }
 
     private void selectOfficial() {
@@ -247,7 +276,9 @@ public class ReminderProviderSettingsNav extends Fragment {
         providerNameInput.setText(profile.getProviderName());
         endpointInput.setText(profile.getEndpointUrl());
         updateModelOptions(
-                ProviderPresetCatalog.getById(profile.getPresetId()), profile.getModel());
+                ProviderPresetCatalog.getById(profile.getPresetId()),
+                modelOwnerKey(profile.getPresetId(), profile.getProfileId()),
+                profile.getModel());
         apiKeyMasked = false;
         try {
             String apiKey = secretStore.getApiKey(profile.getProfileId());
@@ -262,7 +293,8 @@ public class ReminderProviderSettingsNav extends Fragment {
                 : R.string.provider_api_key);
         providerNameLayout.setVisibility(isCustomPreset() ? View.VISIBLE : View.GONE);
         showDetails(true);
-        deleteButton.setVisibility(View.GONE);
+        // Only user-added custom providers can be removed; preset providers can't.
+        deleteButton.setVisibility(isCustomPreset() ? View.VISIBLE : View.GONE);
         clearTestStatus();
         // Selecting a fully configured provider is enough to switch to it.
         // Without a stored key we can't use it yet, so keep the form open for
@@ -280,10 +312,10 @@ public class ReminderProviderSettingsNav extends Fragment {
         providerNameInput.setText("");
         if (preset == null) {
             endpointInput.setText("");
-            updateModelOptions(null, "");
+            updateModelOptions(null, modelOwnerKey(presetId, editingProfileId), "");
         } else {
             endpointInput.setText(preset.getEndpointUrl());
-            updateModelOptions(preset, preset.getDefaultModel());
+            updateModelOptions(preset, presetId, preset.getDefaultModel());
         }
         apiKeyMasked = false;
         apiKeyInput.setTransformationMethod(PasswordTransformationMethod.getInstance());
@@ -311,27 +343,43 @@ public class ReminderProviderSettingsNav extends Fragment {
         }
     }
 
-    private void updateModelOptions(ProviderPreset preset, String selectedModel) {
-        if (preset == null) {
-            modelLabel.setVisibility(View.GONE);
-            modelGroup.setVisibility(View.GONE);
-            modelGroup.setOnCheckedStateChangeListener(null);
-            modelGroup.removeAllViews();
-            modelLayout.setVisibility(View.VISIBLE);
-            modelInput.setText(selectedModel == null ? "" : selectedModel);
-        } else {
-            modelLabel.setVisibility(View.VISIBLE);
-            modelGroup.setVisibility(View.VISIBLE);
-            buildModelChips(preset.getModels(), selectedModel);
+    // Every provider (preset or custom) shows its models as a chip row plus a
+    // trailing "添加" chip. The chip list = the preset's catalog models (none for a
+    // custom provider) merged with any model names the user has saved for this owner.
+    // ownerKey namespaces the saved models: preset id for presets, profileId for
+    // custom providers (each custom provider keeps its own model list); null when a
+    // brand-new custom provider hasn't been saved yet.
+    private void updateModelOptions(ProviderPreset preset, String ownerKey, String selectedModel) {
+        currentModelOwnerKey = ownerKey;
+        modelLabel.setVisibility(View.VISIBLE);
+        modelGroup.setVisibility(View.VISIBLE);
+        List<String> customModels = configStore.getCustomModels(ownerKey);
+        List<String> models = new java.util.ArrayList<>();
+        if (preset != null) {
+            models.addAll(preset.getModels());
         }
+        for (String custom : customModels) {
+            if (!models.contains(custom)) {
+                models.add(custom);
+            }
+        }
+        buildModelChips(models, customModels, selectedModel);
     }
 
-    private void buildModelChips(List<String> models, String selectedModel) {
+    private String modelOwnerKey(String presetId, String profileId) {
+        return ProviderPresetCatalog.CUSTOM_PRESET_ID.equals(presetId) ? profileId : presetId;
+    }
+
+    private void buildModelChips(
+            List<String> models, List<String> deletableModels, String selectedModel) {
         modelGroup.setOnCheckedStateChangeListener(null);
         modelGroup.removeAllViews();
         LayoutInflater inflater = LayoutInflater.from(modelGroup.getContext());
-        boolean customModel = selectedModel != null && !selectedModel.isEmpty()
-                && !models.contains(selectedModel);
+        // With no known models (e.g. a brand-new custom provider) fall back to the
+        // "添加" free-text chip so the user can type the first model name.
+        boolean customModel = models.isEmpty()
+                || (selectedModel != null && !selectedModel.isEmpty()
+                        && !models.contains(selectedModel));
         String toCheck = selectedModel;
         if (!customModel && (toCheck == null || !models.contains(toCheck))) {
             toCheck = models.isEmpty() ? null : models.get(0);
@@ -342,6 +390,13 @@ public class ReminderProviderSettingsNav extends Fragment {
             chip.setText(model);
             chip.setTag(model);
             chip.setChecked(!customModel && model.equals(toCheck));
+            // User-added models (not catalog ones) can be long-pressed to delete.
+            if (deletableModels.contains(model)) {
+                chip.setOnLongClickListener(v -> {
+                    confirmDeleteCustomModel(model);
+                    return true;
+                });
+            }
             showCheckAfterText(chip);
             modelGroup.addView(chip);
         }
@@ -357,6 +412,28 @@ public class ReminderProviderSettingsNav extends Fragment {
         modelGroup.setOnCheckedStateChangeListener(
                 (group, checkedIds) -> updateCustomModelInput());
         updateCustomModelInput();
+    }
+
+    private void confirmDeleteCustomModel(String model) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.model_delete_title)
+                .setMessage(getString(R.string.model_delete_message, model))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.delete, (dialog, which) -> deleteCustomModel(model))
+                .show();
+    }
+
+    private void deleteCustomModel(String model) {
+        String ownerKey = currentModelOwnerKey;
+        if (ownerKey == null || !configStore.removeCustomModel(ownerKey, model)) {
+            return;
+        }
+        // Keep the current pick unless it was the deleted model, then reset selection.
+        String selectedBefore = resolveModel();
+        String newSelected = model.equals(selectedBefore) ? "" : selectedBefore;
+        updateModelOptions(
+                ProviderPresetCatalog.getById(selectedPresetId), ownerKey, newSelected);
+        UiFeedback.show(rootView, getString(R.string.model_deleted));
     }
 
     // Show the free-text model input only when the trailing "custom" model chip
@@ -388,9 +465,6 @@ public class ReminderProviderSettingsNav extends Fragment {
     }
 
     private String resolveModel() {
-        if (isCustomPreset()) {
-            return textOf(modelInput);
-        }
         for (int i = 0; i < modelGroup.getChildCount(); i++) {
             Chip chip = (Chip) modelGroup.getChildAt(i);
             if (chip.isChecked()) {
@@ -478,7 +552,12 @@ public class ReminderProviderSettingsNav extends Fragment {
     }
 
     private ProviderDraft buildProviderDraft() {
-        String profileId = selectedPresetId;
+        boolean custom = isCustomPreset();
+        // Custom providers each get a stable unique profileId (new one when adding,
+        // the edited one when modifying); preset providers keep profileId == presetId.
+        String profileId = custom
+                ? (editingProfileId != null ? editingProfileId : configStore.newProfileId())
+                : selectedPresetId;
         String providerName = resolveProviderName();
         String endpoint = textOf(endpointInput);
         String model = resolveModel();
@@ -522,11 +601,28 @@ public class ReminderProviderSettingsNav extends Fragment {
                             draft.getModel(),
                             draft.getConfigRevision(),
                             draft.getLastVerifiedAt()));
+            rememberCustomModel(saved);
             applyConfigurationChange();
-            selectPreset(saved.getPresetId());
+            buildPresetChips();
+            selectPreset(saved.getProfileId());
+            checkPresetChip(saved.getProfileId());
             UiFeedback.show(rootView, getString(R.string.custom_provider_enabled));
         } catch (GeneralSecurityException e) {
             UiFeedback.showError(rootView, getString(R.string.provider_key_save_failed));
+        }
+    }
+
+    // Remember a newly chosen model so it comes back as its own chip next time.
+    // Custom providers keep a per-profile model list (keyed by profileId); preset
+    // providers only remember models that aren't already in their catalog.
+    private void rememberCustomModel(ReminderProviderConfig saved) {
+        if (ProviderPresetCatalog.CUSTOM_PRESET_ID.equals(saved.getPresetId())) {
+            configStore.addCustomModel(saved.getProfileId(), saved.getModel());
+            return;
+        }
+        ProviderPreset preset = ProviderPresetCatalog.getById(saved.getPresetId());
+        if (preset != null && !preset.getModels().contains(saved.getModel())) {
+            configStore.addCustomModel(saved.getPresetId(), saved.getModel());
         }
     }
 

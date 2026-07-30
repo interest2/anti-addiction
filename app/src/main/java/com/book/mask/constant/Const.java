@@ -44,6 +44,9 @@ public class Const {
     // 悬浮窗良好习惯提醒默认文字（默认展示 + 输入框示例共用）
     public static final String DEFAULT_STRICT_REMINDER = "有志者事竟成！";
 
+    // 用户改目标后，新提醒文字预取未完成时悬浮窗展示的占位文案
+    public static final String REMINDER_LOADING_PLACEHOLDER = "加载中，请稍等";
+
     // 广播Action常量
     public static final String ACTION_UPDATE_RELAXED_COUNT = "com.book.mask.ACTION_UPDATE_RELAXED_COUNT";
 

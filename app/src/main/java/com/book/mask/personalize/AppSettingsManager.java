@@ -54,10 +54,29 @@ public class AppSettingsManager {
     static final String KEY_APP_FLOATING_TOP_OFFSET = "app_floating_top_offset_";
     static final String KEY_APP_FLOATING_BOTTOM_OFFSET = "app_floating_bottom_offset_";
 
+    // 首页权限卡片是否折叠隐藏
+    static final String KEY_PERMISSION_CARD_COLLAPSED = "permission_card_collapsed";
+
     private MMKV mmkv;
 
     public AppSettingsManager(Context context) {
         mmkv = SettingsStorage.open();
+    }
+
+    // ===== 首页权限卡片折叠状态 =====
+
+    /**
+     * 设置首页权限卡片是否折叠隐藏
+     */
+    public void setPermissionCardCollapsed(boolean collapsed) {
+        mmkv.putBoolean(KEY_PERMISSION_CARD_COLLAPSED, collapsed).commit();
+    }
+
+    /**
+     * 获取首页权限卡片是否折叠隐藏（默认展开）
+     */
+    public boolean isPermissionCardCollapsed() {
+        return mmkv.getBoolean(KEY_PERMISSION_CARD_COLLAPSED, false);
     }
 
     // ===== 悬浮窗警示语来源相关方法 =====

@@ -43,6 +43,9 @@ public class FloatingWindowManager {
     private Runnable pageTransitionExpiryRunnable;
     private long pageTransitionGeneration = 0;
     private CustomApp systemUiRecoveryApp;
+    // 用户改目标后阻塞等待新提醒文字：待刷新期间悬浮窗展示占位文案，预取完成再替换
+    private boolean awaitingGoalReminderRefresh = false;
+    private int goalReminderPrefetchGeneration = 0;
 
     private enum SuspensionMode {
         NONE,
@@ -530,7 +533,10 @@ public class FloatingWindowManager {
                     dynamicText = appSettingsManager.getAppHintCustomText(packageName);
                 } else {
                     // 大模型来源
-                    if (textFetcher != null) {
+                    if (awaitingGoalReminderRefresh) {
+                        // 用户刚改目标、新文字尚未就绪，先展示占位文案
+                        dynamicText = Const.REMINDER_LOADING_PLACEHOLDER;
+                    } else if (textFetcher != null) {
                         dynamicText = textFetcher.getCachedText();
                     }
                 }
@@ -636,14 +642,43 @@ public class FloatingWindowManager {
     }
 
     public void onReminderContentChanged() {
-        if (textFetcher != null) {
-            textFetcher.onProviderConfigurationChanged();
-        }
-        if (currentWindowApp == null) {
+        if (textFetcher == null) {
             return;
         }
-        updateFloatingWindowContent(currentWindowApp);
-        prefetchReminderText(currentWindowApp);
+        textFetcher.onProviderConfigurationChanged();
+        // 用户改目标：进入待刷新态，悬浮窗展示占位文案直至新文字预取完成
+        awaitingGoalReminderRefresh = true;
+        final int generation = ++goalReminderPrefetchGeneration;
+        if (currentWindowApp != null) {
+            updateFloatingWindowContent(currentWindowApp);
+        }
+        textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
+            @Override
+            public void onTextFetched(String text) {
+                onGoalReminderPrefetchDone(generation);
+            }
+
+            @Override
+            public void onFetchError(String error) {
+                onGoalReminderPrefetchDone(generation);
+            }
+        });
+    }
+
+    /**
+     * 改目标预取完成（成功或失败）后的回填：清除待刷新态并用新文字（或兜底缓存）刷新悬浮窗。
+     * 仅处理最新一次改目标触发的预取，过期回调直接忽略，避免连续改目标时误清占位态。
+     * 与正常展示一致：替换文字后触发下次预取，为下一次展示准备新文案。
+     */
+    private void onGoalReminderPrefetchDone(int generation) {
+        if (generation != goalReminderPrefetchGeneration) {
+            return;
+        }
+        awaitingGoalReminderRefresh = false;
+        if (currentWindowApp != null) {
+            updateFloatingWindowContent(currentWindowApp);
+            prefetchReminderText(currentWindowApp);
+        }
     }
 
     public void onReminderProviderChanged() {

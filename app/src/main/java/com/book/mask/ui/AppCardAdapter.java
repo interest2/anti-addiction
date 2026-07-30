@@ -119,8 +119,8 @@ public class AppCardAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             android.widget.FrameLayout.LayoutParams layoutParams =
                     (android.widget.FrameLayout.LayoutParams) addCard.getLayoutParams();
             layoutParams.gravity = centerInRow
-                    ? android.view.Gravity.CENTER
-                    : android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL;
+                    ? android.view.Gravity.CENTER_HORIZONTAL | android.view.Gravity.TOP
+                    : android.view.Gravity.START | android.view.Gravity.TOP;
             addCard.setLayoutParams(layoutParams);
         }
     }

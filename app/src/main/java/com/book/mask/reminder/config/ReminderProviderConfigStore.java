@@ -14,6 +14,7 @@ public final class ReminderProviderConfigStore {
     private static final String STORAGE_ID = "reminder_provider_profiles_v1";
     private static final String KEY_ACTIVE_PROFILE_ID = "active_profile_id";
     private static final String KEY_PROFILES = "profiles";
+    private static final String KEY_CUSTOM_MODELS_PREFIX = "custom_models_";
 
     private final MMKV mmkv;
     private final Gson gson = new Gson();
@@ -164,8 +165,46 @@ public final class ReminderProviderConfigStore {
         return count;
     }
 
-    private ReminderProviderConfig[] readProfiles() {
-        String json = mmkv.getString(KEY_PROFILES, "[]");
+    /** 读取某预置服务商下用户曾输入并保存过的自定义模型名（不含预置目录里的模型）。 */
+    public synchronized List<String> getCustomModels(String presetId) {
+        if (presetId == null || presetId.isEmpty()) {
+            return new ArrayList<>();
+        }
+        String json = mmkv.getString(KEY_CUSTOM_MODELS_PREFIX + presetId, "[]");
+        try {
+            String[] models = gson.fromJson(json, String[].class);
+            return models == null ? new ArrayList<>() : new ArrayList<>(Arrays.asList(models));
+        } catch (JsonSyntaxException e) {
+            return new ArrayList<>();
+        }
+    }
+
+    /** 记录一个用户自定义的模型名到该预置服务商下（去重）。 */
+    public synchronized void addCustomModel(String presetId, String model) {
+        if (presetId == null || presetId.isEmpty() || model == null || model.trim().isEmpty()) {
+            return;
+        }
+        List<String> models = getCustomModels(presetId);
+        if (!models.contains(model)) {
+            models.add(model);
+            mmkv.putString(KEY_CUSTOM_MODELS_PREFIX + presetId, gson.toJson(models)).commit();
+        }
+    }
+
+    /** 删除某 owner 下的一个自定义模型名。 */
+    public synchronized boolean removeCustomModel(String ownerKey, String model) {
+        if (ownerKey == null || ownerKey.isEmpty() || model == null) {
+            return false;
+        }
+        List<String> models = getCustomModels(ownerKey);
+        if (!models.remove(model)) {
+            return false;
+        }
+        mmkv.putString(KEY_CUSTOM_MODELS_PREFIX + ownerKey, gson.toJson(models)).commit();
+        return true;
+    }
+
+    private ReminderProviderConfig[] readProfiles() {        String json = mmkv.getString(KEY_PROFILES, "[]");
         try {
             ReminderProviderConfig[] profiles = gson.fromJson(
                     json,

@@ -8,7 +8,7 @@
         android:id="@+id/card_add_app"
         android:layout_width="60dp"
         android:layout_height="60dp"
-        android:layout_gravity="start|center_vertical"
+        android:layout_gravity="start|top"
         android:clickable="true"
         android:focusable="true"
         android:foreground="?android:attr/selectableItemBackground"

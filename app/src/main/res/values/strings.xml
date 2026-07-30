@@ -54,6 +54,9 @@
     <string name="provider_activated">服务商已启用</string>
     <string name="provider_delete_title">删除服务商</string>
     <string name="provider_delete_message">确定删除“%1$s”及其已保存的 API Key 吗？</string>
+    <string name="model_delete_title">删除模型</string>
+    <string name="model_delete_message">确定删除自定义模型“%1$s”吗？</string>
+    <string name="model_deleted">已删除自定义模型</string>
     <string name="provider_deleted">服务商已删除</string>
     <string name="delete">删除</string>
     <string name="provider_key_read_failed">无法读取 API Key，请重新输入</string>

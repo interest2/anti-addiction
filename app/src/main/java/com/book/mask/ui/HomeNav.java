@@ -67,7 +67,9 @@ public class HomeNav extends Fragment implements
     private List<CustomApp> allApps; // 包含预定义APP和自定义APP
     private TextView permissionStatusView;
     private TextView permissionOptionalView;
+    private View permissionCardView;
     private View permissionExpandedView;
+    private View permissionHideButton;
     private View permissionCollapsedView;
 
     // 倒计时相关
@@ -103,13 +105,16 @@ public class HomeNav extends Fragment implements
 
         permissionStatusView = view.findViewById(R.id.tv_description);
         permissionOptionalView = view.findViewById(R.id.tv_optional_permissions);
+        permissionCardView = view.findViewById(R.id.ll_permissions);
         permissionExpandedView = view.findViewById(R.id.ll_permission_expanded);
         permissionCollapsedView = view.findViewById(R.id.tv_show_permissions);
-        view.findViewById(R.id.tv_hide_permissions).setOnClickListener(v -> setPermissionCardExpanded(false));
+        permissionHideButton = view.findViewById(R.id.tv_hide_permissions);
+        permissionHideButton.setOnClickListener(v -> setPermissionCardExpanded(false));
         permissionCollapsedView.setOnClickListener(v -> {
             setPermissionCardExpanded(true);
             refreshPermissionStatus();
         });
+        applyPermissionCardExpanded(!appSettingsManager.isPermissionCardCollapsed());
         if (permissionStatusView != null) {
             permissionStatusView.setMovementMethod(LinkMovementMethod.getInstance());
             permissionStatusView.setHighlightColor(android.graphics.Color.TRANSPARENT);
@@ -127,8 +132,18 @@ public class HomeNav extends Fragment implements
     }
 
     private void setPermissionCardExpanded(boolean expanded) {
+        applyPermissionCardExpanded(expanded);
+        appSettingsManager.setPermissionCardCollapsed(!expanded);
+    }
+
+    private void applyPermissionCardExpanded(boolean expanded) {
         permissionExpandedView.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        permissionHideButton.setVisibility(expanded ? View.VISIBLE : View.GONE);
         permissionCollapsedView.setVisibility(expanded ? View.GONE : View.VISIBLE);
+        // 展开时铺满约束宽度（0dp），折叠时宽度自适应内容
+        ViewGroup.LayoutParams lp = permissionCardView.getLayoutParams();
+        lp.width = expanded ? 0 : ViewGroup.LayoutParams.WRAP_CONTENT;
+        permissionCardView.setLayoutParams(lp);
     }
 
     public void refreshPermissionStatus() {

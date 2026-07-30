@@ -71,15 +71,6 @@
             app:selectionRequired="true"
             app:singleSelection="true" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_delete_provider"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="16dp"
-            android:text="@string/delete"
-            android:visibility="gone" />
-
         <LinearLayout
             android:id="@+id/container_provider_details"
             android:layout_width="match_parent"
@@ -141,7 +132,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="10dp"
                 app:endIconMode="password_toggle"
-                app:placeholderText="@string/provider_api_key_hint">
+                app:placeholderText="@string/provider_api_key_hint"
+                app:placeholderTextAppearance="@style/TextAppearance.Provider.Placeholder"
+                app:placeholderTextColor="#999999">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/input_provider_api_key"
@@ -248,6 +241,15 @@
                     android:text="@string/test_and_enable_provider" />
 
             </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_delete_provider"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/delete"
+                android:visibility="gone" />
 
         </LinearLayout>
 
