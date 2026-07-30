@@ -51,9 +51,9 @@ public class CustomAppManager {
     static {
         // 初始化预定义应用
         PREDEFINED_APPS.add(new CustomApp("小红书", XHS_PACKAGE, "发现", 3));
-        PREDEFINED_APPS.add(new CustomApp("知乎", ZHIHU_PACKAGE, "热榜", 2));
-        PREDEFINED_APPS.add(new CustomApp("抖音", DOUYIN_PACKAGE, "推荐 精选 热点", 2));
         PREDEFINED_APPS.add(new CustomApp("哔哩哔哩", BILI_PACKAGE, "推荐", 3));
+        PREDEFINED_APPS.add(new CustomApp("抖音", DOUYIN_PACKAGE, "推荐 精选 热点", 2));
+        PREDEFINED_APPS.add(new CustomApp("知乎", ZHIHU_PACKAGE, "热榜", 2));
         PREDEFINED_APPS.add(new CustomApp("支付宝", ALIPAY_PACKAGE, "行情 持有", 1));
         PREDEFINED_APPS.add(new CustomApp("微信", WECHAT_PACKAGE, "微信关键词不起作用", 3));
     }

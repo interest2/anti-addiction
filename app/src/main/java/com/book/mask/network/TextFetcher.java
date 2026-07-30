@@ -25,6 +25,10 @@ public class TextFetcher {
         return repository.getCachedText();
     }
 
+    public void prefetchLatestText() {
+        repository.fetchLatestText(null);
+    }
+
     public void fetchLatestText(OnTextFetchListener listener) {
         repository.fetchLatestText(new ReminderTextRepository.Callback() {
             @Override

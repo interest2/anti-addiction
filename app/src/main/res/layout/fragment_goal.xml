@@ -20,7 +20,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="28dp"
+            android:layout_marginBottom="20dp"
             android:gravity="center"
             android:text="个性化设置"
             android:textColor="#202020"
@@ -57,7 +57,7 @@
                     android:paddingStart="20dp"
                     android:paddingTop="18dp"
                     android:paddingEnd="18dp"
-                    android:paddingBottom="8dp">
+                    android:paddingBottom="3dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -90,7 +90,8 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="14dp"
+                        android:layout_marginTop="3dp"
+                        android:layout_marginBottom="6dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -131,7 +132,7 @@
                     android:background="#EEEEEE" />
 
                 <LinearLayout
-                    android:id="@+id/btn_reminder_provider"
+                    android:id="@+id/btn_reminder_style"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
@@ -146,7 +147,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/reminder_provider_settings"
+                        android:text="风格"
                         android:textColor="#252525"
                         android:textSize="18sp" />
 
@@ -166,7 +167,7 @@
                     android:background="#EEEEEE" />
 
                 <LinearLayout
-                    android:id="@+id/btn_reminder_style"
+                    android:id="@+id/btn_reminder_provider"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
@@ -181,7 +182,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="风格"
+                        android:text="@string/reminder_provider_settings"
                         android:textColor="#252525"
                         android:textSize="18sp" />
 

@@ -3,6 +3,7 @@ package com.book.mask.personalize;
 import android.content.Context;
 
 import com.book.mask.constant.Const;
+import com.google.gson.Gson;
 import com.book.mask.config.Share;
 import com.tencent.mmkv.MMKV;
 
@@ -36,6 +37,7 @@ public class AppSettingsManager {
 
     // 个人目标与大模型提醒风格相关
     static final String KEY_MOTIVATION_TAG = "motivation_tag";
+    static final String KEY_CUSTOM_MOTIVATION_TAGS = "custom_motivation_tags";
     static final String KEY_TARGET_COMPLETION_DATE = "target_completion_date";
     static final String KEY_REMINDER_STYLE = "reminder_style";
     static final String KEY_REMINDER_CUSTOM_STYLE = "reminder_custom_style";
@@ -250,10 +252,78 @@ public class AppSettingsManager {
     }
 
     /**
-     * 获取可选的个人目标标签列表
+     * 获取可选的个人目标标签列表。
      */
-    public static String[] getAvailableTags() {
-        return MOTIVATION_TAGS;
+    public String[] getAvailableTags() {
+        java.util.List<String> tags = new java.util.ArrayList<>(java.util.Arrays.asList(MOTIVATION_TAGS));
+        for (String tag : getCustomMotivationTags()) {
+            if (!tags.contains(tag)) {
+                tags.add(tag);
+            }
+        }
+
+        // 兼容旧备份：它只保存当时选中的目标，没有单独的自定义目标列表。
+        String currentTag = getMotivationTag();
+        if (!Const.TARGET_TO_BE_SET.equals(currentTag)
+                && !isPredefinedMotivationTag(currentTag)
+                && !tags.contains(currentTag)) {
+            tags.add(currentTag);
+        }
+        return tags.toArray(new String[0]);
+    }
+
+    /**
+     * 保存新的自定义个人目标标签。
+     */
+    public void addCustomMotivationTag(String tag) {
+        if (tag == null || tag.isEmpty() || isPredefinedMotivationTag(tag)) {
+            return;
+        }
+        java.util.List<String> customTags = getCustomMotivationTags();
+        if (!customTags.contains(tag)) {
+            customTags.add(tag);
+            saveCustomMotivationTags(customTags);
+        }
+    }
+
+    /**
+     * 删除指定的自定义个人目标标签。
+     */
+    public void removeCustomMotivationTag(String tag) {
+        java.util.List<String> customTags = getCustomMotivationTags();
+        if (customTags.remove(tag)) {
+            saveCustomMotivationTags(customTags);
+        }
+        if (tag.equals(getMotivationTag())) {
+            setMotivationTag(Const.TARGET_TO_BE_SET);
+        }
+    }
+
+    private java.util.List<String> getCustomMotivationTags() {
+        java.util.List<String> tags = new java.util.ArrayList<>();
+        try {
+            String storedTags = mmkv.getString(KEY_CUSTOM_MOTIVATION_TAGS, "[]");
+            String[] customTags = new Gson().fromJson(storedTags, String[].class);
+            if (customTags != null) {
+                for (String tag : customTags) {
+                    if (tag != null && !tag.isEmpty() && !isPredefinedMotivationTag(tag)
+                            && !tags.contains(tag)) {
+                        tags.add(tag);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w("SettingsManager", "解析自定义目标列表失败", e);
+        }
+        return tags;
+    }
+
+    private void saveCustomMotivationTags(java.util.List<String> tags) {
+        mmkv.putString(KEY_CUSTOM_MOTIVATION_TAGS, new Gson().toJson(tags)).commit();
+    }
+
+    public static boolean isPredefinedMotivationTag(String tag) {
+        return java.util.Arrays.asList(MOTIVATION_TAGS).contains(tag);
     }
 
     // ===== 悬浮窗位置相关方法 =====

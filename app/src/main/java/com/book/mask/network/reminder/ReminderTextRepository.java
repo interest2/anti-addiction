@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import com.book.mask.personalize.AppSettingsManager;
 
@@ -15,6 +16,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public final class ReminderTextRepository {
+    private static final String TAG = "ReminderTextRepository";
+
     public interface Callback {
         void onSuccess(String text);
 
@@ -95,10 +98,12 @@ public final class ReminderTextRepository {
                 if (callback != null) {
                     inFlightCallbacks.add(callback);
                 }
+                Log.d(TAG, "复用进行中的提醒请求");
                 return;
             }
 
             if (inFlightFuture != null) {
+                Log.d(TAG, "提醒请求参数已变更，取消旧请求");
                 inFlightFuture.cancel(true);
                 httpClient.cancelActiveRequests();
                 replacedCallbacks = inFlightCallbacks;
@@ -110,6 +115,7 @@ public final class ReminderTextRepository {
             if (callback != null) {
                 inFlightCallbacks.add(callback);
             }
+            Log.d(TAG, "开始新的提醒请求");
             inFlightFuture = requestExecutor.submit(
                     () -> generate(generation, requestKey, config, request));
         }
@@ -214,10 +220,13 @@ public final class ReminderTextRepository {
         }
 
         if (result.isSuccess()) {
+            Log.d(TAG, "提醒请求完成并已写入缓存");
             for (Callback callback : callbacks) {
                 postSuccess(callback, result.getText());
             }
         } else {
+            Log.w(TAG, "提醒请求失败，errorCode=" + result.getErrorCode()
+                    + ", httpStatus=" + result.getHttpStatus());
             postErrors(callbacks, result);
         }
     }

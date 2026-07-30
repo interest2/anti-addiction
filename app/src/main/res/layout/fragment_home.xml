@@ -8,57 +8,53 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
         android:paddingTop="16dp"
-        android:paddingBottom="16dp">
+        android:paddingBottom="12dp">
 
-        <TextView
-            android:id="@+id/tv_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="防沉迷提醒"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="16dp"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            app:layout_constraintBottom_toTopOf="@+id/ll_permissions"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_chainStyle="packed" />
-
-        <LinearLayout
+        <androidx.cardview.widget.CardView
             android:id="@+id/ll_permissions"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:orientation="horizontal"
-            android:baselineAligned="false"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="4dp"
+            app:cardUseCompatPadding="true"
             app:layout_constraintBottom_toTopOf="@+id/ll_apps_header"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tv_title">
+            app:layout_constraintTop_toTopOf="parent">
 
-            <TextView
-                android:id="@+id/tv_description"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="3"
-                android:text="正在检查权限状态"
-                android:textAlignment="viewStart"
-                android:textSize="16sp" />
+                android:baselineAligned="false"
+                android:orientation="horizontal"
+                android:padding="12dp">
 
-            <TextView
-                android:id="@+id/tv_optional_permissions"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="2"
-                android:layout_marginStart="16dp"
-                android:textAlignment="viewStart"
-                android:textSize="16sp" />
+                <TextView
+                    android:id="@+id/tv_description"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="3"
+                    android:text="正在检查权限状态"
+                    android:textAlignment="viewStart"
+                    android:textSize="16sp" />
 
-        </LinearLayout>
+                <TextView
+                    android:id="@+id/tv_optional_permissions"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="2"
+                    android:textAlignment="viewStart"
+                    android:textSize="16sp" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
 
         <LinearLayout
             android:id="@+id/ll_apps_header"
@@ -71,29 +67,14 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/ll_permissions">
 
-            <Space
-                android:layout_width="48dp"
-                android:layout_height="1dp" />
-
             <TextView
                 android:id="@+id/tv_apps_subtitle"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="支持的 APP"
+                android:text="APP 列表"
                 android:textSize="21sp"
                 android:textStyle="bold"
                 android:gravity="center" />
-
-            <ImageButton
-                android:id="@+id/btn_add_app"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginEnd="12dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_input_add"
-                android:contentDescription="添加 APP"
-                android:scaleType="centerInside" />
 
         </LinearLayout>
 
@@ -101,7 +82,7 @@
             android:id="@+id/rv_app_cards"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="-5dp"
+            android:layout_marginTop="4dp"
             android:layout_marginBottom="4dp"
             android:nestedScrollingEnabled="false"
             app:layout_constraintEnd_toEndOf="parent"

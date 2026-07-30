@@ -621,10 +621,8 @@ public class FloatingWindowManager {
     }
 
     /**
-     * 悬浮窗展示（首次显示或暖窗口复用）时，为“大模型”来源预取下次提醒文字。
-     * 窗口在变为可见前已用缓存（上次预取结果）渲染，本次预取只静默更新缓存，
-     * 供下次展示使用；不在当前可见窗口上做替换，避免用户看到文字刷新过程。
-     * 缓存按（服务配置+目标）为 key，旧目标的迟到预取只会写入各自 key，不会污染当前显示。
+     * 悬浮窗展示（首次显示或暖窗口复用）时，预取当前目标与风格对应的提醒文字。
+     * 请求完成后仅更新缓存，不替换当前已经展示的文案；新文案在下次创建窗口时读取。
      */
     private void prefetchReminderText(CustomApp app) {
         if (textFetcher == null || app == null) {
@@ -634,45 +632,22 @@ public class FloatingWindowManager {
         if (!Const.DEFAULT_HINT_SOURCE.equals(appSettingsManager.getAppHintSource(packageName))) {
             return;
         }
-        textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
-            @Override
-            public void onTextFetched(String text) {
-                Log.d(TAG, "提醒文字预取完成，已更新缓存供下次展示");
-            }
+        textFetcher.prefetchLatestText();
+    }
 
-            @Override
-            public void onFetchError(String error) {
-                Log.w(TAG, "预取提醒文字失败: " + error);
-                // 保持使用缓存的文字，不做额外处理
-            }
-        });
+    public void onReminderContentChanged() {
+        if (textFetcher != null) {
+            textFetcher.onProviderConfigurationChanged();
+        }
+        if (currentWindowApp == null) {
+            return;
+        }
+        updateFloatingWindowContent(currentWindowApp);
+        prefetchReminderText(currentWindowApp);
     }
 
     public void onReminderProviderChanged() {
-        if (textFetcher == null) {
-            return;
-        }
-        textFetcher.onProviderConfigurationChanged();
-        if (currentWindowApp == null
-                || !Const.DEFAULT_HINT_SOURCE.equals(
-                        appSettingsManager.getAppHintSource(currentWindowApp.getPackageName()))) {
-            return;
-        }
-
-        updateFloatingWindowContent(currentWindowApp);
-        textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
-            @Override
-            public void onTextFetched(String text) {
-                if (currentWindowApp != null) {
-                    updateFloatingWindowContent(currentWindowApp);
-                }
-            }
-
-            @Override
-            public void onFetchError(String error) {
-                Log.w(TAG, "Provider 切换后获取提醒失败: " + error);
-            }
-        });
+        onReminderContentChanged();
     }
     
     public boolean isFloatingWindowVisible() {

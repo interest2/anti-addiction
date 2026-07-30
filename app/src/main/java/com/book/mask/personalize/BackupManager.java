@@ -5,6 +5,7 @@ import android.content.Context;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
+import com.book.mask.constant.Const;
 import com.book.mask.network.reminder.ReminderProviderConfigStore;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -36,7 +37,8 @@ public class BackupManager {
 
     // 个性化：字符串型配置键（均引用各 manager 的原始常量定义）
     private static final String[] PERSONALIZE_STRING_KEYS = {
-            AppSettingsManager.KEY_MOTIVATION_TAG,             // 目标
+            AppSettingsManager.KEY_MOTIVATION_TAG,             // 当前目标
+            AppSettingsManager.KEY_CUSTOM_MOTIVATION_TAGS,     // 自定义目标列表
             AppSettingsManager.KEY_TARGET_COMPLETION_DATE,     // 目标日期
             AppSettingsManager.KEY_REMINDER_STYLE,             // 大模型提醒风格
             AppSettingsManager.KEY_REMINDER_CUSTOM_STYLE,      // 自定义提醒风格
@@ -78,11 +80,13 @@ public class BackupManager {
     private final MMKV settings;
     private final MMKV customApps;
     private final ReminderProviderConfigStore providerStore;
+    private final AppSettingsManager appSettingsManager;
 
     public BackupManager(Context context) {
         this.settings = SettingsStorage.open();
         this.customApps = MMKV.mmkvWithID(CUSTOM_APPS_STORAGE_ID);
         this.providerStore = new ReminderProviderConfigStore();
+        this.appSettingsManager = new AppSettingsManager(context);
     }
 
     /**
@@ -240,6 +244,7 @@ public class BackupManager {
         JsonObject personalize = optObject(root, "personalize");
         if (personalize != null) {
             importStrings(personalize, PERSONALIZE_STRING_KEYS, result);
+            importLegacyCustomMotivationTag(personalize, result);
             importInts(personalize, PERSONALIZE_INT_KEYS, result);
         }
 
@@ -369,6 +374,23 @@ public class BackupManager {
             } catch (Exception e) {
                 result.skipped++;
             }
+        }
+    }
+
+    private void importLegacyCustomMotivationTag(JsonObject personalize, ImportResult result) {
+        if (has(personalize, AppSettingsManager.KEY_CUSTOM_MOTIVATION_TAGS)
+                || !has(personalize, AppSettingsManager.KEY_MOTIVATION_TAG)) {
+            return;
+        }
+        try {
+            String tag = personalize.get(AppSettingsManager.KEY_MOTIVATION_TAG).getAsString();
+            if (!Const.TARGET_TO_BE_SET.equals(tag)
+                    && !AppSettingsManager.isPredefinedMotivationTag(tag)) {
+                appSettingsManager.addCustomMotivationTag(tag);
+                result.imported++;
+            }
+        } catch (Exception e) {
+            result.skipped++;
         }
     }
 

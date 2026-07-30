@@ -18,7 +18,10 @@ import com.book.mask.util.DateUtils;
 
 import java.util.List;
 
-public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardViewHolder> {
+public class AppCardAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+
+    private static final int VIEW_TYPE_APP = 0;
+    private static final int VIEW_TYPE_ADD = 1;
 
     private List<CustomApp> apps; // 包含预定义APP和自定义APP
     private RelaxManager relaxManager;
@@ -26,8 +29,9 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
     private OnMonitorToggleListener monitorListener;
     private OnEditClickListener editListener;
     private OnDeleteClickListener deleteListener;
+    private OnAddClickListener addListener;
 
-        public interface OnAppCardClickListener {
+    public interface OnAppCardClickListener {
         void onAppCardClick(CustomApp app);
     }
 
@@ -43,39 +47,82 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
         void onDeleteClick(CustomApp app);
     }
 
+    public interface OnAddClickListener {
+        void onAddClick();
+    }
+
     public AppCardAdapter(List<CustomApp> apps, RelaxManager relaxManager,
                          OnAppCardClickListener listener, OnMonitorToggleListener monitorListener,
-                         OnEditClickListener editListener, OnDeleteClickListener deleteListener) {
+                         OnEditClickListener editListener, OnDeleteClickListener deleteListener,
+                         OnAddClickListener addListener) {
         this.apps = apps;
         this.relaxManager = relaxManager;
         this.listener = listener;
         this.monitorListener = monitorListener;
         this.editListener = editListener;
         this.deleteListener = deleteListener;
+        this.addListener = addListener;
     }
 
     @NonNull
     @Override
-    public AppCardViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_app_card, parent, false);
-        return new AppCardViewHolder(view);
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        int layoutId = viewType == VIEW_TYPE_ADD ? R.layout.item_add_app_card : R.layout.item_app_card;
+        View view = LayoutInflater.from(parent.getContext()).inflate(layoutId, parent, false);
+        return viewType == VIEW_TYPE_ADD ? new AddAppViewHolder(view) : new AppCardViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull AppCardViewHolder holder, int position) {
-        CustomApp app = apps.get(position);
-        holder.bind(app);
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        if (holder instanceof AppCardViewHolder) {
+            ((AppCardViewHolder) holder).bind(apps.get(position));
+        } else if (holder instanceof AddAppViewHolder) {
+            ((AddAppViewHolder) holder).bind(apps.size() % 2 == 0);
+        }
     }
 
     @Override
     public int getItemCount() {
-        return apps.size();
+        return apps.size() + 1;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return position == apps.size() ? VIEW_TYPE_ADD : VIEW_TYPE_APP;
+    }
+
+    public boolean isAddCardPosition(int position) {
+        return position == apps.size();
     }
 
     public void updateData(List<CustomApp> newApps) {
         this.apps = newApps;
         notifyDataSetChanged();
+    }
+
+    class AddAppViewHolder extends RecyclerView.ViewHolder {
+        private final View addCard;
+
+        AddAppViewHolder(@NonNull View itemView) {
+            super(itemView);
+            addCard = itemView.findViewById(R.id.card_add_app);
+            View.OnClickListener addClickListener = v -> {
+                if (addListener != null) {
+                    addListener.onAddClick();
+                }
+            };
+            itemView.setOnClickListener(addClickListener);
+            addCard.setOnClickListener(addClickListener);
+        }
+
+        void bind(boolean centerInRow) {
+            android.widget.FrameLayout.LayoutParams layoutParams =
+                    (android.widget.FrameLayout.LayoutParams) addCard.getLayoutParams();
+            layoutParams.gravity = centerInRow
+                    ? android.view.Gravity.CENTER
+                    : android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL;
+            addCard.setLayoutParams(layoutParams);
+        }
     }
 
     class AppCardViewHolder extends RecyclerView.ViewHolder {
@@ -159,28 +206,18 @@ public class AppCardAdapter extends RecyclerView.Adapter<AppCardAdapter.AppCardV
                 toggleMonitor.setChecked(isEnabled);
             }
 
-            // 设置剩余时长
             long remainingTime = relaxManager.getAppRemainingTime(app);
-            String timeText;
-            int timeColor;
-            if (remainingTime <= 0) {
-                timeText = "倒计时：00:00";
-                timeColor = 0xFF4CAF50; // 绿色
-            } else {
-                timeText = "倒计时: " + DateUtils.formatRemainingTime(remainingTime);
-                timeColor = 0xFFE91E63; // 红色
-            }
-            
-            if (tvRemainingTime != null) {
-                tvRemainingTime.setText(timeText);
-                tvRemainingTime.setTextColor(timeColor);
-            }
-
-            // 设置宽松模式剩余次数
             int relaxedCount = relaxManager.getAppRelaxedCloseCount(app);
             int remainingCount = Math.max(0, relaxedLimitCount - relaxedCount);
-            
-            if (tvRelaxedCount != null) {
+
+            if (remainingTime > 0) {
+                tvRemainingTime.setVisibility(View.VISIBLE);
+                tvRemainingTime.setText("倒计时: " + DateUtils.formatRemainingTime(remainingTime));
+                tvRemainingTime.setTextColor(0xFFE91E63);
+                tvRelaxedCount.setVisibility(View.GONE);
+            } else {
+                tvRemainingTime.setVisibility(View.GONE);
+                tvRelaxedCount.setVisibility(View.VISIBLE);
                 tvRelaxedCount.setText("宽松剩余: " + remainingCount + "次");
             }
         }

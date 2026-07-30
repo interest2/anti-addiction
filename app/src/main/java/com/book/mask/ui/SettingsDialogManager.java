@@ -9,6 +9,7 @@ import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -30,6 +31,7 @@ import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.R;
+import com.google.android.material.slider.Slider;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -471,31 +473,244 @@ public class SettingsDialogManager {
      * 显示标签设置对话框
      */
     public void showTagSettingDialog(Runnable onSettingChanged) {
-        final String[] predefinedTags = AppSettingsManager.getAvailableTags();
-        final String customTagOption = "自定义...";
+        TagFlowLayout targetFlow = new TagFlowLayout(context, dpToPx(8), dpToPx(10));
+        targetFlow.setClipChildren(false);
+        targetFlow.setClipToPadding(false);
+        targetFlow.setPadding(dpToPx(24), dpToPx(18), dpToPx(24), 0);
 
-        // 将预设标签和"自定义"选项合并
-        final String[] dialogOptions = new String[predefinedTags.length + 1];
-        System.arraycopy(predefinedTags, 0, dialogOptions, 0, predefinedTags.length);
-        dialogOptions[dialogOptions.length - 1] = customTagOption;
-
-        new android.app.AlertDialog.Builder(context)
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("设定目标")
-                .setItems(dialogOptions, (dialog, which) -> {
-                    if (which == predefinedTags.length) {
-                        // 点击了"自定义..."
-                        showCustomTagInputDialog(onSettingChanged);
-                        return;
-                    }
-
-                    // 点击了预设标签
-                    String selectedTag = dialogOptions[which];
-                    appSettingsManager.setMotivationTag(selectedTag);
-                    UiFeedback.show(context, "已设置为：" + selectedTag);
-                    if (onSettingChanged != null) onSettingChanged.run();
-                })
+                .setView(targetFlow)
                 .setNegativeButton("取消", null)
-                .show();
+                .create();
+        renderTargetCards(targetFlow, dialog, onSettingChanged);
+        dialog.show();
+    }
+
+    private void renderTargetCards(
+            TagFlowLayout targetFlow,
+            android.app.AlertDialog dialog,
+            Runnable onSettingChanged) {
+        int[] accentColors = {
+                0xFF5BAFFB, 0xFFFB9B59, 0xFF8A2B00, 0xFFDB8828,
+                0xFF00A6A6, 0xFF7856C8, 0xFF4C9C58
+        };
+        String[] availableTags = appSettingsManager.getAvailableTags();
+        String currentTag = appSettingsManager.getMotivationTag();
+        targetFlow.removeAllViews();
+
+        for (int index = 0; index < availableTags.length; index++) {
+            String label = availableTags[index];
+            boolean isCustomTag = !AppSettingsManager.isPredefinedMotivationTag(label);
+            int accentColor = accentColors[index % accentColors.length];
+            android.widget.FrameLayout targetCard = createTargetCard(
+                    label, accentColor, label.equals(currentTag), isCustomTag, targetFlow, dialog, onSettingChanged);
+            targetFlow.addView(targetCard, new TagFlowLayout.LayoutParams(
+                    TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
+        }
+
+        TextView addCard = createAddTargetCard();
+        addCard.setOnClickListener(v -> {
+            dialog.dismiss();
+            showCustomTagInputDialog(onSettingChanged);
+        });
+        targetFlow.addView(addCard, new TagFlowLayout.LayoutParams(
+                TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
+    }
+
+    private android.widget.FrameLayout createTargetCard(
+            String label,
+            int accentColor,
+            boolean selected,
+            boolean isCustomTag,
+            TagFlowLayout targetFlow,
+            android.app.AlertDialog dialog,
+            Runnable onSettingChanged) {
+        android.widget.FrameLayout container = new android.widget.FrameLayout(context);
+        TextView card = new TextView(context);
+        card.setBackground(createTargetCardBackground(accentColor, selected));
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dpToPx(12), 0, dpToPx(12), 0);
+        card.setTextSize(14);
+        card.setTextColor(0xFF111111);
+        card.setText(label);
+        card.setContentDescription(label);
+        card.setOnClickListener(v -> {
+            appSettingsManager.setMotivationTag(label);
+            if (onSettingChanged != null) {
+                onSettingChanged.run();
+            }
+            renderTargetCards(targetFlow, dialog, onSettingChanged);
+        });
+        container.addView(card, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
+
+        if (isCustomTag) {
+            TextView deleteButton = new TextView(context);
+            deleteButton.setBackground(createCircularDrawable(0xFFE84B4B));
+            deleteButton.setGravity(Gravity.CENTER);
+            deleteButton.setText("×");
+            deleteButton.setTextSize(15);
+            deleteButton.setTextColor(0xFFFFFFFF);
+            deleteButton.setContentDescription("删除" + label);
+            deleteButton.setVisibility(View.GONE);
+            deleteButton.setOnClickListener(v -> {
+                appSettingsManager.removeCustomMotivationTag(label);
+                if (onSettingChanged != null) {
+                    onSettingChanged.run();
+                }
+                renderTargetCards(targetFlow, dialog, onSettingChanged);
+            });
+            android.widget.FrameLayout.LayoutParams deleteParams =
+                    new android.widget.FrameLayout.LayoutParams(dpToPx(18), dpToPx(18), Gravity.TOP | Gravity.END);
+            deleteParams.topMargin = -dpToPx(5);
+            deleteParams.rightMargin = -dpToPx(5);
+            container.addView(deleteButton, deleteParams);
+            card.setOnLongClickListener(v -> {
+                deleteButton.setVisibility(View.VISIBLE);
+                return true;
+            });
+        }
+        return container;
+    }
+
+    private TextView createAddTargetCard() {
+        TextView card = new TextView(context);
+        card.setBackground(createTargetCardBackground(0xFF777777, false));
+        card.setGravity(Gravity.CENTER);
+        card.setPadding(dpToPx(14), 0, dpToPx(14), 0);
+        card.setText("+");
+        card.setTextSize(22);
+        card.setTextColor(0xFF555555);
+        card.setContentDescription("添加自定义目标");
+        return card;
+    }
+
+    private android.graphics.drawable.GradientDrawable createTargetCardBackground(int accentColor, boolean selected) {
+        android.graphics.drawable.GradientDrawable background = new android.graphics.drawable.GradientDrawable();
+        background.setColor(0xFFFBFBFB);
+        background.setCornerRadius(dpToPx(17));
+        background.setStroke(dpToPx(selected ? 2 : 1), selected ? accentColor : 0xFFEBD6CF);
+        return background;
+    }
+
+    private android.graphics.drawable.GradientDrawable createCircularDrawable(int color) {
+        android.graphics.drawable.GradientDrawable background = new android.graphics.drawable.GradientDrawable();
+        background.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        background.setColor(color);
+        return background;
+    }
+
+    private static class TagFlowLayout extends android.view.ViewGroup {
+        private final int horizontalSpacing;
+        private final int verticalSpacing;
+
+        private TagFlowLayout(Context context, int horizontalSpacing, int verticalSpacing) {
+            super(context);
+            this.horizontalSpacing = horizontalSpacing;
+            this.verticalSpacing = verticalSpacing;
+        }
+
+        @Override
+        protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+            int availableWidth = MeasureSpec.getSize(widthMeasureSpec) - getPaddingLeft() - getPaddingRight();
+            int usedWidth = 0;
+            int rowHeight = 0;
+            int totalHeight = getPaddingTop() + getPaddingBottom();
+            boolean hasItemInRow = false;
+
+            for (int index = 0; index < getChildCount(); index++) {
+                View child = getChildAt(index);
+                if (child.getVisibility() == GONE) continue;
+                measureChildWithMargins(child, widthMeasureSpec, 0, heightMeasureSpec, 0);
+                LayoutParams params = (LayoutParams) child.getLayoutParams();
+                int childWidth = child.getMeasuredWidth() + params.leftMargin + params.rightMargin;
+                int childHeight = child.getMeasuredHeight() + params.topMargin + params.bottomMargin;
+                if (hasItemInRow && usedWidth + horizontalSpacing + childWidth > availableWidth) {
+                    totalHeight += rowHeight + verticalSpacing;
+                    usedWidth = 0;
+                    rowHeight = 0;
+                    hasItemInRow = false;
+                }
+                usedWidth += (hasItemInRow ? horizontalSpacing : 0) + childWidth;
+                rowHeight = Math.max(rowHeight, childHeight);
+                hasItemInRow = true;
+            }
+            if (hasItemInRow) {
+                totalHeight += rowHeight;
+            }
+            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec),
+                    resolveSize(totalHeight, heightMeasureSpec));
+        }
+
+        @Override
+        protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+            int availableWidth = getWidth() - getPaddingLeft() - getPaddingRight();
+            int childLeft = getPaddingLeft();
+            int childTop = getPaddingTop();
+            int rowHeight = 0;
+
+            for (int index = 0; index < getChildCount(); index++) {
+                View child = getChildAt(index);
+                if (child.getVisibility() == GONE) continue;
+                LayoutParams params = (LayoutParams) child.getLayoutParams();
+                int childWidth = child.getMeasuredWidth() + params.leftMargin + params.rightMargin;
+                int childHeight = child.getMeasuredHeight() + params.topMargin + params.bottomMargin;
+                if (childLeft > getPaddingLeft()
+                        && childLeft - getPaddingLeft() + horizontalSpacing + childWidth > availableWidth) {
+                    childLeft = getPaddingLeft();
+                    childTop += rowHeight + verticalSpacing;
+                    rowHeight = 0;
+                }
+                if (childLeft > getPaddingLeft()) {
+                    childLeft += horizontalSpacing;
+                }
+                int childX = childLeft + params.leftMargin;
+                int childY = childTop + params.topMargin;
+                child.layout(childX, childY, childX + child.getMeasuredWidth(), childY + child.getMeasuredHeight());
+                childLeft += childWidth;
+                rowHeight = Math.max(rowHeight, childHeight);
+            }
+        }
+
+        @Override
+        protected LayoutParams generateDefaultLayoutParams() {
+            return new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        }
+
+        @Override
+        public LayoutParams generateLayoutParams(android.util.AttributeSet attrs) {
+            return new LayoutParams(getContext(), attrs);
+        }
+
+        @Override
+        protected LayoutParams generateLayoutParams(ViewGroup.LayoutParams params) {
+            return new LayoutParams(params);
+        }
+
+        @Override
+        protected boolean checkLayoutParams(ViewGroup.LayoutParams params) {
+            return params instanceof LayoutParams;
+        }
+
+        private static class LayoutParams extends android.view.ViewGroup.MarginLayoutParams {
+            private LayoutParams(int width, int height) {
+                super(width, height);
+            }
+
+            private LayoutParams(Context context, android.util.AttributeSet attrs) {
+                super(context, attrs);
+            }
+
+            private LayoutParams(ViewGroup.LayoutParams params) {
+                super(params);
+            }
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * context.getResources().getDisplayMetrics().density);
     }
 
     /**
@@ -503,19 +718,19 @@ public class SettingsDialogManager {
      */
     public void showCustomTagInputDialog(Runnable onSettingChanged) {
         final EditText input = new EditText(context);
-        // 设置输入长度限制为8
-        input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(10) });
-        input.setHint("不超过 10 个字");
+        // 设置输入长度限制
+        input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(12) });
+        input.setHint("不超过 12 个字");
         String currentTag = appSettingsManager.getMotivationTag();
         if (!Const.TARGET_TO_BE_SET.equals(currentTag)
-                && !java.util.Arrays.asList(AppSettingsManager.getAvailableTags()).contains(currentTag)) {
+                && !AppSettingsManager.isPredefinedMotivationTag(currentTag)) {
             input.setText(currentTag);
             input.setSelection(input.length());
         }
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
             .setTitle("定个目标")
-            .setView(input)
+            .setView(createInputContainer(input))
             .setPositiveButton("确定", null)
             .setNegativeButton("取消", null)
             .create();
@@ -527,6 +742,7 @@ public class SettingsDialogManager {
                     showInputError(input, "目标不能为空");
                     return;
                 }
+                appSettingsManager.addCustomMotivationTag(customTag);
                 appSettingsManager.setMotivationTag(customTag);
                 dialog.dismiss();
                 UiFeedback.show(context, "已设置为：" + customTag);
@@ -543,45 +759,88 @@ public class SettingsDialogManager {
                 "毒舌",
                 "温馨",
                 "发人深省",
-                "嘲讽",
-                "自定义"
+                "嘲讽"
         };
+        int[] accentColors = {
+                0xFF5BAFFB, 0xFFFB9B59, 0xFF8A2B00, 0xFFDB8828,
+                0xFF00A6A6, 0xFF7856C8, 0xFF4C9C58
+        };
+        TagFlowLayout styleFlow = new TagFlowLayout(context, dpToPx(8), dpToPx(10));
+        styleFlow.setPadding(dpToPx(24), dpToPx(18), dpToPx(24), 0);
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("警示语风格")
+                .setView(styleFlow)
+                .setNegativeButton("取消", null)
+                .create();
+
+        renderStyleCards(dialog, styleFlow, styles, accentColors, onSettingChanged);
+        dialog.show();
+    }
+
+    private void renderStyleCards(
+            android.app.AlertDialog dialog,
+            TagFlowLayout styleFlow,
+            String[] styles,
+            int[] accentColors,
+            Runnable onSettingChanged) {
         String currentStyle = appSettingsManager.getReminderStyle();
-        int checkedItem = java.util.Arrays.asList(styles).indexOf(currentStyle);
-        if (checkedItem < 0) {
-            checkedItem = 0;
+        styleFlow.removeAllViews();
+        for (int index = 0; index < styles.length; index++) {
+            String style = styles[index];
+            TextView styleCard = createStyleCard(
+                    style, accentColors[index], style.equals(currentStyle));
+            styleCard.setOnClickListener(v -> {
+                appSettingsManager.setReminderStyle(style);
+                if (onSettingChanged != null) {
+                    onSettingChanged.run();
+                }
+                renderStyleCards(dialog, styleFlow, styles, accentColors, onSettingChanged);
+            });
+            styleFlow.addView(styleCard, new TagFlowLayout.LayoutParams(
+                    TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
         }
 
-        new android.app.AlertDialog.Builder(context)
-                .setTitle("选择警示语风格")
-                .setSingleChoiceItems(styles, checkedItem, (dialog, which) -> {
-                    String selectedStyle = styles[which];
-                    if ("自定义".equals(selectedStyle)) {
-                        dialog.dismiss();
-                        showCustomReminderStyleInputDialog(onSettingChanged);
-                        return;
-                    }
-                    appSettingsManager.setReminderStyle(selectedStyle);
-                    dialog.dismiss();
-                    UiFeedback.show(context, "已设置为：" + selectedStyle);
-                    if (onSettingChanged != null) {
-                        onSettingChanged.run();
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        TextView addCard = createAddTargetCard();
+        addCard.setContentDescription("添加自定义风格");
+        addCard.setOnClickListener(v -> {
+            dialog.dismiss();
+            showCustomReminderStyleInputDialog(onSettingChanged);
+        });
+        styleFlow.addView(addCard, new TagFlowLayout.LayoutParams(
+                TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
+    }
+
+    private TextView createStyleCard(String style, int accentColor, boolean selected) {
+        TextView card = new TextView(context);
+        card.setBackground(createTargetCardBackground(accentColor, selected));
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dpToPx(12), 0, dpToPx(12), 0);
+        card.setText(style);
+        card.setTextSize(14);
+        card.setTextColor(0xFF111111);
+        card.setContentDescription(style);
+        return card;
+    }
+
+    private LinearLayout createInputContainer(EditText input) {
+        int contentPadding = dpToPx(24);
+        LinearLayout inputContainer = new LinearLayout(context);
+        inputContainer.setPadding(contentPadding, contentPadding, contentPadding, contentPadding);
+        inputContainer.addView(input, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return inputContainer;
     }
 
     private void showCustomReminderStyleInputDialog(Runnable onSettingChanged) {
         EditText input = new EditText(context);
         input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(100)});
-        input.setHint("例如：像严厉但关心我的朋友一样提醒我");
+        input.setHint("");
         input.setText(appSettingsManager.getReminderCustomStyle());
         input.setSelection(input.length());
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("自定义警示语风格")
-                .setView(input)
+                .setTitle("自定义风格")
+                .setView(createInputContainer(input))
                 .setPositiveButton("确定", null)
                 .setNegativeButton("取消", null)
                 .create();
@@ -670,6 +929,8 @@ public class SettingsDialogManager {
             if (header != null) header.setVisibility(View.GONE);
         }
         datePicker.setPadding(datePicker.getPaddingLeft(), 0, datePicker.getPaddingRight(), 0);
+        // Hiding the header leaves the framework minimum height in place.
+        datePicker.setMinimumHeight(0);
     }
     
     /**
@@ -1043,7 +1304,7 @@ public class SettingsDialogManager {
 
         // 添加说明文字
         android.widget.TextView messageText = new android.widget.TextView(context);
-        messageText.setText("设置的座右铭将在悬浮窗中间常态化展示");
+        messageText.setText("在悬浮窗中间固定展示");
         messageText.setTextSize(14);
         messageText.setTextColor(0xFF666666);
         messageText.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
@@ -1076,12 +1337,12 @@ public class SettingsDialogManager {
         // 添加字体大小设置区域
         android.view.View fontSizeSpacer = new android.view.View(context);
         fontSizeSpacer.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
-            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 20));
+            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 30));
         layout.addView(fontSizeSpacer);
 
         // 字体大小标题
         android.widget.TextView fontSizeTitle = new android.widget.TextView(context);
-        fontSizeTitle.setText("字体大小设置");
+        fontSizeTitle.setText("字体大小: " + appSettingsManager.getFloatingStrictReminderFontSize() + "sp");
         fontSizeTitle.setTextSize(14);
         fontSizeTitle.setTextColor(0xFF666666);
         fontSizeTitle.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
@@ -1089,38 +1350,23 @@ public class SettingsDialogManager {
             android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
         layout.addView(fontSizeTitle);
 
-        // 字体大小选择器
-        android.widget.SeekBar fontSizeSeekBar = new android.widget.SeekBar(context);
-        fontSizeSeekBar.setMax(20); // 12sp到32sp，共21个选项
-        fontSizeSeekBar.setProgress(appSettingsManager.getFloatingStrictReminderFontSize() - 12); // 当前字体大小减去最小值
-        fontSizeSeekBar.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+        // 字体大小滑块
+        Slider fontSizeSlider = new Slider(context);
+        fontSizeSlider.setValueFrom(12);
+        fontSizeSlider.setValueTo(32);
+        fontSizeSlider.setStepSize(1);
+        fontSizeSlider.setTickVisible(false);
+        fontSizeSlider.setLabelBehavior(2); // LabelBehavior.LABEL_GONE in Material Components 1.10.0.
+        fontSizeSlider.setValue(appSettingsManager.getFloatingStrictReminderFontSize());
+        fontSizeSlider.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
             android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
-        layout.addView(fontSizeSeekBar);
-
-        // 字体大小显示
-        final android.widget.TextView fontSizeDisplay = new android.widget.TextView(context);
-        fontSizeDisplay.setText("当前字体大小: " + appSettingsManager.getFloatingStrictReminderFontSize() + "sp");
-        fontSizeDisplay.setTextSize(12);
-        fontSizeDisplay.setTextColor(0xFF999999);
-        fontSizeDisplay.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
-            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
-        layout.addView(fontSizeDisplay);
+        layout.addView(fontSizeSlider);
 
         // 监听字体大小变化
-        fontSizeSeekBar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(android.widget.SeekBar seekBar, int progress, boolean fromUser) {
-                int fontSize = progress + 12; // 12sp到32sp
-                fontSizeDisplay.setText("当前字体大小: " + fontSize + "sp");
-            }
-
-            @Override
-            public void onStartTrackingTouch(android.widget.SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(android.widget.SeekBar seekBar) {}
+        fontSizeSlider.addOnChangeListener((slider, value, fromUser) -> {
+            int fontSize = Math.round(value);
+            fontSizeTitle.setText("字体大小: " + fontSize + "sp");
         });
 
         // 添加字体颜色设置区域
@@ -1128,7 +1374,7 @@ public class SettingsDialogManager {
         addStrictReminderColorPicker(layout, selectedFontColor);
 
         final android.app.AlertDialog[] dialogRef = new android.app.AlertDialog[1];
-        addStrictReminderActionButtons(layout, dialogRef, input, fontSizeSeekBar, selectedFontColor);
+        addStrictReminderActionButtons(layout, dialogRef, input, fontSizeSlider, selectedFontColor);
 
         dialogRef[0] = new android.app.AlertDialog.Builder(context)
                 .setTitle("座右铭")
@@ -1141,7 +1387,7 @@ public class SettingsDialogManager {
             LinearLayout parent,
             android.app.AlertDialog[] dialogRef,
             EditText input,
-            android.widget.SeekBar fontSizeSeekBar,
+            Slider fontSizeSlider,
             int[] selectedFontColor) {
         float density = context.getResources().getDisplayMetrics().density;
         LinearLayout row = new LinearLayout(context);
@@ -1162,7 +1408,7 @@ public class SettingsDialogManager {
         saveButton.setText("保存");
         saveButton.setOnClickListener(v -> {
             String reminder = input.getText().toString().trim();
-            int fontSize = fontSizeSeekBar.getProgress() + 12;
+            int fontSize = Math.round(fontSizeSlider.getValue());
             appSettingsManager.setFloatingStrictReminder(reminder);
             appSettingsManager.setFloatingStrictReminderFontSize(fontSize);
             appSettingsManager.setFloatingStrictReminderFontColor(selectedFontColor[0]);
@@ -1206,11 +1452,11 @@ public class SettingsDialogManager {
 
         View spacer = new View(context);
         spacer.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, (int) (20 * density)));
+                LinearLayout.LayoutParams.MATCH_PARENT, (int) (8 * density)));
         parent.addView(spacer);
 
         TextView title = new TextView(context);
-        title.setText("字体颜色设置");
+        title.setText("字体颜色");
         title.setTextSize(14);
         title.setTextColor(0xFF666666);
         parent.addView(title);

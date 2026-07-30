@@ -7,9 +7,11 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
+import android.text.style.URLSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
@@ -18,7 +20,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -97,9 +98,6 @@ public class HomeNav extends Fragment implements
         
         // 初始化APP卡片RecyclerView
         initAppCards(view);
-        
-        // 设置加号按钮点击事件
-        setupAddButton(view);
 
         permissionStatusView = view.findViewById(R.id.tv_description);
         permissionOptionalView = view.findViewById(R.id.tv_optional_permissions);
@@ -161,10 +159,8 @@ public class HomeNav extends Fragment implements
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         optional.append(" ");
         int clickStart = optional.length();
-        optional.append("点这");
-        int clickColor = MaterialColors.getColor(
-                permissionOptionalView,
-                com.google.android.material.R.attr.colorPrimary);
+        optional.append("查看");
+        int clickColor = Color.rgb(66, 133, 190);
         optional.setSpan(new ClickableSpan() {
             @Override
             public void onClick(@NonNull View widget) {
@@ -254,10 +250,8 @@ public class HomeNav extends Fragment implements
     private void appendBackgroundRunHint(SpannableStringBuilder text) {
         text.append('\n').append("3.允许后台活动").append("：");
         int clickStart = text.length();
-        text.append("点这");
-        int clickColor = MaterialColors.getColor(
-                permissionStatusView,
-                com.google.android.material.R.attr.colorPrimary);
+        text.append("查看");
+        int clickColor = Color.rgb(66, 133, 190);
         text.setSpan(new ClickableSpan() {
             @Override
             public void onClick(@NonNull View widget) {
@@ -281,10 +275,19 @@ public class HomeNav extends Fragment implements
         if (!isAdded()) {
             return;
         }
-        String message =
-                "1、该权限很重要，不设置可能导致无障碍也异常；\n"
-                + "2、不同手机设置它的方式不同，请自行了解；\n"
-                + "3、某些场景该权限可能被重置，或需手动重设它，如：手机系统升级引起的重启，卸载重装本 APP";
+        String linkText = getString(R.string.blog_link_text);
+        SpannableStringBuilder message = new SpannableStringBuilder()
+                .append("1、该权限很重要，不设置可能导致无障碍也异常；\n")
+                .append("2、不同手机设置它的方式不同，请自行了解，或参考");
+        int linkStart = message.length();
+        message.append(linkText)
+                .append("；\n")
+                .append("3、某些场景该权限可能被重置，或需手动重设它，如：手机系统升级引起的重启，卸载重装本 APP");
+        message.setSpan(
+                new URLSpan(getString(R.string.install_troubleshooting_url)),
+                linkStart,
+                linkStart + linkText.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         TextView messageView = new TextView(requireContext());
         int padding = (int) (20 * getResources().getDisplayMetrics().density);
@@ -292,6 +295,8 @@ public class HomeNav extends Fragment implements
         messageView.setTextSize(16);
         messageView.setLineSpacing(0, 1.3f);
         messageView.setText(message);
+        messageView.setMovementMethod(LinkMovementMethod.getInstance());
+        messageView.setLinksClickable(true);
 
         new android.app.AlertDialog.Builder(requireContext())
                 .setTitle("允许后台活动")
@@ -339,13 +344,6 @@ public class HomeNav extends Fragment implements
 
     private interface PermissionReviewAction {
         void review(MainActivity activity);
-    }
-
-    private void setupAddButton(View view) {
-        ImageButton btnAddApp = view.findViewById(R.id.btn_add_app);
-        if (btnAddApp != null) {
-            btnAddApp.setOnClickListener(v -> showAddAppDialog());
-        }
     }
 
     private void showAddAppDialog() {
@@ -622,10 +620,19 @@ public class HomeNav extends Fragment implements
         
         if (rvAppCards != null) {
             // 使用GridLayoutManager实现两列布局
-            androidx.recyclerview.widget.GridLayoutManager layoutManager = 
-                new androidx.recyclerview.widget.GridLayoutManager(requireContext(), 2);
+            androidx.recyclerview.widget.GridLayoutManager layoutManager =
+                    new androidx.recyclerview.widget.GridLayoutManager(requireContext(), 2);
+            layoutManager.setSpanSizeLookup(new androidx.recyclerview.widget.GridLayoutManager.SpanSizeLookup() {
+                @Override
+                public int getSpanSize(int position) {
+                    return appCardAdapter != null
+                            && allApps.size() % 2 == 0
+                            && appCardAdapter.isAddCardPosition(position) ? 2 : 1;
+                }
+            });
             rvAppCards.setLayoutManager(layoutManager);
-            appCardAdapter = new AppCardAdapter(allApps, relaxManager, this, this, this, this);
+            appCardAdapter = new AppCardAdapter(
+                    allApps, relaxManager, this, this, this, this, this::showAddAppDialog);
             rvAppCards.setAdapter(appCardAdapter);
         }
     }

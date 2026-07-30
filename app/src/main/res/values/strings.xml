@@ -27,12 +27,12 @@
     <string name="reset_all_floating_windows">重置所有APP悬浮窗状态</string>
     <string name="record_package_name">记录包名</string>
     <string name="view_package_name_log">查看包名日志</string>
-    <string name="reminder_provider_settings">切换大模型</string>
+    <string name="reminder_provider_settings">大模型</string>
     <string name="provider_default_description">默认使用 %1$s 的非高阶模型，支持更换</string>
     <string name="provider_default_description_fallback">默认使用 GLM 的非高阶模型，支持更换</string>
-    <string name="provider_official_name">默认模型</string>
+    <string name="provider_official_name">默认</string>
     <string name="provider_preset">模型服务商</string>
-    <string name="provider_preset_custom">自定义</string>
+    <string name="provider_preset_custom">添加</string>
     <string name="provider_endpoint">Chat Completions 接口地址</string>
     <string name="provider_api_key">API Key</string>
     <string name="provider_model">模型</string>

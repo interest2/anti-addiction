@@ -16,14 +16,13 @@ import com.book.mask.constant.Const;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.floating.FloatHelper;
-import com.book.mask.network.TextFetcher;
+import com.book.mask.floating.FloatService;
 
 public class GoalNav extends Fragment {
 
     private RelaxManager relaxManager;
     private AppSettingsManager appSettingsManager;
     private SettingsDialogManager settingsDialogManager;
-    private TextFetcher textFetcher;
     private TextView tvGoalCountdown;
     private Button btnTagSetting, btnTargetDateSetting;
 
@@ -34,7 +33,6 @@ public class GoalNav extends Fragment {
         relaxManager = new RelaxManager(requireContext());
         appSettingsManager = new AppSettingsManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), relaxManager);
-        textFetcher = new TextFetcher(requireContext());
 
         // 初始化控件
         tvGoalCountdown = view.findViewById(R.id.tv_goal_countdown);
@@ -89,8 +87,8 @@ public class GoalNav extends Fragment {
                 .setCustomAnimations(
                         R.anim.slide_in_right,
                         R.anim.slide_out_left,
-                        R.anim.slide_in_left,
-                        R.anim.slide_out_right
+                        0,
+                        0
                 )
                 .replace(R.id.fragment_container, new ReminderProviderSettingsNav())
                 .addToBackStack(ReminderProviderSettingsNav.class.getSimpleName())
@@ -105,25 +103,11 @@ public class GoalNav extends Fragment {
 
     private void onMotivationTagChanged() {
         updateGoalInfo();
-        fetchLatestReminderText("目标变更后");
+        FloatService.notifyReminderContentChanged();
     }
 
     private void onReminderStyleChanged() {
-        fetchLatestReminderText("风格变更后");
-    }
-
-    private void fetchLatestReminderText(String reason) {
-        textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
-            @Override
-            public void onTextFetched(String text) {
-                android.util.Log.d("GoalNav", reason + "提醒文字生成成功");
-            }
-
-            @Override
-            public void onFetchError(String error) {
-                android.util.Log.w("GoalNav", reason + "提醒文字生成失败: " + error);
-            }
-        });
+        FloatService.notifyReminderContentChanged();
     }
 
     private void updateGoalInfo() {

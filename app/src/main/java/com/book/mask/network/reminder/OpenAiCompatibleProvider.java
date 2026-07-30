@@ -53,7 +53,9 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
             requestJson.put("model", config.getModel().trim());
             requestJson.put("messages", messages);
             requestJson.put("max_tokens", MAX_TOKENS);
-            requestJson.put("temperature", 0.8);
+            if (!"kimi-k2.6".equals(config.getModel().trim())) {
+                requestJson.put("temperature", 0.8);
+            }
 
             Map<String, String> headers = new HashMap<>();
             headers.put("Authorization", "Bearer " + apiKey.trim());
@@ -63,6 +65,9 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
                     headers,
                     requestJson.toString());
             if (response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
+                Log.w(TAG, "Provider 请求失败，HTTP " + response.getStatusCode()
+                        + "，响应前" + RESPONSE_PREVIEW_LENGTH + "字符="
+                        + responsePreview(response.getBody()));
                 return ProviderResponseMapper.fromHttpStatus(response.getStatusCode());
             }
 
@@ -85,8 +90,10 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
         } catch (JSONException e) {
             return invalidResponse("invalid JSON", responseBody, e);
         } catch (IOException e) {
+            Log.w(TAG, "Provider 请求发生网络异常", e);
             return ProviderResponseMapper.fromException(e);
         } catch (Exception e) {
+            Log.e(TAG, "Provider 请求发生未预期异常", e);
             return ProviderResult.failure(ProviderResult.ErrorCode.INTERNAL);
         }
     }

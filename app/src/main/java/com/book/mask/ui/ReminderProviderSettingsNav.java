@@ -204,6 +204,12 @@ public class ReminderProviderSettingsNav extends Fragment {
         collapseDetails();
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        showActiveProfile();
+    }
+
     // Keep the form hidden until the user taps a preset chip; only highlight
     // which provider is currently active.
     private void collapseDetails() {
@@ -367,14 +373,8 @@ public class ReminderProviderSettingsNav extends Fragment {
         return false;
     }
 
-    // Move the selected marker to the right of the text: hide the default
-    // leading checked icon and use the trailing close-icon slot as the tick.
     private void showCheckAfterText(Chip chip) {
         chip.setCheckedIconVisible(false);
-        chip.setCloseIconResource(R.drawable.ic_chip_check);
-        chip.setCloseIconTint(chip.getTextColors());
-        chip.setCloseIconVisible(chip.isChecked());
-        chip.setOnCheckedChangeListener((button, checked) -> chip.setCloseIconVisible(checked));
     }
 
     private boolean isCustomPreset() {

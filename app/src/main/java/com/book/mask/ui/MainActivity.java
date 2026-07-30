@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
 import android.content.BroadcastReceiver;
 import android.content.IntentFilter;
 
@@ -140,10 +141,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupBottomNavigation() {
         bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.setOnNavigationItemSelectedListener(item -> {
-            getSupportFragmentManager().popBackStackImmediate(
-                    null,
-                    FragmentManager.POP_BACK_STACK_INCLUSIVE
-            );
+            FragmentManager fragmentManager = getSupportFragmentManager();
             Fragment selectedFragment = null;
             if (item.getItemId() == R.id.navigation_home) {
                 if (homeNav == null) homeNav = new HomeNav();
@@ -157,9 +155,20 @@ public class MainActivity extends AppCompatActivity {
                 selectedFragment = new SettingsNav();
             }
             if (selectedFragment != null) {
-                getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, selectedFragment)
-                    .commit();
+                View fragmentContainer = findViewById(R.id.fragment_container);
+                boolean hasDetailPage = fragmentManager.getBackStackEntryCount() > 0;
+                if (hasDetailPage) {
+                    fragmentContainer.setVisibility(View.INVISIBLE);
+                    fragmentManager.popBackStackImmediate(
+                            null,
+                            FragmentManager.POP_BACK_STACK_INCLUSIVE
+                    );
+                }
+                fragmentManager.beginTransaction()
+                        .setReorderingAllowed(true)
+                        .replace(R.id.fragment_container, selectedFragment)
+                        .runOnCommit(() -> fragmentContainer.setVisibility(View.VISIBLE))
+                        .commit();
             }
             return true;
         });

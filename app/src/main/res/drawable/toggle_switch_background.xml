@@ -1,49 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- 开启状态 - 绿色背景，右端白色圆点 -->
+    <!-- 保留 ToggleButton 原有点击范围，仅缩小开关视觉区域。 -->
     <item android:state_checked="true">
-        <layer-list>
-            <!-- 绿色背景 -->
-            <item>
-                <shape android:shape="rectangle">
-                    <solid android:color="#4CAF50" />
-                    <corners android:radius="9dp" />
-                </shape>
-            </item>
-            <!-- 右端白色圆点 -->
-            <item
-                android:width="14dp"
-                android:height="14dp"
-                android:end="2dp"
-                android:gravity="end|center_vertical">
-                <shape android:shape="oval">
-                    <solid android:color="#FFFFFF" />
-                </shape>
-            </item>
-        </layer-list>
+        <inset
+            android:insetLeft="3dp"
+            android:insetTop="2dp"
+            android:insetRight="3dp"
+            android:insetBottom="2dp">
+            <layer-list>
+                <item>
+                    <shape android:shape="rectangle">
+                        <solid android:color="#4CAF50" />
+                        <corners android:radius="7dp" />
+                    </shape>
+                </item>
+                <item
+                    android:width="12dp"
+                    android:height="12dp"
+                    android:end="2dp"
+                    android:gravity="end|center_vertical">
+                    <shape android:shape="oval">
+                        <solid android:color="#FFFFFF" />
+                    </shape>
+                </item>
+            </layer-list>
+        </inset>
     </item>
 
-    <!-- 关闭状态 - 白色背景，左端灰色圆点 -->
     <item android:state_checked="false">
-        <layer-list>
-            <!-- 白色背景 -->
-            <item>
-                <shape android:shape="rectangle">
-                    <solid android:color="#FFFFFF" />
-                    <stroke android:width="1dp" android:color="#CCCCCC" />
-                    <corners android:radius="9dp" />
-                </shape>
-            </item>
-            <!-- 左端灰色圆点 -->
-            <item
-                android:width="14dp"
-                android:height="14dp"
-                android:gravity="start|center_vertical"
-                android:start="2dp">
-                <shape android:shape="oval">
-                    <solid android:color="#CCCCCC" />
-                </shape>
-            </item>
-        </layer-list>
+        <inset
+            android:insetLeft="3dp"
+            android:insetTop="2dp"
+            android:insetRight="3dp"
+            android:insetBottom="2dp">
+            <layer-list>
+                <item>
+                    <shape android:shape="rectangle">
+                        <solid android:color="#FFFFFF" />
+                        <stroke android:width="1dp" android:color="#CCCCCC" />
+                        <corners android:radius="7dp" />
+                    </shape>
+                </item>
+                <item
+                    android:width="12dp"
+                    android:height="12dp"
+                    android:start="2dp"
+                    android:gravity="start|center_vertical">
+                    <shape android:shape="oval">
+                        <solid android:color="#CCCCCC" />
+                    </shape>
+                </item>
+            </layer-list>
+        </inset>
     </item>
 </selector>
