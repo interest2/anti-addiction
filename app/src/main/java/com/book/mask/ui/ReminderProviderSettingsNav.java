@@ -3,9 +3,11 @@ package com.book.mask.ui;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
+import android.text.method.PasswordTransformationMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -60,6 +62,7 @@ public class ReminderProviderSettingsNav extends Fragment {
     private TextView testStatus;
 
     private String editingProfileId;
+    private boolean apiKeyMasked;
     private String selectedPresetId = ReminderProviderConfig.OFFICIAL_PROFILE_ID;
     private int requestGeneration;
 
@@ -98,6 +101,7 @@ public class ReminderProviderSettingsNav extends Fragment {
         modelLabel = rootView.findViewById(R.id.tv_provider_model_label);
         modelInput = rootView.findViewById(R.id.input_provider_model);
         testStatus = rootView.findViewById(R.id.tv_provider_test_status);
+        rootView.setFocusableInTouchMode(true);
 
         endpointInput.setInputType(InputType.TYPE_CLASS_TEXT
                 | InputType.TYPE_TEXT_VARIATION_URI
@@ -109,6 +113,12 @@ public class ReminderProviderSettingsNav extends Fragment {
         disableAutofill(endpointInput);
         disableAutofill(modelInput);
         disableAutofill(apiKeyInput);
+        apiKeyInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus && apiKeyMasked) {
+                apiKeyInput.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                apiKeyMasked = false;
+            }
+        });
     }
 
     private void disableAutofill(View input) {
@@ -133,7 +143,7 @@ public class ReminderProviderSettingsNav extends Fragment {
     private void updateDefaultModelDescription() {
         defaultDescription.setText(getString(
                 R.string.provider_default_description,
-                AppConfigManager.getDefaultModelDescription()));
+                AppConfigManager.getServerModel()));
     }
 
     private void bindActions() {
@@ -230,9 +240,16 @@ public class ReminderProviderSettingsNav extends Fragment {
         endpointInput.setText(profile.getEndpointUrl());
         updateModelOptions(
                 ProviderPresetCatalog.getById(profile.getPresetId()), profile.getModel());
-        apiKeyInput.setText("");
-        boolean hasKey = secretStore.hasApiKey(profile.getProfileId());
-        apiKeyLayout.setHint(hasKey
+        apiKeyMasked = false;
+        try {
+            String apiKey = secretStore.getApiKey(profile.getProfileId());
+            apiKeyMasked = apiKey != null && !apiKey.isEmpty();
+            apiKeyInput.setTransformationMethod(PasswordTransformationMethod.getInstance());
+            apiKeyInput.setText(apiKeyMasked ? apiKey : "");
+        } catch (GeneralSecurityException e) {
+            apiKeyInput.setText("");
+        }
+        apiKeyLayout.setHint(apiKeyMasked
                 ? R.string.provider_api_key_saved
                 : R.string.provider_api_key);
         showDetails(true);
@@ -241,7 +258,7 @@ public class ReminderProviderSettingsNav extends Fragment {
         // Selecting a fully configured provider is enough to switch to it.
         // Without a stored key we can't use it yet, so keep the form open for
         // the user to enter one and activate through "test & enable" instead.
-        if (hasKey) {
+        if (apiKeyMasked) {
             activateProfileIfNeeded(profile.getProfileId());
         }
     }
@@ -256,6 +273,8 @@ public class ReminderProviderSettingsNav extends Fragment {
             endpointInput.setText(preset.getEndpointUrl());
             updateModelOptions(preset, preset.getDefaultModel());
         }
+        apiKeyMasked = false;
+        apiKeyInput.setTransformationMethod(PasswordTransformationMethod.getInstance());
         apiKeyInput.setText("");
         apiKeyLayout.setHint(R.string.provider_api_key);
         showDetails(true);
@@ -269,7 +288,6 @@ public class ReminderProviderSettingsNav extends Fragment {
         }
         configStore.activateOfficial();
         applyConfigurationChange();
-        UiFeedback.show(rootView, getString(R.string.provider_activated));
     }
 
     private void activateProfileIfNeeded(String profileId) {
@@ -278,7 +296,6 @@ public class ReminderProviderSettingsNav extends Fragment {
         }
         if (configStore.activate(profileId)) {
             applyConfigurationChange();
-            UiFeedback.show(rootView, getString(R.string.provider_activated));
         }
     }
 
@@ -411,7 +428,15 @@ public class ReminderProviderSettingsNav extends Fragment {
         if (providerDraft == null) {
             return;
         }
+        clearFocusAndHideKeyboard();
         persistCustomProvider(providerDraft.config, providerDraft.apiKey);
+    }
+
+    private void clearFocusAndHideKeyboard() {
+        rootView.requestFocus();
+        InputMethodManager inputMethodManager = requireContext()
+                .getSystemService(InputMethodManager.class);
+        inputMethodManager.hideSoftInputFromWindow(rootView.getWindowToken(), 0);
     }
 
     private void testCustomProvider() {
@@ -508,6 +533,9 @@ public class ReminderProviderSettingsNav extends Fragment {
 
     private String resolveApiKey(String profileId, String endpoint)
             throws GeneralSecurityException {
+        if (apiKeyMasked) {
+            return secretStore.getApiKey(profileId);
+        }
         String enteredKey = textOf(apiKeyInput);
         if (!enteredKey.isEmpty()) {
             return enteredKey;
@@ -517,6 +545,7 @@ public class ReminderProviderSettingsNav extends Fragment {
                 ? secretStore.getApiKey(profileId)
                 : null;
     }
+
 
     private void showValidationError(ReminderProviderConfigValidator.Error error) {
         String message = error.getMessage();

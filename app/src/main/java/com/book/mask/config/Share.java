@@ -13,10 +13,10 @@ public class Share {
 
     // 多APP状态管理
     public static Map<String, String> appStates = new HashMap<>(); // 使用包名作为键
-    public static final String DEFAULT_MODEL_DESCRIPTION = "GLM 的非高阶模型";
+    public static final String DEFAULT_SERVER_MODEL = "GLM";
     public static volatile String latestVersion = "";
     public static volatile long latestVersionTimestamp = 0L;
-    public static volatile String defaultModelDescription = DEFAULT_MODEL_DESCRIPTION;
+    public static volatile String serverModel = DEFAULT_SERVER_MODEL;
     public static volatile double mixedReasoningQuizRatio =
             QuestionConst.MIXED_REASONING_QUIZ_RATIO_DEFAULT;
     public static volatile int appreciateImageCode = 0;

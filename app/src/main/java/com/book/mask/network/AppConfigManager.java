@@ -29,11 +29,11 @@ public final class AppConfigManager {
         }
     }
 
-    public static String getDefaultModelDescription() {
-        String description = Share.defaultModelDescription;
-        return description == null || description.trim().isEmpty()
-                ? Share.DEFAULT_MODEL_DESCRIPTION
-                : description;
+    public static String getServerModel() {
+        String serverModel = Share.serverModel;
+        return serverModel == null || serverModel.trim().isEmpty()
+                ? Share.DEFAULT_SERVER_MODEL
+                : serverModel;
     }
 
     public static double getMixedReasoningQuizRatio() {
@@ -62,19 +62,19 @@ public final class AppConfigManager {
                     Collections.singletonMap("Accept", "application/json"));
             JSONObject config = new JSONObject(response);
             String latestVersion = getRequiredString(config, "latestVersion");
-            String defaultModel = getRequiredString(config, "defaultModel");
+            String serverModel = getRequiredString(config, "serverModel");
             double quizRatio = getRequiredQuizRatio(config);
             int appreciateImageCode = getAppreciateImageCode(config);
 
             Share.latestVersion = latestVersion;
-            Share.defaultModelDescription = defaultModel;
+            Share.serverModel = serverModel;
             Share.mixedReasoningQuizRatio = quizRatio;
             Share.appreciateImageCode = appreciateImageCode;
             Share.latestVersionTimestamp = System.currentTimeMillis();
         } catch (Exception e) {
             Share.latestVersionTimestamp = 0L;
             Share.latestVersion = "获取失败";
-            Share.defaultModelDescription = Share.DEFAULT_MODEL_DESCRIPTION;
+            Share.serverModel = Share.DEFAULT_SERVER_MODEL;
             Share.mixedReasoningQuizRatio = QuestionConst.MIXED_REASONING_QUIZ_RATIO_DEFAULT;
             Share.appreciateImageCode = 0;
             Log.w(TAG, "获取远端配置失败，使用本地默认配置", e);

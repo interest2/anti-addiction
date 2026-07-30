@@ -18,6 +18,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- 网络状态权限 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Android 9 及以下将图片保存到相册 -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <!-- Android 11+ 包可见性：用于在“添加 APP”时列出已安装的可启动应用 -->
     <queries>

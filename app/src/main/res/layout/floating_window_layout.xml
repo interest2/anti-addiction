@@ -25,8 +25,9 @@
             android:id="@+id/tv_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="防沉迷提醒"
+            android:text="理性提醒"
             android:textColor="#FFFFFF"
+            android:letterSpacing="0.12"
             android:textSize="24sp"
             android:textStyle="bold" />
 
@@ -89,7 +90,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="有志者事竟成"
-            android:textColor="#399C3F"
+            android:textColor="#F44336"
             android:textSize="24sp"
             android:textStyle="bold"
             android:gravity="start"

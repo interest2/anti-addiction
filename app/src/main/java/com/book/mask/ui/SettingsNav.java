@@ -1,11 +1,16 @@
 package com.book.mask.ui;
 
 import android.content.ActivityNotFoundException;
+import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
@@ -42,6 +47,7 @@ import java.util.Locale;
 public class SettingsNav extends Fragment {
     private static final String TAG = "SettingsNav";
     private static final long VERSION_BADGE_REFRESH_DELAY_MS = 500L;
+    private static final int REQUEST_WRITE_EXTERNAL_STORAGE = 1001;
     private static final String APPRECIATE_IMAGE_FILE_NAME = "appreciate_1.jpg";
 
     private RelaxManager relaxManager;
@@ -144,8 +150,85 @@ public class SettingsNav extends Fragment {
         new android.app.AlertDialog.Builder(requireContext())
                 .setTitle(R.string.appreciate_dialog_title)
                 .setView(imageView)
-                .setNegativeButton("关闭", null)
+                .setNegativeButton("保存到本地", (dialog, which) -> saveAppreciateImage())
+                .setPositiveButton("关闭", null)
                 .show();
+    }
+
+    private void saveAppreciateImage() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+                && requireContext().checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQUEST_WRITE_EXTERNAL_STORAGE
+            );
+            return;
+        }
+        writeAppreciateImageToGallery();
+    }
+
+    private void writeAppreciateImageToGallery() {
+        String fileName = "打赏支持_"
+                + new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date())
+                + ".jpg";
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            values.put(MediaStore.Images.Media.RELATIVE_PATH,
+                    Environment.DIRECTORY_PICTURES + "/防沉迷提醒");
+            values.put(MediaStore.Images.Media.IS_PENDING, 1);
+        }
+
+        Uri imageUri = null;
+        try {
+            imageUri = requireContext().getContentResolver().insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    values
+            );
+            if (imageUri == null) {
+                UiFeedback.showError(requireContext(), "保存失败：无法创建图片文件");
+                return;
+            }
+            try (InputStream input = getResources().openRawResource(R.drawable.appreciate_1);
+                 OutputStream output = requireContext().getContentResolver().openOutputStream(imageUri)) {
+                if (output == null) {
+                    throw new IllegalStateException("无法写入图片文件");
+                }
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, read);
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                values.clear();
+                values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                requireContext().getContentResolver().update(imageUri, values, null, null);
+            }
+            UiFeedback.show(requireContext(), "已保存到本地相册");
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "保存打赏图片失败", e);
+            if (imageUri != null) {
+                requireContext().getContentResolver().delete(imageUri, null, null);
+            }
+            UiFeedback.showError(requireContext(), "保存失败");
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_WRITE_EXTERNAL_STORAGE
+                && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            writeAppreciateImageToGallery();
+        } else if (requestCode == REQUEST_WRITE_EXTERNAL_STORAGE) {
+            UiFeedback.showError(requireContext(), "保存图片需要存储权限");
+        }
     }
 
     private void showBackupOptionsDialog() {

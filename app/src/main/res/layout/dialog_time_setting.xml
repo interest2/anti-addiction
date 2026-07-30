@@ -255,7 +255,7 @@
         android:background="#E0E0E0"
         android:layout_marginBottom="16dp" />
 
-    <!-- 更换悬浮窗警示文字来源 -->
+    <!-- 更换悬浮窗警示语来源 -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -277,7 +277,7 @@
             android:id="@+id/btn_change_floating_text_source"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="警示文字来源"
+            android:text="警示语来源"
             android:textSize="14sp"
             android:singleLine="true"
             android:paddingStart="8dp"

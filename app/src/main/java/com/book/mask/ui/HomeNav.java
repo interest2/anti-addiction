@@ -887,7 +887,7 @@ public class HomeNav extends Fragment implements
             }
         });
 
-        // 设置更换悬浮窗警示文字来源按钮点击事件
+        // 设置更换悬浮窗警示语来源按钮点击事件
         Button changeFloatingTextSourceButton = dialogView.findViewById(R.id.btn_change_floating_text_source);
         changeFloatingTextSourceButton.setOnClickListener(v -> {
             showFloatingTextSourceDialog(app);
@@ -912,7 +912,7 @@ public class HomeNav extends Fragment implements
     }
 
     /**
-     * 显示悬浮窗警示文字来源选择对话框（单选列表风格）
+     * 显示悬浮窗警示语来源选择对话框（单选列表风格）
      */
     private void showFloatingTextSourceDialog(CustomApp app) {
         String packageName = getPackageName(app);
@@ -928,13 +928,13 @@ public class HomeNav extends Fragment implements
         }
 
         new android.app.AlertDialog.Builder(requireContext())
-            .setTitle("选择悬浮窗警示文字来源")
+            .setTitle("选择悬浮窗警示语来源")
             .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
                 if (which == 0) {
                     showCustomTextInputDialog(app);
                 } else if (which == 1) {
                     recordFloatingTextSource(Const.DEFAULT_HINT_SOURCE, app);
-                    UiFeedback.show(requireContext(), "已选择大模型作为悬浮窗警示文字来源");
+                    UiFeedback.show(requireContext(), "已选择大模型作为悬浮窗警示语来源");
                 }
                 dialog.dismiss();
             })
@@ -947,11 +947,16 @@ public class HomeNav extends Fragment implements
      */
     private void showCustomTextInputDialog(CustomApp app) {
         EditText input = new EditText(requireContext());
-        input.setHint("请输入自定义警示文字（不超过100字）");
+        input.setHint("请输入自定义警示语（不超过100字）");
         input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(100)});
+        String currentCustomText = appSettingsManager.getAppHintCustomText(getPackageName(app));
+        if (!currentCustomText.isEmpty()) {
+            input.setText(currentCustomText);
+            input.setSelection(input.length());
+        }
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-            .setTitle("输入自定义警示文字")
+            .setTitle("输入自定义警示语")
             .setView(input)
             .setPositiveButton("确定", null)
             .setNegativeButton("取消", null)
@@ -963,7 +968,7 @@ public class HomeNav extends Fragment implements
                 if (!customText.isEmpty()) {
                     recordFloatingTextSource(Const.CUSTOM_HINT_SOURCE, customText, app);
                     dialog.dismiss();
-                    UiFeedback.show(requireContext(), "自定义警示文字设置成功");
+                    UiFeedback.show(requireContext(), "自定义警示语设置成功");
                 } else {
                     showInputError(input, "请输入内容");
                 }
@@ -972,7 +977,7 @@ public class HomeNav extends Fragment implements
     }
 
     /**
-     * 记录悬浮窗警示文字来源
+     * 记录悬浮窗警示语来源
      */
     private void recordFloatingTextSource(String source, String customText, CustomApp app) {
         // 获取当前选中的APP包名
@@ -987,11 +992,11 @@ public class HomeNav extends Fragment implements
         if (customText != null && !customText.isEmpty()) {
             appSettingsManager.setAppHintCustomText(currentAppPackage, customText);
         }
-        android.util.Log.d("HomeFragment", "APP " + currentAppPackage + " 悬浮窗警示文字来源已保存: " + source + ", 自定义文字: " + customText);
+        android.util.Log.d("HomeFragment", "APP " + currentAppPackage + " 悬浮窗警示语来源已保存: " + source + ", 自定义文字: " + customText);
     }
     
     /**
-     * 记录悬浮窗警示文字来源（重载方法，用于只有source参数的情况）
+     * 记录悬浮窗警示语来源（重载方法，用于只有source参数的情况）
      */
     private void recordFloatingTextSource(String source, CustomApp app) {
         recordFloatingTextSource(source, null, app);

@@ -38,7 +38,7 @@
         android:id="@+id/tv_release_notes_hint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="12dp"
         android:linksClickable="true"
         android:text="@string/release_notes_hint"
         android:textColor="#777777"
