@@ -1,5 +1,7 @@
 package com.book.mask.config;
 
+import com.book.mask.constant.QuestionConst;
+
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Locale;
@@ -11,8 +13,13 @@ public class Share {
 
     // 多APP状态管理
     public static Map<String, String> appStates = new HashMap<>(); // 使用包名作为键
+    public static final String DEFAULT_MODEL_DESCRIPTION = "GLM 的非高阶模型";
     public static volatile String latestVersion = "";
     public static volatile long latestVersionTimestamp = 0L;
+    public static volatile String defaultModelDescription = DEFAULT_MODEL_DESCRIPTION;
+    public static volatile double mixedReasoningQuizRatio =
+            QuestionConst.MIXED_REASONING_QUIZ_RATIO_DEFAULT;
+    public static volatile int appreciateImageCode = 0;
     public static CustomApp currentApp = null; // 当前活跃的APP（统一使用CustomApp）
     public static boolean isFloatingWindowVisible = false; // 悬浮窗是否显示
     public static Map<String, Boolean> appManuallyHidden = new HashMap<>(); // 每个APP的手动隐藏状态（使用包名作为键）

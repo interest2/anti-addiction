@@ -27,6 +27,7 @@ import com.book.mask.constant.Const;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.lifecycle.AppLifecycleObserver;
+import com.book.mask.network.AppConfigManager;
 import com.book.mask.network.DeviceInfoReporter;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.network.TextFetcher;
@@ -92,6 +93,8 @@ public class MainActivity extends AppCompatActivity {
         // 注册广播接收器
         registerRelaxedCountUpdateReceiver();
         
+        new Thread(AppConfigManager::refreshConfig).start();
+
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
         deviceInfoReporter.reportDeviceInfo();

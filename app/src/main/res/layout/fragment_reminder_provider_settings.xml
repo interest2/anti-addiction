@@ -46,10 +46,11 @@
         </FrameLayout>
 
         <TextView
+            android:id="@+id/tv_provider_default_description"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:text="@string/provider_default_description"
+            android:text="@string/provider_default_description_fallback"
             android:textColor="#555555"
             android:textSize="15sp" />
 
@@ -59,6 +60,7 @@
             android:layout_marginBottom="8dp"
             android:text="@string/provider_preset"
             android:textColor="#555555"
+            android:textStyle="bold"
             android:textSize="14sp" />
 
         <com.google.android.material.chip.ChipGroup
@@ -69,32 +71,14 @@
             app:selectionRequired="true"
             app:singleSelection="true" />
 
-        <LinearLayout
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_delete_provider"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
             android:layout_marginBottom="16dp"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_activate_provider"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="@string/provider_activate"
-                android:visibility="gone" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_delete_provider"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_marginStart="10dp"
-                android:layout_weight="1"
-                android:text="@string/delete"
-                android:visibility="gone" />
-
-        </LinearLayout>
+            android:text="@string/delete"
+            android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/container_provider_details"

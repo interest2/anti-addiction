@@ -11,13 +11,6 @@ public final class ProviderPresetCatalog {
 
     private static final List<ProviderPreset> PRESETS = Collections.unmodifiableList(Arrays.asList(
             new ProviderPreset(
-                    "openai",
-                    R.string.provider_preset_openai,
-                    "https://api.openai.com/v1/chat/completions",
-                    "gpt-5.6-luna",
-                    "gpt-5.6-terra",
-                    "gpt-5.6-sol"),
-            new ProviderPreset(
                     "deepseek",
                     R.string.provider_preset_deepseek,
                     "https://api.deepseek.com/chat/completions",
@@ -35,7 +28,14 @@ public final class ProviderPresetCatalog {
                     "https://open.bigmodel.cn/api/paas/v4/chat/completions",
                     "glm-4.7-flash",
                     "glm-4.6",
-                    "glm-5.2")
+                    "glm-5.2"),
+            new ProviderPreset(
+                    "openai",
+                    R.string.provider_preset_openai,
+                    "https://api.openai.com/v1/chat/completions",
+                    "gpt-5.6-luna",
+                    "gpt-5.6-terra",
+                    "gpt-5.6-sol")
     ));
 
     private ProviderPresetCatalog() {

@@ -1,11 +1,6 @@
 package com.book.mask.network;
 
-import com.book.mask.constant.CloudConst;
 import com.book.mask.config.Share;
-import com.book.mask.util.ContentUtils;
-
-import java.io.IOException;
-import java.util.Collections;
 
 public final class LatestVersionManager {
     private static final Object VERSION_REQUEST_LOCK = new Object();
@@ -31,25 +26,8 @@ public final class LatestVersionManager {
     }
 
     private static String requestLatestVersion() {
-        try {
-            String response = ContentUtils.doHttpPost(
-                    CloudConst.DOMAIN_URL + CloudConst.LATEST_VERSION_PATH,
-                    null,
-                    Collections.singletonMap("Content-Type", CloudConst.CONTENT_TYPE)
-            );
-            String version = response == null ? "" : response.trim();
-            if (version.isEmpty()) {
-                Share.latestVersion = "获取失败";
-                return null;
-            }
-
-            Share.latestVersion = version;
-            Share.latestVersionTimestamp = System.currentTimeMillis();
-            return version;
-        } catch (IOException e) {
-            Share.latestVersion = "获取失败";
-            return null;
-        }
+        AppConfigManager.refreshConfig();
+        return getFreshLatestVersion();
     }
 
     public static String getFreshLatestVersion() {

@@ -15,6 +15,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -27,6 +28,7 @@ import com.book.mask.R;
 import com.book.mask.personalize.BackupManager;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.config.Share;
+import com.book.mask.network.AppConfigManager;
 import com.book.mask.network.LatestVersionManager;
 
 import java.io.ByteArrayOutputStream;
@@ -40,6 +42,7 @@ import java.util.Locale;
 public class SettingsNav extends Fragment {
     private static final String TAG = "SettingsNav";
     private static final long VERSION_BADGE_REFRESH_DELAY_MS = 500L;
+    private static final String APPRECIATE_IMAGE_FILE_NAME = "appreciate_1.jpg";
 
     private RelaxManager relaxManager;
     private SettingsDialogManager settingsDialogManager;
@@ -81,6 +84,8 @@ public class SettingsNav extends Fragment {
 
         setupMenuEntries(view);
         updateVersionBadge(view);
+        updateAppreciateVisibility(view);
+        refreshAppreciateVisibility(view);
         return view;
     }
 
@@ -89,12 +94,58 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> showVersionUpdateDialog());
         view.findViewById(R.id.row_install_troubleshooting)
                 .setOnClickListener(v -> showInstallTroubleshootingDialog());
+        view.findViewById(R.id.row_appreciate)
+                .setOnClickListener(v -> showAppreciateDialog());
         view.findViewById(R.id.row_floating_settings)
                 .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
         view.findViewById(R.id.row_export_backup)
                 .setOnClickListener(v -> showBackupOptionsDialog());
         view.findViewById(R.id.row_special_details)
                 .setOnClickListener(v -> openSpecialDetails());
+    }
+
+    private void refreshAppreciateVisibility(View view) {
+        new Thread(() -> {
+            AppConfigManager.refreshConfig();
+            versionBadgeHandler.post(() -> {
+                if (isAdded()) {
+                    updateAppreciateVisibility(view);
+                }
+            });
+        }).start();
+    }
+
+    private void updateAppreciateVisibility(View view) {
+        boolean visible = AppConfigManager.isAppreciateEnabled(getAppreciateImageCode());
+        int visibility = visible ? View.VISIBLE : View.GONE;
+        view.findViewById(R.id.row_appreciate).setVisibility(visibility);
+        view.findViewById(R.id.divider_appreciate_bottom).setVisibility(visibility);
+    }
+
+    private static int getAppreciateImageCode() {
+        int separator = APPRECIATE_IMAGE_FILE_NAME.lastIndexOf('_');
+        int extension = APPRECIATE_IMAGE_FILE_NAME.lastIndexOf('.');
+        if (separator < 0 || extension <= separator + 1) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(APPRECIATE_IMAGE_FILE_NAME.substring(separator + 1, extension));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private void showAppreciateDialog() {
+        ImageView imageView = new ImageView(requireContext());
+        int size = (int) (280 * getResources().getDisplayMetrics().density);
+        imageView.setLayoutParams(new ViewGroup.LayoutParams(size, size));
+        imageView.setImageResource(R.drawable.appreciate_1);
+        imageView.setAdjustViewBounds(true);
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.appreciate_dialog_title)
+                .setView(imageView)
+                .setNegativeButton("关闭", null)
+                .show();
     }
 
     private void showBackupOptionsDialog() {

@@ -5,6 +5,7 @@ import android.content.Context;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
+import com.book.mask.network.reminder.ReminderProviderConfigStore;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -20,6 +21,8 @@ import java.util.Map;
  * <p>
  * 只导出用户主动配置的项，刻意排除运行态数据（休闲时刻已用次数 / 悬浮窗关闭记录 /
  * 各 APP 的解禁计时等），避免把临时状态一并带走。各 APP 的解禁间隔档位属用户配置，纳入备份。
+ * 大模型 Provider 配置（endpoint/model/名称/家选择）纳入备份，但密钥（ProviderSecretStore）
+ * 刻意排除，导入后需用户重填密钥再启用。
  */
 public class BackupManager {
 
@@ -72,10 +75,12 @@ public class BackupManager {
 
     private final MMKV settings;
     private final MMKV customApps;
+    private final ReminderProviderConfigStore providerStore;
 
     public BackupManager(Context context) {
         this.settings = SettingsStorage.open();
         this.customApps = MMKV.mmkvWithID(CUSTOM_APPS_STORAGE_ID);
+        this.providerStore = new ReminderProviderConfigStore();
     }
 
     /**
@@ -88,7 +93,25 @@ public class BackupManager {
         root.put("home", buildHome());
         root.put("personalize", buildPersonalize());
         root.put("more", buildMore());
+        Map<String, Object> reminderProvider = buildReminderProvider();
+        if (reminderProvider != null) {
+            root.put("reminderProvider", reminderProvider);
+        }
         return new GsonBuilder().setPrettyPrinting().create().toJson(root);
+    }
+
+    /**
+     * 大模型 Provider 配置：仅导出 endpoint/model/名称等定义，密钥不导出。
+     * 无任何自定义 Provider 时返回 null，不占备份。
+     */
+    private Map<String, Object> buildReminderProvider() {
+        String profiles = providerStore.exportProfilesJson();
+        if (profiles == null || "[]".equals(profiles)) {
+            return null;
+        }
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("profiles", profiles);
+        return map;
     }
 
     private Map<String, Object> buildHome() {
@@ -223,6 +246,11 @@ public class BackupManager {
             importInts(more, MORE_INT_KEYS, result);
         }
 
+        JsonObject reminderProvider = optObject(root, "reminderProvider");
+        if (reminderProvider != null) {
+            importReminderProvider(reminderProvider, result);
+        }
+
         // 手动导入备份说明用户已熟悉个性化设置，不再显示悬浮窗设置途径提示
         settings.putBoolean(AppSettingsManager.KEY_FLOATING_STRICT_REMINDER_SETTINGS_CLICKED, true)
                 .commit();
@@ -254,6 +282,18 @@ public class BackupManager {
             } catch (Exception e) {
                 result.skipped++;
             }
+        }
+    }
+
+    private void importReminderProvider(JsonObject provider, ImportResult result) {
+        if (!has(provider, "profiles")) {
+            return;
+        }
+        try {
+            int merged = providerStore.restoreProfiles(provider.get("profiles").getAsString());
+            result.imported += merged;
+        } catch (Exception e) {
+            result.skipped++;
         }
     }
 

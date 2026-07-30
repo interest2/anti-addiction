@@ -122,6 +122,48 @@ public final class ReminderProviderConfigStore {
         return true;
     }
 
+    /** 备份导出：返回原始 profiles JSON（仅含 endpoint/model/名称等定义，不含密钥）。 */
+    public synchronized String exportProfilesJson() {
+        return mmkv.getString(KEY_PROFILES, "[]");
+    }
+
+    /**
+     * 备份导入：按 profileId 逐条 upsert 合并 profiles，不改动当前激活项。
+     * 密钥不在备份内，故不自动激活导入的自定义 Provider（避免运行时因缺密钥失败）。
+     *
+     * @return 实际合并（新增或更新）的 Provider 条数
+     */
+    public synchronized int restoreProfiles(String profilesJson) {
+        ReminderProviderConfig[] parsed;
+        try {
+            parsed = gson.fromJson(profilesJson, ReminderProviderConfig[].class);
+        } catch (JsonSyntaxException e) {
+            return 0;
+        }
+        if (parsed == null || parsed.length == 0) {
+            return 0;
+        }
+        List<ReminderProviderConfig> profiles = new ArrayList<>(Arrays.asList(readProfiles()));
+        int count = 0;
+        for (ReminderProviderConfig incoming : parsed) {
+            if (incoming == null || incoming.getProfileId() == null
+                    || ReminderProviderConfig.OFFICIAL_PROFILE_ID.equals(incoming.getProfileId())) {
+                continue;
+            }
+            int index = indexOf(profiles, incoming.getProfileId());
+            if (index < 0) {
+                profiles.add(incoming);
+            } else {
+                profiles.set(index, incoming);
+            }
+            count++;
+        }
+        if (count > 0) {
+            mmkv.putString(KEY_PROFILES, gson.toJson(profiles)).commit();
+        }
+        return count;
+    }
+
     private ReminderProviderConfig[] readProfiles() {
         String json = mmkv.getString(KEY_PROFILES, "[]");
         try {

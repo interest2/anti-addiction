@@ -576,8 +576,9 @@ public class SettingsDialogManager {
         }
         
         datePickerDialog.setTitle("选择目标完成日期");
-        // 日期组件里已高亮所选日期，隐藏顶栏下方冗余的日期回显，并削减组件与按钮间的大段留白
-        datePickerDialog.setOnShowListener(d -> trimDatePickerChrome(datePickerDialog.getDatePicker()));
+        // 日期组件里已高亮所选日期，隐藏顶栏下方冗余的日期回显，并削减组件与按钮间的大段留白。
+        // 必须在 show() 之前完成精简：若放到 OnShowListener 里做，弹窗已显示后再改尺寸会触发重新布局与重新居中，造成肉眼可见的位置跳变/闪烁。
+        trimDatePickerChrome(datePickerDialog.getDatePicker());
         datePickerDialog.show();
     }
 
@@ -1051,46 +1052,76 @@ public class SettingsDialogManager {
         final int[] selectedFontColor = { appSettingsManager.getFloatingStrictReminderFontColor() };
         addStrictReminderColorPicker(layout, selectedFontColor);
 
-        new android.app.AlertDialog.Builder(context)
-            .setTitle("座右铭")
-            .setView(layout)
-            .setPositiveButton("保存", (dialog, which) -> {
-                String reminder = input.getText().toString().trim();
-                int fontSize = fontSizeSeekBar.getProgress() + 12; // 获取当前字体大小
+        final android.app.AlertDialog[] dialogRef = new android.app.AlertDialog[1];
+        addStrictReminderActionButtons(layout, dialogRef, input, fontSizeSeekBar, selectedFontColor);
 
-                appSettingsManager.setFloatingStrictReminder(reminder);
-                appSettingsManager.setFloatingStrictReminderFontSize(fontSize);
-                appSettingsManager.setFloatingStrictReminderFontColor(selectedFontColor[0]);
+        dialogRef[0] = new android.app.AlertDialog.Builder(context)
+                .setTitle("座右铭")
+                .setView(layout)
+                .create();
+        dialogRef[0].show();
+    }
 
-                if (reminder.isEmpty()) {
-                    UiFeedback.show(context, "已保存");
-                } else {
-                    UiFeedback.show(
-                            context,
-                            "已保存日常提醒：" + reminder + "，字体大小：" + fontSize + "sp");
-                }
-            })
-            .setNegativeButton("取消", null)
-            .show();
+    private void addStrictReminderActionButtons(
+            LinearLayout parent,
+            android.app.AlertDialog[] dialogRef,
+            EditText input,
+            android.widget.SeekBar fontSizeSeekBar,
+            int[] selectedFontColor) {
+        float density = context.getResources().getDisplayMetrics().density;
+        LinearLayout row = new LinearLayout(context);
+        row.setGravity(Gravity.END);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowParams.topMargin = (int) (20 * density);
+        row.setLayoutParams(rowParams);
+
+        Button cancelButton = new Button(context);
+        cancelButton.setText("取消");
+        cancelButton.setOnClickListener(v -> dialogRef[0].dismiss());
+        row.addView(cancelButton);
+
+        Button saveButton = new Button(context);
+        saveButton.setText("保存");
+        saveButton.setOnClickListener(v -> {
+            String reminder = input.getText().toString().trim();
+            int fontSize = fontSizeSeekBar.getProgress() + 12;
+            appSettingsManager.setFloatingStrictReminder(reminder);
+            appSettingsManager.setFloatingStrictReminderFontSize(fontSize);
+            appSettingsManager.setFloatingStrictReminderFontColor(selectedFontColor[0]);
+            dialogRef[0].dismiss();
+            showStrictReminderSavedFeedback(reminder, fontSize);
+        });
+        row.addView(saveButton);
+        parent.addView(row);
+    }
+
+    private void showStrictReminderSavedFeedback(String reminder, int fontSize) {
+        if (reminder.isEmpty()) {
+            UiFeedback.show(context, "已保存");
+            return;
+        }
+        UiFeedback.show(context, "已保存日常提醒：" + reminder + "，字体大小：" + fontSize + "sp");
     }
 
     /**
-     * 座右铭字体颜色候选（10 种常见颜色，第一种为默认绿色）
+     * 座右铭字体颜色候选（7 种常见颜色，第一种为默认绿色）
      */
     private static final int[] STRICT_REMINDER_FONT_COLORS = {
-            AppSettingsManager.DEFAULT_STRICT_REMINDER_FONT_COLOR, // 绿色（默认）
             0xFF000000, // 黑色
+            AppSettingsManager.DEFAULT_STRICT_REMINDER_FONT_COLOR, // 绿色（默认）
             0xFFF44336, // 红色
-            0xFFFFC107, // 琥珀
+            0xFFE91E63, // 粉色
+            0xFF9C27B0, // 紫色
             0xFF2196F3, // 蓝色
             0xFF3F51B5, // 靛蓝
-            0xFF9C27B0, // 紫色
-            0xFFE91E63, // 粉色
     };
 
     /**
      * 在座右铭设置对话框中追加字体颜色选择区域。
-     * 展示 10 个圆形色块，点击切换选中态，选中结果写回 selectedColor[0]。
+     * 展示圆形色块，点击切换选中态，选中结果写回 selectedColor[0]。
      */
     private void addStrictReminderColorPicker(LinearLayout parent, final int[] selectedColor) {
         float density = context.getResources().getDisplayMetrics().density;

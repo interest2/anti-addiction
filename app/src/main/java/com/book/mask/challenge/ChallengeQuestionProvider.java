@@ -8,6 +8,7 @@ import android.util.Log;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.CloudConst;
 import com.book.mask.constant.QuestionConst;
+import com.book.mask.network.AppConfigManager;
 import com.book.mask.personalize.ChallengeSettingsManager;
 import com.book.mask.util.ArithmeticUtils;
 import com.book.mask.util.ContentUtils;
@@ -24,11 +25,6 @@ import java.util.concurrent.ConcurrentMap;
 final class ChallengeQuestionProvider {
 
     private static final String TAG = "ChallengeProvider";
-    private static final String FIRST_Q_MIXED = "小红书社区组织挖红薯：\n"
-            + "如果每位主包挖 12 个，地里还剩 75 个；\n"
-            + "如果每位主包挖 29 个，就还缺 180 个。\n"
-            + "问共有多少位主包参加了挖红薯？";
-    private static final String FIRST_A_MIXED = "15";
     private static final String FIRST_Q_REASON = "甲、乙、丙、丁四人参加比赛，名次各不相同。已知：\n" +
             "①甲、乙中恰有一人是第一名；\n" +
             "②若甲是第一名，则丙是第三名；\n" +
@@ -54,9 +50,6 @@ final class ChallengeQuestionProvider {
 
     static {
         REMOTE_CACHE.put(
-                ChallengeType.MIXED,
-                new Question(FIRST_Q_MIXED, FIRST_A_MIXED));
-        REMOTE_CACHE.put(
                 ChallengeType.REASONING,
                 new Question(FIRST_Q_REASON, FIRST_A_REASON));
         REMOTE_CACHE.put(
@@ -78,8 +71,8 @@ final class ChallengeQuestionProvider {
         if (configuredType != ChallengeType.MIXED) {
             return configuredType;
         }
-        return random.nextInt(100) < QuestionConst.MIXED_REMOTE_CHALLENGE_PERCENT
-                ? ChallengeType.MIXED
+        return random.nextDouble() < AppConfigManager.getMixedReasoningQuizRatio()
+                ? ChallengeType.REASONING
                 : ChallengeType.ARITHMETIC;
     }
 

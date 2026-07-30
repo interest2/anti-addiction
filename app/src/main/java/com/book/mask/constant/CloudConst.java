@@ -8,7 +8,7 @@ public class CloudConst {
     public static final String CHALLENGE = "/challenge";
     public static final String ENGLISH_READING = "/reading";
     public static final String REPORT_PATH = "/report";
-    public static final String LATEST_VERSION_PATH = "/latestAppVersion";
+    public static final String GET_CONFIG_PATH = "/getConfig";
     public static final String CONTENT_TYPE = "application/json";
 
 }

@@ -62,6 +62,40 @@ public class ContentUtils {
         }
     }
 
+    /**
+     * 通用 GET 请求方法。
+     */
+    public static String doHttpGet(String urlString, Map<String, String> headers) throws IOException {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(urlString).openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(90000);
+            conn.setDoInput(true);
+            if (headers != null) {
+                for (Map.Entry<String, String> entry : headers.entrySet()) {
+                    conn.setRequestProperty(entry.getKey(), entry.getValue());
+                }
+            }
+            int responseCode = conn.getResponseCode();
+            if (responseCode < 200 || responseCode >= 300) {
+                throw new IOException("HTTP 请求失败，状态码: " + responseCode);
+            }
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), "UTF-8"))) {
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                return response.toString();
+            }
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
     public static String parseRespJson(String response) throws JSONException {
         if (response == null || response.trim().isEmpty()) {
             Log.w(TAG, "响应内容为空或null");

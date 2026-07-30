@@ -10,8 +10,8 @@ public final class QuestionConst {
     public static final int SUB_LEN_DEFAULT = 5;
     public static final int MUL_FIRST_LEN_DEFAULT = 2;
     public static final int MUL_SECOND_LEN_DEFAULT = 2;
-    // 混合题型比例：云端题 20%，其余 80% 为本地算术题
-    public static final int MIXED_REMOTE_CHALLENGE_PERCENT = 20;
+    // 混合题型比例默认值：推理题 20%，其余 80% 为本地算术题
+    public static final double MIXED_REASONING_QUIZ_RATIO_DEFAULT = 0.2D;
     // 算术题-设置：自定义难度 位数范围
     public static final int ADD_LEN_MIN = 4;
     public static final int ADD_LEN_MAX = 7;

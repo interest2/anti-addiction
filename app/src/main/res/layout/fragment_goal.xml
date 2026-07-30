@@ -100,7 +100,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginEnd="6dp"
                             android:layout_weight="1"
-                            android:backgroundTint="#FF9800"
+                            android:backgroundTint="#4CAF50"
                             android:minWidth="0dp"
                             android:paddingStart="8dp"
                             android:paddingEnd="8dp"
