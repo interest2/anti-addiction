@@ -65,6 +65,10 @@ public class GoalNav extends Fragment {
             settingsDialogManager.showMathDifficultyDialog();
         });
         
+        View reminderStyleRow = view.findViewById(R.id.btn_reminder_style);
+        reminderStyleRow.setOnClickListener(v ->
+                settingsDialogManager.showReminderStyleDialog(this::onReminderStyleChanged));
+
         // 设置悬浮窗额外显示日常提醒按钮
         View floatingStrictReminderRow = view.findViewById(
                 R.id.btn_floating_strict_reminder);
@@ -101,15 +105,23 @@ public class GoalNav extends Fragment {
 
     private void onMotivationTagChanged() {
         updateGoalInfo();
+        fetchLatestReminderText("目标变更后");
+    }
+
+    private void onReminderStyleChanged() {
+        fetchLatestReminderText("风格变更后");
+    }
+
+    private void fetchLatestReminderText(String reason) {
         textFetcher.fetchLatestText(new TextFetcher.OnTextFetchListener() {
             @Override
             public void onTextFetched(String text) {
-                android.util.Log.d("GoalNav", "目标变更后提醒文字生成成功");
+                android.util.Log.d("GoalNav", reason + "提醒文字生成成功");
             }
 
             @Override
             public void onFetchError(String error) {
-                android.util.Log.w("GoalNav", "目标变更后提醒文字生成失败: " + error);
+                android.util.Log.w("GoalNav", reason + "提醒文字生成失败: " + error);
             }
         });
     }

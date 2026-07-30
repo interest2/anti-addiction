@@ -34,6 +34,8 @@ public final class OfficialCloudProvider implements ReminderProvider {
 
             JSONObject requestJson = new JSONObject();
             requestJson.put("tag", request.getMotivationTag());
+            requestJson.put("style", request.getStyle());
+            requestJson.put("customStyle", request.getCustomStyle());
             requestJson.put("devId", androidId);
             requestJson.put("version", packageInfo.versionName);
 

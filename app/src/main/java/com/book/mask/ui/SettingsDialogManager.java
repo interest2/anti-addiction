@@ -480,7 +480,7 @@ public class SettingsDialogManager {
         dialogOptions[dialogOptions.length - 1] = customTagOption;
 
         new android.app.AlertDialog.Builder(context)
-                .setTitle("选择或自定义目标")
+                .setTitle("设定目标")
                 .setItems(dialogOptions, (dialog, which) -> {
                     if (which == predefinedTags.length) {
                         // 点击了"自定义..."
@@ -506,6 +506,12 @@ public class SettingsDialogManager {
         // 设置输入长度限制为8
         input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(10) });
         input.setHint("不超过 10 个字");
+        String currentTag = appSettingsManager.getMotivationTag();
+        if (!Const.TARGET_TO_BE_SET.equals(currentTag)
+                && !java.util.Arrays.asList(AppSettingsManager.getAvailableTags()).contains(currentTag)) {
+            input.setText(currentTag);
+            input.setSelection(input.length());
+        }
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
             .setTitle("定个目标")
@@ -529,6 +535,75 @@ public class SettingsDialogManager {
         dialog.show();
     }
     
+    public void showReminderStyleDialog(Runnable onSettingChanged) {
+        final String[] styles = {
+                AppSettingsManager.DEFAULT_REMINDER_STYLE,
+                "激励",
+                "鼓励",
+                "毒舌",
+                "温馨",
+                "发人深省",
+                "嘲讽",
+                "自定义"
+        };
+        String currentStyle = appSettingsManager.getReminderStyle();
+        int checkedItem = java.util.Arrays.asList(styles).indexOf(currentStyle);
+        if (checkedItem < 0) {
+            checkedItem = 0;
+        }
+
+        new android.app.AlertDialog.Builder(context)
+                .setTitle("选择警示语风格")
+                .setSingleChoiceItems(styles, checkedItem, (dialog, which) -> {
+                    String selectedStyle = styles[which];
+                    if ("自定义".equals(selectedStyle)) {
+                        dialog.dismiss();
+                        showCustomReminderStyleInputDialog(onSettingChanged);
+                        return;
+                    }
+                    appSettingsManager.setReminderStyle(selectedStyle);
+                    dialog.dismiss();
+                    UiFeedback.show(context, "已设置为：" + selectedStyle);
+                    if (onSettingChanged != null) {
+                        onSettingChanged.run();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void showCustomReminderStyleInputDialog(Runnable onSettingChanged) {
+        EditText input = new EditText(context);
+        input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(100)});
+        input.setHint("例如：像严厉但关心我的朋友一样提醒我");
+        input.setText(appSettingsManager.getReminderCustomStyle());
+        input.setSelection(input.length());
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("自定义警示语风格")
+                .setView(input)
+                .setPositiveButton("确定", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    input.setError(null);
+                    String customStyle = input.getText().toString().trim();
+                    if (customStyle.isEmpty()) {
+                        showInputError(input, "请输入风格要求");
+                        return;
+                    }
+                    appSettingsManager.setReminderCustomStyle(customStyle);
+                    appSettingsManager.setReminderStyle("自定义");
+                    dialog.dismiss();
+                    UiFeedback.show(context, "已设置为：自定义");
+                    if (onSettingChanged != null) {
+                        onSettingChanged.run();
+                    }
+                }));
+        dialog.show();
+    }
+
     /**
      * 显示目标完成日期选择对话框
      */
@@ -1107,12 +1182,12 @@ public class SettingsDialogManager {
     }
 
     /**
-     * 座右铭字体颜色候选（7 种常见颜色，第一种为默认绿色）
+     * 座右铭字体颜色候选（7 种常见颜色，红色为默认）
      */
     private static final int[] STRICT_REMINDER_FONT_COLORS = {
             0xFF000000, // 黑色
-            AppSettingsManager.DEFAULT_STRICT_REMINDER_FONT_COLOR, // 绿色（默认）
-            0xFFF44336, // 红色
+            AppSettingsManager.DEFAULT_STRICT_REMINDER_FONT_COLOR, // 红色（默认）
+            0xFF399C3F, // 绿色
             0xFFE91E63, // 粉色
             0xFF9C27B0, // 紫色
             0xFF2196F3, // 蓝色

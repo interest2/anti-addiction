@@ -12,7 +12,7 @@ import com.tencent.mmkv.MMKV;
  */
 public class AppSettingsManager {
 
-    // 每个APP独立的悬浮窗警示文字来源相关
+    // 每个APP独立的悬浮窗警示语来源相关
     static final String KEY_APP_HINT_SOURCE = "app_hint_source_";
     static final String KEY_APP_HINT_CUSTOM = "app_hint_custom_";
 
@@ -23,7 +23,7 @@ public class AppSettingsManager {
     static final String KEY_FLOATING_STRICT_REMINDER_FONT_COLOR = "floating_strict_reminder_font_color";
 
     // 座右铭默认字体颜色（与布局 floating_window_layout.xml 中 tv_strict_reminder 一致）
-    public static final int DEFAULT_STRICT_REMINDER_FONT_COLOR = 0xFF399C3F;
+    public static final int DEFAULT_STRICT_REMINDER_FONT_COLOR = 0xFFF44336;
 
     // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
@@ -34,9 +34,12 @@ public class AppSettingsManager {
     private static final int DEFAULT_TOP_OFFSET = 130;
     private static final int DEFAULT_BOTTOM_OFFSET = 230;
 
-    // 个人目标相关
+    // 个人目标与大模型提醒风格相关
     static final String KEY_MOTIVATION_TAG = "motivation_tag";
     static final String KEY_TARGET_COMPLETION_DATE = "target_completion_date";
+    static final String KEY_REMINDER_STYLE = "reminder_style";
+    static final String KEY_REMINDER_CUSTOM_STYLE = "reminder_custom_style";
+    public static final String DEFAULT_REMINDER_STYLE = "默认";
 
     // 悬浮窗位置相关
     static final String KEY_FLOATING_TOP_OFFSET = "floating_top_offset";
@@ -50,40 +53,40 @@ public class AppSettingsManager {
         mmkv = SettingsStorage.open();
     }
 
-    // ===== 悬浮窗警示文字来源相关方法 =====
+    // ===== 悬浮窗警示语来源相关方法 =====
 
     /**
-     * 设置指定APP的悬浮窗警示文字来源
+     * 设置指定APP的悬浮窗警示语来源
      */
     public void setAppHintSource(String packageName, String source) {
         mmkv.putString(KEY_APP_HINT_SOURCE + packageName, source).commit();
-        android.util.Log.d("SettingsManager", "设置APP " + packageName + " 悬浮窗警示文字来源: " + source);
+        android.util.Log.d("SettingsManager", "设置APP " + packageName + " 悬浮窗警示语来源: " + source);
     }
 
     /**
-     * 获取指定APP的悬浮窗警示文字来源
+     * 获取指定APP的悬浮窗警示语来源
      */
     public String getAppHintSource(String packageName) {
         return mmkv.getString(KEY_APP_HINT_SOURCE + packageName, Const.DEFAULT_HINT_SOURCE);
     }
 
     /**
-     * 设置指定APP的自定义悬浮窗警示文字
+     * 设置指定APP的自定义悬浮窗警示语
      */
     public void setAppHintCustomText(String packageName, String customText) {
         mmkv.putString(KEY_APP_HINT_CUSTOM + packageName, customText).commit();
-        android.util.Log.d("SettingsManager", "设置APP " + packageName + " 自定义悬浮窗警示文字: " + customText);
+        android.util.Log.d("SettingsManager", "设置APP " + packageName + " 自定义悬浮窗警示语: " + customText);
     }
 
     /**
-     * 获取指定APP的自定义悬浮窗警示文字
+     * 获取指定APP的自定义悬浮窗警示语
      */
     public String getAppHintCustomText(String packageName) {
         return mmkv.getString(KEY_APP_HINT_CUSTOM + packageName, "");
     }
 
     /**
-     * 清除指定APP在本管理器中的所有持久化设置（悬浮窗警示文字来源、自定义文字等）
+     * 清除指定APP在本管理器中的所有持久化设置（悬浮窗警示语来源、自定义文字等）
      */
     public void clearAppSettings(String packageName) {
         if (packageName == null) return;
@@ -228,6 +231,22 @@ public class AppSettingsManager {
      */
     public String getTargetCompletionDate() {
         return mmkv.getString(KEY_TARGET_COMPLETION_DATE, Const.TARGET_TO_BE_SET);
+    }
+
+    public void setReminderStyle(String style) {
+        mmkv.putString(KEY_REMINDER_STYLE, style).commit();
+    }
+
+    public String getReminderStyle() {
+        return mmkv.getString(KEY_REMINDER_STYLE, DEFAULT_REMINDER_STYLE);
+    }
+
+    public void setReminderCustomStyle(String style) {
+        mmkv.putString(KEY_REMINDER_CUSTOM_STYLE, style).commit();
+    }
+
+    public String getReminderCustomStyle() {
+        return mmkv.getString(KEY_REMINDER_CUSTOM_STYLE, "");
     }
 
     /**

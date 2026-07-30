@@ -19,36 +19,61 @@ final class ReminderTextCache {
 
     private final MMKV mmkv = MMKV.mmkvWithID(STORAGE_ID);
 
-    String buildKey(ReminderProviderConfig config, String motivationTag) {
+    String buildKey(
+            ReminderProviderConfig config,
+            String motivationTag,
+            String style,
+            String customStyle) {
         String source = config.cacheIdentity()
                 + "|" + motivationTag
+                + "|style:" + style
+                + "|customStyle:" + customStyle
                 + "|prompt:" + ReminderTextPolicy.PROMPT_VERSION;
         return sha256(source);
     }
 
-    String getText(ReminderProviderConfig config, String motivationTag) {
-        String key = buildKey(config, motivationTag);
+    String getText(
+            ReminderProviderConfig config,
+            String motivationTag,
+            String style,
+            String customStyle) {
+        String key = buildKey(config, motivationTag, style, customStyle);
         String text = mmkv.getString(textKey(key), null);
-        if (text == null && config.isOfficial()) {
+        if (text == null && config.isOfficial() && isDefaultStyle(style, customStyle)) {
             migrateLegacyOfficialCache(key);
             text = mmkv.getString(textKey(key), null);
         }
         return text;
     }
 
-    long getUpdatedAt(ReminderProviderConfig config, String motivationTag) {
-        String key = buildKey(config, motivationTag);
-        if (!mmkv.containsKey(textKey(key)) && config.isOfficial()) {
+    long getUpdatedAt(
+            ReminderProviderConfig config,
+            String motivationTag,
+            String style,
+            String customStyle) {
+        String key = buildKey(config, motivationTag, style, customStyle);
+        if (!mmkv.containsKey(textKey(key))
+                && config.isOfficial()
+                && isDefaultStyle(style, customStyle)) {
             migrateLegacyOfficialCache(key);
         }
         return mmkv.getLong(updatedKey(key), 0);
     }
 
-    void put(ReminderProviderConfig config, String motivationTag, String text) {
-        String key = buildKey(config, motivationTag);
+    void put(
+            ReminderProviderConfig config,
+            String motivationTag,
+            String style,
+            String customStyle,
+            String text) {
+        String key = buildKey(config, motivationTag, style, customStyle);
         mmkv.putString(textKey(key), text)
                 .putLong(updatedKey(key), System.currentTimeMillis())
                 .commit();
+    }
+
+    private boolean isDefaultStyle(String style, String customStyle) {
+        return "默认".equals(style) && (customStyle == null || customStyle.isEmpty());
     }
 
     private synchronized void migrateLegacyOfficialCache(String targetKey) {

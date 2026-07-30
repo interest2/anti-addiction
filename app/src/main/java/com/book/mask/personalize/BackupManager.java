@@ -38,6 +38,8 @@ public class BackupManager {
     private static final String[] PERSONALIZE_STRING_KEYS = {
             AppSettingsManager.KEY_MOTIVATION_TAG,             // 目标
             AppSettingsManager.KEY_TARGET_COMPLETION_DATE,     // 目标日期
+            AppSettingsManager.KEY_REMINDER_STYLE,             // 大模型提醒风格
+            AppSettingsManager.KEY_REMINDER_CUSTOM_STYLE,      // 自定义提醒风格
             AppSettingsManager.KEY_FLOATING_STRICT_REMINDER,   // 座右铭内容
             ChallengeSettingsManager.KEY_MATH_QUESTION_TYPE,   // 题目类型
             ChallengeSettingsManager.KEY_MATH_DIFFICULTY_MODE, // 算术题难度模式（default / custom）
@@ -120,7 +122,7 @@ public class BackupManager {
         home.put("customAppsList", customApps.getString(KEY_CUSTOM_APPS_LIST, "[]"));
         home.put("predefinedModifications",
                 customApps.getString(KEY_PREDEFINED_MODIFICATIONS, "[]"));
-        // 各卡片的警示文字来源、悬浮窗大小
+        // 各卡片的警示语来源、悬浮窗大小
         home.put("appSettings", buildPerAppSettings());
         return home;
     }

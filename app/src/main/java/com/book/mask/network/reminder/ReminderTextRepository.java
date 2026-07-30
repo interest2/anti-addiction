@@ -70,15 +70,23 @@ public final class ReminderTextRepository {
 
     public String getCachedText() {
         ReminderProviderConfig config = configStore.getActiveConfig();
-        String tag = appSettingsManager.getMotivationTag();
-        String cachedText = cache.getText(config, tag);
+        ReminderRequest request = createCurrentRequest();
+        String cachedText = cache.getText(
+                config,
+                request.getMotivationTag(),
+                request.getStyle(),
+                request.getCustomStyle());
         return cachedText == null ? ReminderTextCache.DEFAULT_REMINDER : cachedText;
     }
 
     public void fetchLatestText(Callback callback) {
         ReminderProviderConfig config = configStore.getActiveConfig();
-        String tag = appSettingsManager.getMotivationTag();
-        String requestKey = cache.buildKey(config, tag);
+        ReminderRequest request = createCurrentRequest();
+        String requestKey = cache.buildKey(
+                config,
+                request.getMotivationTag(),
+                request.getStyle(),
+                request.getCustomStyle());
 
         List<Callback> replacedCallbacks = null;
         long generation;
@@ -103,7 +111,7 @@ public final class ReminderTextRepository {
                 inFlightCallbacks.add(callback);
             }
             inFlightFuture = requestExecutor.submit(
-                    () -> generate(generation, requestKey, config, tag));
+                    () -> generate(generation, requestKey, config, request));
         }
         postErrors(replacedCallbacks, ProviderResult.failure(ProviderResult.ErrorCode.CANCELLED));
     }
@@ -118,7 +126,7 @@ public final class ReminderTextRepository {
             postError(callback, ProviderResult.failure(ProviderResult.ErrorCode.INVALID_CONFIG));
             return;
         }
-        String tag = appSettingsManager.getMotivationTag();
+        ReminderRequest request = createCurrentRequest();
         synchronized (testLock) {
             testGeneration++;
             long generation = testGeneration;
@@ -131,7 +139,7 @@ public final class ReminderTextRepository {
                         config,
                         apiKey,
                         testHttpClient);
-                ProviderResult result = provider.generate(new ReminderRequest(tag));
+                ProviderResult result = provider.generate(request);
                 synchronized (testLock) {
                     if (generation != testGeneration) {
                         return;
@@ -182,8 +190,8 @@ public final class ReminderTextRepository {
             long generation,
             String requestKey,
             ReminderProviderConfig config,
-            String tag) {
-        ProviderResult result = createProvider(config).generate(new ReminderRequest(tag));
+            ReminderRequest request) {
+        ProviderResult result = createProvider(config).generate(request);
         List<Callback> callbacks;
         synchronized (requestLock) {
             if (generation != inFlightGeneration || !requestKey.equals(inFlightKey)) {
@@ -192,7 +200,12 @@ public final class ReminderTextRepository {
             if (!config.cacheIdentity().equals(configStore.getActiveConfig().cacheIdentity())) {
                 result = ProviderResult.failure(ProviderResult.ErrorCode.CANCELLED);
             } else if (result.isSuccess()) {
-                cache.put(config, tag, result.getText());
+                cache.put(
+                        config,
+                        request.getMotivationTag(),
+                        request.getStyle(),
+                        request.getCustomStyle(),
+                        result.getText());
             }
             callbacks = inFlightCallbacks;
             inFlightFuture = null;
@@ -207,6 +220,13 @@ public final class ReminderTextRepository {
         } else {
             postErrors(callbacks, result);
         }
+    }
+
+    private ReminderRequest createCurrentRequest() {
+        return new ReminderRequest(
+                appSettingsManager.getMotivationTag(),
+                appSettingsManager.getReminderStyle(),
+                appSettingsManager.getReminderCustomStyle());
     }
 
     private ReminderProvider createProvider(ReminderProviderConfig config) {
