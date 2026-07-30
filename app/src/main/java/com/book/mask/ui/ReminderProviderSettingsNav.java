@@ -19,14 +19,14 @@ import androidx.fragment.app.Fragment;
 import com.book.mask.R;
 import com.book.mask.floating.FloatService;
 import com.book.mask.network.AppConfigManager;
-import com.book.mask.network.reminder.ProviderResult;
-import com.book.mask.network.reminder.ReminderTextRepository;
-import com.book.mask.network.reminder.config.ProviderPreset;
-import com.book.mask.network.reminder.config.ProviderPresetCatalog;
-import com.book.mask.network.reminder.config.ProviderSecretStore;
-import com.book.mask.network.reminder.config.ReminderProviderConfig;
-import com.book.mask.network.reminder.config.ReminderProviderConfigStore;
-import com.book.mask.network.reminder.config.ReminderProviderConfigValidator;
+import com.book.mask.reminder.ProviderResult;
+import com.book.mask.reminder.ReminderTextRepository;
+import com.book.mask.reminder.config.ProviderPreset;
+import com.book.mask.reminder.config.ProviderPresetCatalog;
+import com.book.mask.reminder.config.ProviderSecretStore;
+import com.book.mask.reminder.config.ReminderProviderConfig;
+import com.book.mask.reminder.config.ReminderProviderConfigStore;
+import com.book.mask.reminder.config.ReminderProviderConfigValidator;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -209,12 +209,6 @@ public class ReminderProviderSettingsNav extends Fragment {
         selectedPresetId = presetId;
         checkPresetChip(presetId);
         collapseDetails();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        showActiveProfile();
     }
 
     // Keep the form hidden until the user taps a preset chip; only highlight

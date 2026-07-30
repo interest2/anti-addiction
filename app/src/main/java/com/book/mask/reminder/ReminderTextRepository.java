@@ -1,4 +1,4 @@
-package com.book.mask.network.reminder;
+package com.book.mask.reminder;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -6,14 +6,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.book.mask.network.reminder.config.ProviderSecretStore;
-import com.book.mask.network.reminder.config.ReminderProviderConfig;
-import com.book.mask.network.reminder.config.ReminderProviderConfigStore;
-import com.book.mask.network.reminder.config.ReminderProviderConfigValidator;
-import com.book.mask.network.reminder.content.ReminderTextCache;
-import com.book.mask.network.reminder.provider.OfficialCloudProvider;
-import com.book.mask.network.reminder.provider.OpenAiCompatibleProvider;
-import com.book.mask.network.reminder.provider.ProviderHttpClient;
+import com.book.mask.reminder.config.ProviderSecretStore;
+import com.book.mask.reminder.config.ReminderProviderConfig;
+import com.book.mask.reminder.config.ReminderProviderConfigStore;
+import com.book.mask.reminder.config.ReminderProviderConfigValidator;
+import com.book.mask.reminder.content.ReminderTextCache;
+import com.book.mask.reminder.provider.OfficialCloudProvider;
+import com.book.mask.reminder.provider.OpenAiCompatibleProvider;
+import com.book.mask.reminder.provider.ProviderHttpClient;
 import com.book.mask.personalize.AppSettingsManager;
 
 import java.security.GeneralSecurityException;

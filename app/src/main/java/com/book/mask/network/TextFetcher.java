@@ -3,8 +3,8 @@ package com.book.mask.network;
 import android.content.Context;
 import android.util.Log;
 
-import com.book.mask.network.reminder.ProviderResult;
-import com.book.mask.network.reminder.ReminderTextRepository;
+import com.book.mask.reminder.ProviderResult;
+import com.book.mask.reminder.ReminderTextRepository;
 
 public class TextFetcher {
     private static final String TAG = "TextFetcher";

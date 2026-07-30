@@ -1,4 +1,4 @@
-package com.book.mask.network.reminder.config;
+package com.book.mask.reminder.config;
 
 import java.util.Arrays;
 import java.util.Collections;

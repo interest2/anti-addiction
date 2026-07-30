@@ -1,6 +1,6 @@
-package com.book.mask.network.reminder.content;
+package com.book.mask.reminder.content;
 
-import com.book.mask.network.reminder.config.ReminderProviderConfig;
+import com.book.mask.reminder.config.ReminderProviderConfig;
 import com.tencent.mmkv.MMKV;
 
 import java.nio.charset.StandardCharsets;

@@ -1,13 +1,13 @@
-package com.book.mask.network.reminder.provider;
+package com.book.mask.reminder.provider;
 
 import android.util.Log;
 
-import com.book.mask.network.reminder.ProviderResult;
-import com.book.mask.network.reminder.ReminderProvider;
-import com.book.mask.network.reminder.ReminderRequest;
-import com.book.mask.network.reminder.config.ReminderProviderConfig;
-import com.book.mask.network.reminder.config.ReminderProviderConfigValidator;
-import com.book.mask.network.reminder.content.ReminderTextPolicy;
+import com.book.mask.reminder.ProviderResult;
+import com.book.mask.reminder.ReminderProvider;
+import com.book.mask.reminder.ReminderRequest;
+import com.book.mask.reminder.config.ReminderProviderConfig;
+import com.book.mask.reminder.config.ReminderProviderConfigValidator;
+import com.book.mask.reminder.content.ReminderTextPolicy;
 
 import org.json.JSONArray;
 import org.json.JSONException;

@@ -1,4 +1,4 @@
-package com.book.mask.network.reminder.config;
+package com.book.mask.reminder.config;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;

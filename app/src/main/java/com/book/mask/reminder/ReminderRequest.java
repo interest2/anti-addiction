@@ -1,4 +1,4 @@
-package com.book.mask.network.reminder;
+package com.book.mask.reminder;
 
 public final class ReminderRequest {
     private final String motivationTag;
