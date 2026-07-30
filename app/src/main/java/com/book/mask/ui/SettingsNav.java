@@ -104,8 +104,6 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> showAppreciateDialog());
         view.findViewById(R.id.row_floating_settings)
                 .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
-        view.findViewById(R.id.row_douyin_first_text_check_delay)
-                .setOnClickListener(v -> settingsDialogManager.showDouyinFirstTextCheckDelayDialog());
         view.findViewById(R.id.row_export_backup)
                 .setOnClickListener(v -> showBackupOptionsDialog());
         view.findViewById(R.id.row_special_details)
