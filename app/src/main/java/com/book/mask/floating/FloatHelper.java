@@ -109,29 +109,42 @@ public class FloatHelper {
         }
     }
 
-//    static boolean findTextInNode(AccessibilityNodeInfo node, HashSet targetText) {
-    static boolean findTextInNode(AccessibilityNodeInfo node, String targetText) {
+    static TextScanResult findTextInNode(AccessibilityNodeInfo node, String targetText) {
+        TextScanResult result = new TextScanResult();
+        findTextInNode(node, targetText, 0, result);
+        return result;
+    }
+
+    private static boolean findTextInNode(AccessibilityNodeInfo node, String targetText,
+                                          int depth, TextScanResult result) {
         if (node == null) return false;
 
-        // 检查当前节点的文本
+        result.visitedNodeCount++;
+        result.maxDepth = Math.max(result.maxDepth, depth);
+        boolean visible = node.isVisibleToUser();
+        if (visible) {
+            result.visibleNodeCount++;
+        }
+
         CharSequence text = node.getText();
         text = !isEmpty(text) ? text : node.getContentDescription();
 
         if (!isEmpty(text) && targetText.contains(text.toString())) {
-            // 检查节点是否可见
-            if (node.isVisibleToUser()) {
+            result.lastHitNodeIndex = result.visitedNodeCount;
+            result.lastHitDepth = depth;
+            result.lastHitVisible = visible;
+            if (visible) {
+                result.hasTargetWord = true;
                 Log.d(TAG, "找到目标文本: " + targetText + " (可见)");
                 return true;
-            } else {
-                Log.d(TAG, "找到目标文本: " + targetText + " (不可见，忽略)");
             }
+            Log.d(TAG, "找到目标文本: " + targetText + " (不可见，忽略)");
         }
 
-        // 递归检查子节点
         for (int i = 0; i < node.getChildCount(); i++) {
             AccessibilityNodeInfo child = node.getChild(i);
             if (child != null) {
-                if (findTextInNode(child, targetText)) {
+                if (findTextInNode(child, targetText, depth + 1, result)) {
                     child.recycle();
                     return true;
                 }
@@ -140,6 +153,29 @@ public class FloatHelper {
         }
 
         return false;
+    }
+
+    static final class TextScanResult {
+        private boolean hasTargetWord;
+        private int visitedNodeCount;
+        private int visibleNodeCount;
+        private int maxDepth;
+        private int lastHitNodeIndex = -1;
+        private int lastHitDepth = -1;
+        private boolean lastHitVisible;
+
+        boolean hasTargetWord() {
+            return hasTargetWord;
+        }
+
+        String toDiagnosticString() {
+            return "visitedNodes=" + visitedNodeCount
+                    + ", visibleNodes=" + visibleNodeCount
+                    + ", maxDepth=" + maxDepth
+                    + ", lastHitIndex=" + lastHitNodeIndex
+                    + ", lastHitDepth=" + lastHitDepth
+                    + ", lastHitVisible=" + lastHitVisible;
+        }
     }
 
     public static WindowManager.LayoutParams getLayoutParams(WindowManager windowManager,

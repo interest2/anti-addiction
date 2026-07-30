@@ -1,6 +1,13 @@
-package com.book.mask.network.reminder;
+package com.book.mask.network.reminder.provider;
 
 import android.util.Log;
+
+import com.book.mask.network.reminder.ProviderResult;
+import com.book.mask.network.reminder.ReminderProvider;
+import com.book.mask.network.reminder.ReminderRequest;
+import com.book.mask.network.reminder.config.ReminderProviderConfig;
+import com.book.mask.network.reminder.config.ReminderProviderConfigValidator;
+import com.book.mask.network.reminder.content.ReminderTextPolicy;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -15,7 +22,7 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
     private static final int RESPONSE_PREVIEW_LENGTH = 500;
     private static final int MAX_TOKENS = 1_024;
     private static final String SYSTEM_PROMPT =
-            "你是防沉迷提醒助手。请用简洁、有力度但不侮辱用户的中文，生成一条帮助用户停止刷手机、回到目标的提醒。"
+            "你是防沉迷提醒助手。请用简洁、有力度的中文，生成一条帮助用户停止刷手机、回到目标的提醒。"
                     + "最多三行，总长度不超过120个汉字；不要使用Markdown、标题、编号、引号或解释。";
 
     private final ReminderProviderConfig config;
@@ -53,9 +60,8 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
             requestJson.put("model", config.getModel().trim());
             requestJson.put("messages", messages);
             requestJson.put("max_tokens", MAX_TOKENS);
-            if (!"kimi-k2.6".equals(config.getModel().trim())) {
-                requestJson.put("temperature", 0.8);
-            }
+            requestJson.put("stream", false);
+            applyReasoningDisabled(requestJson);
 
             Map<String, String> headers = new HashMap<>();
             headers.put("Authorization", "Bearer " + apiKey.trim());
@@ -95,6 +101,18 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
         } catch (Exception e) {
             Log.e(TAG, "Provider 请求发生未预期异常", e);
             return ProviderResult.failure(ProviderResult.ErrorCode.INTERNAL);
+        }
+    }
+
+    private void applyReasoningDisabled(JSONObject requestJson) throws JSONException {
+        String presetId = config.getPresetId();
+        String model = config.getModel().trim();
+        if ("moonshot".equals(presetId) && "kimi-k2.6".equals(model)) {
+            requestJson.put("thinking", new JSONObject().put("type", "disabled"));
+        } else if ("zhipu".equals(presetId)) {
+            requestJson.put("thinking", new JSONObject().put("type", "disabled"));
+        } else if ("openai".equals(presetId)) {
+            requestJson.put("reasoning_effort", "none");
         }
     }
 

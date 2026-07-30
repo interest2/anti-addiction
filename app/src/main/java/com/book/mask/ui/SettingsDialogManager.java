@@ -754,12 +754,14 @@ public class SettingsDialogManager {
     public void showReminderStyleDialog(Runnable onSettingChanged) {
         final String[] styles = {
                 AppSettingsManager.DEFAULT_REMINDER_STYLE,
-                "激励",
-                "鼓励",
+                "励志",
                 "毒舌",
+                "幽默",
                 "温馨",
-                "发人深省",
-                "嘲讽"
+                "理性",
+                "挖苦",
+                "严厉",
+                "发人深省"
         };
         int[] accentColors = {
                 0xFF5BAFFB, 0xFFFB9B59, 0xFF8A2B00, 0xFFDB8828,
@@ -784,11 +786,12 @@ public class SettingsDialogManager {
             int[] accentColors,
             Runnable onSettingChanged) {
         String currentStyle = appSettingsManager.getReminderStyle();
+        String currentCustomStyle = appSettingsManager.getReminderCustomStyle();
         styleFlow.removeAllViews();
         for (int index = 0; index < styles.length; index++) {
             String style = styles[index];
             TextView styleCard = createStyleCard(
-                    style, accentColors[index], style.equals(currentStyle));
+                    style, accentColors[index % accentColors.length], style.equals(currentStyle));
             styleCard.setOnClickListener(v -> {
                 appSettingsManager.setReminderStyle(style);
                 if (onSettingChanged != null) {
@@ -800,11 +803,31 @@ public class SettingsDialogManager {
                     TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
         }
 
+        String[] customStyles = appSettingsManager.getCustomReminderStyles();
+        for (int index = 0; index < customStyles.length; index++) {
+            String customStyle = customStyles[index];
+            boolean selected = "自定义".equals(currentStyle)
+                    && customStyle.equals(currentCustomStyle);
+            android.widget.FrameLayout styleCard = createCustomStyleCard(
+                    customStyle,
+                    accentColors[(styles.length + index) % accentColors.length],
+                    selected,
+                    dialog,
+                    styleFlow,
+                    styles,
+                    accentColors,
+                    onSettingChanged);
+            styleFlow.addView(styleCard, new TagFlowLayout.LayoutParams(
+                    TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
+        }
+
         TextView addCard = createAddTargetCard();
         addCard.setContentDescription("添加自定义风格");
         addCard.setOnClickListener(v -> {
             dialog.dismiss();
-            showCustomReminderStyleInputDialog(onSettingChanged);
+            showCustomReminderStyleInputDialog(
+                    onSettingChanged,
+                    () -> showReminderStyleDialog(onSettingChanged));
         });
         styleFlow.addView(addCard, new TagFlowLayout.LayoutParams(
                 TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
@@ -822,6 +845,56 @@ public class SettingsDialogManager {
         return card;
     }
 
+    private android.widget.FrameLayout createCustomStyleCard(
+            String style,
+            int accentColor,
+            boolean selected,
+            android.app.AlertDialog dialog,
+            TagFlowLayout styleFlow,
+            String[] styles,
+            int[] accentColors,
+            Runnable onSettingChanged) {
+        android.widget.FrameLayout container = new android.widget.FrameLayout(context);
+        TextView card = createStyleCard(style, accentColor, selected);
+        card.setOnClickListener(v -> {
+            appSettingsManager.setReminderCustomStyle(style);
+            appSettingsManager.setReminderStyle("自定义");
+            if (onSettingChanged != null) {
+                onSettingChanged.run();
+            }
+            renderStyleCards(dialog, styleFlow, styles, accentColors, onSettingChanged);
+        });
+        container.addView(card, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
+
+        TextView deleteButton = new TextView(context);
+        deleteButton.setBackground(createCircularDrawable(0xFFE84B4B));
+        deleteButton.setGravity(Gravity.CENTER);
+        deleteButton.setText("×");
+        deleteButton.setTextSize(15);
+        deleteButton.setTextColor(0xFFFFFFFF);
+        deleteButton.setContentDescription("删除" + style);
+        deleteButton.setVisibility(View.GONE);
+        deleteButton.setOnClickListener(v -> {
+            appSettingsManager.removeCustomReminderStyle(style);
+            if (onSettingChanged != null) {
+                onSettingChanged.run();
+            }
+            renderStyleCards(dialog, styleFlow, styles, accentColors, onSettingChanged);
+        });
+        android.widget.FrameLayout.LayoutParams deleteParams =
+                new android.widget.FrameLayout.LayoutParams(dpToPx(18), dpToPx(18), Gravity.TOP | Gravity.END);
+        deleteParams.topMargin = -dpToPx(5);
+        deleteParams.rightMargin = -dpToPx(5);
+        container.addView(deleteButton, deleteParams);
+        card.setOnLongClickListener(v -> {
+            deleteButton.setVisibility(View.VISIBLE);
+            return true;
+        });
+        return container;
+    }
+
     private LinearLayout createInputContainer(EditText input) {
         int contentPadding = dpToPx(24);
         LinearLayout inputContainer = new LinearLayout(context);
@@ -831,12 +904,11 @@ public class SettingsDialogManager {
         return inputContainer;
     }
 
-    private void showCustomReminderStyleInputDialog(Runnable onSettingChanged) {
+    private void showCustomReminderStyleInputDialog(
+            Runnable onSettingChanged, Runnable onStyleSaved) {
         EditText input = new EditText(context);
-        input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(100)});
-        input.setHint("");
-        input.setText(appSettingsManager.getReminderCustomStyle());
-        input.setSelection(input.length());
+        input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(10)});
+        input.setHint("不超过 10 个字");
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("自定义风格")
@@ -852,12 +924,15 @@ public class SettingsDialogManager {
                         showInputError(input, "请输入风格要求");
                         return;
                     }
+                    appSettingsManager.addCustomReminderStyle(customStyle);
                     appSettingsManager.setReminderCustomStyle(customStyle);
                     appSettingsManager.setReminderStyle("自定义");
                     dialog.dismiss();
-                    UiFeedback.show(context, "已设置为：自定义");
                     if (onSettingChanged != null) {
                         onSettingChanged.run();
+                    }
+                    if (onStyleSaved != null) {
+                        onStyleSaved.run();
                     }
                 }));
         dialog.show();
@@ -933,6 +1008,45 @@ public class SettingsDialogManager {
         datePicker.setMinimumHeight(0);
     }
     
+    public void showDouyinFirstTextCheckDelayDialog() {
+        EditText input = new EditText(context);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.valueOf(appSettingsManager.getDouyinFirstTextCheckDelayMs()));
+        input.setSelectAllOnFocus(true);
+        input.setHint("默认: " + AppSettingsManager.DEFAULT_DOUYIN_FIRST_TEXT_CHECK_DELAY_MS);
+
+        LinearLayout layout = new LinearLayout(context);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dpToPx(24), dpToPx(8), dpToPx(24), 0);
+        layout.addView(input);
+
+        TextView hint = new TextView(context);
+        hint.setText("单位：毫秒。仅控制刚进入抖音、悬浮窗抢先显示后的首次文字检测；后续内容变化防抖不受影响。");
+        hint.setTextSize(14);
+        hint.setTextColor(0xFF666666);
+        layout.addView(hint);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("抖音首次文字检测延迟")
+                .setView(layout)
+                .setPositiveButton("确定", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    input.setError(null);
+                    Integer delayMs = parseInteger(input);
+                    if (delayMs == null || delayMs < 0 || delayMs > 5000) {
+                        showInputError(input, "请输入 0-5000 之间的数字");
+                        return;
+                    }
+                    appSettingsManager.setDouyinFirstTextCheckDelayMs(delayMs);
+                    dialog.dismiss();
+                    UiFeedback.show(context, "抖音首次检测延迟已更新为 " + delayMs + "ms");
+                }));
+        dialog.show();
+    }
+
     /**
      * 显示悬浮窗位置设置对话框
      */
@@ -1304,7 +1418,7 @@ public class SettingsDialogManager {
 
         // 添加说明文字
         android.widget.TextView messageText = new android.widget.TextView(context);
-        messageText.setText("在悬浮窗中间固定展示");
+        messageText.setText("悬浮窗中间将固定展示自定义的座右铭");
         messageText.setTextSize(14);
         messageText.setTextColor(0xFF666666);
         messageText.setLayoutParams(new android.widget.LinearLayout.LayoutParams(

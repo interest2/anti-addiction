@@ -28,12 +28,16 @@ public class AppSettingsManager {
 
     // 个人目标标签列表
     private static final String[] MOTIVATION_TAGS = {
-            "高考", "考研", "保研", "出国升学", "跳槽", "找工作", "考公务员"
+            "高考", "考研", "保研", "出国", "校招", "社招", "跳槽", "找工作", "考公务员"
     };
 
     // 悬浮窗位置默认值（像素）
     private static final int DEFAULT_TOP_OFFSET = 130;
     private static final int DEFAULT_BOTTOM_OFFSET = 230;
+
+    // 临时诊断配置
+    private static final String KEY_DOUYIN_FIRST_TEXT_CHECK_DELAY_MS = "douyin_first_text_check_delay_ms";
+    public static final int DEFAULT_DOUYIN_FIRST_TEXT_CHECK_DELAY_MS = 100;
 
     // 个人目标与大模型提醒风格相关
     static final String KEY_MOTIVATION_TAG = "motivation_tag";
@@ -41,6 +45,7 @@ public class AppSettingsManager {
     static final String KEY_TARGET_COMPLETION_DATE = "target_completion_date";
     static final String KEY_REMINDER_STYLE = "reminder_style";
     static final String KEY_REMINDER_CUSTOM_STYLE = "reminder_custom_style";
+    static final String KEY_REMINDER_CUSTOM_STYLES = "reminder_custom_styles";
     public static final String DEFAULT_REMINDER_STYLE = "默认";
 
     // 悬浮窗位置相关
@@ -240,7 +245,8 @@ public class AppSettingsManager {
     }
 
     public String getReminderStyle() {
-        return mmkv.getString(KEY_REMINDER_STYLE, DEFAULT_REMINDER_STYLE);
+        String style = mmkv.getString(KEY_REMINDER_STYLE, DEFAULT_REMINDER_STYLE);
+        return style == null || style.isEmpty() ? DEFAULT_REMINDER_STYLE : style;
     }
 
     public void setReminderCustomStyle(String style) {
@@ -249,6 +255,53 @@ public class AppSettingsManager {
 
     public String getReminderCustomStyle() {
         return mmkv.getString(KEY_REMINDER_CUSTOM_STYLE, "");
+    }
+
+    public String[] getCustomReminderStyles() {
+        java.util.List<String> styles = new java.util.ArrayList<>();
+        try {
+            String storedStyles = mmkv.getString(KEY_REMINDER_CUSTOM_STYLES, "[]");
+            String[] customStyles = new Gson().fromJson(storedStyles, String[].class);
+            if (customStyles != null) {
+                for (String style : customStyles) {
+                    if (style != null && !style.isEmpty() && !styles.contains(style)) {
+                        styles.add(style);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w("SettingsManager", "解析自定义警示语风格列表失败", e);
+        }
+
+        String currentStyle = getReminderCustomStyle();
+        if (!currentStyle.isEmpty() && !styles.contains(currentStyle)) {
+            styles.add(currentStyle);
+        }
+        return styles.toArray(new String[0]);
+    }
+
+    public void addCustomReminderStyle(String style) {
+        if (style == null || style.isEmpty()) {
+            return;
+        }
+        java.util.List<String> styles = new java.util.ArrayList<>(
+                java.util.Arrays.asList(getCustomReminderStyles()));
+        if (!styles.contains(style)) {
+            styles.add(style);
+            mmkv.putString(KEY_REMINDER_CUSTOM_STYLES, new Gson().toJson(styles)).commit();
+        }
+    }
+
+    public void removeCustomReminderStyle(String style) {
+        java.util.List<String> styles = new java.util.ArrayList<>(
+                java.util.Arrays.asList(getCustomReminderStyles()));
+        if (styles.remove(style)) {
+            mmkv.putString(KEY_REMINDER_CUSTOM_STYLES, new Gson().toJson(styles)).commit();
+        }
+        if (style.equals(getReminderCustomStyle())) {
+            setReminderCustomStyle("");
+            setReminderStyle(DEFAULT_REMINDER_STYLE);
+        }
     }
 
     /**
@@ -324,6 +377,17 @@ public class AppSettingsManager {
 
     public static boolean isPredefinedMotivationTag(String tag) {
         return java.util.Arrays.asList(MOTIVATION_TAGS).contains(tag);
+    }
+
+    // ===== 临时诊断配置 =====
+
+    public void setDouyinFirstTextCheckDelayMs(int delayMs) {
+        mmkv.putInt(KEY_DOUYIN_FIRST_TEXT_CHECK_DELAY_MS, delayMs).commit();
+    }
+
+    public int getDouyinFirstTextCheckDelayMs() {
+        return mmkv.getInt(KEY_DOUYIN_FIRST_TEXT_CHECK_DELAY_MS,
+                DEFAULT_DOUYIN_FIRST_TEXT_CHECK_DELAY_MS);
     }
 
     // ===== 悬浮窗位置相关方法 =====

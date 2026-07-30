@@ -67,7 +67,9 @@ public class HomeNav extends Fragment implements
     private List<CustomApp> allApps; // 包含预定义APP和自定义APP
     private TextView permissionStatusView;
     private TextView permissionOptionalView;
-    
+    private View permissionExpandedView;
+    private View permissionCollapsedView;
+
     // 倒计时相关
     private Handler countdownHandler;
     private Runnable countdownRunnable;
@@ -101,6 +103,13 @@ public class HomeNav extends Fragment implements
 
         permissionStatusView = view.findViewById(R.id.tv_description);
         permissionOptionalView = view.findViewById(R.id.tv_optional_permissions);
+        permissionExpandedView = view.findViewById(R.id.ll_permission_expanded);
+        permissionCollapsedView = view.findViewById(R.id.tv_show_permissions);
+        view.findViewById(R.id.tv_hide_permissions).setOnClickListener(v -> setPermissionCardExpanded(false));
+        permissionCollapsedView.setOnClickListener(v -> {
+            setPermissionCardExpanded(true);
+            refreshPermissionStatus();
+        });
         if (permissionStatusView != null) {
             permissionStatusView.setMovementMethod(LinkMovementMethod.getInstance());
             permissionStatusView.setHighlightColor(android.graphics.Color.TRANSPARENT);
@@ -115,6 +124,11 @@ public class HomeNav extends Fragment implements
         startCountdown();
         
         return view;
+    }
+
+    private void setPermissionCardExpanded(boolean expanded) {
+        permissionExpandedView.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        permissionCollapsedView.setVisibility(expanded ? View.GONE : View.VISIBLE);
     }
 
     public void refreshPermissionStatus() {
@@ -278,7 +292,7 @@ public class HomeNav extends Fragment implements
         String linkText = getString(R.string.blog_link_text);
         SpannableStringBuilder message = new SpannableStringBuilder()
                 .append("1、该权限很重要，不设置可能导致无障碍也异常；\n")
-                .append("2、不同手机设置它的方式不同，请自行了解，或参考");
+                .append("2、不同手机设置它的方式不同，可自行了解，或参考");
         int linkStart = message.length();
         message.append(linkText)
                 .append("；\n")

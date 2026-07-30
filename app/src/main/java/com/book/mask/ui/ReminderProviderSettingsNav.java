@@ -19,14 +19,14 @@ import androidx.fragment.app.Fragment;
 import com.book.mask.R;
 import com.book.mask.floating.FloatService;
 import com.book.mask.network.AppConfigManager;
-import com.book.mask.network.reminder.ProviderPreset;
-import com.book.mask.network.reminder.ProviderPresetCatalog;
 import com.book.mask.network.reminder.ProviderResult;
-import com.book.mask.network.reminder.ProviderSecretStore;
-import com.book.mask.network.reminder.ReminderProviderConfig;
-import com.book.mask.network.reminder.ReminderProviderConfigStore;
-import com.book.mask.network.reminder.ReminderProviderConfigValidator;
 import com.book.mask.network.reminder.ReminderTextRepository;
+import com.book.mask.network.reminder.config.ProviderPreset;
+import com.book.mask.network.reminder.config.ProviderPresetCatalog;
+import com.book.mask.network.reminder.config.ProviderSecretStore;
+import com.book.mask.network.reminder.config.ReminderProviderConfig;
+import com.book.mask.network.reminder.config.ReminderProviderConfigStore;
+import com.book.mask.network.reminder.config.ReminderProviderConfigValidator;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
@@ -50,9 +50,11 @@ public class ReminderProviderSettingsNav extends Fragment {
     private MaterialButton deleteButton;
     private MaterialButton testButton;
     private MaterialButton saveButton;
+    private TextInputLayout providerNameLayout;
     private TextInputLayout endpointLayout;
     private TextInputLayout modelLayout;
     private TextInputLayout apiKeyLayout;
+    private TextInputEditText providerNameInput;
     private TextInputEditText endpointInput;
     private TextInputEditText apiKeyInput;
     private ChipGroup presetGroup;
@@ -91,9 +93,11 @@ public class ReminderProviderSettingsNav extends Fragment {
         deleteButton = rootView.findViewById(R.id.btn_delete_provider);
         testButton = rootView.findViewById(R.id.btn_test_provider);
         saveButton = rootView.findViewById(R.id.btn_save_provider);
+        providerNameLayout = rootView.findViewById(R.id.layout_provider_name);
         endpointLayout = rootView.findViewById(R.id.layout_provider_endpoint);
         modelLayout = rootView.findViewById(R.id.layout_provider_model);
         apiKeyLayout = rootView.findViewById(R.id.layout_provider_api_key);
+        providerNameInput = rootView.findViewById(R.id.input_provider_name);
         endpointInput = rootView.findViewById(R.id.input_provider_endpoint);
         apiKeyInput = rootView.findViewById(R.id.input_provider_api_key);
         presetGroup = rootView.findViewById(R.id.group_provider_presets);
@@ -103,6 +107,8 @@ public class ReminderProviderSettingsNav extends Fragment {
         testStatus = rootView.findViewById(R.id.tv_provider_test_status);
         rootView.setFocusableInTouchMode(true);
 
+        providerNameInput.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         endpointInput.setInputType(InputType.TYPE_CLASS_TEXT
                 | InputType.TYPE_TEXT_VARIATION_URI
                 | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -110,6 +116,7 @@ public class ReminderProviderSettingsNav extends Fragment {
         apiKeyInput.setInputType(InputType.TYPE_CLASS_TEXT
                 | InputType.TYPE_TEXT_VARIATION_PASSWORD
                 | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        disableAutofill(providerNameInput);
         disableAutofill(endpointInput);
         disableAutofill(modelInput);
         disableAutofill(apiKeyInput);
@@ -243,6 +250,7 @@ public class ReminderProviderSettingsNav extends Fragment {
 
     private void loadSavedConfig(ReminderProviderConfig profile) {
         editingProfileId = profile.getProfileId();
+        providerNameInput.setText(profile.getProviderName());
         endpointInput.setText(profile.getEndpointUrl());
         updateModelOptions(
                 ProviderPresetCatalog.getById(profile.getPresetId()), profile.getModel());
@@ -258,6 +266,7 @@ public class ReminderProviderSettingsNav extends Fragment {
         apiKeyLayout.setHint(apiKeyMasked
                 ? R.string.provider_api_key_saved
                 : R.string.provider_api_key);
+        providerNameLayout.setVisibility(isCustomPreset() ? View.VISIBLE : View.GONE);
         showDetails(true);
         deleteButton.setVisibility(View.GONE);
         clearTestStatus();
@@ -272,6 +281,9 @@ public class ReminderProviderSettingsNav extends Fragment {
     private void loadPresetDefaults(String presetId) {
         editingProfileId = null;
         ProviderPreset preset = ProviderPresetCatalog.getById(presetId);
+        boolean customPreset = isCustomPreset();
+        providerNameLayout.setVisibility(customPreset ? View.VISIBLE : View.GONE);
+        providerNameInput.setText("");
         if (preset == null) {
             endpointInput.setText("");
             updateModelOptions(null, "");
@@ -525,10 +537,11 @@ public class ReminderProviderSettingsNav extends Fragment {
     }
 
     private String resolveProviderName() {
+        if (isCustomPreset()) {
+            return textOf(providerNameInput);
+        }
         ProviderPreset preset = ProviderPresetCatalog.getById(selectedPresetId);
-        return preset != null
-                ? getString(preset.getNameResId())
-                : getString(R.string.provider_preset_custom);
+        return preset == null ? "" : getString(preset.getNameResId());
     }
 
     private String resolveApiKey(String profileId, String endpoint)
@@ -550,6 +563,10 @@ public class ReminderProviderSettingsNav extends Fragment {
     private void showValidationError(ReminderProviderConfigValidator.Error error) {
         String message = error.getMessage();
         switch (error) {
+            case EMPTY_NAME:
+            case NAME_TOO_LONG:
+                UiFeedback.showInputError(providerNameLayout, providerNameInput, message);
+                break;
             case EMPTY_ENDPOINT:
             case ENDPOINT_TOO_LONG:
             case ENDPOINT_REQUIRES_HTTPS:
@@ -584,7 +601,10 @@ public class ReminderProviderSettingsNav extends Fragment {
         saveButton.setEnabled(!busy);
         setChipsEnabled(presetGroup, !busy);
         setChipsEnabled(modelGroup, !busy);
+        providerNameInput.setEnabled(!busy);
+        endpointInput.setEnabled(!busy);
         modelInput.setEnabled(!busy);
+        apiKeyInput.setEnabled(!busy);
     }
 
     private void setChipsEnabled(ChipGroup group, boolean enabled) {

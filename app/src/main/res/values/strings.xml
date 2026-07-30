@@ -17,6 +17,7 @@
     <string name="latest_version_fetch_failed">最新版本获取失败，请稍后重试</string>
     <string name="apk_download_unavailable">没有可用的应用打开下载链接</string>
     <string name="floating_window_settings">悬浮窗改默认大小</string>
+    <string name="douyin_first_text_check_delay">抖音首次检测延迟</string>
     <string name="export_backup">导出备份&amp;恢复</string>
     <string name="special_details">备用按钮</string>
     <string name="back">返回</string>
@@ -33,10 +34,12 @@
     <string name="provider_official_name">默认</string>
     <string name="provider_preset">模型服务商</string>
     <string name="provider_preset_custom">添加</string>
+    <string name="provider_name">服务商名称</string>
     <string name="provider_endpoint">Chat Completions 接口地址</string>
     <string name="provider_api_key">API Key</string>
-    <string name="provider_model">模型</string>
-    <string name="provider_api_key_saved">API Key（已安全保存）</string>
+    <string name="provider_api_key_hint">API Key 只存储在手机本地，且导出备份时会忽略它</string>
+    <string name="provider_model">模型名</string>
+    <string name="provider_api_key_saved">API Key（已保存）</string>
     <string name="provider_preset_openai" translatable="false">OpenAI</string>
     <string name="provider_preset_deepseek" translatable="false">DeepSeek</string>
     <string name="provider_preset_moonshot">Kimi</string>

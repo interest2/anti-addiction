@@ -1,4 +1,4 @@
-package com.book.mask.network.reminder;
+package com.book.mask.network.reminder.config;
 
 import java.net.URI;
 

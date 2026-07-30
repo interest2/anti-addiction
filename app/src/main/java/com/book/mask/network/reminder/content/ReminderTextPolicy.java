@@ -1,4 +1,4 @@
-package com.book.mask.network.reminder;
+package com.book.mask.network.reminder.content;
 
 public final class ReminderTextPolicy {
     public static final int PROMPT_VERSION = 1;

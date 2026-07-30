@@ -1,13 +1,14 @@
-package com.book.mask.network.reminder;
+package com.book.mask.network.reminder.content;
 
+import com.book.mask.network.reminder.config.ReminderProviderConfig;
 import com.tencent.mmkv.MMKV;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-final class ReminderTextCache {
-    static final String DEFAULT_REMINDER =
+public final class ReminderTextCache {
+    public static final String DEFAULT_REMINDER =
             "别让指尖滑动成为你人生的绊脚石！\n"
                     + "APP的诱惑不过是虚幻的糖衣，吞噬的是你的黄金时间！\n"
                     + "醒醒吧，自律的缺失，正在将你推向平庸的深渊！";
@@ -19,7 +20,7 @@ final class ReminderTextCache {
 
     private final MMKV mmkv = MMKV.mmkvWithID(STORAGE_ID);
 
-    String buildKey(
+    public String buildKey(
             ReminderProviderConfig config,
             String motivationTag,
             String style,
@@ -32,7 +33,7 @@ final class ReminderTextCache {
         return sha256(source);
     }
 
-    String getText(
+    public String getText(
             ReminderProviderConfig config,
             String motivationTag,
             String style,
@@ -60,7 +61,7 @@ final class ReminderTextCache {
         return mmkv.getLong(updatedKey(key), 0);
     }
 
-    void put(
+    public void put(
             ReminderProviderConfig config,
             String motivationTag,
             String style,

@@ -13,11 +13,13 @@ import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
+import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.personalize.RelaxManager;
 
-import java.util.Map;
 import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * 应用状态管理器
@@ -33,10 +35,12 @@ public class AppStateManager {
     private Handler autoShowHandler;
     private RelaxManager relaxManager;
     private LeisureTimeManager leisureTimeManager;
+    private AppSettingsManager appSettingsManager;
 
     // 应用状态相关
     private CustomApp currentActiveApp = null;
     private long contentCheckBurstStartedAt = 0;
+    private String pendingContentCheckSource = "unknown";
     private Runnable pendingPackageConfirmation;
     private long packageConfirmationGeneration = 0;
     private boolean suspendedForSystemUi = false;
@@ -84,6 +88,7 @@ public class AppStateManager {
         this.service = service;
         this.relaxManager = relaxManager;
         this.leisureTimeManager = leisureTimeManager;
+        this.appSettingsManager = new AppSettingsManager(service);
         this.handler = new Handler(Looper.getMainLooper());
         this.autoShowHandler = new Handler(Looper.getMainLooper());
     }
@@ -148,7 +153,7 @@ public class AppStateManager {
         if (currentActiveApp != null && event.getPackageName() != null) {
             String packageName = event.getPackageName().toString();
             if (currentActiveApp.getPackageName().equals(packageName)) {
-                requestContentCheck();
+                requestContentCheck("accessibility_content_changed");
             }
         }
     }
@@ -156,16 +161,19 @@ public class AppStateManager {
     /**
      * 合并同一轮页面变化，在页面稳定后检测；连续变化超过上限时强制执行一次。
      */
-    private void requestContentCheck() {
+    private void requestContentCheck(String source) {
         long now = SystemClock.elapsedRealtime();
         if (contentCheckBurstStartedAt == 0) {
             contentCheckBurstStartedAt = now;
         }
+        pendingContentCheckSource = source;
 
         if (contentCheckRunnable == null) {
             contentCheckRunnable = () -> {
+                String triggerSource = pendingContentCheckSource;
                 contentCheckBurstStartedAt = 0;
-                checkTextContentOptimized();
+                pendingContentCheckSource = "unknown";
+                checkTextContentOptimized(false, triggerSource);
             };
         }
 
@@ -178,6 +186,7 @@ public class AppStateManager {
 
     private void cancelPendingContentCheck() {
         contentCheckBurstStartedAt = 0;
+        pendingContentCheckSource = "unknown";
         if (contentCheckRunnable != null) {
             handler.removeCallbacks(contentCheckRunnable);
         }
@@ -187,14 +196,18 @@ public class AppStateManager {
      * 优化版本的文本内容检测
      */
     public void checkTextContentOptimized() {
-        checkTextContentOptimized(false);
+        checkTextContentOptimized(false, "direct");
     }
-    
+
     /**
      * 优化版本的文本内容检测
      * @param forceCheck 是否强制检查（用于定时器触发的情况）
      */
     public void checkTextContentOptimized(boolean forceCheck) {
+        checkTextContentOptimized(forceCheck, forceCheck ? "timer_force_check" : "direct");
+    }
+
+    private void checkTextContentOptimized(boolean forceCheck, String triggerSource) {
         try {
             if (isDetectionPaused()) {
                 Log.v(TAG, "检测防抖尚未结束，暂停页面关键词检测");
@@ -211,9 +224,7 @@ public class AppStateManager {
                 return;
             }
 
-            // 检查当前APP是否被手动隐藏
-            boolean appManuallyHidden = currentActiveApp != null ?
-                    Share.isAppManuallyHidden(currentActiveApp) : false;
+            boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
             String appName = currentActiveApp.getAppName();
 
             if (appManuallyHidden) {
@@ -224,20 +235,28 @@ public class AppStateManager {
             }
 
             String currentPackageName = currentActiveApp.getPackageName();
-            Log.d(TAG, "当前有活跃的APP，且符合条件，开始文本检测");
+            Log.d(TAG, "当前有活跃的APP，且符合条件，开始文本检测，触发来源=" + triggerSource);
+            long rootStartNanos = SystemClock.elapsedRealtimeNanos();
             AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
+            double rootElapsedMs = nanosToMillis(SystemClock.elapsedRealtimeNanos() - rootStartNanos);
             String targetWord = currentActiveApp.getTargetWord();
+            String rootPackageName = "null";
+            FloatHelper.TextScanResult scanResult = null;
+            double traversalElapsedMs = 0;
             boolean hasTargetWord = false;
             if (rootNode != null) {
-                long start = System.currentTimeMillis();
-                hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
+                rootPackageName = rootNode.getPackageName() == null
+                        ? "null" : rootNode.getPackageName().toString();
+                long traversalStartNanos = SystemClock.elapsedRealtimeNanos();
+                scanResult = FloatHelper.findTextInNode(rootNode, targetWord);
+                traversalElapsedMs = nanosToMillis(
+                        SystemClock.elapsedRealtimeNanos() - traversalStartNanos);
+                hasTargetWord = scanResult.hasTargetWord();
                 if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
                     hasTargetWord = true;
                 }
-                long end = System.currentTimeMillis();
-                double deltaSeconds = (end - start) / 1000.0;
-                Log.d(TAG, "检测耗时：" + String.format("%.3f", deltaSeconds));
-
+                Log.d(TAG, "检测耗时：" + String.format(Locale.getDefault(), "%.3f",
+                        traversalElapsedMs / 1000.0));
                 rootNode.recycle();
             }else{
                 Log.d(TAG, "rootNode 为空");
@@ -245,6 +264,15 @@ public class AppStateManager {
                     hasTargetWord = true;
                 }
             }
+            Log.d(TAG, "文字扫描诊断: source=" + triggerSource
+                    + ", activePackage=" + currentPackageName
+                    + ", rootPackage=" + rootPackageName
+                    + ", rootMs=" + formatMillis(rootElapsedMs)
+                    + ", traversalMs=" + formatMillis(traversalElapsedMs)
+                    + ", " + (scanResult == null
+                    ? "visitedNodes=0, visibleNodes=0, maxDepth=0, lastHitIndex=-1, lastHitDepth=-1, lastHitVisible=false"
+                    : scanResult.toDiagnosticString())
+                    + ", matched=" + hasTargetWord);
             // 简化界面判断逻辑：只检测目标词
             String currentInterface = hasTargetWord ? "target" : "not target";
             lastDetectionMissingTargetWord.put(currentPackageName, !hasTargetWord);
@@ -283,6 +311,14 @@ public class AppStateManager {
         }
     }
     
+    private static double nanosToMillis(long nanos) {
+        return nanos / 1_000_000.0;
+    }
+
+    private static String formatMillis(double millis) {
+        return String.format(Locale.getDefault(), "%.3f", millis);
+    }
+
     private boolean stillInHidePeriod() {
         // 用持久化的关闭时间+间隔判断是否仍在解禁范围内，避免暖窗口跨APP复用时
         // Share.isFloatingWindowVisible 残留为 true 导致 getAppRemainingTime 返回 0 哨兵值，
@@ -800,23 +836,24 @@ public class AppStateManager {
                 if (shouldDetectBeforeShow) {
                     Log.d(TAG, "上次离开 " + detectedApp.getAppName()
                             + " 时页面未检测到目标关键词，本次先检测页面文字，再决定是否显示悬浮窗");
-                    checkTextContentOptimized();
+                    checkTextContentOptimized(false, "entry_detect_before_show");
                 } else if (shouldShowBeforeContentCheck && listener != null) {
+                    long firstCheckDelayMs = getFirstContentCheckDelayMs(detectedApp);
                     Log.d(TAG, "确认进入目标 " + detectedApp.getAppName()
-                            + "，先显示悬浮窗，再检测页面文字");
+                            + "，先显示悬浮窗，" + firstCheckDelayMs + "ms 后检测页面文字");
                     listener.onTargetPackageEnteredBeforeContentCheck(detectedApp);
                     // 悬浮窗刚 addView，真正绘制排在下一次 vsync 的帧回调里；而文本检测会
                     // 阻塞主线程数秒。0 延迟的 handler.post 会在下一帧回调之前就被取出执行，
                     // 把首帧绘制一起卡住，导致悬浮窗“已显示成功”但要 1 秒后才真正渲染。
                     // 因此延后一小段（跨过首帧）再跑阻塞式检测，先让主线程把悬浮窗画出来。
                     handler.postDelayed(
-                            this::checkTextContentOptimized,
-                            Const.SHOW_BEFORE_CONTENT_CHECK_DELAY_MS);
+                            () -> checkTextContentOptimized(false, "entry_show_before_check"),
+                            firstCheckDelayMs);
                 } else {
-                    checkTextContentOptimized();
+                    checkTextContentOptimized(false, "entry_direct_check");
                 }
             } else {
-                requestContentCheck();
+                requestContentCheck(source + "_same_target_package");
             }
             return;
         }
@@ -826,6 +863,13 @@ public class AppStateManager {
         }
 
         confirmCurrentAppLeft(source, true);
+    }
+
+    private long getFirstContentCheckDelayMs(CustomApp app) {
+        if (CustomAppManager.DOUYIN_PACKAGE.equals(app.getPackageName())) {
+            return appSettingsManager.getDouyinFirstTextCheckDelayMs();
+        }
+        return Const.SHOW_BEFORE_CONTENT_CHECK_DELAY_MS;
     }
 
     private void confirmCurrentAppLeft(String source, boolean notifyListener) {

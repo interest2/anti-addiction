@@ -1,7 +1,9 @@
-package com.book.mask.network.reminder;
+package com.book.mask.network.reminder.provider;
 
-import java.net.SocketTimeoutException;
+import com.book.mask.network.reminder.ProviderResult;
+
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 
 import javax.net.ssl.SSLException;
 

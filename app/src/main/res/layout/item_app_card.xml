@@ -48,7 +48,7 @@
             <ToggleButton
                 android:id="@+id/toggle_monitor"
                 android:layout_width="36dp"
-                android:layout_height="18dp"
+                android:layout_height="19dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:background="@drawable/toggle_switch_background"

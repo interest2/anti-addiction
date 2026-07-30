@@ -6,7 +6,7 @@ import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.Share;
 import com.book.mask.constant.Const;
-import com.book.mask.network.reminder.ReminderProviderConfigStore;
+import com.book.mask.network.reminder.config.ReminderProviderConfigStore;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

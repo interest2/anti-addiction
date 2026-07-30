@@ -1,4 +1,4 @@
-package com.book.mask.network.reminder;
+package com.book.mask.network.reminder.provider;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
