@@ -109,28 +109,41 @@ public class FloatHelper {
         }
     }
 
-    static boolean findTextInNode(AccessibilityNodeInfo node, String targetText) {
+    static boolean findTargetText(AccessibilityNodeInfo node, String targetText,
+                                  TextScanDiagnostics diagnostics) {
+        return findTargetTextInNode(node, targetText, 0, diagnostics);
+    }
+
+    private static boolean findTargetTextInNode(AccessibilityNodeInfo node, String targetText,
+                                                int depth, TextScanDiagnostics diagnostics) {
         if (node == null) return false;
 
-        // 检查当前节点的文本
+        // 排查模式下逐节点判定可见性以统计诊断信息；正常模式跳过这次开销，只在命中节点再判可见性
+        boolean visible = diagnostics != null && node.isVisibleToUser();
+        if (diagnostics != null) {
+            diagnostics.onNodeVisited(depth, visible);
+        }
+
         CharSequence text = node.getText();
         text = !isEmpty(text) ? text : node.getContentDescription();
 
         if (!isEmpty(text) && targetText.contains(text.toString())) {
-            // 检查节点是否可见
-            if (node.isVisibleToUser()) {
+            if (diagnostics == null) {
+                visible = node.isVisibleToUser();
+            } else {
+                diagnostics.onTargetHit(depth, visible);
+            }
+            if (visible) {
                 Log.d(TAG, "找到目标文本: " + targetText + " (可见)");
                 return true;
-            } else {
-                Log.d(TAG, "找到目标文本: " + targetText + " (不可见，忽略)");
             }
+            Log.d(TAG, "找到目标文本: " + targetText + " (不可见，忽略)");
         }
 
-        // 递归检查子节点
         for (int i = 0; i < node.getChildCount(); i++) {
             AccessibilityNodeInfo child = node.getChild(i);
             if (child != null) {
-                if (findTextInNode(child, targetText)) {
+                if (findTargetTextInNode(child, targetText, depth + 1, diagnostics)) {
                     child.recycle();
                     return true;
                 }

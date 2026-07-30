@@ -18,6 +18,7 @@ import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.personalize.RelaxManager;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -39,6 +40,7 @@ public class AppStateManager {
     // 应用状态相关
     private CustomApp currentActiveApp = null;
     private long contentCheckBurstStartedAt = 0;
+    private String pendingContentCheckSource = "unknown";
     private Runnable pendingPackageConfirmation;
     private long packageConfirmationGeneration = 0;
     private boolean suspendedForSystemUi = false;
@@ -151,7 +153,7 @@ public class AppStateManager {
         if (currentActiveApp != null && event.getPackageName() != null) {
             String packageName = event.getPackageName().toString();
             if (currentActiveApp.getPackageName().equals(packageName)) {
-                requestContentCheck();
+                requestContentCheck("accessibility_content_changed");
             }
         }
     }
@@ -159,16 +161,19 @@ public class AppStateManager {
     /**
      * 合并同一轮页面变化，在页面稳定后检测；连续变化超过上限时强制执行一次。
      */
-    private void requestContentCheck() {
+    private void requestContentCheck(String source) {
         long now = SystemClock.elapsedRealtime();
         if (contentCheckBurstStartedAt == 0) {
             contentCheckBurstStartedAt = now;
         }
+        pendingContentCheckSource = source;
 
         if (contentCheckRunnable == null) {
             contentCheckRunnable = () -> {
+                String triggerSource = pendingContentCheckSource;
                 contentCheckBurstStartedAt = 0;
-                checkTextContentOptimized();
+                pendingContentCheckSource = "unknown";
+                checkTextContentOptimized(false, triggerSource);
             };
         }
 
@@ -181,6 +186,7 @@ public class AppStateManager {
 
     private void cancelPendingContentCheck() {
         contentCheckBurstStartedAt = 0;
+        pendingContentCheckSource = "unknown";
         if (contentCheckRunnable != null) {
             handler.removeCallbacks(contentCheckRunnable);
         }
@@ -190,7 +196,7 @@ public class AppStateManager {
      * 优化版本的文本内容检测
      */
     public void checkTextContentOptimized() {
-        checkTextContentOptimized(false);
+        checkTextContentOptimized(false, "direct");
     }
 
     /**
@@ -198,6 +204,10 @@ public class AppStateManager {
      * @param forceCheck 是否强制检查（用于定时器触发的情况）
      */
     public void checkTextContentOptimized(boolean forceCheck) {
+        checkTextContentOptimized(forceCheck, forceCheck ? "timer_force_check" : "direct");
+    }
+
+    private void checkTextContentOptimized(boolean forceCheck, String triggerSource) {
         try {
             if (isDetectionPaused()) {
                 Log.v(TAG, "检测防抖尚未结束，暂停页面关键词检测");
@@ -225,25 +235,36 @@ public class AppStateManager {
             }
 
             String currentPackageName = currentActiveApp.getPackageName();
-            Log.d(TAG, "当前有活跃的APP，且符合条件，开始文本检测");
+            Log.d(TAG, "当前有活跃的APP，且符合条件，开始文本检测，触发来源=" + triggerSource);
+            TextScanDiagnostics diagnostics =
+                    TextScanDiagnostics.createIfEnabled(triggerSource, currentPackageName);
+            long rootStartNanos = SystemClock.elapsedRealtimeNanos();
             AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
+            double rootElapsedMs = nanosToMillis(SystemClock.elapsedRealtimeNanos() - rootStartNanos);
             String targetWord = currentActiveApp.getTargetWord();
             boolean hasTargetWord = false;
             if (rootNode != null) {
-                long start = System.currentTimeMillis();
-                hasTargetWord = FloatHelper.findTextInNode(rootNode, targetWord);
+                long traversalStartNanos = SystemClock.elapsedRealtimeNanos();
+                hasTargetWord = FloatHelper.findTargetText(rootNode, targetWord, diagnostics);
+                double traversalElapsedMs = nanosToMillis(
+                        SystemClock.elapsedRealtimeNanos() - traversalStartNanos);
                 if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
                     hasTargetWord = true;
                 }
-                long end = System.currentTimeMillis();
-                double deltaSeconds = (end - start) / 1000.0;
-                Log.d(TAG, "检测耗时：" + String.format("%.3f", deltaSeconds));
-
+                Log.d(TAG, "检测耗时：" + formatMillis(traversalElapsedMs / 1000.0));
+                if (diagnostics != null) {
+                    String rootPackageName = rootNode.getPackageName() == null
+                            ? "null" : rootNode.getPackageName().toString();
+                    diagnostics.log(rootPackageName, rootElapsedMs, traversalElapsedMs, hasTargetWord);
+                }
                 rootNode.recycle();
             }else{
                 Log.d(TAG, "rootNode 为空");
                 if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
                     hasTargetWord = true;
+                }
+                if (diagnostics != null) {
+                    diagnostics.log("null", rootElapsedMs, 0, hasTargetWord);
                 }
             }
             // 简化界面判断逻辑：只检测目标词
@@ -284,6 +305,14 @@ public class AppStateManager {
         }
     }
     
+    private static double nanosToMillis(long nanos) {
+        return nanos / 1_000_000.0;
+    }
+
+    private static String formatMillis(double millis) {
+        return String.format(Locale.getDefault(), "%.3f", millis);
+    }
+
     private boolean stillInHidePeriod() {
         // 用持久化的关闭时间+间隔判断是否仍在解禁范围内，避免暖窗口跨APP复用时
         // Share.isFloatingWindowVisible 残留为 true 导致 getAppRemainingTime 返回 0 哨兵值，
@@ -801,7 +830,7 @@ public class AppStateManager {
                 if (shouldDetectBeforeShow) {
                     Log.d(TAG, "上次离开 " + detectedApp.getAppName()
                             + " 时页面未检测到目标关键词，本次先检测页面文字，再决定是否显示悬浮窗");
-                    checkTextContentOptimized();
+                    checkTextContentOptimized(false, "entry_detect_before_show");
                 } else if (shouldShowBeforeContentCheck && listener != null) {
                     long firstCheckDelayMs = getFirstContentCheckDelayMs(detectedApp);
                     Log.d(TAG, "确认进入目标 " + detectedApp.getAppName()
@@ -812,13 +841,13 @@ public class AppStateManager {
                     // 把首帧绘制一起卡住，导致悬浮窗“已显示成功”但要 1 秒后才真正渲染。
                     // 因此延后一小段（跨过首帧）再跑阻塞式检测，先让主线程把悬浮窗画出来。
                     handler.postDelayed(
-                            this::checkTextContentOptimized,
+                            () -> checkTextContentOptimized(false, "entry_show_before_check"),
                             firstCheckDelayMs);
                 } else {
-                    checkTextContentOptimized();
+                    checkTextContentOptimized(false, "entry_direct_check");
                 }
             } else {
-                requestContentCheck();
+                requestContentCheck(source + "_same_target_package");
             }
             return;
         }
