@@ -1420,7 +1420,7 @@ public class SettingsDialogManager {
 
         // 添加说明文字
         android.widget.TextView messageText = new android.widget.TextView(context);
-        messageText.setText("悬浮窗中间将固定展示自定义的座右铭");
+        messageText.setText("将在悬浮窗中间固定展示");
         messageText.setTextSize(14);
         messageText.setTextColor(0xFF666666);
         messageText.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
@@ -1438,7 +1438,7 @@ public class SettingsDialogManager {
         final EditText input = new EditText(context);
         // 设置输入长度限制为50
         input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(50) });
-        input.setHint("例如：" + Const.DEFAULT_STRICT_REMINDER);
+        input.setHint(Const.DEFAULT_STRICT_REMINDER);
         input.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
             android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
             android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));

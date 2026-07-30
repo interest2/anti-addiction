@@ -106,7 +106,8 @@ public final class ReminderTextRepository {
                 if (callback != null) {
                     inFlightCallbacks.add(callback);
                 }
-                Log.d(TAG, "复用进行中的提醒请求");
+                Log.d(TAG, "复用进行中的提醒请求 reqId=" + inFlightGeneration
+                        + ", " + describeRequest(request));
                 return;
             }
 
@@ -123,7 +124,8 @@ public final class ReminderTextRepository {
             if (callback != null) {
                 inFlightCallbacks.add(callback);
             }
-            Log.d(TAG, "开始新的提醒请求");
+            Log.d(TAG, "开始新的提醒请求 reqId=" + generation
+                    + ", " + describeRequest(request));
             inFlightFuture = requestExecutor.submit(
                     () -> generate(generation, requestKey, config, request));
         }
@@ -228,12 +230,15 @@ public final class ReminderTextRepository {
         }
 
         if (result.isSuccess()) {
-            Log.d(TAG, "提醒请求完成并已写入缓存");
+            Log.d(TAG, "提醒请求完成并已写入缓存 reqId=" + generation
+                    + ", " + describeRequest(request)
+                    + ", resp[" + previewText(result.getText()) + "]");
             for (Callback callback : callbacks) {
                 postSuccess(callback, result.getText());
             }
         } else {
-            Log.w(TAG, "提醒请求失败，errorCode=" + result.getErrorCode()
+            Log.w(TAG, "提醒请求失败 reqId=" + generation
+                    + ", errorCode=" + result.getErrorCode()
                     + ", httpStatus=" + result.getHttpStatus());
             postErrors(callbacks, result);
         }
@@ -244,6 +249,27 @@ public final class ReminderTextRepository {
                 appSettingsManager.getMotivationTag(),
                 appSettingsManager.getReminderStyle(),
                 appSettingsManager.getReminderCustomStyle());
+    }
+
+    /** 请求日志用：拼出目标(tag)与风格字段，风格为自定义时附带自定义描述。 */
+    private static String describeRequest(ReminderRequest request) {
+        String style = request.getStyle();
+        String customStyle = request.getCustomStyle();
+        if (customStyle != null && !customStyle.isEmpty()) {
+            style = style + "(" + customStyle + ")";
+        }
+        return "tag=" + request.getMotivationTag() + ", style=" + style;
+    }
+
+    /** 请求日志用：只打印响应文字的长度与首尾各 5 个字，换行折成空格，避免刷屏与泄露全文。 */
+    private static String previewText(String text) {
+        if (text == null) {
+            return "null";
+        }
+        int length = text.length();
+        String head = text.substring(0, Math.min(5, length)).replace("\n", " ");
+        String tail = text.substring(Math.max(0, length - 5)).replace("\n", " ");
+        return "len=" + length + ", head=" + head + ", tail=" + tail;
     }
 
     private ReminderProvider createProvider(ReminderProviderConfig config) {

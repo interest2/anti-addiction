@@ -410,7 +410,16 @@ public class ReminderProviderSettingsNav extends Fragment {
 
         modelInput.setText(customModel ? selectedModel : "");
         modelGroup.setOnCheckedStateChangeListener(
-                (group, checkedIds) -> updateCustomModelInput());
+                (group, checkedIds) -> onModelSelectionChanged());
+        updateCustomModelInput();
+    }
+
+    // Fired only on user taps (not the initial programmatic checks). Tapping the
+    // "添加" chip should start a fresh entry, so clear any leftover model text.
+    private void onModelSelectionChanged() {
+        if (isCustomModelSelected()) {
+            modelInput.setText("");
+        }
         updateCustomModelInput();
     }
 
