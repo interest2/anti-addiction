@@ -246,12 +246,14 @@ public class FloatService extends AccessibilityService
                 + leisureTimeManager.getLeisureUsedCountToday(leisureMode) + "/"
                 + leisureTimeManager.getLeisureDailyCount(leisureMode) + " 次");
 
-        // 休闲时刻计次 +1，并刷新首页卡片宽松次数
-        relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
-        notifyHomeFragmentUpdate(currentActiveApp);
+        // 仅当本次休闲时刻用的是宽松档时，才计入"宽松解禁间隔"每日限额；严格档不消耗该额度
+        if (leisureMode == LeisureTimeManager.LeisureMode.RELAXED) {
+            relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
+            notifyHomeFragmentUpdate(currentActiveApp);
+        }
         // 记录本次关闭时间，供暖窗口复用期间按"记录的剩余时长"判断是否仍应隐藏
         relaxManager.recordAppCloseTime(currentActiveApp, leisureSeconds);
-        // 标记为手动隐藏，使该 APP 在解禁时长内不再被判定为目标界面
+        // 标记为手动隐藏，解禁期间不再检测
         Share.setAppManuallyHidden(currentActiveApp, true);
         Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
         // 休闲时刻解禁期间暂停该 APP 的文本检测，避免误判重新弹出悬浮窗
