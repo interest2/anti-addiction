@@ -15,8 +15,8 @@ import com.book.mask.R;
 import com.book.mask.constant.Const;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.personalize.AppSettingsManager;
-import com.book.mask.floating.FloatHelper;
 import com.book.mask.floating.FloatService;
+import com.book.mask.util.DateUtils;
 
 public class GoalNav extends Fragment {
 
@@ -118,6 +118,6 @@ public class GoalNav extends Fragment {
         String date = appSettingsManager.getTargetCompletionDate();
         btnTargetDateSetting.setText((date == null || date.isEmpty() || "待设置".equals(date)) ? "目标日期" : date);
         // 倒计时
-        tvGoalCountdown.setText(FloatHelper.countdownDate(date));
+        tvGoalCountdown.setText(DateUtils.countdownDate(date));
     }
 }

@@ -12,13 +12,14 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
+import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.personalize.RelaxManager;
+import com.book.mask.util.DateUtils;
 
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -47,7 +48,7 @@ public class AppStateManager {
     private PendingPackageTransition pendingPackageTransition;
     private Runnable pendingPackageTransitionStep;
     private long packageTransitionGeneration = 0;
-    private long floatingShowPackageDetectionPausedUntil = 0;
+    private long packageDetectPauseUtil = 0;
     private Runnable floatingShowPackageDetectionResumeRunnable;
     private final Map<String, Boolean> lastDetectionMissingTargetWord = new HashMap<>();
     private final Map<String, Boolean> detectBeforeShowOnNextEntry = new HashMap<>();
@@ -101,49 +102,22 @@ public class AppStateManager {
      * 处理无障碍事件
      */
     public void handleAccessibilityEvent(AccessibilityEvent event) {
-        // 情况 1：界面状态变化
+        // 情况 1：窗口状态变化（包名变化）
         if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            if (isFloatingShowPackageDetectionPaused()) {
-                return;
-            }
             handleWindowStateChanged(event);
         // 情况 2：界面内容变化
         } else if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             handleWindowContentChanged(event);
         }
     }
-    
-    /**
-     * 处理窗口状态变化
-     */
+
     private void handleWindowStateChanged(AccessibilityEvent event) {
-        if (event.getPackageName() == null) {
-            return;
+        String packageName = getValidPackageName(event);
+        if (packageName != null) {
+            handleObservedPackage(packageName, "窗口事件");
         }
-
-        String packageName = event.getPackageName().toString();
-        Log.d(TAG, "窗口状态改变，当前应用: " + packageName);
-
-        // 过滤掉此 APP 自身，避免悬浮窗显示时触发状态变化
-        if (packageName.equals(service.getPackageName())) {
-            Log.d(TAG, "忽略自己的应用: " + packageName);
-            return;
-        }
-
-        // 过滤掉输入法应用，避免输入法弹出时误判
-        if (FloatHelper.isInputMethodApp(packageName)) {
-            Log.d(TAG, "忽略输入法应用: " + packageName);
-            return;
-        }
-
-        // 记录包名访问 LRU（用于"包名日志"调试）
-        com.book.mask.config.PackageLogManager.getInstance().record(packageName);
-        handleObservedPackage(packageName, "窗口事件");
     }
-    
-    /**
-     * 处理窗口内容变化
-     */
+
     private void handleWindowContentChanged(AccessibilityEvent event) {
         if (isDetectionPaused()) {
             return;
@@ -209,18 +183,8 @@ public class AppStateManager {
 
     private void checkTextContentOptimized(boolean forceCheck, String triggerSource) {
         try {
-            if (isDetectionPaused()) {
-                Log.v(TAG, "检测防抖尚未结束，暂停页面关键词检测");
-                return;
-            }
-
-            if (currentActiveApp == null) {
-                Log.d(TAG, "当前没有活跃的APP，跳过文本检测");
-                return;
-            }
-
-            if(listener != null && listener.isMathChallengeActive()){
-                Log.d(TAG, "数学题正展示，暂停检测");
+//            检测防抖中 / 无活跃APP / 数学题正展示
+            if (shouldSkipTextCheck()) {
                 return;
             }
 
@@ -240,18 +204,18 @@ public class AppStateManager {
                     TextScanDiagnostics.createIfEnabled(triggerSource, currentPackageName);
             long rootStartNanos = SystemClock.elapsedRealtimeNanos();
             AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
-            double rootElapsedMs = nanosToMillis(SystemClock.elapsedRealtimeNanos() - rootStartNanos);
+            double rootElapsedMs = DateUtils.nanosToMillis(SystemClock.elapsedRealtimeNanos() - rootStartNanos);
             String targetWord = currentActiveApp.getTargetWord();
             boolean hasTargetWord = false;
             if (rootNode != null) {
                 long traversalStartNanos = SystemClock.elapsedRealtimeNanos();
                 hasTargetWord = FloatHelper.findTargetText(rootNode, targetWord, diagnostics);
-                double traversalElapsedMs = nanosToMillis(
+                double traversalElapsedMs = DateUtils.nanosToMillis(
                         SystemClock.elapsedRealtimeNanos() - traversalStartNanos);
                 if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
                     hasTargetWord = true;
                 }
-                Log.d(TAG, "检测耗时：" + formatMillis(traversalElapsedMs / 1000.0));
+                Log.d(TAG, "检测耗时：" + DateUtils.formatMillis(traversalElapsedMs / 1000.0));
                 if (diagnostics != null) {
                     String rootPackageName = rootNode.getPackageName() == null
                             ? "null" : rootNode.getPackageName().toString();
@@ -304,13 +268,27 @@ public class AppStateManager {
             Log.e(TAG, "优化版文本检测失败", e);
         }
     }
-    
-    private static double nanosToMillis(long nanos) {
-        return nanos / 1_000_000.0;
-    }
 
-    private static String formatMillis(double millis) {
-        return String.format(Locale.getDefault(), "%.3f", millis);
+    /**
+     * 是否应跳过本次文本检测（检测防抖中 / 无活跃APP / 数学题正展示）
+     */
+    private boolean shouldSkipTextCheck() {
+        if (isDetectionPaused()) {
+            Log.v(TAG, "检测防抖尚未结束，暂停页面关键词检测");
+            return true;
+        }
+
+        if (currentActiveApp == null) {
+            Log.d(TAG, "当前没有活跃的APP，跳过文本检测");
+            return true;
+        }
+
+        if (listener != null && listener.isMathChallengeActive()) {
+            Log.d(TAG, "数学题正展示，暂停检测");
+            return true;
+        }
+
+        return false;
     }
 
     private boolean stillInHidePeriod() {
@@ -402,11 +380,7 @@ public class AppStateManager {
         scheduleTimer(app, interval, false);
     }
 
-    private void scheduleTimer(
-            CustomApp app,
-            long interval,
-            boolean resetRelaxedModeOnTrigger
-    ) {
+    private void scheduleTimer(CustomApp app, long interval, boolean resetRelaxedModeOnTrigger) {
         // 如果已有当前 APP 的定时显示任务，则移除它
         if (appTimers.get(app) != null) {
             autoShowHandler.removeCallbacks(appTimers.get(app));
@@ -421,17 +395,6 @@ public class AppStateManager {
 
         String intervalText = RelaxManager.getIntervalDisplayText((int)(interval / 1000));
         Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗 (APP: " + app.getAppName() + ")");
-    }
-    
-    /**
-     * 取消定时器
-     */
-    public void cancelTimer(CustomApp app) {
-        if (appTimers.containsKey(app)) {
-            autoShowHandler.removeCallbacks(appTimers.get(app));
-            appTimers.remove(app);
-            Log.d(TAG, "取消APP " + app.getAppName() + " 的定时器");
-        }
     }
     
     /**
@@ -466,7 +429,7 @@ public class AppStateManager {
      */
     private void checkCurrentAppState() {
         try {
-            if (isFloatingShowPackageDetectionPaused()) {
+            if (isPackageDetectPaused()) {
                 return;
             }
 
@@ -492,13 +455,6 @@ public class AppStateManager {
             Log.w(TAG, "应用状态检测出错", e);
         }
     }
-    
-    /**
-     * 检测包名对应的支持APP（统一使用CustomApp）
-     */
-    private CustomApp detectSupportedApp(String packageName) {
-        return CustomAppManager.getInstance().detectSupportedApp(packageName, relaxManager);
-    }
 
     /**
      * 所有包名观察统一进入这里，避免窗口事件和定时轮询采用不同的离开规则。
@@ -507,7 +463,7 @@ public class AppStateManager {
         if (packageName == null || packageName.isEmpty()) {
             return;
         }
-        if (isFloatingShowPackageDetectionPaused()) {
+        if (isPackageDetectPaused()) {
             Log.v(TAG, source + "处于悬浮窗显示防抖阶段，忽略包名变化: " + packageName);
             return;
         }
@@ -640,7 +596,7 @@ public class AppStateManager {
     }
 
     public void startFloatingShowPackageDetectionDebounce() {
-        floatingShowPackageDetectionPausedUntil = SystemClock.elapsedRealtime()
+        packageDetectPauseUtil = SystemClock.elapsedRealtime()
                 + Const.FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS;
 
         if (floatingShowPackageDetectionResumeRunnable != null) {
@@ -667,13 +623,13 @@ public class AppStateManager {
     }
 
     private void finishFloatingShowPackageDetectionDebounce() {
-        long remaining = floatingShowPackageDetectionPausedUntil - SystemClock.elapsedRealtime();
+        long remaining = packageDetectPauseUtil - SystemClock.elapsedRealtime();
         if (remaining > 0) {
             handler.postDelayed(floatingShowPackageDetectionResumeRunnable, remaining);
             return;
         }
 
-        floatingShowPackageDetectionPausedUntil = 0;
+        packageDetectPauseUtil = 0;
         floatingShowPackageDetectionResumeRunnable = null;
         Log.d(TAG, "悬浮窗显示防抖结束，主动复核当前包名");
 
@@ -686,28 +642,6 @@ public class AppStateManager {
         handleObservedPackage(confirmedPackage, "悬浮窗显示防抖结束");
     }
 
-    private boolean isDetectionPaused() {
-        return isLeisureDetectionPaused()
-                || isPackageTransitionDetectionPaused();
-    }
-
-    private boolean isLeisureDetectionPaused() {
-        return currentActiveApp != null
-                && leisureTimeManager.isLeisureTimeActiveForApp(
-                        currentActiveApp.getPackageName());
-    }
-
-    private boolean isPackageTransitionDetectionPaused() {
-        return pendingPackageTransition != null;
-    }
-
-    private boolean isFloatingShowPackageDetectionPaused() {
-        return SystemClock.elapsedRealtime() < floatingShowPackageDetectionPausedUntil;
-    }
-
-    private String packageNameForLog(String packageName) {
-        return packageName.isEmpty() ? "未知" : packageName;
-    }
 
     private void schedulePackageTransitionStep(long delayMillis, Runnable step) {
         long generation = packageTransitionGeneration;
@@ -773,30 +707,6 @@ public class AppStateManager {
 
         handler.postDelayed(pendingPackageConfirmation, delayMillis);
         Log.d(TAG, source + "观察到待确认包名，" + delayMillis + "ms 后确认，期间保持悬浮窗");
-    }
-
-    private String getActiveRootPackage() {
-        String rootPackage = getRawActiveRootPackage();
-        if (!rootPackage.isEmpty()
-                && !rootPackage.equals(service.getPackageName())
-                && !FloatHelper.isInputMethodApp(rootPackage)) {
-            return rootPackage;
-        }
-        return "";
-    }
-
-    private String getRawActiveRootPackage() {
-        AccessibilityNodeInfo root = service.getRootInActiveWindow();
-        try {
-            if (root != null && root.getPackageName() != null) {
-                return root.getPackageName().toString();
-            }
-            return "";
-        } finally {
-            if (root != null) {
-                root.recycle();
-            }
-        }
     }
 
     private void cancelPendingPackageConfirmation() {
@@ -942,12 +852,101 @@ public class AppStateManager {
         cancelPendingContentCheck();
         cancelPendingPackageConfirmation();
         cancelPackageTransition();
-        floatingShowPackageDetectionPausedUntil = 0;
+        packageDetectPauseUtil = 0;
         if (floatingShowPackageDetectionResumeRunnable != null) {
             handler.removeCallbacks(floatingShowPackageDetectionResumeRunnable);
             floatingShowPackageDetectionResumeRunnable = null;
         }
         lastDetectionMissingTargetWord.clear();
         detectBeforeShowOnNextEntry.clear();
+    }
+
+    private String getValidPackageName(AccessibilityEvent event) {
+        // 1、包名防抖暂停
+        if (isPackageDetectPaused()) {
+            return null;
+        }
+
+        CharSequence packageName = event.getPackageName();
+        if (packageName == null) {
+            return null;
+        }
+        String packageNameString = packageName.toString();
+        PackageLogManager.getInstance().record(packageNameString);
+
+        // 2、忽略特殊包名（自身、输入法）
+        if (shouldIgnorePackage(packageNameString)) {
+            return null;
+        }
+        Log.d(TAG, "窗口状态改变，当前包名: " + packageName);
+        return packageNameString;
+    }
+
+    /**
+     * 判断是否应忽略该包名（自身应用 / 输入法应用）
+     */
+    private boolean shouldIgnorePackage(String packageName) {
+        // 过滤掉此 APP 自身，避免悬浮窗显示时触发状态变化
+        if (packageName.equals(service.getPackageName())) {
+            return true;
+        }
+        // 过滤掉输入法应用，避免输入法弹出时误判
+        if (FloatHelper.isInputMethodApp(packageName)) {
+            Log.d(TAG, "忽略输入法应用: " + packageName);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 检测包名对应的支持APP（统一使用CustomApp）
+     */
+    private CustomApp detectSupportedApp(String packageName) {
+        return CustomAppManager.getInstance().detectSupportedApp(packageName, relaxManager);
+    }
+
+    private boolean isDetectionPaused() {
+        return isLeisureDetectionPaused() || isPackageTransitionDetectionPaused();
+    }
+
+    private boolean isLeisureDetectionPaused() {
+        return currentActiveApp != null
+                && leisureTimeManager.isLeisureTimeActiveForApp(currentActiveApp.getPackageName());
+    }
+
+    private boolean isPackageTransitionDetectionPaused() {
+        return pendingPackageTransition != null;
+    }
+
+    private boolean isPackageDetectPaused() {
+        return SystemClock.elapsedRealtime() < packageDetectPauseUtil;
+    }
+
+    private String packageNameForLog(String packageName) {
+        return packageName.isEmpty() ? "未知" : packageName;
+    }
+
+    private String getActiveRootPackage() {
+        String rootPackage = getRawActiveRootPackage();
+        if (!rootPackage.isEmpty()
+                && !rootPackage.equals(service.getPackageName())
+                && !FloatHelper.isInputMethodApp(rootPackage)) {
+            return rootPackage;
+        }
+        return "";
+    }
+
+    private String getRawActiveRootPackage() {
+        AccessibilityNodeInfo root = service.getRootInActiveWindow();
+        try {
+            if (root != null && root.getPackageName() != null) {
+                return root.getPackageName().toString();
+            }
+            return "";
+        } finally {
+            if (root != null) {
+                root.recycle();
+            }
+        }
     }
 }

@@ -21,6 +21,7 @@ import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.network.TextFetcher;
+import com.book.mask.util.DateUtils;
 
 /**
  * 悬浮窗管理器
@@ -572,7 +573,7 @@ public class FloatingWindowManager {
                  
                 // 添加日期前缀
                 String targetDateStr = appSettingsManager.getTargetCompletionDate();
-                String datePrefix = FloatHelper.hintDate(targetDateStr);
+                String datePrefix = DateUtils.hintDate(targetDateStr);
                 content = datePrefix + content;
 
                 contentText.setText(content);

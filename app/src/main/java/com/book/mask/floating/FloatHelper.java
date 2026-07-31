@@ -7,14 +7,8 @@ import android.view.Gravity;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
 
-import com.book.mask.constant.Const;
 import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.personalize.AppSettingsManager;
-
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Locale;
 
 
 public class FloatHelper {
@@ -51,62 +45,6 @@ public class FloatHelper {
 //        "com.coloros.inputmethod",   // ColorOS输入法
 //        "com.vivo.inputmethod",      // vivo输入法
 //        "com.bbk.inputmethod"       // vivo输入法（旧版本）
-    }
-
-    public static String hintDate(String targetDateStr){
-        Integer daysRemaining = getDaysRemaining(targetDateStr);
-        if (daysRemaining == null) {
-            return "";
-        }
-
-        String dateHint;
-        if (daysRemaining > 0) {
-            dateHint = "距离目标只剩 " + daysRemaining + " 天！";
-        } else if (daysRemaining == 0) {
-            dateHint = "今天是目标日期！";
-        } else {
-            dateHint = "目标日期已过期 " + Math.abs(daysRemaining) + " 天！";
-        }
-        Log.d(TAG, "日期提示: " + dateHint);
-        return dateHint + "\n";
-    }
-
-    public static String countdownDate(String targetDateStr) {
-        Integer daysRemaining = getDaysRemaining(targetDateStr);
-        return daysRemaining == null ? "倒计时 -- 天" : "倒计时 " + daysRemaining + " 天";
-    }
-
-    private static Integer getDaysRemaining(String targetDateStr) {
-        if (Const.TARGET_TO_BE_SET.equals(targetDateStr) || targetDateStr.isEmpty()) {
-            return null;
-        }
-
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-            Date targetDate = sdf.parse(targetDateStr);
-            if (targetDate == null) {
-                return null;
-            }
-
-            Calendar today = Calendar.getInstance();
-            today.set(Calendar.HOUR_OF_DAY, 0);
-            today.set(Calendar.MINUTE, 0);
-            today.set(Calendar.SECOND, 0);
-            today.set(Calendar.MILLISECOND, 0);
-
-            Calendar targetCalendar = Calendar.getInstance();
-            targetCalendar.setTime(targetDate);
-            targetCalendar.set(Calendar.HOUR_OF_DAY, 0);
-            targetCalendar.set(Calendar.MINUTE, 0);
-            targetCalendar.set(Calendar.SECOND, 0);
-            targetCalendar.set(Calendar.MILLISECOND, 0);
-
-            long timeDiff = targetCalendar.getTimeInMillis() - today.getTimeInMillis();
-            return (int) (timeDiff / (24 * 60 * 60 * 1000));
-        } catch (Exception e) {
-            Log.e(TAG, "计算剩余天数失败", e);
-            return null;
-        }
     }
 
     static boolean findTargetText(AccessibilityNodeInfo node, String targetText,

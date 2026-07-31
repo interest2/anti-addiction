@@ -6,6 +6,7 @@ import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class Share {
     public static boolean MOTIVATE_CHANGE = false;
@@ -25,11 +26,16 @@ public class Share {
     public static Map<String, Boolean> appManuallyHidden = new HashMap<>(); // 每个APP的手动隐藏状态（使用包名作为键）
     public static Map<String, Long> hiddenTimestamp = new HashMap<>();
 
+    // 预置APP中默认开启监测的包名（微信、支付宝默认不开启）
+    private static final Set<String> DEFAULT_ENABLED_PACKAGES = Set.of(
+            CustomAppManager.XHS_PACKAGE,
+            CustomAppManager.ZHIHU_PACKAGE,
+            CustomAppManager.BILI_PACKAGE,
+            CustomAppManager.DOUYIN_PACKAGE
+    );
+
     public static boolean judgeEnabled(String packageName){
-        return CustomAppManager.XHS_PACKAGE.equals(packageName)
-                || CustomAppManager.ZHIHU_PACKAGE.equals(packageName)
-                || CustomAppManager.BILI_PACKAGE.equals(packageName)
-                || CustomAppManager.DOUYIN_PACKAGE.equals(packageName);
+        return DEFAULT_ENABLED_PACKAGES.contains(packageName);
     }
 
     /**

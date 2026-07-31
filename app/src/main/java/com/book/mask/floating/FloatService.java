@@ -234,8 +234,7 @@ public class FloatService extends AccessibilityService
         }
 
         LeisureTimeManager.LeisureMode leisureMode =
-                leisureTimeManager.activateLeisureTimeForClose(
-                        currentActiveApp.getPackageName());
+                leisureTimeManager.activateLeisureTimeForClose(currentActiveApp.getPackageName());
         if (leisureMode == null) {
             return false;
         }
@@ -247,13 +246,18 @@ public class FloatService extends AccessibilityService
                 + leisureTimeManager.getLeisureUsedCountToday(leisureMode) + "/"
                 + leisureTimeManager.getLeisureDailyCount(leisureMode) + " 次");
 
+        // 休闲时刻计次 +1，并刷新首页卡片宽松次数
         relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
         notifyHomeFragmentUpdate(currentActiveApp);
+        // 记录本次关闭时间，供暖窗口复用期间按"记录的剩余时长"判断是否仍应隐藏
         relaxManager.recordAppCloseTime(currentActiveApp, leisureSeconds);
+        // 标记为手动隐藏，使该 APP 在解禁时长内不再被判定为目标界面
         Share.setAppManuallyHidden(currentActiveApp, true);
         Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
+        // 休闲时刻解禁期间暂停该 APP 的文本检测，避免误判重新弹出悬浮窗
         appStateManager.pauseDetectionForLeisureTime(currentActiveApp);
         floatingWindowManager.hideFloatingWindow();
+        // 到点后自动恢复悬浮窗（休闲时刻到期）
         appStateManager.startLeisureTimer(currentActiveApp, leisureSeconds * 1000L);
         return true;
     }

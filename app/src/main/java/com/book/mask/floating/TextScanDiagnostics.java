@@ -4,8 +4,6 @@ import android.util.Log;
 
 import com.book.mask.config.CustomAppManager;
 
-import java.util.Locale;
-
 /**
  * 文字扫描诊断：仅当当前 APP 为抖音时收集一次页面扫描的诊断信息并输出一行日志（APP 内写死，
  * 不依赖云端开关）。其余 APP {@link #createIfEnabled} 返回 null，调用方据此走低开销路径——
@@ -55,8 +53,8 @@ final class TextScanDiagnostics {
         Log.d(TAG, "文字扫描诊断: source=" + source
                 + ", activePackage=" + activePackage
                 + ", rootPackage=" + rootPackage
-                + ", rootMs=" + formatMillis(rootMs)
-                + ", traversalMs=" + formatMillis(traversalMs)
+                + ", rootMs=" + com.book.mask.util.DateUtils.formatMillis(rootMs)
+                + ", traversalMs=" + com.book.mask.util.DateUtils.formatMillis(traversalMs)
                 + ", visitedNodes=" + visitedNodeCount
                 + ", visibleNodes=" + visibleNodeCount
                 + ", maxDepth=" + maxDepth
@@ -64,9 +62,5 @@ final class TextScanDiagnostics {
                 + ", lastHitDepth=" + lastHitDepth
                 + ", lastHitVisible=" + lastHitVisible
                 + ", matched=" + matched);
-    }
-
-    private static String formatMillis(double millis) {
-        return String.format(Locale.getDefault(), "%.3f", millis);
     }
 }

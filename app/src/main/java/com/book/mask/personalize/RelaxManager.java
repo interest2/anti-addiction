@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.book.mask.config.CustomApp;
+import com.book.mask.config.Share;
 import com.book.mask.util.DateUtils;
 import com.tencent.mmkv.MMKV;
 
@@ -348,7 +349,7 @@ public class RelaxManager {
         Boolean isEnabled = isAppMonitoringEnabled(packageName);
         if (isEnabled == null) {
             // 如果还没有设置过，使用默认值
-            return com.book.mask.config.Share.judgeEnabled(packageName); // 小红书默认开启
+            return Share.judgeEnabled(packageName); // 小红书默认开启
         }
         return isEnabled;
     }
