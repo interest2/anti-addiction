@@ -240,28 +240,35 @@ public class FloatService extends AccessibilityService
         }
 
         int leisureSeconds = leisureTimeManager.getLeisureDurationMinutes(leisureMode) * 60;
-        Log.d(TAG, "APP " + currentActiveApp.getAppName()
-                + " 已获得 " + RelaxManager.getIntervalDisplayText(leisureSeconds)
-                + " 休闲解禁，今日已消耗 "
-                + leisureTimeManager.getLeisureUsedCountToday(leisureMode) + "/"
-                + leisureTimeManager.getLeisureDailyCount(leisureMode) + " 次");
+        logInfoOfLeisure(currentActiveApp, leisureMode, leisureSeconds);
 
-        // 仅当本次休闲时刻用的是宽松档时，才计入"宽松解禁间隔"每日限额；严格档不消耗该额度
+        // 仅当休闲时刻用的宽松档，才消耗宽松次数
         if (leisureMode == LeisureTimeManager.LeisureMode.RELAXED) {
             relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
             notifyHomeFragmentUpdate(currentActiveApp);
         }
         // 记录本次关闭时间，供暖窗口复用期间按"记录的剩余时长"判断是否仍应隐藏
         relaxManager.recordAppCloseTime(currentActiveApp, leisureSeconds);
-        // 标记为手动隐藏，解禁期间不再检测
+        // 标为手动隐藏，防止后续检测
         Share.setAppManuallyHidden(currentActiveApp, true);
-        Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
-        // 休闲时刻解禁期间暂停该 APP 的文本检测，避免误判重新弹出悬浮窗
+        // 取消排队的页面检测任务
         appStateManager.pauseDetectionForLeisureTime(currentActiveApp);
+
+        // 悬浮窗的隐藏、到期恢复定时器
         floatingWindowManager.hideFloatingWindow();
-        // 到点后自动恢复悬浮窗（休闲时刻到期）
         appStateManager.startLeisureTimer(currentActiveApp, leisureSeconds * 1000L);
         return true;
+    }
+
+    /**
+     * 打印本次休闲解禁获得的时长及今日消耗进度。
+     */
+    private void logInfoOfLeisure(CustomApp app, LeisureTimeManager.LeisureMode leisureMode, int leisureSeconds) {
+        Log.d(TAG, "APP " + app.getAppName()
+                + " 已获得 " + RelaxManager.getIntervalDisplayText(leisureSeconds)
+                + " 休闲解禁，今日已消耗 "
+                + leisureTimeManager.getLeisureUsedCountToday(leisureMode) + "/"
+                + leisureTimeManager.getLeisureDailyCount(leisureMode) + " 次");
     }
 
     private void closeFloatingWindow(CustomApp currentActiveApp) {
@@ -283,7 +290,6 @@ public class FloatService extends AccessibilityService
         Share.setAppManuallyHidden(currentActiveApp, true);
         floatingWindowManager.hideFloatingWindow();
         appStateManager.startTimer(currentActiveApp, interval);
-        Share.setHiddenTimestamp(currentActiveApp.getPackageName(), System.currentTimeMillis());
 
         String intervalText = RelaxManager.getIntervalDisplayText(intervalSeconds);
         Log.d(TAG, "计划在" + intervalText + "后自动重新显示悬浮窗 (APP: " + appName + ")");

@@ -4,7 +4,6 @@ import android.accessibilityservice.AccessibilityService;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.provider.Settings;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -12,7 +11,6 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
-import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.LeisureTimeManager;
@@ -37,6 +35,7 @@ public class AppStateManager {
     private RelaxManager relaxManager;
     private LeisureTimeManager leisureTimeManager;
     private AppSettingsManager appSettingsManager;
+    private AccessibilityWindowInspector windowInspector;
 
     // 应用状态相关
     private CustomApp currentActiveApp = null;
@@ -90,6 +89,7 @@ public class AppStateManager {
         this.relaxManager = relaxManager;
         this.leisureTimeManager = leisureTimeManager;
         this.appSettingsManager = new AppSettingsManager(service);
+        this.windowInspector = new AccessibilityWindowInspector(service);
         this.handler = new Handler(Looper.getMainLooper());
         this.autoShowHandler = new Handler(Looper.getMainLooper());
     }
@@ -112,7 +112,11 @@ public class AppStateManager {
     }
 
     private void handleWindowStateChanged(AccessibilityEvent event) {
-        String packageName = getValidPackageName(event);
+        // 包名防抖暂停期间忽略窗口事件
+        if (isPackageDetectPaused()) {
+            return;
+        }
+        String packageName = windowInspector.extractObservablePackageName(event);
         if (packageName != null) {
             handleObservedPackage(packageName, "窗口事件");
         }
@@ -207,6 +211,7 @@ public class AppStateManager {
             double rootElapsedMs = DateUtils.nanosToMillis(SystemClock.elapsedRealtimeNanos() - rootStartNanos);
             String targetWord = currentActiveApp.getTargetWord();
             boolean hasTargetWord = false;
+
             if (rootNode != null) {
                 long traversalStartNanos = SystemClock.elapsedRealtimeNanos();
                 hasTargetWord = FloatHelper.findTargetText(rootNode, targetWord, diagnostics);
@@ -277,17 +282,14 @@ public class AppStateManager {
             Log.v(TAG, "检测防抖尚未结束，暂停页面关键词检测");
             return true;
         }
-
         if (currentActiveApp == null) {
-            Log.d(TAG, "当前没有活跃的APP，跳过文本检测");
+            Log.d(TAG, "没有活跃的APP，跳过文本检测");
             return true;
         }
-
         if (listener != null && listener.isMathChallengeActive()) {
             Log.d(TAG, "数学题正展示，暂停检测");
             return true;
         }
-
         return false;
     }
 
@@ -322,10 +324,8 @@ public class AppStateManager {
                                 appForTimer.getPackageName());
                 if (leisureTimeManager.isLeisureTimeActiveForApp(
                         appForTimer.getPackageName())) {
-                    scheduleTimer(
-                            appForTimer,
-                            leisureRemainingMillis + 100,
-                            resetRelaxedModeOnTrigger);
+                    scheduleTimer(appForTimer,
+                            leisureRemainingMillis + 100, resetRelaxedModeOnTrigger);
                     Log.d(TAG, "休闲时刻进行中，APP " + appForTimer.getAppName()
                             + " 的自动显示定时器顺延至休闲结束");
                     return;
@@ -508,7 +508,7 @@ public class AppStateManager {
             return;
         }
 
-        if (isTransitionAnimationDisabled()) {
+        if (windowInspector.isAnimationDisabled()) {
             Log.d(TAG, source + "系统已关闭过渡动画，跳过 300ms 复核，直接隐藏悬浮窗");
             confirmCurrentAppLeft("离开 APP 且无过渡动画", true);
             setSuspendedForSystemUi(false);
@@ -530,20 +530,6 @@ public class AppStateManager {
                 + Const.PACKAGE_TRANSITION_CHECK_DELAY_MS + "ms 后复核包名");
     }
 
-    /**
-     * 系统"过渡动画"是否已被用户关闭（开发者选项里"过渡动画缩放"设为 0）。
-     * 关闭动画时包名切换是瞬时的，无需等待 300ms 复核。
-     */
-    private boolean isTransitionAnimationDisabled() {
-        if (service == null) {
-            return false;
-        }
-        float scale = Settings.Global.getFloat(
-                service.getContentResolver(),
-                Settings.Global.TRANSITION_ANIMATION_SCALE,
-                1.0f);
-        return scale == 0f;
-    }
 
     private void confirmPackageAfterTransitionDelay() {
         PendingPackageTransition transition = pendingPackageTransition;
@@ -551,7 +537,7 @@ public class AppStateManager {
             return;
         }
 
-        String confirmedPackage = getActiveRootPackage();
+        String confirmedPackage = windowInspector.getActiveRootPackage();
 
         PackageTransitionDecision.Action action = PackageTransitionDecision.decide(
                 transition.targetApp.getPackageName(),
@@ -566,7 +552,7 @@ public class AppStateManager {
         }
 
         cancelPackageTransition();
-        Log.d(TAG, "300ms 复核为非目标包名: " + packageNameForLog(confirmedPackage)
+        Log.d(TAG, "300ms 复核为非目标包名: " + AccessibilityWindowInspector.packageNameForLog(confirmedPackage)
                 + "，恢复检测");
         resumeDetectionForPackage(confirmedPackage);
     }
@@ -576,9 +562,9 @@ public class AppStateManager {
             return;
         }
 
-        String confirmedPackage = getActiveRootPackage();
+        String confirmedPackage = windowInspector.getActiveRootPackage();
         cancelPackageTransition();
-        Log.d(TAG, "暂停检测结束，复核当前包名: " + packageNameForLog(confirmedPackage)
+        Log.d(TAG, "暂停检测结束，复核当前包名: " + AccessibilityWindowInspector.packageNameForLog(confirmedPackage)
                 + "，恢复检测");
         resumeDetectionForPackage(confirmedPackage);
     }
@@ -633,7 +619,7 @@ public class AppStateManager {
         floatingShowPackageDetectionResumeRunnable = null;
         Log.d(TAG, "悬浮窗显示防抖结束，主动复核当前包名");
 
-        String confirmedPackage = getActiveRootPackage();
+        String confirmedPackage = windowInspector.getActiveRootPackage();
         if (confirmedPackage.isEmpty()) {
             Log.d(TAG, "悬浮窗显示防抖结束时包名不明确，等待后续事件或轮询复核");
             return;
@@ -683,7 +669,7 @@ public class AppStateManager {
                 return;
             }
 
-            String confirmedPackage = getActiveRootPackage();
+            String confirmedPackage = windowInspector.getActiveRootPackage();
             if (confirmedPackage.isEmpty()
                     || confirmedPackage.equals(service.getPackageName())
                     || FloatHelper.isInputMethodApp(confirmedPackage)) {
@@ -861,43 +847,6 @@ public class AppStateManager {
         detectBeforeShowOnNextEntry.clear();
     }
 
-    private String getValidPackageName(AccessibilityEvent event) {
-        // 1、包名防抖暂停
-        if (isPackageDetectPaused()) {
-            return null;
-        }
-
-        CharSequence packageName = event.getPackageName();
-        if (packageName == null) {
-            return null;
-        }
-        String packageNameString = packageName.toString();
-        PackageLogManager.getInstance().record(packageNameString);
-
-        // 2、忽略特殊包名（自身、输入法）
-        if (shouldIgnorePackage(packageNameString)) {
-            return null;
-        }
-        Log.d(TAG, "窗口状态改变，当前包名: " + packageName);
-        return packageNameString;
-    }
-
-    /**
-     * 判断是否应忽略该包名（自身应用 / 输入法应用）
-     */
-    private boolean shouldIgnorePackage(String packageName) {
-        // 过滤掉此 APP 自身，避免悬浮窗显示时触发状态变化
-        if (packageName.equals(service.getPackageName())) {
-            return true;
-        }
-        // 过滤掉输入法应用，避免输入法弹出时误判
-        if (FloatHelper.isInputMethodApp(packageName)) {
-            Log.d(TAG, "忽略输入法应用: " + packageName);
-            return true;
-        }
-        return false;
-    }
-
     /**
      * 检测包名对应的支持APP（统一使用CustomApp）
      */
@@ -920,33 +869,5 @@ public class AppStateManager {
 
     private boolean isPackageDetectPaused() {
         return SystemClock.elapsedRealtime() < packageDetectPauseUtil;
-    }
-
-    private String packageNameForLog(String packageName) {
-        return packageName.isEmpty() ? "未知" : packageName;
-    }
-
-    private String getActiveRootPackage() {
-        String rootPackage = getRawActiveRootPackage();
-        if (!rootPackage.isEmpty()
-                && !rootPackage.equals(service.getPackageName())
-                && !FloatHelper.isInputMethodApp(rootPackage)) {
-            return rootPackage;
-        }
-        return "";
-    }
-
-    private String getRawActiveRootPackage() {
-        AccessibilityNodeInfo root = service.getRootInActiveWindow();
-        try {
-            if (root != null && root.getPackageName() != null) {
-                return root.getPackageName().toString();
-            }
-            return "";
-        } finally {
-            if (root != null) {
-                root.recycle();
-            }
-        }
     }
 }
