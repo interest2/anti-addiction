@@ -265,7 +265,7 @@ public class HomeNav extends Fragment implements
         dialogHolder[0] = new android.app.AlertDialog.Builder(requireContext())
                 .setTitle("可选权限")
                 .setView(messageView)
-                .setPositiveButton("知道了", null)
+                .setPositiveButton("关闭", null)
                 .show();
     }
 
@@ -330,7 +330,7 @@ public class HomeNav extends Fragment implements
         new android.app.AlertDialog.Builder(requireContext())
                 .setTitle("允许后台活动")
                 .setView(messageView)
-                .setPositiveButton("知道了", null)
+                .setPositiveButton("关闭", null)
                 .show();
     }
 
@@ -974,10 +974,10 @@ public class HomeNav extends Fragment implements
                 }
                 dialog.dismiss();
             })
-            .setNegativeButton("取消", null)
+            .setNegativeButton("关闭", null)
             .show();
     }
-    
+
     /**
      * 显示自定义文字输入对话框
      */

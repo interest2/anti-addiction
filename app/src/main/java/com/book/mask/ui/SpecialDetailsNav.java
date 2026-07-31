@@ -102,7 +102,7 @@ public class SpecialDetailsNav extends Fragment {
 
         new android.app.AlertDialog.Builder(requireContext())
             .setView(dialogView)
-            .setPositiveButton("确定", null)
+            .setPositiveButton("关闭", null)
             .show();
     }
 

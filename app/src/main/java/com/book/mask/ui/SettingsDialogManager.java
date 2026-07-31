@@ -134,7 +134,7 @@ public class SettingsDialogManager {
                 
                 dialog.dismiss();
                })
-               .setNegativeButton("取消", (dialog, which) -> {
+               .setNegativeButton("关闭", (dialog, which) -> {
                    // 用户取消时，不调用回调，因为没有设置被更改
                    // 移除这里的 onSettingChanged.run() 调用
                })
@@ -151,7 +151,7 @@ public class SettingsDialogManager {
         new android.app.AlertDialog.Builder(context)
                 .setTitle("解禁时长说明")
                .setMessage(explanation.toString())
-                .setPositiveButton("好的", null)
+                .setPositiveButton("关闭", null)
                 .show();
     }
 
@@ -481,7 +481,7 @@ public class SettingsDialogManager {
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("设定目标")
                 .setView(targetFlow)
-                .setNegativeButton("取消", null)
+                .setNegativeButton("关闭", null)
                 .create();
         renderTargetCards(targetFlow, dialog, onSettingChanged);
         dialog.show();
@@ -774,7 +774,7 @@ public class SettingsDialogManager {
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("警示语风格")
                 .setView(styleFlow)
-                .setNegativeButton("取消", null)
+                .setNegativeButton("关闭", null)
                 .create();
 
         renderStyleCards(dialog, styleFlow, styles, accentColors, onSettingChanged);
@@ -1217,7 +1217,7 @@ public class SettingsDialogManager {
                 }
                 dialog.dismiss();
             })
-            .setNegativeButton("取消", null)
+            .setNegativeButton("关闭", null)
             .show();
     }
 
