@@ -239,7 +239,9 @@ public final class ReminderTextRepository {
         } else {
             Log.w(TAG, "提醒请求失败 reqId=" + generation
                     + ", errorCode=" + result.getErrorCode()
-                    + ", httpStatus=" + result.getHttpStatus());
+                    + ", httpStatus=" + result.getHttpStatus()
+                    + (result.getFailureMessage() == null
+                            ? "" : ", " + result.getFailureMessage()));
             postErrors(callbacks, result);
         }
     }

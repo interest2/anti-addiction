@@ -22,8 +22,8 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
     private static final int RESPONSE_PREVIEW_LENGTH = 500;
     private static final int MAX_TOKENS = 1_024;
     private static final String SYSTEM_PROMPT =
-            "你是防沉迷提醒助手。请用简洁、有力度的中文，生成一条帮助用户停止刷手机、回到目标的提醒。"
-                    + "最多三行，总长度不超过120个汉字；不要使用Markdown、标题、编号、引号或解释。";
+            "你是防沉迷提醒助手。请用有力度的中文，生成一条帮助用户停止刷手机、回到目标的提醒。"
+                    + "约 80 字；不要使用Markdown、标题、编号、引号或解释。";
 
     private final ReminderProviderConfig config;
     private final String apiKey;
@@ -71,10 +71,10 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
                     headers,
                     requestJson.toString());
             if (response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
+                String preview = responsePreview(response.getBody());
                 Log.w(TAG, "Provider 请求失败，HTTP " + response.getStatusCode()
-                        + "，响应前" + RESPONSE_PREVIEW_LENGTH + "字符="
-                        + responsePreview(response.getBody()));
-                return ProviderResponseMapper.fromHttpStatus(response.getStatusCode());
+                        + "，响应前" + RESPONSE_PREVIEW_LENGTH + "字符=" + preview);
+                return ProviderResponseMapper.fromHttpStatus(response.getStatusCode(), preview);
             }
 
             responseBody = response.getBody();
@@ -107,7 +107,9 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
     private void applyReasoningDisabled(JSONObject requestJson) throws JSONException {
         String presetId = config.getPresetId();
         String model = config.getModel().trim();
-        if ("moonshot".equals(presetId) && "kimi-k2.6".equals(model)) {
+        if ("deepseek".equals(presetId)) {
+            requestJson.put("thinking", new JSONObject().put("type", "disabled"));
+        } else if ("moonshot".equals(presetId) && "kimi-k2.6".equals(model)) {
             requestJson.put("thinking", new JSONObject().put("type", "disabled"));
         } else if ("zhipu".equals(presetId)) {
             requestJson.put("thinking", new JSONObject().put("type", "disabled"));
@@ -137,7 +139,7 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
         } else {
             Log.w(TAG, message, exception);
         }
-        return ProviderResult.failure(ProviderResult.ErrorCode.INVALID_RESPONSE);
+        return ProviderResult.failure(ProviderResult.ErrorCode.INVALID_RESPONSE, 0, message);
     }
 
     private String responsePreview(String responseBody) {

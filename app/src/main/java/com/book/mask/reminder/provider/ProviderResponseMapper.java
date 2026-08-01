@@ -12,16 +12,20 @@ final class ProviderResponseMapper {
     }
 
     static ProviderResult fromHttpStatus(int statusCode) {
+        return fromHttpStatus(statusCode, null);
+    }
+
+    static ProviderResult fromHttpStatus(int statusCode, String detailMessage) {
         if (statusCode == 401 || statusCode == 403) {
-            return ProviderResult.failure(ProviderResult.ErrorCode.AUTHENTICATION, statusCode);
+            return ProviderResult.failure(ProviderResult.ErrorCode.AUTHENTICATION, statusCode, detailMessage);
         }
         if (statusCode == 429) {
-            return ProviderResult.failure(ProviderResult.ErrorCode.RATE_LIMIT, statusCode);
+            return ProviderResult.failure(ProviderResult.ErrorCode.RATE_LIMIT, statusCode, detailMessage);
         }
         if (statusCode >= 500) {
-            return ProviderResult.failure(ProviderResult.ErrorCode.SERVER, statusCode);
+            return ProviderResult.failure(ProviderResult.ErrorCode.SERVER, statusCode, detailMessage);
         }
-        return ProviderResult.failure(ProviderResult.ErrorCode.INVALID_RESPONSE, statusCode);
+        return ProviderResult.failure(ProviderResult.ErrorCode.INVALID_RESPONSE, statusCode, detailMessage);
     }
 
     static ProviderResult fromException(IOException exception) {

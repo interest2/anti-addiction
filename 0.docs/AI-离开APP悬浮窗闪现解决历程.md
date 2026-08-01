@@ -1,43 +1,208 @@
-已梳理完毕。以下是近一周（07-22 ~ 07-25）围绕**「离开 APP 时悬浮窗处理 + 闪现问题」**的代码演进脉络，按时间和主题串联。
+# 离开 APP 时悬浮窗闪现：解决历程与当前实现
 
-## 背景（改动前的旧逻辑）
-`handleWindowStateChanged` 里用 `lastWindowCheckTime < 350ms` 粗暴忽略短时窗口切换；离开支持的 APP 就直接 `Share.clearAppState` + `removeView()` 销毁悬浮窗。问题：过渡动画/多任务切换会误触发隐藏与重显 → 闪现，左滑还能借"短暂隐藏"作弊。
+（本文已按当前 `src.zip` 源码更新。旧稿中的提交号属于历史记录，当前压缩包不含 Git 元数据，无法独立核验，故正文改为按机制演进描述。）
 
-## 阶段一（07-22）：重构入口 + 引入过渡状态机
+## 1. 问题本质
 
-**1. `e11fd05` 修复左滑作弊** — AppStateManager 大重构（+311/-136）
-- 收敛出统一入口 `handleObservedPackage(packageName, source)`，`handleWindowStateChanged`/轮询都汇入。
-- SystemUI 走"延迟确认 + 暂停/恢复"（`suspendedForSystemUi`、`onSystemUiSuspensionChanged`），左滑进 SystemUI 不再立即隐藏，暖态雏形出现，堵住左滑作弊。
+离开目标 APP 时，Android 过渡动画可能产生类似包名序列：
 
-**2. `434fa33` 修复退出闪现 + 多任务重回未及时遮挡** — 核心状态机诞生
-- 新增 `PackageHideTransition` 三段状态机：`WAITING_FOR_INITIAL_CHECK → PAUSED_AFTER_EARLY_RETURN → MONITORING_DIRECT_REENTRY`，配套新类 `PackageTransitionTiming`（计算复核/重入窗口）。
-- 离开目标：`startPackageHideTransition` 先隐藏，`p=300ms` 后 `confirmPackageAtInitialCheck` 首次复核；动画时长内直接重入原 APP 走快速复用路径。
-- 关键防闪现：`isPackageDetectionPaused()` 在过渡期间**拦截内容/关键词检测**，杜绝动画期误检测。
-- 常量重整：删 `PackageConfirmationMode`/`DEFAULT_APP_STATE_DEBOUNCE_MS`，改为 `PACKAGE_TRANSITION_*`（动画时长 a=1000、首次复核 p=300 等）。
+```text
+目标 APP → SystemUI/桌面 → 目标 APP → SystemUI/桌面
+```
 
-**3. `30b7ad5` 抖音"先显示再检测"** — 针对抖音显示慢
-- 新增回调 `onTargetPackageEnteredBeforeContentCheck`。从非目标包名进入抖音时先显示悬浮窗、再检测关键词（快速路径）；用 `enteredFromSystemUi` 标记避免从 SystemUI 返回时误抢显。
+如果每次包名变化都立即执行“显示/移除窗口 + 页面关键词扫描”，会出现：
 
-## 阶段二（07-24）：泛化快速路径 + 暖窗口复用
+- 退桌面途中误判回到目标 APP，遮罩闪现。
+- 多任务返回时窗口重建较慢，产生可点击空档。
+- 左滑/SystemUI 短暂出现时遮罩被移除，可被利用绕过。
+- 目标应用之间切换时反复 inflate、`addView()`，延迟增大。
 
-**4. `5aed5b4` 防抖逻辑重构**（铺垫）。
+核心矛盾是：
 
-**5. `7cf5ad5` 先显示再检测推广到所有目标 APP** — 把抖音专属的 `shouldShowDouyinBeforeContentCheck` 泛化为 `shouldShowBeforeContentCheck`。
+```text
+尽快隐藏，避免遮住系统界面
+        ↕
+尽快恢复，避免用户利用空档点击信息流
+```
 
-**6. `5dfe3f0` 多任务返回场景资源复用** — 离开由"销毁"改"降级暖态"
-- 新增 `confirmCurrentAppLeftKeepingWarmWindow` + 回调 `onTargetPackageTransitionLeft`：离开目标不再 `removeView`，而是保留 Window 资源降级暖态（alpha=0 + NOT_TOUCHABLE）。
-- 复核期 + `PACKAGE_TRANSITION_WINDOW_REUSE_MS`(2000ms) 内返回可直接复用暖窗口，减少重显延迟和触屏空档。
+当前方案不是单一“防抖”，而是由包名复核、检测暂停、暖窗口复用和下次进入策略共同完成。
 
-## 阶段三（07-25）：跨 APP 复用及其副作用修复
+## 2. 演进主线
 
-**7. `39ef709` 跨 APP 窗口资源复用** — `FloatingWindowManager` 支持跨不同 APP 复用同一 Window。
+### 2.1 统一包名入口
 
-**8. `5c17b2d` 修复非目标页面退出重进闪现** — 快速路径的副作用
-- 问题：若离开时页面本就不是目标页（仅因未命中关键词而隐藏），下次进入"先显示再检测"会先闪一下。
-- 解决：`lastDetectionMissingTargetWord` 记录离开时是否"仅因缺关键词而隐藏"，`rememberNextEntryDisplayOrder` 据此写 `detectBeforeShowOnNextEntry`；这类 APP 下次进入改走"先检测再决定是否显示"，绕开快速路径。
+窗口事件与 2 秒轮询统一进入 `AppStateManager.handleObservedPackage()`，避免两条检测链路使用不同的离开规则。
 
-**9. `f553bc3` 修复跨 APP 复用导致解禁期间也弹窗**
-- `stillInHidePeriod()` 由 `getAppRemainingTime` 改为 `relaxManager.getRecordedRemainingTime`（持久化关闭时间+间隔）。原因：暖窗口跨 APP 复用时 `Share.isFloatingWindowVisible` 残留 true，令 `getAppRemainingTime` 返回 0 哨兵 → 误判超时重弹。
+同时过滤：
 
-## 一条主线总结
-`删除即隐藏` → `延迟确认(暖态雏形，堵左滑)` → `过渡状态机 + 暂停检测(治过渡期闪现)` → `先显示再检测(治显示慢)` → `暖窗口降级+复用(治重显延迟/空档)` → `跨APP复用` → 收尾修两个复用副作用（非目标页闪现、解禁期误弹）。核心权衡始终是**「先显示再检测」的低延迟 vs 抢先显示带来的闪现**，靠"记录离开时页面状态 + 过渡期暂停检测 + 暖窗口复用"三招平衡。
+- 本应用窗口。
+- 输入法窗口。
+
+### 2.2 SystemUI 独立处理
+
+SystemUI 不再等同于普通“离开目标 APP”：
+
+1. 先保持遮罩 100ms。
+2. 复核仍是 SystemUI，才把窗口暂停为透明且不可触摸。
+3. 回到目标 APP 时恢复原窗口。
+4. 包名不明确时每 150ms 重试。
+
+这一阶段解决了左滑、通知栏等短暂系统窗口导致的立即移除问题。
+
+### 2.3 包名切换复核
+
+普通离开目标 APP 时引入 300ms 中途复核：
+
+1. 立即把窗口降级为暖态。
+2. 清除当前活跃应用状态。
+3. 暂停页面检测，并忽略中间包名事件。
+4. 300ms 后读取活动根窗口包名。
+
+若 300ms 时又读到原目标包名，不立即恢复，而是继续暂停：
+
+```text
+1000ms 动画预估 - 300ms 首次等待 + 100ms 缓冲 = 800ms
+```
+
+800ms 后再复核一次，避开动画尾段的包名回摆。
+
+当前源码使用：
+
+- `PendingPackageTransition`
+- `packageTransitionGeneration`
+- `PackageTransitionDecision`
+- `PackageTransitionTiming`
+
+旧稿所述 `PackageHideTransition` 三段枚举状态机已不在当前源码中，不能继续作为现状描述。
+
+### 2.4 先显示、后检测
+
+进入目标包名后，默认先显示遮罩，再延迟扫描页面关键词：
+
+- 普通应用：默认 100ms。
+- 抖音：使用可配置的首次扫描延迟。
+
+目的不是减少关键词扫描耗时，而是让悬浮窗首帧先进入渲染队列，避免主线程节点遍历把首帧一起阻塞。
+
+### 2.5 暖窗口复用
+
+离开目标页面或目标应用时，不立即 `removeView()`，而是优先：
+
+```text
+alpha = 0
+flags |= FLAG_NOT_TOUCHABLE
+updateViewLayout()
+```
+
+失败时回退为 `View.INVISIBLE`。
+
+保留期：
+
+- 同 APP 页面切换：1.5 秒。
+- 包名切换：2 秒。
+
+恢复时只需还原透明度和 Flags，避免重新 inflate 与 `addView()`。
+
+### 2.6 跨目标 APP 复用
+
+当前暖窗口不限于原应用。保留期内进入另一目标应用时，会在窗口仍不可见时原地更新：
+
+- 顶部/底部偏移与高度。
+- 提醒文字、目标日期、解禁时长。
+- 答题上下文与微信特例。
+
+随后恢复可见和可触摸状态。
+
+### 2.7 修复“非目标页重进闪现”
+
+“先显示、后检测”会在非关键词页面重进时短暂误显。
+
+当前按应用记录：
+
+- `lastDetectionMissingTargetWord`
+- `detectBeforeShowOnNextEntry`
+
+若上次离开前最后一次检测未命中关键词，且当时不处于休闲时刻或手动解禁，则下次进入该应用改为：
+
+```text
+先检测关键词 → 命中后显示
+```
+
+其他情况仍走抢先显示。
+
+### 2.8 修复“解禁期误弹”
+
+暖窗口期间 `Share.isFloatingWindowVisible` 仍为 `true`，其语义是“窗口挂载”，不是“用户可见”。
+
+因此解禁剩余时间不能依赖会受窗口挂载状态影响的哨兵逻辑。当前 `stillInHidePeriod()` 直接使用：
+
+```java
+relaxManager.getRecordedRemainingTime(currentActiveApp)
+```
+
+即按持久化的关闭时间与当次间隔判断，避免跨 APP 复用后误判解禁已结束。
+
+## 3. 当前离开流程
+
+```text
+观察到其他包名
+    ↓
+当前有目标 APP + 窗口仍挂载 + 非 SystemUI 暂停？
+    ├─ 否：直接按包名常规处理
+    └─ 是：进入包名切换复核
+              ↓
+        窗口透明且不可触摸
+        清除 currentActiveApp
+        暂停页面检测/忽略中间包名
+              ↓ 300ms
+        读取活动根窗口包名
+              ├─ 原目标 APP：再等 800ms 后复核
+              └─ 其他包名：立即恢复常规处理
+```
+
+复核结束后的结果：
+
+- 原目标应用：恢复暖窗口。
+- 另一目标应用：适配后跨应用复用。
+- 非目标应用：保持隐藏，保留期结束后移除。
+- 包名为空：等待后续事件或 2 秒轮询。
+
+若系统过渡动画缩放为 0，则直接确认离开，不走 300ms 复核。
+
+## 4. 三套时间机制不可混淆
+
+| 机制               |            当前值 | 作用                             |
+| ------------------ | ----------------: | -------------------------------- |
+| 悬浮窗显示包名防抖 |             500ms | 窗口刚显示后，暂停包名事件和轮询 |
+| SystemUI 确认      |             100ms | 避免短暂系统窗口立即隐藏遮罩     |
+| 普通离开首次复核   |             300ms | 读取动画中途包名，过滤回摆       |
+| 提前返回后追加暂停 |             800ms | 等待动画尾段结束                 |
+| 页面暖窗口         |              1.5s | 同 APP 页面切换复用              |
+| 包名暖窗口         |                2s | 离开/跨 APP 短时复用             |
+| 内容防抖           | 200ms，最多 500ms | 合并连续内容变化事件             |
+
+其中 500ms“悬浮窗显示防抖”只暂停包名观察，不等同于 300ms“离开 APP 复核”，也不负责暂停页面关键词检测。
+
+## 5. 当前仍存在的边界
+
+- 时间阈值是经验值，不同厂商动画与无障碍事件时序可能不同。
+- 活动根窗口包名为空时，只能等待后续事件或轮询，无法立即得出结论。
+- `Share.isFloatingWindowVisible` 不能用于判断窗口是否肉眼可见。
+- 服务进程重建后，暖窗口、进入策略和内存定时器均丢失。
+- 多任务预览页本身的信息流内容不由当前悬浮窗方案覆盖。
+
+## 6. 主线总结
+
+```text
+立即 removeView
+→ SystemUI 延迟确认
+→ 普通离开 300ms 复核
+→ 过渡期间暂停检测
+→ 先显示后扫描
+→ 暖窗口复用
+→ 跨目标 APP 复用
+→ 按离开页面状态决定下次显示顺序
+→ 持久化剩余时间修复解禁误弹
+```
+
+本质是用“短时保留已挂载窗口”替代“频繁销毁重建”，再通过包名复核和关键词结果控制何时真正恢复可见。

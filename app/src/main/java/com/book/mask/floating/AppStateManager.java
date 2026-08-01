@@ -193,17 +193,13 @@ public class AppStateManager {
             }
 
             boolean appManuallyHidden = Share.isAppManuallyHidden(currentActiveApp);
-            String appName = currentActiveApp.getAppName();
-
-            if (appManuallyHidden) {
-                boolean shouldHide = stillInHidePeriod();
-                if(shouldHide){
-                    return;
-                }
+            // 手动隐藏过悬浮窗、且有效期内
+            if (appManuallyHidden && stillInHidePeriod()) {
+                return;
             }
 
             String currentPackageName = currentActiveApp.getPackageName();
-            Log.d(TAG, "当前有活跃的APP，且符合条件，开始文本检测，触发来源=" + triggerSource);
+            Log.d(TAG, "当前有活跃的目标 APP，开始文本检测，触发来源=" + triggerSource);
             TextScanDiagnostics diagnostics =
                     TextScanDiagnostics.createIfEnabled(triggerSource, currentPackageName);
             long rootStartNanos = SystemClock.elapsedRealtimeNanos();
@@ -241,6 +237,7 @@ public class AppStateManager {
             lastDetectionMissingTargetWord.put(currentPackageName, !hasTargetWord);
 
             // 添加详细调试信息
+            String appName = currentActiveApp.getAppName();
             Log.d(TAG, "文本检测结果: " + targetWord + "=" + hasTargetWord + ", 当前界面=" + currentInterface + ", APP=" + appName);
 
             // 获取当前APP的状态
@@ -279,7 +276,7 @@ public class AppStateManager {
      */
     private boolean shouldSkipTextCheck() {
         if (isDetectionPaused()) {
-            Log.v(TAG, "检测防抖尚未结束，暂停页面关键词检测");
+            Log.v(TAG, "休闲或防抖尚未结束，暂停页面关键词检测");
             return true;
         }
         if (currentActiveApp == null) {
@@ -294,16 +291,12 @@ public class AppStateManager {
     }
 
     private boolean stillInHidePeriod() {
-        // 用持久化的关闭时间+间隔判断是否仍在解禁范围内，避免暖窗口跨APP复用时
-        // Share.isFloatingWindowVisible 残留为 true 导致 getAppRemainingTime 返回 0 哨兵值，
-        // 误判为已超时而重新弹出悬浮窗
+        // 用 持久化的关闭时间 + 间隔，判断是否仍在解禁期限内
         long remainingMillis = relaxManager.getRecordedRemainingTime(currentActiveApp);
         if (remainingMillis > 0) {
-            Log.d(TAG, "APP " + currentActiveApp.getAppName()
-                    + " 被手动隐藏，剩余 " + remainingMillis + "ms");
             return true;
         } else {
-            Log.d(TAG, "虽然状态是手动隐藏，但超过时间了，不该继续隐藏");
+            Log.d(TAG, "手动隐藏已超期");
             Share.setAppManuallyHidden(currentActiveApp, false);
             return false;
         }

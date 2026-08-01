@@ -17,23 +17,30 @@ public final class ProviderResult {
     private final String text;
     private final ErrorCode errorCode;
     private final int httpStatus;
+    private final String failureMessage;
 
-    private ProviderResult(String text, ErrorCode errorCode, int httpStatus) {
+    private ProviderResult(String text, ErrorCode errorCode, int httpStatus, String failureMessage) {
         this.text = text;
         this.errorCode = errorCode;
         this.httpStatus = httpStatus;
+        this.failureMessage = failureMessage;
     }
 
     public static ProviderResult success(String text) {
-        return new ProviderResult(text, ErrorCode.NONE, 0);
+        return new ProviderResult(text, ErrorCode.NONE, 0, null);
     }
 
     public static ProviderResult failure(ErrorCode errorCode) {
-        return failure(errorCode, 0);
+        return failure(errorCode, 0, null);
     }
 
     public static ProviderResult failure(ErrorCode errorCode, int httpStatus) {
-        return new ProviderResult(null, errorCode, httpStatus);
+        return failure(errorCode, httpStatus, null);
+    }
+
+    /** 诊断字段：失败原因 + 响应体预览，仅供日志排查，勿展示给用户。 */
+    public static ProviderResult failure(ErrorCode errorCode, int httpStatus, String failureMessage) {
+        return new ProviderResult(null, errorCode, httpStatus, failureMessage);
     }
 
     public boolean isSuccess() {
@@ -50,6 +57,10 @@ public final class ProviderResult {
 
     public int getHttpStatus() {
         return httpStatus;
+    }
+
+    public String getFailureMessage() {
+        return failureMessage;
     }
 
     public String toUserMessage() {

@@ -42,7 +42,9 @@ public class TextFetcher {
             @Override
             public void onError(ProviderResult result) {
                 Log.w(TAG, "提醒文字获取失败，errorCode=" + result.getErrorCode()
-                        + ", httpStatus=" + result.getHttpStatus());
+                        + ", httpStatus=" + result.getHttpStatus()
+                        + (result.getFailureMessage() == null
+                                ? "" : ", " + result.getFailureMessage()));
                 if (listener != null) {
                     listener.onFetchError(result.toUserMessage());
                 }
