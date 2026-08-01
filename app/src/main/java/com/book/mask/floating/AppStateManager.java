@@ -49,7 +49,7 @@ public class AppStateManager {
     private long packageTransitionGeneration = 0;
     private long packageDetectPauseUtil = 0;
     private Runnable floatingShowPackageDetectionResumeRunnable;
-    private final Map<String, Boolean> lastDetectionMissingTargetWord = new HashMap<>();
+    private final Map<String, Boolean> lastDetectionNotTarget = new HashMap<>();
     private final Map<String, Boolean> detectBeforeShowOnNextEntry = new HashMap<>();
 
     private static final class PendingPackageTransition {
@@ -199,83 +199,83 @@ public class AppStateManager {
             }
 
             String currentPackageName = currentActiveApp.getPackageName();
+            if (currentActiveApp.isGlobalBlock()) {
+                dispatchAppStateChange(currentActiveApp, true, forceCheck, appManuallyHidden);
+                lastDetectionNotTarget.put(currentPackageName, false);
+                Log.d(TAG, "全局屏蔽已开启，跳过页面关键词检测，APP="
+                        + currentActiveApp.getAppName());
+                return;
+            }
+
             Log.d(TAG, "当前有活跃的目标 APP，开始文本检测，触发来源=" + triggerSource);
             TextScanDiagnostics diagnostics =
                     TextScanDiagnostics.createIfEnabled(triggerSource, currentPackageName);
             String targetWord = currentActiveApp.getTargetWord();
-            boolean hasTargetWord = currentActiveApp.isGlobalBlock();
-
-            if (hasTargetWord) {
-                Log.d(TAG, "全局屏蔽已开启，跳过页面关键词检测");
-                if (diagnostics != null) {
-                    diagnostics.log("global_block", 0, 0, true);
+            boolean hasTargetWord = false;
+            long rootStartNanos = SystemClock.elapsedRealtimeNanos();
+            AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
+            double rootElapsedMs = DateUtils.nanosToMillis(
+                    SystemClock.elapsedRealtimeNanos() - rootStartNanos);
+            if (rootNode != null) {
+                long traversalStartNanos = SystemClock.elapsedRealtimeNanos();
+                hasTargetWord = FloatHelper.findTargetText(rootNode, targetWord, diagnostics);
+                double traversalElapsedMs = DateUtils.nanosToMillis(
+                        SystemClock.elapsedRealtimeNanos() - traversalStartNanos);
+                if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
+                    hasTargetWord = true;
                 }
+                Log.d(TAG, "检测耗时：" + DateUtils.formatMillis(traversalElapsedMs / 1000.0));
+                if (diagnostics != null) {
+                    String rootPackageName = rootNode.getPackageName() == null
+                            ? "null" : rootNode.getPackageName().toString();
+                    diagnostics.log(rootPackageName, rootElapsedMs, traversalElapsedMs, hasTargetWord);
+                }
+                rootNode.recycle();
             } else {
-                long rootStartNanos = SystemClock.elapsedRealtimeNanos();
-                AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
-                double rootElapsedMs = DateUtils.nanosToMillis(
-                        SystemClock.elapsedRealtimeNanos() - rootStartNanos);
-                if (rootNode != null) {
-                    long traversalStartNanos = SystemClock.elapsedRealtimeNanos();
-                    hasTargetWord = FloatHelper.findTargetText(rootNode, targetWord, diagnostics);
-                    double traversalElapsedMs = DateUtils.nanosToMillis(
-                            SystemClock.elapsedRealtimeNanos() - traversalStartNanos);
-                    if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
-                        hasTargetWord = true;
-                    }
-                    Log.d(TAG, "检测耗时：" + DateUtils.formatMillis(traversalElapsedMs / 1000.0));
-                    if (diagnostics != null) {
-                        String rootPackageName = rootNode.getPackageName() == null
-                                ? "null" : rootNode.getPackageName().toString();
-                        diagnostics.log(rootPackageName, rootElapsedMs, traversalElapsedMs, hasTargetWord);
-                    }
-                    rootNode.recycle();
-                } else {
-                    Log.d(TAG, "rootNode 为空");
-                    if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
-                        hasTargetWord = true;
-                    }
-                    if (diagnostics != null) {
-                        diagnostics.log("null", rootElapsedMs, 0, hasTargetWord);
-                    }
+                Log.d(TAG, "rootNode 为空");
+                if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
+                    hasTargetWord = true;
+                }
+                if (diagnostics != null) {
+                    diagnostics.log("null", rootElapsedMs, 0, hasTargetWord);
                 }
             }
-            // 简化界面判断逻辑：只检测目标词
-            String currentInterface = hasTargetWord ? "target" : "not target";
-            lastDetectionMissingTargetWord.put(currentPackageName, !hasTargetWord);
+            lastDetectionNotTarget.put(currentPackageName, !hasTargetWord);
 
             // 添加详细调试信息
             String appName = currentActiveApp.getAppName();
-            Log.d(TAG, "文本检测结果: " + targetWord + "=" + hasTargetWord + ", 当前界面=" + currentInterface + ", APP=" + appName);
-
-            // 获取当前APP的状态
-            String lastAppState = Share.getAppState(currentActiveApp);
-
-            // 如果是强制检查或者界面状态发生变化时才执行操作
-            if (forceCheck || !currentInterface.equals(lastAppState)) {
-                if (!forceCheck) {
-                    // 更新调试信息中的forceCheck触发时间
-                    Share.setAppState(currentActiveApp, currentInterface);
-                    Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: " + appName + ")");
-                } else {
-                    Log.d(TAG, "强制检查模式 - 界面: " + currentInterface + " (APP: " + appName + ")");
-                }
-
-                if ("target".equals(currentInterface)) {
-                    Log.d(TAG, "检测到目标界面 - APP: " + appName + ", 手动隐藏状态: " + appManuallyHidden + ", 强制检查: " + forceCheck);
-                    if (listener != null) {
-                        listener.onAppStateChanged(currentActiveApp, true);
-                    }
-                } else {
-                    if (listener != null) {
-                        listener.onAppStateChanged(currentActiveApp, false);
-                    }
-                }
-            } else {
-                Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface + " (APP: " + appName + ")");
-            }
+            Log.d(TAG, "文本检测结果: " + targetWord + "=" + hasTargetWord + ", APP=" + appName);
+            dispatchAppStateChange(currentActiveApp, hasTargetWord, forceCheck, appManuallyHidden);
         } catch (Exception e) {
             Log.e(TAG, "优化版文本检测失败", e);
+        }
+    }
+
+    private void dispatchAppStateChange(CustomApp app, boolean isTargetInterface,
+                                        boolean forceCheck, boolean appManuallyHidden) {
+        String currentInterface = isTargetInterface ? "target" : "not target";
+        String lastAppState = Share.getAppState(app);
+        if (!forceCheck && currentInterface.equals(lastAppState)) {
+            Log.d(TAG, "界面状态无变化，跳过处理: " + currentInterface + " (APP: "
+                    + app.getAppName() + ")");
+            return;
+        }
+
+        if (!forceCheck) {
+            Share.setAppState(app, currentInterface);
+            Log.d(TAG, "界面变化检测: " + currentInterface + " (APP: "
+                    + app.getAppName() + ")");
+        } else {
+            Log.d(TAG, "强制检查模式 - 界面: " + currentInterface + " (APP: "
+                    + app.getAppName() + ")");
+        }
+
+        if (isTargetInterface) {
+            Log.d(TAG, "检测到目标界面 - APP: " + app.getAppName()
+                    + ", 手动隐藏状态: " + appManuallyHidden + ", 强制检查: " + forceCheck);
+        }
+        if (listener != null) {
+            listener.onAppStateChanged(app, isTargetInterface);
         }
     }
 
@@ -720,7 +720,7 @@ public class AppStateManager {
                 Log.d(TAG, source + "确认进入 APP: " + detectedApp.getAppName());
                 boolean shouldDetectBeforeShow = detectBeforeShowOnNextEntry.getOrDefault(
                         detectedApp.getPackageName(), false);
-                lastDetectionMissingTargetWord.remove(detectedApp.getPackageName());
+                lastDetectionNotTarget.remove(detectedApp.getPackageName());
                 boolean shouldShowBeforeContentCheck = !shouldDetectBeforeShow
                         && !suspendedForSystemUi
                         && !Share.isAppManuallyHidden(detectedApp);
@@ -802,13 +802,13 @@ public class AppStateManager {
     }
 
     private void rememberNextEntryDisplayOrder(CustomApp app) {
-        boolean hiddenOnlyForMissingTargetWord = lastDetectionMissingTargetWord.getOrDefault(
+        boolean shouldDetectBeforeShow = lastDetectionNotTarget.getOrDefault(
                         app.getPackageName(), false)
                 && !leisureTimeManager.isLeisureTimeActiveForApp(app.getPackageName())
                 && !Share.isAppManuallyHidden(app);
-        detectBeforeShowOnNextEntry.put(app.getPackageName(), hiddenOnlyForMissingTargetWord);
+        detectBeforeShowOnNextEntry.put(app.getPackageName(), shouldDetectBeforeShow);
         Log.d(TAG, "记录 " + app.getAppName() + " 下次进入策略: "
-                + (hiddenOnlyForMissingTargetWord ? "先检测再决定是否显示" : "按常规抢先显示"));
+                + (shouldDetectBeforeShow ? "先检测再决定是否显示" : "按常规抢先显示"));
     }
 
     private void setSuspendedForSystemUi(boolean suspended) {
@@ -844,7 +844,7 @@ public class AppStateManager {
             handler.removeCallbacks(floatingShowPackageDetectionResumeRunnable);
             floatingShowPackageDetectionResumeRunnable = null;
         }
-        lastDetectionMissingTargetWord.clear();
+        lastDetectionNotTarget.clear();
         detectBeforeShowOnNextEntry.clear();
     }
 

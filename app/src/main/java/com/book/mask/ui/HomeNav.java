@@ -730,6 +730,7 @@ public class HomeNav extends Fragment implements
         Button strictModeButton = dialogView.findViewById(R.id.btn_strict_mode);
         Button relaxedModeButton = dialogView.findViewById(R.id.btn_relaxed_mode);
         ToggleButton globalBlockToggle = dialogView.findViewById(R.id.toggle_global_block);
+        ImageView globalBlockHelp = dialogView.findViewById(R.id.iv_global_block_help);
 
         // 新的UI组件
         LinearLayout layoutRelaxedCountDisplay = dialogView.findViewById(R.id.layout_relaxed_count_display);
@@ -760,11 +761,11 @@ public class HomeNav extends Fragment implements
         tvRelaxedCountDisplay.setText(String.valueOf(relaxedLimitCount));
         tvTargetWordDisplay.setText(targetWord);
         globalBlockToggle.setChecked(app.isGlobalBlock());
-        globalBlockToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            app.setGlobalBlock(isChecked);
-            customAppManager.persistAppChange(app);
-            UiFeedback.show(requireContext(), isChecked ? "已开启全局屏蔽" : "已关闭全局屏蔽");
-        });
+        bindGlobalBlockToggle(globalBlockToggle, app);
+        globalBlockHelp.setOnClickListener(v -> new android.app.AlertDialog.Builder(requireContext())
+                .setMessage("开启后该 APP 所有页面都会被遮挡，也无法搜索，如需保留搜索功能可留言反馈")
+                .setPositiveButton("知道了", null)
+                .show());
 
         // 检查宽松模式剩余次数
         int relaxedCount = relaxManager.getAppRelaxedCloseCount(app);
@@ -1018,6 +1019,113 @@ public class HomeNav extends Fragment implements
                 }
             }));
         dialog.show();
+    }
+
+    private void bindGlobalBlockToggle(ToggleButton globalBlockToggle, CustomApp app) {
+        globalBlockToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                setGlobalBlock(app, true);
+                return;
+            }
+            showMathChallengeForGlobalBlockToggle(globalBlockToggle, app);
+        });
+    }
+
+    private void showMathChallengeForGlobalBlockToggle(ToggleButton globalBlockToggle, CustomApp app) {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_math_challenge, null);
+        TextView headerText = dialogView.findViewById(R.id.tv_math_header);
+        TextView questionText = dialogView.findViewById(R.id.tv_math_question);
+        EditText answerEdit = dialogView.findViewById(R.id.et_math_answer);
+        TextView resultText = dialogView.findViewById(R.id.tv_math_result);
+        Button submitButton = dialogView.findViewById(R.id.btn_submit_answer);
+        Button cancelButton = dialogView.findViewById(R.id.btn_cancel_close);
+
+        headerText.setText("🔢 回答算术题才能关闭全局屏蔽");
+        String question = createDefaultMathQuestion();
+        final int[] correctAnswer = {ArithmeticUtils.getMathAnswer(question)};
+        questionText.setText(question);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("关闭全局屏蔽验证")
+                .setView(dialogView)
+                .create();
+        final boolean[] answerVerified = {false};
+        dialog.setOnCancelListener(ignored -> {
+            if (!answerVerified[0]) {
+                restoreGlobalBlockToggle(globalBlockToggle, app);
+            }
+        });
+
+        submitButton.setOnClickListener(v -> {
+            String userAnswer = answerEdit.getText().toString().trim();
+            if (userAnswer.isEmpty()) {
+                UiFeedback.showTemporaryText(resultText, "⚠️ 请输入答案", 0xFFFF5722);
+                return;
+            }
+
+            try {
+                if (Integer.parseInt(userAnswer) == correctAnswer[0]) {
+                    answerVerified[0] = true;
+                    submitButton.setEnabled(false);
+                    UiFeedback.showTemporaryText(
+                            resultText,
+                            "✅ 答案正确！",
+                            requireContext().getColor(android.R.color.holo_green_light));
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        dialog.dismiss();
+                        setGlobalBlock(app, false);
+                    }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
+                    return;
+                }
+
+                UiFeedback.showTemporaryText(
+                        resultText,
+                        "❌ 答案错误，切到下一题",
+                        requireContext().getColor(android.R.color.holo_red_light));
+                answerEdit.setText("");
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    String newQuestion = createDefaultMathQuestion();
+                    correctAnswer[0] = ArithmeticUtils.getMathAnswer(newQuestion);
+                    questionText.setText(newQuestion);
+                    resultText.setVisibility(View.GONE);
+                }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
+            } catch (NumberFormatException e) {
+                UiFeedback.showTemporaryText(resultText, "⚠️ 请输入有效数字", 0xFFFF5722);
+            }
+        });
+
+        cancelButton.setOnClickListener(v -> dialog.cancel());
+        answerEdit.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE
+                    || (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
+                submitButton.performClick();
+                return true;
+            }
+            return false;
+        });
+
+        dialog.show();
+        answerEdit.requestFocus();
+    }
+
+    private String createDefaultMathQuestion() {
+        return ArithmeticUtils.customArithmetic(
+                QuestionConst.ADD_LEN_DEFAULT,
+                QuestionConst.SUB_LEN_DEFAULT,
+                QuestionConst.MUL_FIRST_LEN_DEFAULT,
+                QuestionConst.MUL_SECOND_LEN_DEFAULT);
+    }
+
+    private void restoreGlobalBlockToggle(ToggleButton globalBlockToggle, CustomApp app) {
+        globalBlockToggle.setOnCheckedChangeListener(null);
+        globalBlockToggle.setChecked(true);
+        bindGlobalBlockToggle(globalBlockToggle, app);
+    }
+
+    private void setGlobalBlock(CustomApp app, boolean enabled) {
+        app.setGlobalBlock(enabled);
+        customAppManager.persistAppChange(app);
+        UiFeedback.show(requireContext(), enabled ? "已开启全局屏蔽" : "已关闭全局屏蔽");
     }
 
     /**
