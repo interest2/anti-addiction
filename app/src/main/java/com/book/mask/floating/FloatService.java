@@ -410,6 +410,12 @@ public class FloatService extends AccessibilityService
         }
     }
 
+    public static void notifyLeisureTimeChanged() {
+        if (instance != null && instance.floatingWindowManager != null) {
+            instance.floatingWindowManager.updateFloatingWindowContent(Share.currentApp);
+        }
+    }
+
     public static void notifyReminderProviderChanged() {
         notifyReminderContentChanged();
     }

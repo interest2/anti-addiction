@@ -204,6 +204,16 @@ public class LeisureTimeManager {
     }
 
     /**
+     * 获取当前待触发休闲时刻配置的解禁时长；没有待触发模式时返回 {@code null}。
+     */
+    public Integer getArmedLeisureDurationMinutes() {
+        if (!isLeisureTimeArmed()) {
+            return null;
+        }
+        return getLeisureDurationMinutes(getArmedLeisureMode());
+    }
+
+    /**
      * 尝试开启一次休闲时刻。此时只进入待触发状态，关闭悬浮窗后才开始计时并消耗次数。
      *
      * @return 当前未开启、今日仍有次数并成功开启时返回 true

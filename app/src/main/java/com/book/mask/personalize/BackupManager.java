@@ -279,7 +279,8 @@ public class BackupManager {
                         o.get("appName").getAsString(),
                         o.get("packageName").getAsString(),
                         optString(o, "targetWord", ""),
-                        optInt(o, "relaxedLimitCount", 1));
+                        optInt(o, "relaxedLimitCount", 1),
+                        optBoolean(o, "globalBlock", false));
                 if (ok) {
                     result.imported++;
                 } else {
@@ -317,7 +318,8 @@ public class BackupManager {
                         o.get("appName").getAsString(),
                         o.get("packageName").getAsString(),
                         optString(o, "targetWord", ""),
-                        optInt(o, "relaxedLimitCount", 1));
+                        optInt(o, "relaxedLimitCount", 1),
+                        optBoolean(o, "globalBlock", false));
                 manager.updatePredefinedApp(app);
                 result.imported++;
             } catch (Exception e) {
@@ -418,6 +420,10 @@ public class BackupManager {
 
     private static int optInt(JsonObject obj, String name, int fallback) {
         return has(obj, name) ? obj.get(name).getAsInt() : fallback;
+    }
+
+    private static boolean optBoolean(JsonObject obj, String name, boolean fallback) {
+        return has(obj, name) ? obj.get(name).getAsBoolean() : fallback;
     }
 
     private static JsonObject optObject(JsonObject parent, String name) {

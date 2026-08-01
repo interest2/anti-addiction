@@ -10,19 +10,27 @@ public class CustomApp {
     private final String packageName;
     private String targetWord; // 改为非final，支持修改
     private int relaxedLimitCount; // 改为非final，支持修改
-    
+    private boolean globalBlock;
+
     public CustomApp(String appName, String packageName, String targetWord, int relaxedLimitCount) {
+        this(appName, packageName, targetWord, relaxedLimitCount, false);
+    }
+
+    public CustomApp(String appName, String packageName, String targetWord, int relaxedLimitCount,
+                     boolean globalBlock) {
         this.appName = appName;
         this.packageName = packageName;
         this.targetWord = targetWord;
         this.relaxedLimitCount = relaxedLimitCount;
+        this.globalBlock = globalBlock;
     }
 
     /**
      * 拷贝构造：用于从只读默认模板生成可变副本，避免调用方就地改写共享模板对象。
      */
     public CustomApp(CustomApp other) {
-        this(other.appName, other.packageName, other.targetWord, other.relaxedLimitCount);
+        this(other.appName, other.packageName, other.targetWord, other.relaxedLimitCount,
+                other.globalBlock);
     }
     
     public String getAppName() {
@@ -48,7 +56,15 @@ public class CustomApp {
     public void setTargetWord(String targetWord) {
         this.targetWord = targetWord;
     }
-    
+
+    public boolean isGlobalBlock() {
+        return globalBlock;
+    }
+
+    public void setGlobalBlock(boolean globalBlock) {
+        this.globalBlock = globalBlock;
+    }
+
     /**
      * 根据包名获取对应的APP
      */

@@ -563,9 +563,13 @@ public class FloatingWindowManager {
                     intervalSeconds = relaxManager.getDefaultInterval();
                 }
 
-                String intervalMinutes = intervalSeconds % 60 == 0
-                        ? String.valueOf(intervalSeconds / 60)
-                        : String.valueOf(intervalSeconds / 60.0);
+                Integer armedLeisureDurationMinutes =
+                        leisureTimeManager.getArmedLeisureDurationMinutes();
+                String intervalMinutes = armedLeisureDurationMinutes != null
+                        ? String.valueOf(armedLeisureDurationMinutes)
+                        : intervalSeconds % 60 == 0
+                                ? String.valueOf(intervalSeconds / 60)
+                                : String.valueOf(intervalSeconds / 60.0);
                 if (unlockDurationText != null) {
                     unlockDurationText.setText("下次解禁时长 " + intervalMinutes + " 分钟");
                     unlockDurationText.setVisibility(View.VISIBLE);

@@ -202,34 +202,42 @@ public class AppStateManager {
             Log.d(TAG, "当前有活跃的目标 APP，开始文本检测，触发来源=" + triggerSource);
             TextScanDiagnostics diagnostics =
                     TextScanDiagnostics.createIfEnabled(triggerSource, currentPackageName);
-            long rootStartNanos = SystemClock.elapsedRealtimeNanos();
-            AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
-            double rootElapsedMs = DateUtils.nanosToMillis(SystemClock.elapsedRealtimeNanos() - rootStartNanos);
             String targetWord = currentActiveApp.getTargetWord();
-            boolean hasTargetWord = false;
+            boolean hasTargetWord = currentActiveApp.isGlobalBlock();
 
-            if (rootNode != null) {
-                long traversalStartNanos = SystemClock.elapsedRealtimeNanos();
-                hasTargetWord = FloatHelper.findTargetText(rootNode, targetWord, diagnostics);
-                double traversalElapsedMs = DateUtils.nanosToMillis(
-                        SystemClock.elapsedRealtimeNanos() - traversalStartNanos);
-                if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
-                    hasTargetWord = true;
-                }
-                Log.d(TAG, "检测耗时：" + DateUtils.formatMillis(traversalElapsedMs / 1000.0));
+            if (hasTargetWord) {
+                Log.d(TAG, "全局屏蔽已开启，跳过页面关键词检测");
                 if (diagnostics != null) {
-                    String rootPackageName = rootNode.getPackageName() == null
-                            ? "null" : rootNode.getPackageName().toString();
-                    diagnostics.log(rootPackageName, rootElapsedMs, traversalElapsedMs, hasTargetWord);
+                    diagnostics.log("global_block", 0, 0, true);
                 }
-                rootNode.recycle();
-            }else{
-                Log.d(TAG, "rootNode 为空");
-                if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
-                    hasTargetWord = true;
-                }
-                if (diagnostics != null) {
-                    diagnostics.log("null", rootElapsedMs, 0, hasTargetWord);
+            } else {
+                long rootStartNanos = SystemClock.elapsedRealtimeNanos();
+                AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
+                double rootElapsedMs = DateUtils.nanosToMillis(
+                        SystemClock.elapsedRealtimeNanos() - rootStartNanos);
+                if (rootNode != null) {
+                    long traversalStartNanos = SystemClock.elapsedRealtimeNanos();
+                    hasTargetWord = FloatHelper.findTargetText(rootNode, targetWord, diagnostics);
+                    double traversalElapsedMs = DateUtils.nanosToMillis(
+                            SystemClock.elapsedRealtimeNanos() - traversalStartNanos);
+                    if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
+                        hasTargetWord = true;
+                    }
+                    Log.d(TAG, "检测耗时：" + DateUtils.formatMillis(traversalElapsedMs / 1000.0));
+                    if (diagnostics != null) {
+                        String rootPackageName = rootNode.getPackageName() == null
+                                ? "null" : rootNode.getPackageName().toString();
+                        diagnostics.log(rootPackageName, rootElapsedMs, traversalElapsedMs, hasTargetWord);
+                    }
+                    rootNode.recycle();
+                } else {
+                    Log.d(TAG, "rootNode 为空");
+                    if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){
+                        hasTargetWord = true;
+                    }
+                    if (diagnostics != null) {
+                        diagnostics.log("null", rootElapsedMs, 0, hasTargetWord);
+                    }
                 }
             }
             // 简化界面判断逻辑：只检测目标词

@@ -24,6 +24,7 @@ import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ToggleButton;
 import android.view.inputmethod.EditorInfo;
 import android.content.Context;
 
@@ -728,7 +729,8 @@ public class HomeNav extends Fragment implements
         
         Button strictModeButton = dialogView.findViewById(R.id.btn_strict_mode);
         Button relaxedModeButton = dialogView.findViewById(R.id.btn_relaxed_mode);
-        
+        ToggleButton globalBlockToggle = dialogView.findViewById(R.id.toggle_global_block);
+
         // 新的UI组件
         LinearLayout layoutRelaxedCountDisplay = dialogView.findViewById(R.id.layout_relaxed_count_display);
         LinearLayout layoutRelaxedCountEdit = dialogView.findViewById(R.id.layout_relaxed_count_edit);
@@ -757,7 +759,13 @@ public class HomeNav extends Fragment implements
         // 设置显示文本的当前值
         tvRelaxedCountDisplay.setText(String.valueOf(relaxedLimitCount));
         tvTargetWordDisplay.setText(targetWord);
-        
+        globalBlockToggle.setChecked(app.isGlobalBlock());
+        globalBlockToggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            app.setGlobalBlock(isChecked);
+            customAppManager.persistAppChange(app);
+            UiFeedback.show(requireContext(), isChecked ? "已开启全局屏蔽" : "已关闭全局屏蔽");
+        });
+
         // 检查宽松模式剩余次数
         int relaxedCount = relaxManager.getAppRelaxedCloseCount(app);
         int remainingCount = Math.max(0, relaxedLimitCount - relaxedCount);

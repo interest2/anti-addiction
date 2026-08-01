@@ -257,6 +257,7 @@ public class SettingsDialogManager {
                 if (!saveLeisureTimeSettings(relaxedViews, strictViews)) {
                     return;
                 }
+                FloatService.notifyLeisureTimeChanged();
                 clearLeisureInputFocus(dialogView, relaxedViews, strictViews);
                 UiFeedback.show(dialogView, "保存成功");
             });
@@ -326,6 +327,7 @@ public class SettingsDialogManager {
         targetViews.startButton.setOnClickListener(v -> {
             if (leisureTimeManager.isLeisureTimeArmed(targetViews.mode)) {
                 leisureTimeManager.cancelPendingLeisureTime(targetViews.mode);
+                FloatService.notifyLeisureTimeChanged();
                 refreshLeisureState.run();
                 return;
             }
@@ -334,6 +336,7 @@ public class SettingsDialogManager {
                 return;
             }
             if (leisureTimeManager.tryStartLeisureTime(targetViews.mode)) {
+                FloatService.notifyLeisureTimeChanged();
                 UiFeedback.show(
                         dialogView,
                         "已开启" + getLeisureModeName(targetViews.mode)
