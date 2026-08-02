@@ -1412,7 +1412,7 @@ public class SettingsDialogManager {
     /**
      * 显示悬浮窗额外显示日常提醒设置对话框
      */
-    public void showFloatingStrictReminderDialog() {
+    public void showFloatingStrictReminderDialog(Runnable onSettingChanged) {
         // 记录用户点击了设置按钮
         appSettingsManager.setFloatingStrictReminderSettingsClicked(true);
         
@@ -1493,7 +1493,8 @@ public class SettingsDialogManager {
         addStrictReminderColorPicker(layout, selectedFontColor);
 
         final android.app.AlertDialog[] dialogRef = new android.app.AlertDialog[1];
-        addStrictReminderActionButtons(layout, dialogRef, input, fontSizeSlider, selectedFontColor);
+        addStrictReminderActionButtons(
+                layout, dialogRef, input, fontSizeSlider, selectedFontColor, onSettingChanged);
 
         dialogRef[0] = new android.app.AlertDialog.Builder(context)
                 .setTitle("座右铭")
@@ -1507,7 +1508,8 @@ public class SettingsDialogManager {
             android.app.AlertDialog[] dialogRef,
             EditText input,
             Slider fontSizeSlider,
-            int[] selectedFontColor) {
+            int[] selectedFontColor,
+            Runnable onSettingChanged) {
         float density = context.getResources().getDisplayMetrics().density;
         LinearLayout row = new LinearLayout(context);
         row.setGravity(Gravity.END);
@@ -1531,6 +1533,9 @@ public class SettingsDialogManager {
             appSettingsManager.setFloatingStrictReminder(reminder);
             appSettingsManager.setFloatingStrictReminderFontSize(fontSize);
             appSettingsManager.setFloatingStrictReminderFontColor(selectedFontColor[0]);
+            if (onSettingChanged != null) {
+                onSettingChanged.run();
+            }
             dialogRef[0].dismiss();
             showStrictReminderSavedFeedback(reminder, fontSize);
         });

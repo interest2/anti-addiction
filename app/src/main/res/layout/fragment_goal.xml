@@ -144,12 +144,23 @@
                     android:paddingEnd="18dp">
 
                     <TextView
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:text="风格"
                         android:textColor="#252525"
                         android:textSize="18sp" />
+
+                    <TextView
+                        android:id="@+id/tv_reminder_style_value"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:gravity="start"
+                        android:maxLines="1"
+                        android:textColor="#8A8A8A"
+                        android:textSize="14sp" />
 
                     <ImageView
                         android:layout_width="20dp"
@@ -179,12 +190,23 @@
                     android:paddingEnd="18dp">
 
                     <TextView
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:text="@string/reminder_provider_settings"
                         android:textColor="#252525"
                         android:textSize="18sp" />
+
+                    <TextView
+                        android:id="@+id/tv_reminder_provider_value"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:gravity="start"
+                        android:maxLines="1"
+                        android:textColor="#8A8A8A"
+                        android:textSize="14sp" />
 
                     <ImageView
                         android:layout_width="20dp"
@@ -213,12 +235,23 @@
                     android:paddingEnd="18dp">
 
                     <TextView
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:text="座右铭"
                         android:textColor="#252525"
                         android:textSize="18sp" />
+
+                    <TextView
+                        android:id="@+id/tv_floating_strict_reminder_value"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:gravity="start"
+                        android:maxLines="1"
+                        android:textColor="#8A8A8A"
+                        android:textSize="14sp" />
 
                     <ImageView
                         android:layout_width="20dp"

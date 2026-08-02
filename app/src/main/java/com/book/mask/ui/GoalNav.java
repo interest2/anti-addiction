@@ -16,6 +16,8 @@ import com.book.mask.constant.Const;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.floating.FloatService;
+import com.book.mask.reminder.config.ReminderProviderConfig;
+import com.book.mask.reminder.config.ReminderProviderConfigStore;
 import com.book.mask.util.DateUtils;
 
 public class GoalNav extends Fragment {
@@ -24,6 +26,9 @@ public class GoalNav extends Fragment {
     private AppSettingsManager appSettingsManager;
     private SettingsDialogManager settingsDialogManager;
     private TextView tvGoalCountdown;
+    private TextView tvReminderStyleValue;
+    private TextView tvReminderProviderValue;
+    private TextView tvFloatingStrictReminderValue;
     private Button btnTagSetting, btnTargetDateSetting;
 
     @Nullable
@@ -36,6 +41,9 @@ public class GoalNav extends Fragment {
 
         // 初始化控件
         tvGoalCountdown = view.findViewById(R.id.tv_goal_countdown);
+        tvReminderStyleValue = view.findViewById(R.id.tv_reminder_style_value);
+        tvReminderProviderValue = view.findViewById(R.id.tv_reminder_provider_value);
+        tvFloatingStrictReminderValue = view.findViewById(R.id.tv_floating_strict_reminder_value);
         btnTagSetting = view.findViewById(R.id.btn_tag_setting);
         btnTargetDateSetting = view.findViewById(R.id.btn_target_date_setting);
 
@@ -70,9 +78,8 @@ public class GoalNav extends Fragment {
         // 设置悬浮窗额外显示日常提醒按钮
         View floatingStrictReminderRow = view.findViewById(
                 R.id.btn_floating_strict_reminder);
-        floatingStrictReminderRow.setOnClickListener(v -> {
-            settingsDialogManager.showFloatingStrictReminderDialog();
-        });
+        floatingStrictReminderRow.setOnClickListener(v ->
+                settingsDialogManager.showFloatingStrictReminderDialog(this::updateReminderValues));
 
         View leisureTimeRow = view.findViewById(R.id.btn_leisure_time);
         leisureTimeRow.setOnClickListener(v -> {
@@ -107,7 +114,25 @@ public class GoalNav extends Fragment {
     }
 
     private void onReminderStyleChanged() {
+        updateReminderValues();
         FloatService.notifyReminderContentChanged();
+    }
+
+    private void updateReminderValues() {
+        String style = appSettingsManager.getReminderStyle();
+        tvReminderStyleValue.setText("自定义".equals(style)
+                ? appSettingsManager.getReminderCustomStyle()
+                : style);
+
+        ReminderProviderConfig provider = new ReminderProviderConfigStore().getActiveConfig();
+        tvReminderProviderValue.setText(provider.isOfficial()
+                ? "默认"
+                : provider.getModel());
+
+        String strictReminder = appSettingsManager.getFloatingStrictReminder();
+        tvFloatingStrictReminderValue.setText(strictReminder.isEmpty()
+                ? Const.DEFAULT_STRICT_REMINDER
+                : strictReminder);
     }
 
     private void updateGoalInfo() {
@@ -119,5 +144,6 @@ public class GoalNav extends Fragment {
         btnTargetDateSetting.setText((date == null || date.isEmpty() || "待设置".equals(date)) ? "目标日期" : date);
         // 倒计时
         tvGoalCountdown.setText(DateUtils.countdownDate(date));
+        updateReminderValues();
     }
 }

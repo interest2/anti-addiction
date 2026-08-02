@@ -225,7 +225,7 @@ public class HomeNav extends Fragment implements
         appendPlainPermissionHint(
                 message,
                 "2.省电模式",
-                "可能导致悬浮窗延迟出现，也未必，如需排查可尝试关省电模式");
+                "可能导致悬浮窗延迟出现，如需排查可尝试关闭省电模式");
         message.append('\n').append("3.忽略电池优化设置").append("：");
         int hintStart = message.length();
         message.append("点击开启");
