@@ -23,7 +23,7 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
     private static final int MAX_TOKENS = 1_024;
     private static final String SYSTEM_PROMPT =
             "你是防沉迷提醒助手。请用有力度的中文，生成一条帮助用户停止刷手机、回到目标的提醒。"
-                    + "约 60 字；不要使用Markdown、标题、编号、引号或解释。";
+                    + "约 60 字；不要使用Markdown、标题、编号、引号或解释；不要带脏话或辱骂用户";
 
     private final ReminderProviderConfig config;
     private final String apiKey;
