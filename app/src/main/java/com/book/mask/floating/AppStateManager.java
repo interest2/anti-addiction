@@ -79,7 +79,7 @@ public class AppStateManager {
         void onTargetPackageTransitionLeft(CustomApp app);
         void onSystemUiSuspensionChanged(boolean suspended);
         void onTimerTriggered(CustomApp app);
-        boolean isMathChallengeActive();
+        boolean isChallengeActive();
     }
     
     public AppStateManager(AccessibilityService service,
@@ -291,8 +291,8 @@ public class AppStateManager {
             Log.d(TAG, "没有活跃的APP，跳过文本检测");
             return true;
         }
-        if (listener != null && listener.isMathChallengeActive()) {
-            Log.d(TAG, "数学题正展示，暂停检测");
+        if (listener != null && listener.isChallengeActive()) {
+            Log.d(TAG, "答题界面正展示，暂停检测");
             return true;
         }
         return false;
@@ -434,9 +434,9 @@ public class AppStateManager {
                 return;
             }
 
-            // 如果数学题验证界面正在显示，暂停状态检测
-            if (listener != null && listener.isMathChallengeActive()) {
-                Log.v(TAG, "数学题验证界面活跃，暂停应用状态检测");
+            // 如果答题验证界面正在显示，暂停状态检测
+            if (listener != null && listener.isChallengeActive()) {
+                Log.v(TAG, "答题验证界面活跃，暂停应用状态检测");
                 return;
             }
 

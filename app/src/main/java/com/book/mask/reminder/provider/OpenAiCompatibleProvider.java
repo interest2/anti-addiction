@@ -14,8 +14,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 public final class OpenAiCompatibleProvider implements ReminderProvider {
     private static final String TAG = "OpenAiCompatibleProvider";
@@ -27,7 +25,7 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
 
     private final ReminderProviderConfig config;
     private final String apiKey;
-    private final ProviderHttpClient httpClient;
+    private final OpenAiChatClient chatClient;
 
     public OpenAiCompatibleProvider(
             ReminderProviderConfig config,
@@ -35,7 +33,7 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
             ProviderHttpClient httpClient) {
         this.config = config;
         this.apiKey = apiKey;
-        this.httpClient = httpClient;
+        this.chatClient = new OpenAiChatClient(httpClient);
     }
 
     @Override
@@ -46,7 +44,6 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
             return ProviderResult.failure(ProviderResult.ErrorCode.INVALID_CONFIG);
         }
 
-        String responseBody = null;
         try {
             JSONArray messages = new JSONArray();
             messages.put(new JSONObject()
@@ -56,65 +53,21 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
                     .put("role", "user")
                     .put("content", "用户当前目标：" + request.getMotivationTag()));
 
-            JSONObject requestJson = new JSONObject();
-            requestJson.put("model", config.getModel().trim());
-            requestJson.put("messages", messages);
-            requestJson.put("max_tokens", MAX_TOKENS);
-            requestJson.put("stream", false);
-            applyReasoningDisabled(requestJson);
-
-            Map<String, String> headers = new HashMap<>();
-            headers.put("Authorization", "Bearer " + apiKey.trim());
-
-            ProviderHttpClient.HttpResponse response = httpClient.postJson(
-                    config.getEndpointUrl().trim(),
-                    headers,
-                    requestJson.toString());
-            if (response.getStatusCode() < 200 || response.getStatusCode() >= 300) {
-                String preview = responsePreview(response.getBody());
-                Log.w(TAG, "Provider 请求失败，HTTP " + response.getStatusCode()
-                        + "，响应前" + RESPONSE_PREVIEW_LENGTH + "字符=" + preview);
-                return ProviderResponseMapper.fromHttpStatus(response.getStatusCode(), preview);
-            }
-
-            responseBody = response.getBody();
-            JSONObject responseJson = new JSONObject(responseBody);
-            JSONArray choices = responseJson.optJSONArray("choices");
-            if (choices == null || choices.length() == 0) {
-                return invalidResponse("missing or empty choices", response.getBody(), null);
-            }
-            JSONObject message = choices.optJSONObject(0) == null
-                    ? null
-                    : choices.optJSONObject(0).optJSONObject("message");
-            if (message == null) {
-                return invalidResponse("missing choices[0].message", response.getBody(), null);
-            }
-            String text = ReminderTextPolicy.normalize(message.optString("content", ""));
+            String text = chatClient.complete(config, apiKey, messages, MAX_TOKENS, 0.7);
+            text = ReminderTextPolicy.normalize(text);
             return text == null
-                    ? invalidResponse("missing or empty choices[0].message.content", response.getBody(), null)
+                    ? invalidResponse("normalize 后为空", null)
                     : ProviderResult.success(text);
-        } catch (JSONException e) {
-            return invalidResponse("invalid JSON", responseBody, e);
+        } catch (OpenAiChatClient.OpenAiChatException e) {
+            return invalidResponse(e.getMessage(), null);
         } catch (IOException e) {
             Log.w(TAG, "Provider 请求发生网络异常", e);
             return ProviderResponseMapper.fromException(e);
+        } catch (JSONException e) {
+            return invalidResponse("构造 messages 失败：" + e.getMessage(), null);
         } catch (Exception e) {
             Log.e(TAG, "Provider 请求发生未预期异常", e);
             return ProviderResult.failure(ProviderResult.ErrorCode.INTERNAL);
-        }
-    }
-
-    private void applyReasoningDisabled(JSONObject requestJson) throws JSONException {
-        String presetId = config.getPresetId();
-        String model = config.getModel().trim();
-        if ("deepseek".equals(presetId)) {
-            requestJson.put("thinking", new JSONObject().put("type", "disabled"));
-        } else if ("moonshot".equals(presetId) && "kimi-k2.6".equals(model)) {
-            requestJson.put("thinking", new JSONObject().put("type", "disabled"));
-        } else if ("zhipu".equals(presetId)) {
-            requestJson.put("thinking", new JSONObject().put("type", "disabled"));
-        } else if ("openai".equals(presetId)) {
-            requestJson.put("reasoning_effort", "none");
         }
     }
 
@@ -128,21 +81,13 @@ public final class OpenAiCompatibleProvider implements ReminderProvider {
         return SYSTEM_PROMPT + "回答风格要求：" + request.getStyle() + "。";
     }
 
-    private ProviderResult invalidResponse(String reason, String responseBody, JSONException exception) {
+    private ProviderResult invalidResponse(String reason, JSONException exception) {
         String message = "无法解析 Provider 响应，原因=" + reason;
-        if (responseBody != null) {
-            message += "，响应前" + RESPONSE_PREVIEW_LENGTH + "字符="
-                    + responsePreview(responseBody);
-        }
         if (exception == null) {
             Log.w(TAG, message);
         } else {
             Log.w(TAG, message, exception);
         }
         return ProviderResult.failure(ProviderResult.ErrorCode.INVALID_RESPONSE, 0, message);
-    }
-
-    private String responsePreview(String responseBody) {
-        return responseBody.substring(0, Math.min(responseBody.length(), RESPONSE_PREVIEW_LENGTH));
     }
 }

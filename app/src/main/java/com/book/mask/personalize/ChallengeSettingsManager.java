@@ -20,6 +20,9 @@ public class ChallengeSettingsManager {
             "math_multiplication_multiplicand_digits";
     static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
     static final String KEY_ENGLISH_READING_LENGTH = "english_reading_length";
+    static final String KEY_RETELLING_STORY_LENGTH = "retelling_story_length";
+    static final String KEY_RETELLING_DISPLAY_SECONDS = "retelling_display_seconds";
+    static final String KEY_RETELLING_PASS_SCORE = "retelling_pass_score";
 
     private final MMKV mmkv;
 
@@ -103,5 +106,70 @@ public class ChallengeSettingsManager {
     public void setEnglishReadingLength(int length) {
         int validLength = Math.max(length, QuestionConst.ENGLISH_READING_LENGTH_MIN);
         mmkv.putInt(KEY_ENGLISH_READING_LENGTH, validLength).commit();
+    }
+
+    public int getRetellingStoryLength() {
+        int length = mmkv.getInt(
+                KEY_RETELLING_STORY_LENGTH,
+                QuestionConst.RETELLING_STORY_LENGTH_DEFAULT);
+        return clamp(
+                length,
+                QuestionConst.RETELLING_STORY_LENGTH_MIN,
+                QuestionConst.RETELLING_STORY_LENGTH_MAX);
+    }
+
+    public void setRetellingStoryLength(int length) {
+        mmkv.putInt(
+                KEY_RETELLING_STORY_LENGTH,
+                clamp(
+                        length,
+                        QuestionConst.RETELLING_STORY_LENGTH_MIN,
+                        QuestionConst.RETELLING_STORY_LENGTH_MAX))
+                .commit();
+    }
+
+    public int getRetellingDisplaySeconds() {
+        int seconds = mmkv.getInt(
+                KEY_RETELLING_DISPLAY_SECONDS,
+                QuestionConst.RETELLING_DISPLAY_SECONDS_DEFAULT);
+        return clamp(
+                seconds,
+                QuestionConst.RETELLING_DISPLAY_SECONDS_MIN,
+                QuestionConst.RETELLING_DISPLAY_SECONDS_MAX);
+    }
+
+    public void setRetellingDisplaySeconds(int seconds) {
+        mmkv.putInt(
+                KEY_RETELLING_DISPLAY_SECONDS,
+                clamp(
+                        seconds,
+                        QuestionConst.RETELLING_DISPLAY_SECONDS_MIN,
+                        QuestionConst.RETELLING_DISPLAY_SECONDS_MAX))
+                .commit();
+    }
+
+    public int getRetellingPassScore() {
+        int score = mmkv.getInt(
+                KEY_RETELLING_PASS_SCORE,
+                QuestionConst.RETELLING_PASS_SCORE_DEFAULT);
+        return clamp(
+                score,
+                QuestionConst.RETELLING_PASS_SCORE_MIN,
+                QuestionConst.RETELLING_PASS_SCORE_MAX);
+    }
+
+    public void setRetellingPassScore(int score) {
+        mmkv.putInt(
+                KEY_RETELLING_PASS_SCORE,
+                clamp(
+                        score,
+                        QuestionConst.RETELLING_PASS_SCORE_MIN,
+                        QuestionConst.RETELLING_PASS_SCORE_MAX))
+                .commit();
+    }
+
+    /** getter/setter 两侧统一做范围限制，防止导入旧备份或异常值绕过界面校验。 */
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 }

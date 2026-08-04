@@ -318,6 +318,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        boolean granted = grantResults.length > 0
+                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        SettingsDialogManager.handleMicPermissionResult(requestCode, granted);
+    }
+
+    @Override
     protected void onPostResume() {
         super.onPostResume();
         if (pendingPermissionRequest != NO_PENDING_PERMISSION_REQUEST) {

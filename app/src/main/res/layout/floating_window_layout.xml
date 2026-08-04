@@ -70,6 +70,24 @@
 
     </FrameLayout>
 
+    <!-- 复述题验证区域：与数学题类似，首次使用时再懒加载 -->
+    <FrameLayout
+        android:id="@+id/retelling_challenge_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/top_info_layout"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/floating_window_bg"
+        android:visibility="gone">
+
+        <ViewStub
+            android:id="@+id/retelling_challenge_stub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout="@layout/floating_retelling_challenge_content" />
+
+    </FrameLayout>
+
     <!-- 日常提醒区域 -->
     <LinearLayout
         android:id="@+id/strict_reminder_layout"

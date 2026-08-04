@@ -1,6 +1,9 @@
 package com.book.mask.ui;
 
+import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
@@ -17,10 +20,13 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.book.mask.challenge.retelling.SherpaOnnxTranscriber;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
@@ -30,10 +36,15 @@ import com.book.mask.personalize.ChallengeSettingsManager;
 import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
+import com.book.mask.reminder.config.ProviderSecretStore;
+import com.book.mask.reminder.config.ReminderProviderConfig;
+import com.book.mask.reminder.config.ReminderProviderConfigStore;
 import com.book.mask.R;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+
+import java.security.GeneralSecurityException;
 
 /**
  * 设置对话框管理器
@@ -41,12 +52,36 @@ import com.google.android.material.textfield.TextInputLayout;
  */
 public class SettingsDialogManager {
     private static final long LEISURE_STATE_REFRESH_INTERVAL_MS = 200;
-    
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 2001;
+
+    /** 复述题保存前申请麦克风权限：权限结果返回后继续保存流程。 */
+    public interface PendingRetellingAction {
+        void run(boolean granted);
+    }
+
+    private static PendingRetellingAction pendingRetellingAction;
+
+    /**
+     * 供 MainActivity 转发运行时权限结果：麦克风权限授权后继续复述题保存。
+     */
+    public static void handleMicPermissionResult(int requestCode, boolean granted) {
+        if (requestCode != REQUEST_RECORD_AUDIO_PERMISSION) {
+            return;
+        }
+        PendingRetellingAction action = pendingRetellingAction;
+        pendingRetellingAction = null;
+        if (action != null) {
+            action.run(granted);
+        }
+    }
+
     private final Context context;
     private final RelaxManager relaxManager;
     private final AppSettingsManager appSettingsManager;
     private final ChallengeSettingsManager challengeSettingsManager;
     private final LeisureTimeManager leisureTimeManager;
+    private final ReminderProviderConfigStore providerConfigStore;
+    private final ProviderSecretStore providerSecretStore;
 
     private static String[] appOptions;
     private static CustomApp[] apps; // 改为CustomApp类型
@@ -57,6 +92,8 @@ public class SettingsDialogManager {
         this.appSettingsManager = new AppSettingsManager(context);
         this.challengeSettingsManager = new ChallengeSettingsManager(context);
         this.leisureTimeManager = new LeisureTimeManager(context);
+        this.providerConfigStore = new ReminderProviderConfigStore();
+        this.providerSecretStore = new ProviderSecretStore(context);
         updateAppOptions(); // 动态更新APP选项
     }
 
@@ -1209,6 +1246,14 @@ public class SettingsDialogManager {
             .setTitle("关闭悬浮窗所需答题的类型")
             .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
                 ChallengeType selectedType = challengeTypes[which];
+                // 复述题不立即切题型：先打开复述题设置弹窗，保存前完成麦克风/大模型/ASR 前置检查，
+                // 任一不满足则不保存复述题、保留原题型。
+                if (selectedType == ChallengeType.RETELLING) {
+                    dialog.dismiss();
+                    showRetellingSettingsDialog();
+                    return;
+                }
+
                 challengeSettingsManager.setChallengeType(selectedType);
 
                 if (selectedType == ChallengeType.ARITHMETIC) {
@@ -1222,6 +1267,167 @@ public class SettingsDialogManager {
             })
             .setNegativeButton("关闭", null)
             .show();
+    }
+
+    /**
+     * 复述题设置弹窗：一次保存故事字数、展示秒数、通过分数三个值。
+     * 保存前检查麦克风权限（未授予则回调 MainActivity 申请）、大模型配置、ASR 模型状态；
+     * 任一不满足则不保存复述题，保留原题型。
+     */
+    private void showRetellingSettingsDialog() {
+        View dialogView = LayoutInflater.from(context)
+                .inflate(R.layout.dialog_retelling_settings, null);
+        EditText storyLengthInput = dialogView.findViewById(R.id.et_retelling_story_length);
+        EditText displaySecondsInput = dialogView.findViewById(R.id.et_retelling_display_seconds);
+        EditText passScoreInput = dialogView.findViewById(R.id.et_retelling_pass_score);
+        storyLengthInput.setText(String.valueOf(challengeSettingsManager.getRetellingStoryLength()));
+        displaySecondsInput.setText(String.valueOf(challengeSettingsManager.getRetellingDisplaySeconds()));
+        passScoreInput.setText(String.valueOf(challengeSettingsManager.getRetellingPassScore()));
+
+        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("复述题设置")
+                .setView(dialogView)
+                .setPositiveButton("保存", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    RetellingSettings values = parseAndValidateRetellingSettings(
+                            storyLengthInput, displaySecondsInput, passScoreInput);
+                    if (values == null) {
+                        return;
+                    }
+                    if (!hasMicPermission()) {
+                        requestMicPermissionForSave(values, dialog);
+                        return;
+                    }
+                    performRetellingSave(values, dialog);
+                }));
+        dialog.show();
+    }
+
+    private void performRetellingSave(RetellingSettings values, android.app.AlertDialog dialog) {
+        String preflightError = checkRetellingPreflight();
+        if (preflightError != null) {
+            UiFeedback.showError(context, preflightError);
+            return;
+        }
+        challengeSettingsManager.setRetellingStoryLength(values.storyLength);
+        challengeSettingsManager.setRetellingDisplaySeconds(values.displaySeconds);
+        challengeSettingsManager.setRetellingPassScore(values.passScore);
+        challengeSettingsManager.setChallengeType(ChallengeType.RETELLING);
+        dialog.dismiss();
+        UiFeedback.show(context, "已设置复述题");
+    }
+
+    private RetellingSettings parseAndValidateRetellingSettings(
+            EditText storyLengthInput,
+            EditText displaySecondsInput,
+            EditText passScoreInput) {
+        storyLengthInput.setError(null);
+        displaySecondsInput.setError(null);
+        passScoreInput.setError(null);
+
+        Integer storyLength = parseInteger(storyLengthInput);
+        Integer displaySeconds = parseInteger(displaySecondsInput);
+        Integer passScore = parseInteger(passScoreInput);
+
+        boolean valid = true;
+        valid &= validateIntegerInput(
+                storyLengthInput,
+                storyLength,
+                QuestionConst.RETELLING_STORY_LENGTH_MIN,
+                QuestionConst.RETELLING_STORY_LENGTH_MAX,
+                "故事字数");
+        valid &= validateIntegerInput(
+                displaySecondsInput,
+                displaySeconds,
+                QuestionConst.RETELLING_DISPLAY_SECONDS_MIN,
+                QuestionConst.RETELLING_DISPLAY_SECONDS_MAX,
+                "展示秒数");
+        valid &= validateIntegerInput(
+                passScoreInput,
+                passScore,
+                QuestionConst.RETELLING_PASS_SCORE_MIN,
+                QuestionConst.RETELLING_PASS_SCORE_MAX,
+                "通过分数");
+        if (!valid) {
+            return null;
+        }
+        return new RetellingSettings(storyLength, displaySeconds, passScore);
+    }
+
+    private boolean hasMicPermission() {
+        return ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * 未授予麦克风权限：弹出说明并回调 MainActivity 申请运行时权限；
+     * 授权成功后继续保存，拒绝则不保存复述题。
+     */
+    private void requestMicPermissionForSave(final RetellingSettings values,
+                                             final android.app.AlertDialog settingsDialog) {
+        new android.app.AlertDialog.Builder(context)
+                .setTitle("需要麦克风权限")
+                .setMessage("复述题需要录音权限，用于本地语音识别。是否授予？")
+                .setPositiveButton("去授权", (dialog, which) -> {
+                    if (!(context instanceof Activity)) {
+                        UiFeedback.showError(context, "无法申请权限");
+                        return;
+                    }
+                    pendingRetellingAction = granted -> {
+                        if (granted) {
+                            performRetellingSave(values, settingsDialog);
+                        } else {
+                            UiFeedback.showError(context, "未授予麦克风权限，复述题未保存");
+                            settingsDialog.dismiss();
+                        }
+                    };
+                    ActivityCompat.requestPermissions(
+                            (Activity) context,
+                            new String[]{Manifest.permission.RECORD_AUDIO},
+                            REQUEST_RECORD_AUDIO_PERMISSION);
+                })
+                .setNegativeButton("取消", (dialog, which) -> {
+                    UiFeedback.showError(context, "未授予麦克风权限，复述题未保存");
+                    settingsDialog.dismiss();
+                })
+                .show();
+    }
+
+    /**
+     * 保存前检查：大模型配置（自定义 Provider 必须有 API Key）+ ASR 模型状态。
+     * 返回非空表示前置检查未通过，复述题不保存。
+     */
+    private String checkRetellingPreflight() {
+        ReminderProviderConfig config = providerConfigStore.getActiveConfig();
+        if (!config.isOfficial()) {
+            try {
+                String apiKey = providerSecretStore.getApiKey(config.getProfileId());
+                if (apiKey == null || apiKey.isEmpty()) {
+                    return "自定义大模型未配置 API Key，请先到提醒设置中配置";
+                }
+            } catch (GeneralSecurityException e) {
+                return "读取大模型配置失败，请重新配置";
+            }
+        }
+        if (!SherpaOnnxTranscriber.getInstance(context).isReady()) {
+            return "语音识别模型未就绪（ASR 模型缺失），请先放入模型文件";
+        }
+        return null;
+    }
+
+    private static class RetellingSettings {
+        final int storyLength;
+        final int displaySeconds;
+        final int passScore;
+
+        RetellingSettings(int storyLength, int displaySeconds, int passScore) {
+            this.storyLength = storyLength;
+            this.displaySeconds = displaySeconds;
+            this.passScore = passScore;
+        }
     }
 
     /**

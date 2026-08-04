@@ -8,45 +8,38 @@ import android.view.View;
 import android.view.WindowManager;
 
 import com.book.mask.config.ChallengeType;
-import com.book.mask.config.CustomApp;
-import com.book.mask.config.CustomAppManager;
 import com.book.mask.constant.Const;
-import com.book.mask.floating.FloatService;
 
 /**
- * 编排答题会话、答案校验及业务回调。
+ * 文本类答题会话：算术题 / 推理题 / 英文阅读。负责出题、答案校验、答错换题与回调。
  */
-public class MathChallengeManager {
+final class TextChallengeSession implements ChallengeSession {
 
-    private static final String TAG = "MathChallenge";
+    private static final String TAG = "TextChallenge";
 
-    public interface OnMathChallengeListener {
-        void onAnswerCorrect();
+    interface Callbacks {
+        void onCorrect();
 
-        void onChallengeCancel();
+        void onCancel();
     }
 
     private final Handler handler;
-    private final FloatService accessibilityService;
     private final ChallengeQuestionProvider questionProvider;
     private final ChallengeViewController viewController;
-
-    private CustomApp currentApp;
-    private OnMathChallengeListener listener;
+    private Callbacks callbacks;
     private ChallengeType currentType = ChallengeType.ARITHMETIC;
     private String currentAnswer = "";
-    private boolean challengeActive;
+    private boolean shown;
 
-    public MathChallengeManager(
+    TextChallengeSession(
             Context context,
             View floatingView,
             WindowManager windowManager,
             WindowManager.LayoutParams layoutParams,
             Handler handler,
-            FloatService accessibilityService) {
+            ChallengeQuestionProvider questionProvider) {
         this.handler = handler;
-        this.accessibilityService = accessibilityService;
-        this.questionProvider = new ChallengeQuestionProvider(context);
+        this.questionProvider = questionProvider;
         this.viewController = new ChallengeViewController(
                 context,
                 floatingView,
@@ -66,68 +59,43 @@ public class MathChallengeManager {
                 });
     }
 
-    public void setCurrentApp(CustomApp app) {
-        this.currentApp = app;
+    void setCallbacks(Callbacks callbacks) {
+        this.callbacks = callbacks;
     }
 
-    public void setOnMathChallengeListener(OnMathChallengeListener listener) {
-        this.listener = listener;
-    }
-
-    public OnMathChallengeListener getOnMathChallengeListener() {
-        return listener;
-    }
-
-    public boolean isMathChallengeActive() {
-        return challengeActive;
-    }
-
-    public void showMathChallenge() {
-        ChallengeType selectedType = questionProvider.selectType();
-        ChallengeQuestionProvider.Question question =
-                questionProvider.getQuestion(selectedType);
-        currentType = selectedType;
+    /**
+     * 展示指定题型的新题目。
+     *
+     * @return 是否成功展示
+     */
+    boolean show(ChallengeType type) {
+        ChallengeQuestionProvider.Question question = questionProvider.getQuestion(type);
+        currentType = type;
         currentAnswer = question.getAnswer();
-
-        if (!viewController.show(currentType, question)) {
-            return;
-        }
-
-        challengeActive = true;
-        if (accessibilityService != null) {
-            accessibilityService.onMathChallengeStart();
-        }
-        Log.d(TAG, "显示答题验证界面");
+        shown = viewController.show(type, question);
+        return shown;
     }
 
-    public void hideMathChallenge() {
-        if (!challengeActive) {
-            return;
-        }
+    @Override
+    public boolean isActive() {
+        return shown;
+    }
 
-        challengeActive = false;
+    @Override
+    public void cancel() {
+        handleCancel();
+    }
+
+    @Override
+    public void destroy() {
+        shown = false;
         viewController.hide();
-        if (accessibilityService != null) {
-            accessibilityService.onMathChallengeEnd();
-        }
-        Log.d(TAG, "隐藏答题验证界面");
     }
 
     private void handleCancel() {
         Log.d(TAG, "用户取消关闭");
-        boolean isWechat =
-                currentApp != null
-                        && CustomAppManager.WECHAT_PACKAGE.equals(currentApp.getPackageName());
-        hideMathChallenge();
-
-        if (listener == null) {
-            return;
-        }
-        if (isWechat) {
-            Log.d(TAG, "微信APP取消按钮被点击，直接当作答题通过");
-            listener.onAnswerCorrect();
-        } else {
-            listener.onChallengeCancel();
+        if (callbacks != null) {
+            callbacks.onCancel();
         }
     }
 
@@ -142,8 +110,8 @@ public class MathChallengeManager {
             viewController.showCorrectAnswer();
             handler.postDelayed(() -> {
                 viewController.hideKeyboard();
-                if (listener != null) {
-                    listener.onAnswerCorrect();
+                if (callbacks != null) {
+                    callbacks.onCorrect();
                 }
             }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
             return;
@@ -152,7 +120,7 @@ public class MathChallengeManager {
         Log.d(TAG, "答题错误: " + userAnswer + " (正确答案: " + currentAnswer + ")");
         viewController.showWrongAnswer();
         handler.postDelayed(() -> {
-            if (!challengeActive) {
+            if (!shown) {
                 return;
             }
             ChallengeQuestionProvider.Question question =

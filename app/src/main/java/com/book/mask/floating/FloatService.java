@@ -10,6 +10,7 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.book.mask.constant.Const;
+import com.book.mask.challenge.retelling.SherpaOnnxTranscriber;
 import com.book.mask.config.Share;
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
 import com.book.mask.personalize.RelaxManager;
@@ -110,22 +111,40 @@ public class FloatService extends AccessibilityService
     }
 
     /**
-     * 记录数学题验证开始时间
+     * 记录答题验证开始时间
      */
-    public void onMathChallengeStart() {
-        Share.mathChallengeStartTime = System.currentTimeMillis();
-        Log.d(TAG, "数学题验证开始，暂停应用状态检测 [时间: " + DateUtils.formatTime(Share.mathChallengeStartTime) + "]");
+    public void onChallengeStart() {
+        Share.challengeStartTime = System.currentTimeMillis();
+        Log.d(TAG, "答题验证开始，暂停应用状态检测 [时间: " + DateUtils.formatTime(Share.challengeStartTime) + "]");
     }
 
     /**
-     * 重置数学题验证时间
+     * 重置答题验证时间
      */
-    public void onMathChallengeEnd() {
+    public void onChallengeEnd() {
         long endTime = System.currentTimeMillis();
-        long duration = Share.mathChallengeStartTime > 0 ? (endTime - Share.mathChallengeStartTime) : 0;
-        Log.d(TAG, "数学题验证结束，恢复应用状态检测 [开始: " + DateUtils.formatTime(Share.mathChallengeStartTime)
+        long duration = Share.challengeStartTime > 0 ? (endTime - Share.challengeStartTime) : 0;
+        Log.d(TAG, "答题验证结束，恢复应用状态检测 [开始: " + DateUtils.formatTime(Share.challengeStartTime)
                 + ", 结束: " + DateUtils.formatTime(endTime) + ", 用时: " + duration + "ms]");
-        Share.mathChallengeStartTime = 0;
+        Share.challengeStartTime = 0;
+    }
+
+    /**
+     * 复述题录音阶段：透明 Activity 前台期间暂停悬浮窗，避免遮罩盖住录音界面。
+     */
+    public void suspendFloatingWindowForRecording() {
+        if (floatingWindowManager != null) {
+            floatingWindowManager.suspendForRecording();
+        }
+    }
+
+    /**
+     * 复述题录音结束（完成 / 取消 / 出错）后恢复悬浮窗。
+     */
+    public void resumeFloatingWindowFromRecording() {
+        if (floatingWindowManager != null) {
+            floatingWindowManager.resumeFromRecording();
+        }
     }
 
     /**
@@ -175,9 +194,9 @@ public class FloatService extends AccessibilityService
             }
             
             @Override
-            public boolean isMathChallengeActive() {
-                return floatingWindowManager.getMathChallengeManager() != null && 
-                       floatingWindowManager.getMathChallengeManager().isMathChallengeActive();
+            public boolean isChallengeActive() {
+                return floatingWindowManager.getChallengeManager() != null &&
+                       floatingWindowManager.getChallengeManager().isChallengeActive();
             }
         });
         
@@ -188,13 +207,13 @@ public class FloatService extends AccessibilityService
                                                         textFetcher, handler);
         floatingWindowManager.setOnFloatingWindowListener(new FloatingWindowManager.OnFloatingWindowListener() {
             @Override
-            public void onMathChallengeCorrect() {
-                handleMathChallengeCorrect();
+            public void onChallengeCorrect() {
+                handleChallengeCorrect();
             }
-            
+
             @Override
-            public void onMathChallengeCancel() {
-                Log.d(TAG, "用户取消数学题验证");
+            public void onChallengeCancel() {
+                Log.d(TAG, "用户取消答题验证");
             }
 
             @Override
@@ -213,10 +232,10 @@ public class FloatService extends AccessibilityService
     }
     
     /**
-     * 处理数学题验证成功
+     * 处理答题验证成功
      */
-    private void handleMathChallengeCorrect() {
-        Log.d(TAG, "数学题验证成功，关闭悬浮窗");
+    private void handleChallengeCorrect() {
+        Log.d(TAG, "答题验证成功，关闭悬浮窗");
 
         CustomApp currentActiveApp = Share.currentApp;
         if (currentActiveApp != null) {
@@ -384,6 +403,9 @@ public class FloatService extends AccessibilityService
             textFetcher = null;
         }
         
+        // 释放本地语音识别器（复述题），进程退出前清理
+        SherpaOnnxTranscriber.releaseInstance();
+
         // 清理多APP状态
         Share.clearAllAppStates();
 

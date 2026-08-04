@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class Share {
     public static boolean MOTIVATE_CHANGE = false;
-    public static long mathChallengeStartTime = 0; // 数学题验证开始时间
+    public static long challengeStartTime = 0; // 答题验证开始时间
 
     // 多APP状态管理
     public static Map<String, String> appStates = new HashMap<>(); // 使用包名作为键

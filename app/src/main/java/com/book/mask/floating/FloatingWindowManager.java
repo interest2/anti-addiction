@@ -12,7 +12,7 @@ import android.os.Handler;
 import android.os.SystemClock;
 
 import com.book.mask.R;
-import com.book.mask.challenge.MathChallengeManager;
+import com.book.mask.challenge.ChallengeManager;
 import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.InputMethodPackageManager;
@@ -55,7 +55,7 @@ public class FloatingWindowManager {
     }
     
     // 管理器依赖
-    private MathChallengeManager mathChallengeManager;
+    private ChallengeManager challengeManager;
     private AppSettingsManager appSettingsManager;
     private LeisureTimeManager leisureTimeManager;
     private RelaxManager relaxManager;
@@ -66,8 +66,8 @@ public class FloatingWindowManager {
     private OnFloatingWindowListener listener;
     
     public interface OnFloatingWindowListener {
-        void onMathChallengeCorrect();
-        void onMathChallengeCancel();
+        void onChallengeCorrect();
+        void onChallengeCancel();
         boolean onLeisureTimeCloseRequested();
         void onFloatingWindowShownFromHidden();
     }
@@ -131,32 +131,32 @@ public class FloatingWindowManager {
         
         // 初始化数学题验证管理器
         if (floatingView != null) {
-            mathChallengeManager = new MathChallengeManager(
+            challengeManager = new ChallengeManager(
                 context, floatingView, windowManager, layoutParams, handler, (FloatService) context
             );
-            
+
             // 设置当前APP，用于微信APP的特殊处理
             if (currentActiveApp != null) {
-                mathChallengeManager.setCurrentApp(currentActiveApp);
+                challengeManager.setCurrentApp(currentActiveApp);
             }
-            
+
             // 更新悬浮窗内容（包括日常提醒）
             updateFloatingWindowContent(currentActiveApp);
-            
-            mathChallengeManager.setOnMathChallengeListener(new MathChallengeManager.OnMathChallengeListener() {
+
+            challengeManager.setOnChallengeListener(new ChallengeManager.OnChallengeListener() {
                 @Override
                 public void onAnswerCorrect() {
-                    Log.d(TAG, "数学题验证成功，关闭悬浮窗");
+                    Log.d(TAG, "答题验证成功，关闭悬浮窗");
                     if (listener != null) {
-                        listener.onMathChallengeCorrect();
+                        listener.onChallengeCorrect();
                     }
                 }
-                
+
                 @Override
                 public void onChallengeCancel() {
-                    Log.d(TAG, "用户取消数学题验证");
+                    Log.d(TAG, "用户取消答题验证");
                     if (listener != null) {
-                        listener.onMathChallengeCancel();
+                        listener.onChallengeCancel();
                     }
                 }
             });
@@ -174,13 +174,13 @@ public class FloatingWindowManager {
                     "com.tencent.mm".equals(currentWindowApp.getPackageName())) {
                     Log.d(TAG, "微信APP直接当作答题通过");
                     // 直接调用答题成功的逻辑
-                    if (mathChallengeManager != null && mathChallengeManager.getOnMathChallengeListener() != null) {
-                        mathChallengeManager.getOnMathChallengeListener().onAnswerCorrect();
+                    if (challengeManager != null && challengeManager.getOnChallengeListener() != null) {
+                        challengeManager.getOnChallengeListener().onAnswerCorrect();
                     }
                 } else {
-                    // 其他APP显示数学题验证界面
+                    // 其他APP显示答题验证界面
                     InputMethodPackageManager.getInstance().registerDefaultInputMethod(context);
-                    mathChallengeManager.showMathChallenge();
+                    challengeManager.showChallenge();
                 }
             });
 
@@ -211,18 +211,18 @@ public class FloatingWindowManager {
         if (isFloatingWindowVisible) {
             Log.d(TAG, "开始隐藏悬浮窗");
             
-            // 隐藏数学题验证界面
-            if (mathChallengeManager != null && mathChallengeManager.isMathChallengeActive()) {
-                mathChallengeManager.hideMathChallenge();
+            // 隐藏答题验证界面
+            if (challengeManager != null && challengeManager.isChallengeActive()) {
+                challengeManager.hideChallenge();
             }
-            
+
             try {
                 if (floatingView != null && windowManager != null) {
                     windowManager.removeView(floatingView);
                     floatingView = null;
-                    
-                    mathChallengeManager = null; // 清理管理器引用
-                    
+
+                    challengeManager = null; // 清理管理器引用
+
                     Log.d(TAG, "悬浮窗隐藏成功");
                 }
             } catch (Exception e) {
@@ -294,8 +294,8 @@ public class FloatingWindowManager {
             adaptSuspendedWindowToApp(targetApp);
         }
         updateFloatingWindowContent(targetApp);
-        if (mathChallengeManager != null) {
-            mathChallengeManager.setCurrentApp(targetApp);
+        if (challengeManager != null) {
+            challengeManager.setCurrentApp(targetApp);
         }
         if (!resumeAttachedWindow(WindowSuspensionState.Reason.PAGE_TRANSITION)) {
             Log.e(TAG, "恢复页面切换保留的 Window 失败，重新创建悬浮窗");
@@ -511,6 +511,36 @@ public class FloatingWindowManager {
     }
     
     /**
+     * 复述题录音阶段：透明 Activity 前台期间暂停悬浮窗（保留已绘制 Window，避免覆盖录音界面）。
+     */
+    public void suspendForRecording() {
+        if (!isFloatingWindowVisible || floatingView == null || isSuspendedForRecording()) {
+            return;
+        }
+        if (!suspendAttachedWindow(WindowSuspensionState.Reason.RECORDING)) {
+            Log.w(TAG, "录音前无法暂停悬浮窗，直接保持原状");
+        }
+    }
+
+    /**
+     * 录音结束（完成 / 取消 / 出错）后恢复悬浮窗。
+     */
+    public void resumeFromRecording() {
+        if (!windowSuspensionState.hasReason(WindowSuspensionState.Reason.RECORDING)) {
+            return;
+        }
+        if (!resumeAttachedWindow(WindowSuspensionState.Reason.RECORDING)) {
+            Log.e(TAG, "录音后恢复悬浮窗失败");
+            return;
+        }
+        notifyIfWindowActuallyShown();
+    }
+
+    public boolean isSuspendedForRecording() {
+        return windowSuspensionState.hasReason(WindowSuspensionState.Reason.RECORDING);
+    }
+
+    /**
      * 更新悬浮窗内容
      */
     public void updateFloatingWindowContent(CustomApp currentActiveApp) {
@@ -694,8 +724,8 @@ public class FloatingWindowManager {
         return isFloatingWindowVisible;
     }
     
-    public MathChallengeManager getMathChallengeManager() {
-        return mathChallengeManager;
+    public ChallengeManager getChallengeManager() {
+        return challengeManager;
     }
 
     public boolean isSuspendedForPageTransition() {

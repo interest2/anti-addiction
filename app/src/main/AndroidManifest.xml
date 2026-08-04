@@ -22,6 +22,12 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <!-- 复述题：本地语音识别所需的录音权限（运行时危险权限） -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- 复述题：若后续采用独立麦克风前台服务，面向 Android 14+ 时评估以下两项 -->
+    <!--
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    -->
 
     <!-- Android 11+ 包可见性：用于在“添加 APP”时列出已安装的可启动应用 -->
     <queries>
@@ -50,7 +56,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
+
+        <!-- 复述题录音 Activity：透明主题，录音时本应用处于前台以稳定取得麦克风"使用期间"权限 -->
+        <activity
+            android:name=".challenge.retelling.RetellingRecordActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Theme.Retelling.Transparent"
+            android:taskAffinity="" />
+
         <!-- 无障碍服务 (已集成悬浮窗管理) -->
         <service
             android:name=".floating.FloatService"

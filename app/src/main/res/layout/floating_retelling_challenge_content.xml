@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/tv_retelling_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="复述题"
+        android:textColor="#FFFFFF"
+        android:letterSpacing="0.12"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <!-- 阶段提示：请记住下面的故事 / 请开始复述 / 正在识别语音…… / 正在评估复述…… / 评分完成 -->
+    <TextView
+        android:id="@+id/tv_retelling_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="请记住下面的故事"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp" />
+
+    <!-- 限时倒计时：仅阅读阶段显示 -->
+    <TextView
+        android:id="@+id/tv_retelling_countdown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:text="剩余 30 秒"
+        android:textColor="#FFFFC107"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <ScrollView
+        android:id="@+id/sv_retelling_story"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:maxHeight="220dp">
+
+        <TextView
+            android:id="@+id/tv_retelling_story"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textIsSelectable="false"
+            android:textSize="16sp"
+            android:lineSpacingMultiplier="1.2" />
+    </ScrollView>
+
+    <!-- 录音按钮：阅读阶段置灰，原文清空后启用 -->
+    <Button
+        android:id="@+id/btn_retelling_record"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginBottom="8dp"
+        android:backgroundTint="#4CAF50"
+        android:text="开始录音"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:enabled="false" />
+
+    <!-- 录音识别文本：本地识别完成后展示 -->
+    <ScrollView
+        android:id="@+id/sv_retelling_recognized"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:maxHeight="120dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_retelling_recognized"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textColor="#FFE0E0"
+            android:textSize="14sp"
+            android:lineSpacingMultiplier="1.2" />
+    </ScrollView>
+
+    <!-- 评分结果：得分 + 反馈 + 动作按钮 -->
+    <LinearLayout
+        android:id="@+id/layout_retelling_result"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_retelling_score"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="复述得分：82分"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_retelling_feedback"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text=""
+            android:textColor="#FFE0E0"
+            android:textSize="14sp"
+            android:gravity="center" />
+
+        <Button
+            android:id="@+id/btn_retelling_done"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#FF9800"
+            android:text="答题通过"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_retelling_cancel"
+        android:layout_width="80dp"
+        android:layout_height="48dp"
+        android:text="取消"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp" />
+
+</LinearLayout>

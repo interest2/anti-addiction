@@ -11,4 +11,15 @@
     <style name="TextAppearance.Provider.Placeholder" parent="TextAppearance.Material3.BodyLarge">
         <item name="android:textSize">13sp</item>
     </style>
+
+    <!-- 复述题录音 Activity：透明、无标题、不压暗背景，目标 APP 仍显示在背后。
+         必须保持 AppCompat/MDC 主题族，AppCompatActivity 才能正常使用。 -->
+    <style name="Theme.Retelling.Transparent" parent="Theme.Basic">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
 </resources>
