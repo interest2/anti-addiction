@@ -2,7 +2,13 @@
 .gradle
 .idea
 /app/release
+/app/full
+/app/lite
+/app/libs
+/app/src/full/assets
 /local.properties
+__pycache__/
+*.pyc
 .DS_Store
 /build
 /captures

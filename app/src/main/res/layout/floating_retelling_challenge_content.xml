@@ -83,7 +83,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text=""
-            android:textColor="#FFE0E0"
+            android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:lineSpacingMultiplier="1.2" />
     </ScrollView>
@@ -112,9 +112,67 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text=""
-            android:textColor="#FFE0E0"
+            android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:gravity="center" />
+
+        <!-- 三幕法拆解 + 寓意：题后复盘对照，仅故事携带元数据时展示 -->
+        <LinearLayout
+            android:id="@+id/layout_retelling_breakdown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="10dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="三幕法拆解"
+                android:textColor="#FFFFC107"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_retelling_breakdown_conflict"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text=""
+                android:textColor="#D0FFFFFF"
+                android:textSize="12sp"
+                android:lineSpacingMultiplier="1.2" />
+
+            <TextView
+                android:id="@+id/tv_retelling_breakdown_action"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text=""
+                android:textColor="#D0FFFFFF"
+                android:textSize="12sp"
+                android:lineSpacingMultiplier="1.2" />
+
+            <TextView
+                android:id="@+id/tv_retelling_breakdown_outcome"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text=""
+                android:textColor="#D0FFFFFF"
+                android:textSize="12sp"
+                android:lineSpacingMultiplier="1.2" />
+
+            <TextView
+                android:id="@+id/tv_retelling_breakdown_moral"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text=""
+                android:textColor="#A8FFFFFF"
+                android:textSize="12sp"
+                android:lineSpacingMultiplier="1.2" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btn_retelling_done"

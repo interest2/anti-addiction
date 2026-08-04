@@ -65,6 +65,11 @@
             android:theme="@style/Theme.Retelling.Transparent"
             android:taskAffinity="" />
 
+        <!-- 临时调试工具：内置音频不同长度识别测试 -->
+        <activity
+            android:name=".ui.AsrTestActivity"
+            android:exported="false" />
+
         <!-- 无障碍服务 (已集成悬浮窗管理) -->
         <service
             android:name=".floating.FloatService"

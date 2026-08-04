@@ -28,20 +28,42 @@ import java.util.Random;
 public final class RetellingStoryRepository {
 
     private static final String TAG = "RetellingStory";
-    private static final int MAX_TOKENS = 512;
+    private static final int MAX_TOKENS = 768;
     private static final String STORY_ID_CUSTOM = "custom";
 
     private static final String SYSTEM_PROMPT =
-            "你是故事创作助手。请用中文创作一个简短、连贯、适合朗读的小故事，情节完整、语言自然。"
-                    + "不要使用Markdown、标题、编号、引号或任何解释性文字，只输出故事正文。";
+            "你是故事创作助手。请用中文创作一个适合复述训练的寓言或哲理小故事。\n"
+                    + "要求：\n"
+                    + "1. 情节完整，包含「冲突（主角遇到的问题或困难）→ 行动（主角做了什么，含转折）→ 结局（结果与启发）」三个部分；\n"
+                    + "2. 有明确寓意，语言口语化、有画面感，适合朗读；\n"
+                    + "3. 不要使用 Markdown、标题、编号或任何解释性文字。\n"
+                    + "严格按以下标签输出，每个标签独占一行：\n"
+                    + "【故事】\n故事正文\n"
+                    + "【冲突】\n一句话概括冲突\n"
+                    + "【行动】\n一句话概括行动与转折\n"
+                    + "【结局】\n一句话概括结局\n"
+                    + "【寓意】\n一句话概括寓意";
 
     public static final class Story {
         private final String storyId;
         private final String story;
+        private final String conflict;
+        private final String action;
+        private final String outcome;
+        private final String moral;
 
         Story(String storyId, String story) {
+            this(storyId, story, null, null, null, null);
+        }
+
+        Story(String storyId, String story, String conflict, String action,
+              String outcome, String moral) {
             this.storyId = storyId == null ? "" : storyId;
             this.story = story;
+            this.conflict = conflict;
+            this.action = action;
+            this.outcome = outcome;
+            this.moral = moral;
         }
 
         public String getStoryId() {
@@ -50,6 +72,22 @@ public final class RetellingStoryRepository {
 
         public String getStory() {
             return story;
+        }
+
+        public String getConflict() {
+            return conflict;
+        }
+
+        public String getAction() {
+            return action;
+        }
+
+        public String getOutcome() {
+            return outcome;
+        }
+
+        public String getMoral() {
+            return moral;
         }
     }
 
@@ -140,13 +178,13 @@ public final class RetellingStoryRepository {
                     .put("content", "请创作一个约 " + length + " 字的中文故事。"));
 
             String raw = chatClient.complete(config, apiKey, messages, MAX_TOKENS, 0.8);
-            String story = cleanStory(raw);
+            Story story = parseStory(raw, STORY_ID_CUSTOM);
             if (story == null) {
                 Log.w(TAG, "故事接口未返回有效故事");
                 return null;
             }
             Log.d(TAG, "故事获取成功，storyId=" + STORY_ID_CUSTOM);
-            return new Story(STORY_ID_CUSTOM, story);
+            return story;
         } catch (OpenAiChatClient.OpenAiChatException e) {
             Log.w(TAG, "故事接口请求失败: " + e.getMessage());
             return null;
@@ -190,11 +228,54 @@ public final class RetellingStoryRepository {
     }
 
     private Story fetchBuiltin() {
-        String[] pool = QuestionConst.RETELLING_BUILTIN_STORIES;
+        QuestionConst.RetellingBuiltinStory[] pool = QuestionConst.RETELLING_BUILTIN_STORIES;
         if (pool == null || pool.length == 0) {
             return null;
         }
-        String story = pool[random.nextInt(pool.length)];
-        return new Story("builtin", story);
+        QuestionConst.RetellingBuiltinStory item = pool[random.nextInt(pool.length)];
+        return new Story("builtin", item.story, item.conflict, item.action, item.outcome, item.moral);
+    }
+
+    /** 解析大模型按标签返回的故事，回退到纯正文解析（未带标签时整段当作正文）。 */
+    private static Story parseStory(String raw, String storyId) {
+        if (raw == null) {
+            return null;
+        }
+        String text = raw.trim();
+        String story = cleanStory(extractSection(text, "【故事】"));
+        if (story == null) {
+            story = cleanStory(text);
+        }
+        if (story == null) {
+            return null;
+        }
+        return new Story(storyId, story,
+                extractSection(text, "【冲突】"),
+                extractSection(text, "【行动】"),
+                extractSection(text, "【结局】"),
+                extractSection(text, "【寓意】"));
+    }
+
+    /** 截取某标签后的内容，到下一个标签或结尾为止。 */
+    private static String extractSection(String raw, String marker) {
+        int index = raw.indexOf(marker);
+        if (index < 0) {
+            return null;
+        }
+        int start = index + marker.length();
+        String[] markers = {"【故事】", "【冲突】", "【行动】", "【结局】", "【寓意】"};
+        int end = raw.length();
+        for (String next : markers) {
+            int nextIndex = raw.indexOf(next, start);
+            if (nextIndex >= 0 && nextIndex < end) {
+                end = nextIndex;
+            }
+        }
+        String section = raw.substring(start, end).trim();
+        while (section.startsWith("：") || section.startsWith(":")
+                || section.startsWith(" ")) {
+            section = section.substring(1).trim();
+        }
+        return section.isEmpty() ? null : section;
     }
 }

@@ -77,11 +77,6 @@ public class ChallengeManager {
                     public void onCancel() {
                         handleCancelInternal();
                     }
-
-                    @Override
-                    public void onSwitchToArithmetic() {
-                        switchToArithmetic();
-                    }
                 });
     }
 
@@ -147,12 +142,6 @@ public class ChallengeManager {
             accessibilityService.onChallengeEnd();
         }
         Log.d(TAG, "隐藏答题验证界面");
-    }
-
-    private void switchToArithmetic() {
-        Log.d(TAG, "复述题连续评分失败，切换为本地算术题");
-        retellingSession.hideQuietly();
-        showTextChallenge(ChallengeType.ARITHMETIC);
     }
 
     private void handleCancelInternal() {

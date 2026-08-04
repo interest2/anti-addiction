@@ -27,6 +27,20 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
+    // 两种分发形态：
+    //  full —— 内置 ASR 语音模型（app/src/full/assets/asr/paraformer-zh-small/），APK 体积大；
+    //  lite —— 不内置模型，体积小；无模型时复述题走"ASR 模型缺失"兜底，不会崩溃。
+    flavorDimensions "model"
+    productFlavors {
+        full {
+            dimension "model"
+        }
+        lite {
+            dimension "model"
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
@@ -50,8 +64,8 @@ dependencies {
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'com.tencent:mmkv:1.3.1'
-    // Sherpa-ONNX 本地语音识别（复述题）
-    implementation files("libs/sherpa-onnx.aar")
+    // Sherpa-ONNX 本地语音识别（复述题）：仅 full 打包，lite 用无该依赖的占位实现以缩小体积
+    fullImplementation files("libs/sherpa-onnx.aar")
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core

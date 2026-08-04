@@ -47,6 +47,13 @@ final class RetellingViewController {
     private View topInfoLayout;
     private View strictReminderLayout;
 
+    private RetellingStoryRepository.Story currentStory;
+    private View breakdownLayout;
+    private TextView breakdownConflictText;
+    private TextView breakdownActionText;
+    private TextView breakdownOutcomeText;
+    private TextView breakdownMoralText;
+
     private boolean initialized;
     private boolean shown;
     private boolean topInfoVisibilityCaptured;
@@ -60,10 +67,11 @@ final class RetellingViewController {
         this.callbacks = callbacks;
     }
 
-    boolean showStory(String story, int displaySeconds) {
+    boolean showStory(RetellingStoryRepository.Story story, int displaySeconds) {
         if (!ensureInitialized()) {
             return false;
         }
+        currentStory = story;
         shown = true;
         hideTopInfo();
         hideStrictReminder();
@@ -71,13 +79,14 @@ final class RetellingViewController {
         retellingLayout.bringToFront();
         resultLayout.setVisibility(View.GONE);
         storyScrollView.setVisibility(View.VISIBLE);
-        storyText.setText(story);
+        storyText.setText(story == null ? "" : story.getStory());
         storyText.setVisibility(View.VISIBLE);
         clearRecognizedText();
-        hintText.setText("请记住下面的故事");
+        hideBreakdown();
+        hintText.setText("请记住下面的故事，可随时开始复述");
         countdownText.setText("剩余 " + displaySeconds + " 秒");
         countdownText.setVisibility(View.VISIBLE);
-        recordButton.setEnabled(false);
+        recordButton.setEnabled(true);
         recordButton.setText("开始录音");
         cancelButton.setVisibility(View.VISIBLE);
         return true;
@@ -163,7 +172,34 @@ final class RetellingViewController {
         doneButton.setBackgroundTintList(
                 android.content.res.ColorStateList.valueOf(
                         passed ? 0xFF4CAF50 : 0xFFFF9800));
+        showBreakdown();
         resultLayout.setVisibility(View.VISIBLE);
+    }
+
+    /** 展示三幕法拆解 + 寓意；故事未携带元数据时保持隐藏。 */
+    private void showBreakdown() {
+        if (breakdownLayout == null || currentStory == null) {
+            return;
+        }
+        breakdownConflictText.setText(label("冲突", currentStory.getConflict()));
+        breakdownActionText.setText(label("行动", currentStory.getAction()));
+        breakdownOutcomeText.setText(label("结局", currentStory.getOutcome()));
+        breakdownMoralText.setText(label("寓意", currentStory.getMoral()));
+        boolean visible = currentStory.getConflict() != null
+                || currentStory.getAction() != null
+                || currentStory.getOutcome() != null
+                || currentStory.getMoral() != null;
+        breakdownLayout.setVisibility(visible ? View.VISIBLE : View.GONE);
+    }
+
+    private void hideBreakdown() {
+        if (breakdownLayout != null) {
+            breakdownLayout.setVisibility(View.GONE);
+        }
+    }
+
+    private static String label(String prefix, String value) {
+        return value == null || value.trim().isEmpty() ? null : prefix + "：" + value.trim();
     }
 
     void showError(String message) {
@@ -228,6 +264,11 @@ final class RetellingViewController {
         doneButton = floatingView.findViewById(R.id.btn_retelling_done);
         topInfoLayout = floatingView.findViewById(R.id.top_info_layout);
         strictReminderLayout = floatingView.findViewById(R.id.strict_reminder_layout);
+        breakdownLayout = floatingView.findViewById(R.id.layout_retelling_breakdown);
+        breakdownConflictText = floatingView.findViewById(R.id.tv_retelling_breakdown_conflict);
+        breakdownActionText = floatingView.findViewById(R.id.tv_retelling_breakdown_action);
+        breakdownOutcomeText = floatingView.findViewById(R.id.tv_retelling_breakdown_outcome);
+        breakdownMoralText = floatingView.findViewById(R.id.tv_retelling_breakdown_moral);
 
         if (retellingLayout == null
                 || hintText == null

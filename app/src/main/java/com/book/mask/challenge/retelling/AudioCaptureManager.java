@@ -8,32 +8,72 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
-import com.book.mask.constant.QuestionConst;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 麦克风 PCM 采集。16kHz / 单声道 / 16bit，VOICE_RECOGNITION 音源。
  *
- * <p>两分钟数据约 3.84MB，只保存在内存，无需生成临时 WAV 文件。AudioRecord 要求应用主动循环读取，
- * 因此在后台线程读 short[] 片段。录音最长 {@link QuestionConst#RETELLING_RECORD_MAX_SECONDS} 秒，
- * 达到上限后自动停止采集（由上层计时器负责触发 {@link #stop(Callback)} 取回采样）。
+ * <p>数据只保存在内存，无需生成临时 WAV 文件（180 秒约 5.76MB）。AudioRecord 要求应用主动循环读取，
+ * 因此在后台线程读 short[] 片段。录音上限由构造传入（秒），达到上限后自动停止采集
+ * （由上层计时器负责触发 {@link #stop(Callback)} 取回采样）。
  */
 public final class AudioCaptureManager {
 
     private static final String TAG = "AudioCapture";
     private static final int SAMPLE_RATE = 16000;
-    private static final int MAX_RECORD_MS =
-            QuestionConst.RETELLING_RECORD_MAX_SECONDS * 1000;
 
     public interface Callback {
-        void onCaptured(float[] samples);
+        void onCaptured(float[] samples, CaptureMetrics metrics);
 
         void onError(String message);
     }
 
+    /** 本次录音的波形指标，仅用于诊断「有 PCM 但模型输出为空」的场景。 */
+    public static final class CaptureMetrics {
+        private final int sampleCount;
+        private final float peak;
+        private final float rms;
+        private final float nonSilentPercent;
+
+        private CaptureMetrics(int sampleCount, float peak, float rms, float nonSilentPercent) {
+            this.sampleCount = sampleCount;
+            this.peak = peak;
+            this.rms = rms;
+            this.nonSilentPercent = nonSilentPercent;
+        }
+
+        public int getSampleCount() {
+            return sampleCount;
+        }
+
+        public float getDurationSeconds() {
+            return sampleCount / (float) SAMPLE_RATE;
+        }
+
+        public float getPeak() {
+            return peak;
+        }
+
+        public float getRms() {
+            return rms;
+        }
+
+        public float getNonSilentPercent() {
+            return nonSilentPercent;
+        }
+
+        String toLogMessage() {
+            return String.format(
+                    Locale.US,
+                    "时长=%.3fs，采样数=%d，峰值=%.4f，RMS=%.4f，非静音=%.1f%%",
+                    getDurationSeconds(), sampleCount, peak, rms, nonSilentPercent);
+        }
+    }
+
     private final Handler handler;
+    private final int maxRecordMs;
     private AudioRecord audioRecord;
     private Thread recordingThread;
     private volatile boolean recording;
@@ -41,8 +81,9 @@ public final class AudioCaptureManager {
     private int totalSamples;
     private int bufferSize;
 
-    public AudioCaptureManager() {
+    public AudioCaptureManager(int maxSeconds) {
         this.handler = new Handler(Looper.getMainLooper());
+        this.maxRecordMs = Math.max(1, maxSeconds) * 1000;
     }
 
     public boolean isRecording() {
@@ -115,7 +156,7 @@ public final class AudioCaptureManager {
                     totalSamples += read;
                 }
             }
-            if (SystemClock.elapsedRealtime() - startTime > MAX_RECORD_MS) {
+            if (SystemClock.elapsedRealtime() - startTime > maxRecordMs) {
                 Log.d(TAG, "录音达到上限，停止采集");
                 recording = false;
                 break;
@@ -131,15 +172,18 @@ public final class AudioCaptureManager {
         if (callback == null) {
             return;
         }
+        Log.d(TAG, "结束录音");
         recording = false;
-        joinCaptureThread();
         stopAudioRecord();
+        joinCaptureThread();
         float[] samples = toFloatSamples();
         recordingThread = null;
         if (samples == null || samples.length == 0) {
             callback.onError("没有录到有效语音");
         } else {
-            handler.post(() -> callback.onCaptured(samples));
+            CaptureMetrics metrics = calculateMetrics(samples);
+            Log.d(TAG, "录音采集完成，" + metrics.toLogMessage());
+            handler.post(() -> callback.onCaptured(samples, metrics));
         }
     }
 
@@ -147,9 +191,10 @@ public final class AudioCaptureManager {
      * 丢弃本次录音数据，不取回采样。离开答题流程时立即释放麦克风。
      */
     public void cancel() {
+        Log.d(TAG, "结束录音（取消）");
         recording = false;
-        joinCaptureThread();
         stopAudioRecord();
+        joinCaptureThread();
         synchronized (chunks) {
             chunks.clear();
             totalSamples = 0;
@@ -158,7 +203,9 @@ public final class AudioCaptureManager {
     }
 
     public void release() {
-        cancel();
+        if (recording || recordingThread != null) {
+            cancel();
+        }
         if (audioRecord != null) {
             try {
                 audioRecord.release();
@@ -210,5 +257,22 @@ public final class AudioCaptureManager {
             }
         }
         return result;
+    }
+
+    private static CaptureMetrics calculateMetrics(float[] samples) {
+        float peak = 0f;
+        double sumOfSquares = 0d;
+        int nonSilentCount = 0;
+        for (float sample : samples) {
+            float amplitude = Math.abs(sample);
+            peak = Math.max(peak, amplitude);
+            sumOfSquares += sample * sample;
+            if (amplitude >= 0.01f) {
+                nonSilentCount++;
+            }
+        }
+        float rms = (float) Math.sqrt(sumOfSquares / samples.length);
+        float nonSilentPercent = nonSilentCount * 100f / samples.length;
+        return new CaptureMetrics(samples.length, peak, rms, nonSilentPercent);
     }
 }

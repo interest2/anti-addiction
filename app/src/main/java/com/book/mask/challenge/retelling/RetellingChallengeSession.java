@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.View;
 
 import com.book.mask.challenge.ChallengeSession;
+import com.book.mask.constant.QuestionConst;
 import com.book.mask.floating.FloatService;
 import com.book.mask.personalize.ChallengeSettingsManager;
 
@@ -33,8 +34,6 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
         void onCancel();
 
-        /** 连续评分失败后切换到本地算术题。 */
-        void onSwitchToArithmetic();
     }
 
     private final Context context;
@@ -54,6 +53,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private int storyLength;
     private int displaySeconds;
     private int passScore;
+    private int recordMaxSeconds;
     private int countdownTicks;
     private String lastRecognizedText;
     private int scoreRetryCount;
@@ -94,7 +94,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
                 });
         this.storyRepository = new RetellingStoryRepository(context);
         this.evaluator = new RetellingEvaluator(context);
-        this.transcriber = SherpaOnnxTranscriber.getInstance(context);
+        // 长录音按句子间隙切成 20-30 秒单元逐段识别，避免整段一次识别质量下降
+        this.transcriber = new RetellingChunkedTranscriber(
+                SherpaOnnxTranscriber.getInstance(context));
         this.handler = new Handler(Looper.getMainLooper());
         this.executor = Executors.newSingleThreadExecutor();
     }
@@ -107,6 +109,11 @@ public final class RetellingChallengeSession implements ChallengeSession {
         storyLength = settings.getRetellingStoryLength();
         displaySeconds = settings.getRetellingDisplaySeconds();
         passScore = settings.getRetellingPassScore();
+        recordMaxSeconds = QuestionConst.retellingRecordSeconds(storyLength);
+        Log.d(TAG, "复述题参数: 故事字数=" + storyLength
+                + ", 展示秒=" + displaySeconds
+                + ", 通过分=" + passScore
+                + ", 录音上限=" + recordMaxSeconds + "s");
         setState(RetellingState.LOADING_STORY);
         loadStory(false);
         return true;
@@ -164,10 +171,14 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
     // ===== 录音 Activity 回调（跨界面，经 RetellingSessionRegistry） =====
 
-    void onRecordingFinished(float[] samples) {
+    void onRecordingFinished(
+            float[] samples, AudioCaptureManager.CaptureMetrics metrics) {
         if (!active || state != RetellingState.RECORDING) {
             return;
         }
+        Log.d(TAG, "结束录音，" + (metrics == null
+                ? "采样数=" + (samples == null ? 0 : samples.length)
+                : metrics.toLogMessage()));
         resumeAfterRecording();
         if (samples == null || samples.length == 0) {
             setState(RetellingState.READY_TO_RECORD);
@@ -196,6 +207,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         if (!active || state != RetellingState.RECORDING) {
             return;
         }
+        Log.d(TAG, "结束录音（取消）");
         resumeAfterRecording();
         setState(RetellingState.READY_TO_RECORD);
         view.showReadyToRecord("已取消录音，可重新开始");
@@ -205,6 +217,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         if (!active || state != RetellingState.RECORDING) {
             return;
         }
+        Log.d(TAG, "录音出错：" + message);
         resumeAfterRecording();
         setState(RetellingState.READY_TO_RECORD);
         view.showReadyToRecord(message == null || message.isEmpty()
@@ -243,7 +256,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
     private void beginReading() {
         setState(RetellingState.READING);
-        if (!view.showStory(currentStory.getStory(), displaySeconds)) {
+        if (!view.showStory(currentStory, displaySeconds)) {
             handleLoadError();
             return;
         }
@@ -271,7 +284,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
     }
 
     private void startRecording() {
-        if (!active || state != RetellingState.READY_TO_RECORD) {
+        if (!active
+                || (state != RetellingState.READY_TO_RECORD
+                && state != RetellingState.READING)) {
             return;
         }
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
@@ -279,7 +294,13 @@ public final class RetellingChallengeSession implements ChallengeSession {
             view.showRecordingUnavailable();
             return;
         }
+        // 阅读阶段可提前开始复述：停止倒计时并清空原文，避免边看边念。
+        if (state == RetellingState.READING) {
+            handler.removeCallbacks(countdownRunnable);
+            view.showReadyToRecord();
+        }
         setState(RetellingState.RECORDING);
+        Log.d(TAG, "开始录音");
         if (service != null) {
             service.suspendFloatingWindowForRecording();
         }
@@ -287,6 +308,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         try {
             Intent intent = new Intent(context, RetellingRecordActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra(RetellingRecordActivity.EXTRA_RECORD_MAX_SECONDS, recordMaxSeconds);
             context.startActivity(intent);
         } catch (Exception e) {
             Log.e(TAG, "启动录音 Activity 失败", e);
@@ -307,6 +329,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
     private void onTranscribed(String recognizedText) {
         lastRecognizedText = recognizedText;
+        Log.d(TAG, "语音识别文本：" + (recognizedText == null ? "" : recognizedText));
         setState(RetellingState.SCORING);
         view.showRecognizedText(recognizedText);
         view.showScoring();
@@ -359,11 +382,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
             view.showScoring();
             runEvaluation();
         } else {
-            setState(RetellingState.ERROR);
-            view.showError("评分失败：" + message);
-            if (callbacks != null) {
-                callbacks.onSwitchToArithmetic();
-            }
+            Log.w(TAG, "评分连续失败，等待用户手动进入下一题: " + message);
+            showResult(new RetellingScore(
+                    0, 0, 0, 0, 0, "评分失败，请点击下一题重新作答"), false);
         }
     }
 

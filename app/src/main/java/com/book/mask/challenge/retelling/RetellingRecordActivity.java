@@ -30,17 +30,21 @@ public class RetellingRecordActivity extends AppCompatActivity {
     private static final String TAG = "RetellingRecord";
     private static final long TICK_MS = 1000L;
 
+    /** 录音上限（秒），由会话按故事长度计算后传入；缺省回退默认 45 秒。 */
+    public static final String EXTRA_RECORD_MAX_SECONDS = "record_max_seconds";
+
     private AudioCaptureManager audioCapture;
     private TextView timerText;
     private Handler handler = new Handler(Looper.getMainLooper());
     private int elapsedSeconds;
+    private int maxSeconds;
     private boolean finishing;
     private final Runnable ticker = new Runnable() {
         @Override
         public void run() {
             elapsedSeconds++;
             timerText.setText(formatTime(elapsedSeconds));
-            if (elapsedSeconds >= QuestionConst.RETELLING_RECORD_MAX_SECONDS) {
+            if (elapsedSeconds >= maxSeconds) {
                 finishRecording();
                 return;
             }
@@ -52,6 +56,10 @@ public class RetellingRecordActivity extends AppCompatActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_retelling_record);
+
+        maxSeconds = getIntent().getIntExtra(
+                EXTRA_RECORD_MAX_SECONDS, QuestionConst.RETELLING_RECORD_MAX_SECONDS);
+        Log.d(TAG, "录音上限=" + maxSeconds + "s");
 
         timerText = findViewById(R.id.tv_record_timer);
         Button finishButton = findViewById(R.id.btn_record_finish);
@@ -67,7 +75,7 @@ public class RetellingRecordActivity extends AppCompatActivity {
             return;
         }
 
-        audioCapture = new AudioCaptureManager();
+        audioCapture = new AudioCaptureManager(maxSeconds);
         if (!audioCapture.start()) {
             Log.e(TAG, "启动录音失败");
             notifyError("无法开始录音");
@@ -103,11 +111,11 @@ public class RetellingRecordActivity extends AppCompatActivity {
         handler.removeCallbacks(ticker);
         audioCapture.stop(new AudioCaptureManager.Callback() {
             @Override
-            public void onCaptured(float[] samples) {
+            public void onCaptured(float[] samples, AudioCaptureManager.CaptureMetrics metrics) {
                 RetellingChallengeSession session = RetellingSessionRegistry.getActiveSession();
                 RetellingSessionRegistry.clear();
                 if (session != null) {
-                    session.onRecordingFinished(samples);
+                    session.onRecordingFinished(samples, metrics);
                 }
                 finish();
             }

@@ -1,5 +1,6 @@
 package com.book.mask.ui;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -85,6 +86,11 @@ public class GoalNav extends Fragment {
         leisureTimeRow.setOnClickListener(v -> {
             settingsDialogManager.showLeisureTimeDialog();
         });
+
+        // 临时调试入口：内置音频不同长度识别测试
+        View asrTestRow = view.findViewById(R.id.btn_asr_test);
+        asrTestRow.setOnClickListener(v ->
+                startActivity(new Intent(requireContext(), AsrTestActivity.class)));
         return view;
     }
 

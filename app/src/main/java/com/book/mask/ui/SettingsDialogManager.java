@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -45,6 +46,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 设置对话框管理器
@@ -1227,54 +1230,115 @@ public class SettingsDialogManager {
     }
 
     /**
-     * 显示算术题难度设置对话框
+     * 显示答题类型选择对话框。
+     * 复述题行内直接展示当前配置摘要（字数/时间/合格线），勾选即切换题型、不再强制弹设置窗；
+     * 摘要右侧的编辑图标可随时打开复述题设置弹窗。
      */
     public void showMathDifficultyDialog() {
         ChallengeType[] challengeTypes =
                 ChallengeType.settingsOptions(QuestionConst.ENGLISH_READING_ENABLED);
-        String[] difficultyOptions = new String[challengeTypes.length];
         ChallengeType currentType = challengeSettingsManager.getChallengeType();
-        int checkedItem = 0;
-        for (int i = 0; i < challengeTypes.length; i++) {
-            difficultyOptions[i] = challengeTypes[i].getDisplayName();
-            if (challengeTypes[i] == currentType) {
-                checkedItem = i;
+
+        View dialogView = LayoutInflater.from(context)
+                .inflate(R.layout.dialog_challenge_type_list, null);
+        LinearLayout list = dialogView.findViewById(R.id.challenge_type_list);
+
+        List<View> rows = new ArrayList<>();
+        List<ChallengeType> rowTypes = new ArrayList<>();
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("关闭悬浮窗所需答题的类型")
+                .setView(dialogView)
+                .setNegativeButton("关闭", null)
+                .create();
+
+        for (final ChallengeType type : challengeTypes) {
+            View row = LayoutInflater.from(context)
+                    .inflate(R.layout.dialog_challenge_type_item, list, false);
+            TextView title = row.findViewById(R.id.tv_title);
+            TextView subtitle = row.findViewById(R.id.tv_subtitle);
+            ImageView radio = row.findViewById(R.id.iv_radio);
+            ImageView edit = row.findViewById(R.id.iv_edit);
+
+            title.setText(type.getDisplayName());
+            radio.setImageResource(type == currentType
+                    ? R.drawable.ic_radio_checked : R.drawable.ic_radio_unchecked);
+
+            if (type == ChallengeType.RETELLING) {
+                subtitle.setVisibility(View.VISIBLE);
+                subtitle.setText(formatRetellingSummary());
+                edit.setVisibility(View.VISIBLE);
+                edit.setOnClickListener(v ->
+                        showRetellingSettingsDialog(() -> {
+                            subtitle.setText(formatRetellingSummary());
+                            refreshCheckedRows(rows, rowTypes, ChallengeType.RETELLING);
+                        }));
             }
+
+            row.setOnClickListener(v -> onChallengeTypeSelected(type, dialog, rows, rowTypes));
+            list.addView(row);
+            rows.add(row);
+            rowTypes.add(type);
         }
 
-        new android.app.AlertDialog.Builder(context)
-            .setTitle("关闭悬浮窗所需答题的类型")
-            .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
-                ChallengeType selectedType = challengeTypes[which];
-                // 复述题不立即切题型：先打开复述题设置弹窗，保存前完成麦克风/大模型/ASR 前置检查，
-                // 任一不满足则不保存复述题、保留原题型。
-                if (selectedType == ChallengeType.RETELLING) {
-                    dialog.dismiss();
-                    showRetellingSettingsDialog();
-                    return;
-                }
+        dialog.show();
+    }
 
-                challengeSettingsManager.setChallengeType(selectedType);
+    private void onChallengeTypeSelected(ChallengeType selectedType,
+                                         android.app.AlertDialog dialog,
+                                         List<View> rows,
+                                         List<ChallengeType> rowTypes) {
+        // 复述题勾选即切换：先做前置检查（大模型/ASR），任一不满足则不切换、保留弹窗供改选。
+        if (selectedType == ChallengeType.RETELLING) {
+            String preflightError = checkRetellingPreflight();
+            if (preflightError != null) {
+                UiFeedback.showError(context, preflightError);
+                return;
+            }
+            challengeSettingsManager.setChallengeType(ChallengeType.RETELLING);
+            dialog.dismiss();
+            UiFeedback.show(context, "已设置复述题");
+            return;
+        }
 
-                if (selectedType == ChallengeType.ARITHMETIC) {
-                    showArithmeticDifficultyDialog();
-                } else if (selectedType == ChallengeType.ENGLISH_READING) {
-                    showEnglishReadingLengthDialog();
-                } else {
-                    UiFeedback.show(context, "已设置为" + selectedType.getDisplayName());
-                }
-                dialog.dismiss();
-            })
-            .setNegativeButton("关闭", null)
-            .show();
+        challengeSettingsManager.setChallengeType(selectedType);
+        dialog.dismiss();
+
+        if (selectedType == ChallengeType.ARITHMETIC) {
+            showArithmeticDifficultyDialog();
+        } else if (selectedType == ChallengeType.ENGLISH_READING) {
+            showEnglishReadingLengthDialog();
+        } else {
+            UiFeedback.show(context, "已设置为" + selectedType.getDisplayName());
+        }
+    }
+
+    /** 复述题行内摘要：字数/时间/合格线，取自复述题设置弹窗的当前值。 */
+    private String formatRetellingSummary() {
+        return "字数" + challengeSettingsManager.getRetellingStoryLength()
+                + " · " + challengeSettingsManager.getRetellingDisplaySeconds() + "秒"
+                + " · 合格线" + challengeSettingsManager.getRetellingPassScore();
+    }
+
+    /** 编辑复述题设置保存后，刷新弹窗内各行的选中态。 */
+    private void refreshCheckedRows(List<View> rows,
+                                    List<ChallengeType> rowTypes,
+                                    ChallengeType checkedType) {
+        for (int i = 0; i < rows.size(); i++) {
+            ImageView radio = rows.get(i).findViewById(R.id.iv_radio);
+            radio.setImageResource(rowTypes.get(i) == checkedType
+                    ? R.drawable.ic_radio_checked : R.drawable.ic_radio_unchecked);
+        }
     }
 
     /**
      * 复述题设置弹窗：一次保存故事字数、展示秒数、通过分数三个值。
      * 保存前检查麦克风权限（未授予则回调 MainActivity 申请）、大模型配置、ASR 模型状态；
      * 任一不满足则不保存复述题，保留原题型。
+     *
+     * @param onSaved 保存成功后回调（用于刷新答题类型弹窗内的摘要与选中态）
      */
-    private void showRetellingSettingsDialog() {
+    private void showRetellingSettingsDialog(Runnable onSaved) {
         View dialogView = LayoutInflater.from(context)
                 .inflate(R.layout.dialog_retelling_settings, null);
         EditText storyLengthInput = dialogView.findViewById(R.id.et_retelling_story_length);
@@ -1298,15 +1362,17 @@ public class SettingsDialogManager {
                         return;
                     }
                     if (!hasMicPermission()) {
-                        requestMicPermissionForSave(values, dialog);
+                        requestMicPermissionForSave(values, dialog, onSaved);
                         return;
                     }
-                    performRetellingSave(values, dialog);
+                    performRetellingSave(values, dialog, onSaved);
                 }));
         dialog.show();
     }
 
-    private void performRetellingSave(RetellingSettings values, android.app.AlertDialog dialog) {
+    private void performRetellingSave(RetellingSettings values,
+                                      android.app.AlertDialog dialog,
+                                      Runnable onSaved) {
         String preflightError = checkRetellingPreflight();
         if (preflightError != null) {
             UiFeedback.showError(context, preflightError);
@@ -1318,6 +1384,9 @@ public class SettingsDialogManager {
         challengeSettingsManager.setChallengeType(ChallengeType.RETELLING);
         dialog.dismiss();
         UiFeedback.show(context, "已设置复述题");
+        if (onSaved != null) {
+            onSaved.run();
+        }
     }
 
     private RetellingSettings parseAndValidateRetellingSettings(
@@ -1367,7 +1436,8 @@ public class SettingsDialogManager {
      * 授权成功后继续保存，拒绝则不保存复述题。
      */
     private void requestMicPermissionForSave(final RetellingSettings values,
-                                             final android.app.AlertDialog settingsDialog) {
+                                             final android.app.AlertDialog settingsDialog,
+                                             final Runnable onSaved) {
         new android.app.AlertDialog.Builder(context)
                 .setTitle("需要麦克风权限")
                 .setMessage("复述题需要录音权限，用于本地语音识别。是否授予？")
@@ -1378,7 +1448,7 @@ public class SettingsDialogManager {
                     }
                     pendingRetellingAction = granted -> {
                         if (granted) {
-                            performRetellingSave(values, settingsDialog);
+                            performRetellingSave(values, settingsDialog, onSaved);
                         } else {
                             UiFeedback.showError(context, "未授予麦克风权限，复述题未保存");
                             settingsDialog.dismiss();
