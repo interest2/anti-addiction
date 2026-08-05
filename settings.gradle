@@ -40,6 +40,8 @@ dependencyResolutionManagement {
         // 原默认配置
         google()
         mavenCentral()
+        // 火山引擎 Speech SDK（豆包语音）私有仓库
+        maven { url = uri("https://artifact.bytedance.com/repository/Volcengine/") }
     }
 }
 

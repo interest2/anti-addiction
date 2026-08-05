@@ -48,6 +48,8 @@ public final class QuestionConst {
     public static final int RETELLING_RECORD_HARD_MAX_SECONDS = 180;
     // 复述题：识别文本过短的本地粗检阈值（占原文长度比例）
     public static final double RETELLING_TEXT_TOO_SHORT_RATIO = 0.15D;
+    // 听力题：选项个数
+    public static final int LISTENING_OPTION_COUNT = 4;
 
     /**
      * 复述题录音上限随故事长度动态化：约 0.6 秒/字（按偏慢语速估算，余量充足），
@@ -107,5 +109,55 @@ public final class QuestionConst {
                     "快木匠的大件接连被退货，慢木匠把每条板凳刨得光可鉴人、越做越结实。",
                     "三年后快木匠还在返工，慢木匠的小板凳成了镇上抢手货并开了铺子。",
                     "把不起眼的小事做到极致，本身就是一条越走越宽的大路。")
+    };
+
+    /** 听力题：内置题目，接口/大模型不可用时兜底，避免听力题卡死。 */
+    public static final class ListeningBuiltinQuestion {
+        public final String transcript;
+        public final String question;
+        public final String[] options;
+        public final String answer;
+
+        public ListeningBuiltinQuestion(
+                String transcript, String question, String[] options, String answer) {
+            this.transcript = transcript;
+            this.question = question;
+            this.options = options;
+            this.answer = answer;
+        }
+    }
+
+    // 听力题：内置题目池，风格为稍有难度的中文听力理解题，均考察原文细节。
+    public static final ListeningBuiltinQuestion[] LISTENING_BUILTIN_QUESTIONS = {
+            new ListeningBuiltinQuestion(
+                    "明天华北地区将迎来入冬以来最强寒潮，气温骤降十度以上，并伴有五到六级偏北风，预计持续三到四天。"
+                            + "气象部门提醒，市民出行注意防寒保暖，老人和儿童尽量少外出。",
+                    "根据这段材料，下列哪一项说法是正确的？",
+                    new String[]{
+                            "寒潮会带来大范围强降水",
+                            "这轮降温预计只持续一天",
+                            "气象部门提醒市民做好防寒保暖",
+                            "农业部门建议增加露天作业"},
+                    "C"),
+            new ListeningBuiltinQuestion(
+                    "人在做决定时，往往先凭直觉形成初步判断，再用后续信息为自己的判断寻找理由，这被称为先射击后瞄准。"
+                            + "真正理性的决策者会刻意延缓判断，主动寻找能推翻自己结论的证据。",
+                    "根据这段材料，专业决策者与普通人的重要区别在于：",
+                    new String[]{
+                            "掌握的信息量更大",
+                            "会刻意延缓判断并主动寻找能推翻自己结论的证据",
+                            "从不依赖直觉做决定",
+                            "做出决定的速度更快"},
+                    "B"),
+            new ListeningBuiltinQuestion(
+                    "同一批茶叶在不同水质、水温下冲泡，滋味相差悬殊。软水泡茶，茶汤清亮柔和；硬水因含较多钙镁离子，"
+                            + "使茶多酚沉淀，茶汤发暗发涩。因此老茶客泡茶前常先用滤水器处理自来水。",
+                    "老茶客通常不会直接用自来水冲泡的主要原因是：",
+                    new String[]{
+                            "自来水温度不够高",
+                            "自来水中的钙镁离子会影响茶汤的色与味",
+                            "自来水价格昂贵",
+                            "自来水含有大量茶多酚"},
+                    "B")
     };
 }

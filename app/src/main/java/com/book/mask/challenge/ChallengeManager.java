@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 
+import com.book.mask.challenge.listening.ListeningChallengeSession;
 import com.book.mask.challenge.retelling.RetellingChallengeSession;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.config.CustomApp;
@@ -30,6 +31,7 @@ public class ChallengeManager {
     private final ChallengeQuestionProvider questionProvider;
     private final TextChallengeSession textSession;
     private final RetellingChallengeSession retellingSession;
+    private final ListeningChallengeSession listeningSession;
 
     private CustomApp currentApp;
     private OnChallengeListener listener;
@@ -78,6 +80,20 @@ public class ChallengeManager {
                         handleCancelInternal();
                     }
                 });
+        this.listeningSession = new ListeningChallengeSession(
+                context,
+                floatingView,
+                new ListeningChallengeSession.Callbacks() {
+                    @Override
+                    public void onCorrect() {
+                        onAnswerCorrectInternal();
+                    }
+
+                    @Override
+                    public void onCancel() {
+                        handleCancelInternal();
+                    }
+                });
     }
 
     public void setCurrentApp(CustomApp app) {
@@ -98,7 +114,9 @@ public class ChallengeManager {
 
     public void showChallenge() {
         ChallengeType selectedType = questionProvider.selectType();
-        if (selectedType == ChallengeType.RETELLING) {
+        if (selectedType == ChallengeType.LISTENING) {
+            showListeningChallenge();
+        } else if (selectedType == ChallengeType.RETELLING) {
             showRetellingChallenge();
         } else {
             showTextChallenge(selectedType);
@@ -115,6 +133,19 @@ public class ChallengeManager {
             accessibilityService.onChallengeStart();
         }
         Log.d(TAG, "显示答题验证界面");
+    }
+
+    private void showListeningChallenge() {
+        if (!listeningSession.show()) {
+            Log.w(TAG, "听力题启动失败，回退本地算术题");
+            showTextChallenge(ChallengeType.ARITHMETIC);
+            return;
+        }
+        challengeActive = true;
+        if (accessibilityService != null) {
+            accessibilityService.onChallengeStart();
+        }
+        Log.d(TAG, "显示听力题验证界面");
     }
 
     private void showRetellingChallenge() {
@@ -138,6 +169,7 @@ public class ChallengeManager {
         challengeActive = false;
         textSession.destroy();
         retellingSession.hideQuietly();
+        listeningSession.hideQuietly();
         if (accessibilityService != null) {
             accessibilityService.onChallengeEnd();
         }

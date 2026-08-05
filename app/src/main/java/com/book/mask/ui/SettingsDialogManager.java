@@ -34,9 +34,12 @@ import com.book.mask.constant.QuestionConst;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.ChallengeSettingsManager;
+import com.book.mask.personalize.DoubaoTtsConfigManager;
 import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.personalize.RetellingRecord;
 import com.book.mask.personalize.RetellingRecordStore;
+import com.book.mask.personalize.ReasoningRecord;
+import com.book.mask.personalize.ReasoningRecordStore;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.reminder.config.ProviderSecretStore;
@@ -1685,6 +1688,48 @@ public class SettingsDialogManager {
     }
 
     /**
+     * 豆包语音（听力题）凭据设置弹窗：AppID / Token / Cluster / 音色代号 / 发音人。
+     * 留空任一字段即视为未配置，听力题回退占位音频。
+     */
+    public void showDoubaoTtsSettingsDialog() {
+        View dialogView = LayoutInflater.from(context)
+                .inflate(R.layout.dialog_doubao_tts_settings, null);
+        EditText appIdInput = dialogView.findViewById(R.id.et_doubao_tts_app_id);
+        EditText tokenInput = dialogView.findViewById(R.id.et_doubao_tts_token);
+        EditText clusterInput = dialogView.findViewById(R.id.et_doubao_tts_cluster);
+        EditText voiceTypeInput = dialogView.findViewById(R.id.et_doubao_tts_voice_type);
+        EditText voiceInput = dialogView.findViewById(R.id.et_doubao_tts_voice);
+
+        DoubaoTtsConfigManager config = new DoubaoTtsConfigManager(context);
+        appIdInput.setText(config.getAppId());
+        tokenInput.setText(config.getToken());
+        clusterInput.setText(config.getCluster());
+        voiceTypeInput.setText(config.getVoiceType());
+        voiceInput.setText(config.getVoice());
+
+        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("豆包语音（听力题）")
+                .setView(dialogView)
+                .setPositiveButton("保存", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    config.setAppId(appIdInput.getText().toString());
+                    config.setToken(tokenInput.getText().toString());
+                    config.setCluster(clusterInput.getText().toString());
+                    config.setVoiceType(voiceTypeInput.getText().toString());
+                    config.setVoice(voiceInput.getText().toString());
+                    dialog.dismiss();
+                    UiFeedback.show(context,
+                            config.isConfigured()
+                                    ? "已保存豆包语音配置"
+                                    : "已保存（未完整配置，听力题使用占位音频）");
+                }));
+        dialog.show();
+    }
+
+    /**
      * 显示悬浮窗额外显示日常提醒设置对话框
      */
     public void showFloatingStrictReminderDialog(Runnable onSettingChanged) {
@@ -1907,7 +1952,7 @@ public class SettingsDialogManager {
     }
 
     /**
-     * 展示复述题答题记录弹窗：滚动列表展示每次答题的原故事、识别回答与评分，点击卡片展开详情。
+     * 展示答题记录弹窗：滚动列表按时间倒序展示复述题与推理题记录，点击卡片展开详情。
      */
     public void showAnswerRecordsDialog() {
         View dialogView = LayoutInflater.from(context)
@@ -1915,23 +1960,25 @@ public class SettingsDialogManager {
         LinearLayout container = dialogView.findViewById(R.id.ll_answer_records);
         Button clearButton = dialogView.findViewById(R.id.btn_clear_answer_records);
 
-        List<RetellingRecord> records = new RetellingRecordStore().getRecords();
-        if (records.isEmpty()) {
+        List<AnswerRecordEntry> entries = collectAnswerRecordEntries();
+        if (entries.isEmpty()) {
             TextView empty = new TextView(context);
-            empty.setText("暂无复述答题记录\n答题完成后会自动记录在这里");
+            empty.setText("暂无答题记录\n答题完成后会自动记录在这里");
             empty.setTextColor(0xFF8A8A8A);
             empty.setTextSize(15);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(0, dp(36), 0, dp(36));
             container.addView(empty);
         } else {
-            for (RetellingRecord record : records) {
-                container.addView(buildRecordCard(record));
+            for (AnswerRecordEntry entry : entries) {
+                container.addView(entry.isReasoning
+                        ? buildReasoningRecordCard(entry.reasoning)
+                        : buildRecordCard(entry.retelling));
             }
         }
 
         final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("答题记录（复述题）")
+                .setTitle("答题记录")
                 .setView(dialogView)
                 .setNegativeButton("关闭", null)
                 .create();
@@ -1939,9 +1986,10 @@ public class SettingsDialogManager {
         clearButton.setOnClickListener(v -> {
             new android.app.AlertDialog.Builder(context)
                     .setTitle("清空答题记录")
-                    .setMessage("确定清空全部复述答题记录？此操作不可恢复。")
+                    .setMessage("确定清空全部答题记录？此操作不可恢复。")
                     .setPositiveButton("清空", (d, w) -> {
                         new RetellingRecordStore().clear();
+                        new ReasoningRecordStore().clear();
                         dialog.dismiss();
                         showAnswerRecordsDialog();
                     })
@@ -1950,6 +1998,82 @@ public class SettingsDialogManager {
         });
 
         dialog.show();
+    }
+
+    /** 汇总复述题与推理题记录，按答题时间倒序合并，供「答题记录」统一展示。 */
+    private List<AnswerRecordEntry> collectAnswerRecordEntries() {
+        List<AnswerRecordEntry> entries = new ArrayList<>();
+        for (RetellingRecord record : new RetellingRecordStore().getRecords()) {
+            entries.add(new AnswerRecordEntry(record));
+        }
+        for (ReasoningRecord record : new ReasoningRecordStore().getRecords()) {
+            entries.add(new AnswerRecordEntry(record));
+        }
+        entries.sort((a, b) -> Long.compare(b.timestamp, a.timestamp));
+        return entries;
+    }
+
+    /** 复述题 / 推理题记录的统一展示封装，卡片渲染时按类型取对应字段。 */
+    private static final class AnswerRecordEntry {
+        final long timestamp;
+        final boolean isReasoning;
+        final ReasoningRecord reasoning;
+        final RetellingRecord retelling;
+
+        AnswerRecordEntry(ReasoningRecord record) {
+            this.timestamp = record.timestamp;
+            this.isReasoning = true;
+            this.reasoning = record;
+            this.retelling = null;
+        }
+
+        AnswerRecordEntry(RetellingRecord record) {
+            this.timestamp = record.timestamp;
+            this.isReasoning = false;
+            this.reasoning = null;
+            this.retelling = record;
+        }
+    }
+
+    /** 构造单条推理题记录卡片：头部（题型/时间/对错）+ 摘要 + 可展开的完整详情。 */
+    private View buildReasoningRecordCard(final ReasoningRecord record) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackgroundResource(R.drawable.bg_answer_record_card);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        cardParams.bottomMargin = dp(10);
+        card.setLayoutParams(cardParams);
+        card.setClickable(true);
+        card.setFocusable(true);
+
+        String resultText = record.passed ? "[答对]" : "[答错]";
+        TextView header = new TextView(context);
+        header.setText("推理题    " + DateUtils.formatTime(record.timestamp)
+                + "    " + resultText);
+        header.setTextColor(0xFF252525);
+        header.setTextSize(14);
+        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
+        card.addView(header);
+
+        card.addView(buildRecordLine("题干：" + truncate(record.question, 40), 13, 0xFF333333, 2));
+        card.addView(buildRecordLine("我的答案：" + truncate(record.userAnswer, 40), 13, 0xFF333333, 2));
+        card.addView(buildRecordLine("正确答案：" + truncate(record.correctAnswer, 40), 13, 0xFF333333, 2));
+
+        final LinearLayout detail = new LinearLayout(context);
+        detail.setOrientation(LinearLayout.VERTICAL);
+        detail.setVisibility(View.GONE);
+        detail.setPadding(0, dp(6), 0, 0);
+        detail.addView(buildRecordLine("【完整题干】\n" + record.question, 13, 0xFF333333, 0));
+        detail.addView(buildRecordLine("【我的答案】\n" + record.userAnswer, 13, 0xFF333333, 0));
+        detail.addView(buildRecordLine("【正确答案】\n" + record.correctAnswer, 13, 0xFF333333, 0));
+        card.addView(detail);
+
+        card.setOnClickListener(v ->
+                detail.setVisibility(detail.getVisibility() == View.VISIBLE
+                        ? View.GONE : View.VISIBLE));
+        return card;
     }
 
     /** 构造单条记录卡片：头部（时间/得分/通过）+ 摘要 + 可展开的完整详情。 */

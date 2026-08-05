@@ -106,6 +106,8 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
         view.findViewById(R.id.row_export_backup)
                 .setOnClickListener(v -> showBackupOptionsDialog());
+        view.findViewById(R.id.row_doubao_tts_settings)
+                .setOnClickListener(v -> settingsDialogManager.showDoubaoTtsSettingsDialog());
         view.findViewById(R.id.row_special_details)
                 .setOnClickListener(v -> openSpecialDetails());
     }
