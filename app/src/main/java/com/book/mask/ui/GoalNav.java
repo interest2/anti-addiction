@@ -87,6 +87,12 @@ public class GoalNav extends Fragment {
             settingsDialogManager.showLeisureTimeDialog();
         });
 
+        // 复述题答题记录
+        View answerRecordsRow = view.findViewById(R.id.btn_answer_records);
+        answerRecordsRow.setOnClickListener(v -> {
+            settingsDialogManager.showAnswerRecordsDialog();
+        });
+
         // 临时调试入口：内置音频不同长度识别测试
         View asrTestRow = view.findViewById(R.id.btn_asr_test);
         asrTestRow.setOnClickListener(v ->

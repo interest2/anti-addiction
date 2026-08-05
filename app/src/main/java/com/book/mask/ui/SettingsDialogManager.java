@@ -35,11 +35,14 @@ import com.book.mask.personalize.RelaxManager;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.ChallengeSettingsManager;
 import com.book.mask.personalize.LeisureTimeManager;
+import com.book.mask.personalize.RetellingRecord;
+import com.book.mask.personalize.RetellingRecordStore;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.reminder.config.ProviderSecretStore;
 import com.book.mask.reminder.config.ReminderProviderConfig;
 import com.book.mask.reminder.config.ReminderProviderConfigStore;
+import com.book.mask.util.DateUtils;
 import com.book.mask.R;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.textfield.TextInputEditText;
@@ -377,10 +380,6 @@ public class SettingsDialogManager {
             }
             if (leisureTimeManager.tryStartLeisureTime(targetViews.mode)) {
                 FloatService.notifyLeisureTimeChanged();
-                UiFeedback.show(
-                        dialogView,
-                        "已开启" + getLeisureModeName(targetViews.mode)
-                                + "，首个关闭悬浮窗的 APP 将免答题解禁");
             } else if (leisureTimeManager.isLeisureTimeActive(targetViews.mode)) {
                 UiFeedback.show(dialogView, getLeisureModeName(targetViews.mode) + "正在进行中");
             } else {
@@ -1905,6 +1904,127 @@ public class SettingsDialogManager {
             d.setStroke((int) (context.getResources().getDisplayMetrics().density), 0xFFBBBBBB);
         }
         return d;
+    }
+
+    /**
+     * 展示复述题答题记录弹窗：滚动列表展示每次答题的原故事、识别回答与评分，点击卡片展开详情。
+     */
+    public void showAnswerRecordsDialog() {
+        View dialogView = LayoutInflater.from(context)
+                .inflate(R.layout.dialog_answer_records, null);
+        LinearLayout container = dialogView.findViewById(R.id.ll_answer_records);
+        Button clearButton = dialogView.findViewById(R.id.btn_clear_answer_records);
+
+        List<RetellingRecord> records = new RetellingRecordStore().getRecords();
+        if (records.isEmpty()) {
+            TextView empty = new TextView(context);
+            empty.setText("暂无复述答题记录\n答题完成后会自动记录在这里");
+            empty.setTextColor(0xFF8A8A8A);
+            empty.setTextSize(15);
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(0, dp(36), 0, dp(36));
+            container.addView(empty);
+        } else {
+            for (RetellingRecord record : records) {
+                container.addView(buildRecordCard(record));
+            }
+        }
+
+        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("答题记录（复述题）")
+                .setView(dialogView)
+                .setNegativeButton("关闭", null)
+                .create();
+
+        clearButton.setOnClickListener(v -> {
+            new android.app.AlertDialog.Builder(context)
+                    .setTitle("清空答题记录")
+                    .setMessage("确定清空全部复述答题记录？此操作不可恢复。")
+                    .setPositiveButton("清空", (d, w) -> {
+                        new RetellingRecordStore().clear();
+                        dialog.dismiss();
+                        showAnswerRecordsDialog();
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+        });
+
+        dialog.show();
+    }
+
+    /** 构造单条记录卡片：头部（时间/得分/通过）+ 摘要 + 可展开的完整详情。 */
+    private View buildRecordCard(final RetellingRecord record) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackgroundResource(R.drawable.bg_answer_record_card);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        cardParams.bottomMargin = dp(10);
+        card.setLayoutParams(cardParams);
+        card.setClickable(true);
+        card.setFocusable(true);
+
+        String passText = record.passed ? "[通过]" : "[未通过]";
+        int passColor = record.passed ? 0xFF4CAF50 : 0xFFFF9800;
+        TextView header = new TextView(context);
+        header.setText(DateUtils.formatTime(record.timestamp)
+                + "    得分 " + record.score
+                + "    " + passText);
+        header.setTextColor(0xFF252525);
+        header.setTextSize(14);
+        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
+        card.addView(header);
+
+        card.addView(buildRecordLine("故事：" + truncate(record.story, 40), 13, 0xFF333333, 2));
+        card.addView(buildRecordLine("回答：" + truncate(record.recognizedText, 40), 13, 0xFF333333, 2));
+        if (record.feedback != null && !record.feedback.isEmpty()) {
+            card.addView(buildRecordLine("建议：" + record.feedback, 12, 0xFF8A8A8A, 3));
+        }
+
+        final LinearLayout detail = new LinearLayout(context);
+        detail.setOrientation(LinearLayout.VERTICAL);
+        detail.setVisibility(View.GONE);
+        detail.setPadding(0, dp(6), 0, 0);
+        detail.addView(buildRecordLine("【完整故事】\n" + record.story, 13, 0xFF333333, 0));
+        detail.addView(buildRecordLine("【完整回答】\n" + record.recognizedText, 13, 0xFF333333, 0));
+        detail.addView(buildRecordLine("维度：内容完整 " + record.coverage
+                + " · 逻辑连贯 " + record.order
+                + " · 事实准确 " + record.accuracy
+                + " · 表达完整 " + record.expression, 12, 0xFF8A8A8A, 0));
+        if (record.feedback != null && !record.feedback.isEmpty()) {
+            detail.addView(buildRecordLine("【建议】\n" + record.feedback, 12, 0xFF8A8A8A, 0));
+        }
+        card.addView(detail);
+
+        card.setOnClickListener(v ->
+                detail.setVisibility(detail.getVisibility() == View.VISIBLE
+                        ? View.GONE : View.VISIBLE));
+        return card;
+    }
+
+    private TextView buildRecordLine(String text, int sp, int color, int maxLines) {
+        TextView tv = new TextView(context);
+        tv.setText(text == null ? "" : text);
+        tv.setTextColor(color);
+        tv.setTextSize(sp);
+        tv.setLineSpacing(0f, 1.15f);
+        if (maxLines > 0) {
+            tv.setMaxLines(maxLines);
+            tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        }
+        return tv;
+    }
+
+    private String truncate(String text, int max) {
+        if (text == null) {
+            return "";
+        }
+        return text.length() > max ? text.substring(0, max) + "…" : text;
+    }
+
+    private int dp(int value) {
+        return (int) (context.getResources().getDisplayMetrics().density * value);
     }
 
 }

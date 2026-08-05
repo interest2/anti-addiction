@@ -13,6 +13,8 @@ import com.book.mask.challenge.ChallengeSession;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.floating.FloatService;
 import com.book.mask.personalize.ChallengeSettingsManager;
+import com.book.mask.personalize.RetellingRecord;
+import com.book.mask.personalize.RetellingRecordStore;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -389,8 +391,32 @@ public final class RetellingChallengeSession implements ChallengeSession {
     }
 
     private void showResult(RetellingScore score, boolean passed) {
+        saveRecord(score, passed);
         setState(passed ? RetellingState.PASSED : RetellingState.FAILED);
         view.showResult(score, passed);
+    }
+
+    /** 落地一条答题记录：原故事 + 识别文本 + 评分信息，供「答题记录」展示。 */
+    private void saveRecord(RetellingScore score, boolean passed) {
+        try {
+            RetellingStoryRepository.Story story = currentStory;
+            RetellingRecord record = new RetellingRecord();
+            record.timestamp = System.currentTimeMillis();
+            record.story = story == null ? "" : story.getStory();
+            record.recognizedText = lastRecognizedText == null ? "" : lastRecognizedText;
+            record.score = score.getScore();
+            record.coverage = score.getCoverage();
+            record.order = score.getOrder();
+            record.accuracy = score.getAccuracy();
+            record.expression = score.getExpression();
+            record.feedback = score.getFeedback();
+            record.passed = passed;
+            record.storyId = story == null ? "" : story.getStoryId();
+            new RetellingRecordStore().addRecord(record);
+            Log.d(TAG, "已保存复述答题记录，得分=" + record.score + ", 通过=" + passed);
+        } catch (Exception e) {
+            Log.e(TAG, "保存复述答题记录失败", e);
+        }
     }
 
     private void handleDone() {
