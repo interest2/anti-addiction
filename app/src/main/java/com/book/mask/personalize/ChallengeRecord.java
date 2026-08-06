@@ -15,6 +15,8 @@ public final class ChallengeRecord {
     public String correctAnswer = "";
     /** 是否答对 */
     public boolean passed;
+    /** 答题耗时（秒）：当前题目展示到提交答案；未计时的题目（如算术兜底）为 0。 */
+    public int elapsedSeconds;
 
     public ChallengeRecord() {
     }

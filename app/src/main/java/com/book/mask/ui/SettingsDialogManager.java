@@ -1251,6 +1251,8 @@ public class SettingsDialogManager {
                 .inflate(R.layout.dialog_challenge_type_list, null);
         LinearLayout list = dialogView.findViewById(R.id.challenge_type_list);
 
+        bindChallengeTimerOptions(dialogView);
+
         List<View> rows = new ArrayList<>();
         List<ChallengeType> rowTypes = new ArrayList<>();
 
@@ -1290,6 +1292,40 @@ public class SettingsDialogManager {
         }
 
         dialog.show();
+    }
+
+    /** 绑定答题计时三选项（不显示 / 分钟 mm / 分钟和秒 mm:s），点击即持久化。 */
+    private void bindChallengeTimerOptions(View dialogView) {
+        TextView none = dialogView.findViewById(R.id.tv_timer_none);
+        TextView minutes = dialogView.findViewById(R.id.tv_timer_minutes);
+        TextView minutesSeconds = dialogView.findViewById(R.id.tv_timer_minutes_seconds);
+        final TextView[] options = {none, minutes, minutesSeconds};
+
+        applyTimerOptionSelection(options, challengeSettingsManager.getChallengeTimerMode());
+
+        View.OnClickListener listener = v -> {
+            int selectedMode;
+            if (v == none) {
+                selectedMode = ChallengeSettingsManager.TIMER_MODE_NONE;
+            } else if (v == minutes) {
+                selectedMode = ChallengeSettingsManager.TIMER_MODE_MINUTES;
+            } else {
+                selectedMode = ChallengeSettingsManager.TIMER_MODE_MINUTES_SECONDS;
+            }
+            challengeSettingsManager.setChallengeTimerMode(selectedMode);
+            applyTimerOptionSelection(options, selectedMode);
+            android.util.Log.d("SettingsDialog", "答题类型弹窗: 答题计时模式=" + selectedMode);
+        };
+        none.setOnClickListener(listener);
+        minutes.setOnClickListener(listener);
+        minutesSeconds.setOnClickListener(listener);
+    }
+
+    /** 按下标同步选中态：0 不显示 / 1 分钟 / 2 分钟和秒。 */
+    private void applyTimerOptionSelection(TextView[] options, int mode) {
+        for (int i = 0; i < options.length; i++) {
+            options[i].setSelected(i == mode);
+        }
     }
 
     private void onChallengeTypeSelected(ChallengeType selectedType,
@@ -2129,8 +2165,12 @@ public class SettingsDialogManager {
         card.setFocusable(true);
 
         String resultText = record.passed ? "[答对]" : "[答错]";
+        String elapsedText = record.elapsedSeconds > 0
+                ? "    耗时 " + formatChallengeDuration(record.elapsedSeconds)
+                : "";
         TextView header = new TextView(context);
         header.setText("挑战题    " + DateUtils.formatTime(record.timestamp)
+                + elapsedText
                 + "    " + resultText);
         header.setTextColor(0xFF252525);
         header.setTextSize(14);
@@ -2154,6 +2194,13 @@ public class SettingsDialogManager {
                 detail.setVisibility(detail.getVisibility() == View.VISIBLE
                         ? View.GONE : View.VISIBLE));
         return card;
+    }
+
+    /** 与悬浮窗答题正计时一致的 mm:s 格式：秒位只显示到十秒位（0-5）。 */
+    private static String formatChallengeDuration(int elapsedSeconds) {
+        int minutes = elapsedSeconds / 60;
+        int tensSeconds = (elapsedSeconds % 60) / 10;
+        return minutes + ":" + tensSeconds;
     }
 
     /**

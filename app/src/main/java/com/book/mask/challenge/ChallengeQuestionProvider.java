@@ -77,6 +77,11 @@ final class ChallengeQuestionProvider {
                 : ChallengeType.ARITHMETIC;
     }
 
+    /** 答题悬浮窗左上角计时显示模式（算术 / 推理 / 混合题生效，听力 / 复述除外）。 */
+    int getChallengeTimerMode() {
+        return challengeSettingsManager.getChallengeTimerMode();
+    }
+
     Question getQuestion(ChallengeType type) {
         if (type == ChallengeType.ARITHMETIC) {
             return generateArithmeticQuestion();

@@ -159,4 +159,24 @@
         android:backgroundTint="#FF6B6B"
         android:gravity="center" />
 
+    <!-- 推理题 / 混合题（非算术）答题正计时 - 左上角，仅答题期间显示 -->
+    <TextView
+        android:id="@+id/tv_challenge_timer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:background="@drawable/floating_timer_bg"
+        android:paddingStart="10dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="4dp"
+        android:text="0:0"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
 </RelativeLayout>

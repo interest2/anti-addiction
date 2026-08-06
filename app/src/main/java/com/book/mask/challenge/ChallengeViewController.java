@@ -66,6 +66,7 @@ final class ChallengeViewController {
     private ScrollView questionScrollView;
     private View closeButton;
     private View topInfoLayout;
+    private TextView timerView;
 
     private boolean initialized;
     private boolean shown;
@@ -135,6 +136,24 @@ final class ChallengeViewController {
         hideResult();
     }
 
+    /** 显示 / 隐藏左上角答题正计时，显示时置顶避免被答题卡片遮挡。 */
+    void showTimer(boolean visible) {
+        if (timerView == null) {
+            return;
+        }
+        timerView.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (visible) {
+            timerView.bringToFront();
+        }
+    }
+
+    /** 刷新左上角正计时文案（由调用方按 mm:s 格式给出）。 */
+    void setTimerText(String text) {
+        if (timerView != null) {
+            timerView.setText(text);
+        }
+    }
+
     void showEmptyAnswer() {
         showResult("⚠️ 请输入答案", 0xFFFF5722);
     }
@@ -178,6 +197,9 @@ final class ChallengeViewController {
         challengeLayout.setTranslationY(0);
         challengeLayout.setVisibility(View.GONE);
         restoreTopInfo();
+        if (timerView != null) {
+            timerView.setVisibility(View.GONE);
+        }
 
         windowLayoutParams.flags =
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
@@ -207,6 +229,7 @@ final class ChallengeViewController {
         questionScrollView = floatingView.findViewById(R.id.sv_math_question);
         closeButton = floatingView.findViewById(R.id.btn_close);
         topInfoLayout = floatingView.findViewById(R.id.top_info_layout);
+        timerView = floatingView.findViewById(R.id.tv_challenge_timer);
         Button submitButton = floatingView.findViewById(R.id.btn_submit_answer);
         Button cancelButton = floatingView.findViewById(R.id.btn_cancel_close);
         if (challengeLayout == null

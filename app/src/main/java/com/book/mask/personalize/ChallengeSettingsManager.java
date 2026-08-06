@@ -19,10 +19,16 @@ public class ChallengeSettingsManager {
     static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS =
             "math_multiplication_multiplicand_digits";
     static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
+    static final String KEY_CHALLENGE_TIMER_MODE = "challenge_timer_mode";
     static final String KEY_ENGLISH_READING_LENGTH = "english_reading_length";
     static final String KEY_RETELLING_STORY_LENGTH = "retelling_story_length";
     static final String KEY_RETELLING_DISPLAY_SECONDS = "retelling_display_seconds";
     static final String KEY_RETELLING_PASS_SCORE = "retelling_pass_score";
+
+    /** 答题计时显示模式：不显示 / 仅显示分钟（mm）/ 显示分钟和秒（mm:s）。 */
+    public static final int TIMER_MODE_NONE = 0;
+    public static final int TIMER_MODE_MINUTES = 1;
+    public static final int TIMER_MODE_MINUTES_SECONDS = 2;
 
     private final MMKV mmkv;
 
@@ -94,6 +100,16 @@ public class ChallengeSettingsManager {
 
     public void setChallengeType(ChallengeType challengeType) {
         mmkv.putString(KEY_MATH_QUESTION_TYPE, challengeType.getPreferenceValue()).commit();
+    }
+
+    public int getChallengeTimerMode() {
+        int mode = mmkv.getInt(KEY_CHALLENGE_TIMER_MODE, TIMER_MODE_MINUTES_SECONDS);
+        return clamp(mode, TIMER_MODE_NONE, TIMER_MODE_MINUTES_SECONDS);
+    }
+
+    public void setChallengeTimerMode(int mode) {
+        mmkv.putInt(KEY_CHALLENGE_TIMER_MODE,
+                clamp(mode, TIMER_MODE_NONE, TIMER_MODE_MINUTES_SECONDS)).commit();
     }
 
     public int getEnglishReadingLength() {
