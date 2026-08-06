@@ -30,6 +30,11 @@ public final class AudioCaptureManager {
         void onError(String message);
     }
 
+    /** 流式 PCM 片段监听：每读入一块采样即回调，供腾讯口语评测随录随推。 */
+    public interface PcmChunkListener {
+        void onPcmChunk(short[] chunk, int length);
+    }
+
     /** 本次录音的波形指标，仅用于诊断「有 PCM 但模型输出为空」的场景。 */
     public static final class CaptureMetrics {
         private final int sampleCount;
@@ -80,6 +85,7 @@ public final class AudioCaptureManager {
     private final List<short[]> chunks = new ArrayList<>();
     private int totalSamples;
     private int bufferSize;
+    private volatile PcmChunkListener pcmChunkListener;
 
     public AudioCaptureManager(int maxSeconds) {
         this.handler = new Handler(Looper.getMainLooper());
@@ -88,6 +94,14 @@ public final class AudioCaptureManager {
 
     public boolean isRecording() {
         return recording;
+    }
+
+    /**
+     * 挂接流式 PCM 监听（通常由会话注入腾讯口语评测推流器）。
+     * 回调发生在采集线程，实现需保证线程安全。
+     */
+    public void setPcmChunkListener(PcmChunkListener listener) {
+        this.pcmChunkListener = listener;
     }
 
     /**
@@ -154,6 +168,10 @@ public final class AudioCaptureManager {
                 synchronized (chunks) {
                     chunks.add(chunk);
                     totalSamples += read;
+                }
+                PcmChunkListener listener = pcmChunkListener;
+                if (listener != null) {
+                    listener.onPcmChunk(chunk, read);
                 }
             }
             if (SystemClock.elapsedRealtime() - startTime > maxRecordMs) {

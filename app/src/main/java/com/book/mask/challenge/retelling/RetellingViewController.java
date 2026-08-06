@@ -42,6 +42,7 @@ final class RetellingViewController {
     private TextView recognizedText;
     private LinearLayout resultLayout;
     private TextView scoreText;
+    private TextView speechScoreText;
     private TextView feedbackText;
     private Button doneButton;
     private View topInfoLayout;
@@ -167,6 +168,14 @@ final class RetellingViewController {
         cancelButton.setVisibility(View.GONE);
         hintText.setText("评分完成");
         scoreText.setText("复述得分：" + score.getScore() + "分");
+        if (speechScoreText != null) {
+            if (score.hasPronunciationScore()) {
+                speechScoreText.setText(score.formatPronunciationSummary());
+                speechScoreText.setVisibility(View.VISIBLE);
+            } else {
+                speechScoreText.setVisibility(View.GONE);
+            }
+        }
         feedbackText.setText(score.getFeedback());
         doneButton.setText(passed ? "答题通过" : "下一题");
         doneButton.setBackgroundTintList(
@@ -260,6 +269,7 @@ final class RetellingViewController {
         recognizedText = floatingView.findViewById(R.id.tv_retelling_recognized);
         resultLayout = floatingView.findViewById(R.id.layout_retelling_result);
         scoreText = floatingView.findViewById(R.id.tv_retelling_score);
+        speechScoreText = floatingView.findViewById(R.id.tv_retelling_speech_score);
         feedbackText = floatingView.findViewById(R.id.tv_retelling_feedback);
         doneButton = floatingView.findViewById(R.id.btn_retelling_done);
         topInfoLayout = floatingView.findViewById(R.id.top_info_layout);

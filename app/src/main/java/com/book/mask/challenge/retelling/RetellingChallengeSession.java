@@ -10,11 +10,13 @@ import android.util.Log;
 import android.view.View;
 
 import com.book.mask.challenge.ChallengeSession;
+import com.book.mask.challenge.retelling.soe.SoeSpeechEvaluator;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.floating.FloatService;
 import com.book.mask.personalize.ChallengeSettingsManager;
 import com.book.mask.personalize.RetellingRecord;
 import com.book.mask.personalize.RetellingRecordStore;
+import com.book.mask.personalize.SoeConfigManager;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,6 +32,8 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private static final String TAG = "RetellingSession";
     private static final int RECORD_SAMPLE_RATE = 16000;
     private static final int SCORE_MAX_RETRY = 1;
+    /** 等待腾讯口语评测最终结果的超时时间，超时未回则回退本地识别，避免会话卡死。 */
+    private static final long SOE_RESULT_TIMEOUT_MS = 20000L;
 
     public interface Callbacks {
         void onPassed();
@@ -59,11 +63,28 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private int countdownTicks;
     private String lastRecognizedText;
     private int scoreRetryCount;
+    /** 腾讯口语评测（可选）：未配置 / 失败时回退本地 Sherpa 识别 + 纯文本评分。 */
+    private SoeConfigManager soeConfig;
+    private SoeSpeechEvaluator soeEvaluator;
+    private float soeAccuracy = -1f;
+    private float soeFluency = -1f;
+    private float soeSuggestedScore = -1f;
+    private boolean soeEvaluated;
+    private boolean soeResultReceived;
+    /** SOE 失败回退本地识别所需的本次录音采样。 */
+    private float[] pendingFallbackSamples;
 
     private final Runnable countdownRunnable = new Runnable() {
         @Override
         public void run() {
             onCountdownTick();
+        }
+    };
+
+    private final Runnable soeTimeoutRunnable = new Runnable() {
+        @Override
+        public void run() {
+            onSoeTimeout();
         }
     };
 
@@ -134,7 +155,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
         active = false;
         sessionId++;
         handler.removeCallbacks(countdownRunnable);
+        handler.removeCallbacks(soeTimeoutRunnable);
         RetellingSessionRegistry.clear();
+        closeSoe();
         if (service != null) {
             service.resumeFloatingWindowFromRecording();
         }
@@ -149,7 +172,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
         active = false;
         sessionId++;
         handler.removeCallbacks(countdownRunnable);
+        handler.removeCallbacks(soeTimeoutRunnable);
         RetellingSessionRegistry.clear();
+        closeSoe();
         if (service != null) {
             service.resumeFloatingWindowFromRecording();
         }
@@ -164,7 +189,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
         active = false;
         sessionId++;
         handler.removeCallbacks(countdownRunnable);
+        handler.removeCallbacks(soeTimeoutRunnable);
         RetellingSessionRegistry.clear();
+        closeSoe();
         if (service != null) {
             service.resumeFloatingWindowFromRecording();
         }
@@ -183,12 +210,33 @@ public final class RetellingChallengeSession implements ChallengeSession {
                 : metrics.toLogMessage()));
         resumeAfterRecording();
         if (samples == null || samples.length == 0) {
+            closeSoe();
             setState(RetellingState.READY_TO_RECORD);
             view.showReadyToRecord("没有录到有效语音，请重录");
             return;
         }
         setState(RetellingState.TRANSCRIBING);
         view.showTranscribing();
+        if (soeEvaluator != null && soeEvaluator.isActive()) {
+            // SOE 路径：发送结束消息，等 final 结果（转写 + 发音分）；失败或超时回退本地识别
+            pendingFallbackSamples = samples;
+            soeResultReceived = false;
+            handler.postDelayed(soeTimeoutRunnable, SOE_RESULT_TIMEOUT_MS);
+            soeEvaluator.finish();
+        } else {
+            runLocalTranscription(samples);
+        }
+    }
+
+    private void onSoeTimeout() {
+        if (!active || state != RetellingState.TRANSCRIBING || soeResultReceived) {
+            return;
+        }
+        Log.w(TAG, "SOE 评测超时，回退本地识别");
+        fallbackToLocalTranscription(false);
+    }
+
+    private void runLocalTranscription(float[] samples) {
         final long sid = sessionId;
         executor.execute(() -> {
             TranscriptionResult result = transcriber.transcribe(samples, RECORD_SAMPLE_RATE);
@@ -205,12 +253,55 @@ public final class RetellingChallengeSession implements ChallengeSession {
         });
     }
 
+    private void handleSoeResult(SoeSpeechEvaluator.SoeResult result) {
+        if (!active || state != RetellingState.TRANSCRIBING || soeResultReceived) {
+            return;
+        }
+        soeAccuracy = result.getAccuracy();
+        soeFluency = result.getFluency();
+        soeSuggestedScore = result.getSuggestedScore();
+        soeEvaluated = result.hasPronunciationScore();
+        String transcript = result.getTranscript();
+        if (transcript == null || transcript.trim().isEmpty()) {
+            Log.w(TAG, "SOE 转写为空，回退本地识别");
+            fallbackToLocalTranscription(soeEvaluated);
+            return;
+        }
+        settleSoeResult();
+        onTranscribed(transcript);
+    }
+
+    private void handleSoeError(String message) {
+        if (!active || state != RetellingState.TRANSCRIBING || soeResultReceived) {
+            return;
+        }
+        Log.w(TAG, "SOE 评测失败，回退本地识别: " + message);
+        fallbackToLocalTranscription(false);
+    }
+
+    private void fallbackToLocalTranscription(boolean keepPronunciationScore) {
+        float[] samples = pendingFallbackSamples;
+        if (!keepPronunciationScore) {
+            soeEvaluated = false;
+        }
+        settleSoeResult();
+        runLocalTranscription(samples);
+    }
+
+    private void settleSoeResult() {
+        soeResultReceived = true;
+        handler.removeCallbacks(soeTimeoutRunnable);
+        closeSoe();
+        pendingFallbackSamples = null;
+    }
+
     void onRecordingCancelled() {
         if (!active || state != RetellingState.RECORDING) {
             return;
         }
         Log.d(TAG, "结束录音（取消）");
         resumeAfterRecording();
+        closeSoe();
         setState(RetellingState.READY_TO_RECORD);
         view.showReadyToRecord("已取消录音，可重新开始");
     }
@@ -221,6 +312,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         }
         Log.d(TAG, "录音出错：" + message);
         resumeAfterRecording();
+        closeSoe();
         setState(RetellingState.READY_TO_RECORD);
         view.showReadyToRecord(message == null || message.isEmpty()
                 ? "无法开始录音"
@@ -307,6 +399,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
             service.suspendFloatingWindowForRecording();
         }
         RetellingSessionRegistry.setActiveSession(this);
+        initSoeForRecording();
         try {
             Intent intent = new Intent(context, RetellingRecordActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -314,9 +407,57 @@ public final class RetellingChallengeSession implements ChallengeSession {
             context.startActivity(intent);
         } catch (Exception e) {
             Log.e(TAG, "启动录音 Activity 失败", e);
+            closeSoe();
             resumeAfterRecording();
             setState(RetellingState.READY_TO_RECORD);
             view.showReadyToRecord("无法打开录音界面");
+        }
+    }
+
+    /** 由录音 Activity 在启动采集后调用，把 PCM 流实时导向腾讯口语评测。 */
+    void attachRecordingListener(AudioCaptureManager capture) {
+        capture.setPcmChunkListener((chunk, length) -> {
+            SoeSpeechEvaluator evaluator = soeEvaluator;
+            if (evaluator != null) {
+                evaluator.sendPcmChunk(chunk, length);
+            }
+        });
+    }
+
+    /** 初始化腾讯口语评测（仅当凭据已配置）。未配置 / 启动失败不影响本次录音。 */
+    private void initSoeForRecording() {
+        soeAccuracy = -1f;
+        soeFluency = -1f;
+        soeSuggestedScore = -1f;
+        soeEvaluated = false;
+        soeResultReceived = false;
+        handler.removeCallbacks(soeTimeoutRunnable);
+        pendingFallbackSamples = null;
+        closeSoe();
+        soeConfig = new SoeConfigManager(context);
+        if (!soeConfig.isConfigured()) {
+            Log.d(TAG, "未配置腾讯口语评测，本次复述走本地识别");
+            return;
+        }
+        soeEvaluator = new SoeSpeechEvaluator(soeConfig);
+        soeEvaluator.start(new SoeSpeechEvaluator.Listener() {
+            @Override
+            public void onResult(SoeSpeechEvaluator.SoeResult result) {
+                handler.post(() -> handleSoeResult(result));
+            }
+
+            @Override
+            public void onError(String message) {
+                handler.post(() -> handleSoeError(message));
+            }
+        });
+        Log.d(TAG, "已启动腾讯口语评测");
+    }
+
+    private void closeSoe() {
+        if (soeEvaluator != null) {
+            soeEvaluator.close();
+            soeEvaluator = null;
         }
     }
 
@@ -365,8 +506,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
                         0, 0, 0, 0, 0, "复述内容过短，请记住更多关键信息"), false);
                 break;
             case SCORED:
-                boolean passed = result.getScore().getScore() >= passScore;
-                showResult(result.getScore(), passed);
+                RetellingScore finalScore = mergeSpeechScore(result.getScore());
+                boolean passed = finalScore.getScore() >= passScore;
+                showResult(finalScore, passed);
                 break;
             case ERROR:
                 handleScoreError(result.getErrorMessage());
@@ -388,6 +530,27 @@ public final class RetellingChallengeSession implements ChallengeSession {
             showResult(new RetellingScore(
                     0, 0, 0, 0, 0, "评分失败，请点击下一题重新作答"), false);
         }
+    }
+
+    /** 内容分与 SOE 语音分合并：总分 = 0.7×内容 + 0.3×语音。语音分不可用时仅内容分。 */
+    private RetellingScore mergeSpeechScore(RetellingScore contentScore) {
+        if (!soeEvaluated || soeAccuracy < 0f || soeFluency < 0f) {
+            return contentScore;
+        }
+        // PronAccuracy 与 PronFluency 均已统一为 0-100 分制，直接取平均
+        int speech = Math.round((soeAccuracy + soeFluency) / 2f);
+        int content = contentScore.getScore();
+        int merged = Math.round(content * 0.7f + speech * 0.3f);
+        return new RetellingScore(
+                merged,
+                contentScore.getCoverage(),
+                contentScore.getAccuracy(),
+                contentScore.getOrder(),
+                contentScore.getExpression(),
+                contentScore.getFeedback(),
+                soeAccuracy,
+                soeFluency,
+                soeSuggestedScore);
     }
 
     private void showResult(RetellingScore score, boolean passed) {
@@ -412,6 +575,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
             record.feedback = score.getFeedback();
             record.passed = passed;
             record.storyId = story == null ? "" : story.getStoryId();
+            record.pronunciationAccuracy = score.getPronunciationAccuracy();
+            record.pronunciationFluency = score.getPronunciationFluency();
+            record.suggestedScore = score.getSuggestedScore();
             new RetellingRecordStore().addRecord(record);
             Log.d(TAG, "已保存复述答题记录，得分=" + record.score + ", 通过=" + passed);
         } catch (Exception e) {

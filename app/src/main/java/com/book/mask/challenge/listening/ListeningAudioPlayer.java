@@ -9,12 +9,15 @@ import android.util.Log;
 import com.book.mask.R;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 听力音频播放器。
  *
  * <p>出题时调用 {@link #prepare} 用豆包语音（火山引擎 Speech SDK）后台合成听力原文；用户点击
- * 「播放 / 重听」时 {@link #play} 优先播放合成好的 wav，尚未就绪或未配置凭据时回退内置占位 mp3，
+ * 「播放 / 重听」时 {@link #play} 优先播放合成好的音频，尚未就绪或未配置凭据时回退内置占位 mp3，
  * 保证听力题始终可用。
  */
 final class ListeningAudioPlayer {
@@ -24,61 +27,98 @@ final class ListeningAudioPlayer {
     private final ListeningSynthesizerHolder synthesizerHolder = new ListeningSynthesizerHolder();
 
     private MediaPlayer mediaPlayer;
-    private File audioFile;
+    private List<File> audioFiles = Collections.emptyList();
+    private int playingSegmentIndex;
     private boolean realAudioAvailable;
-    private boolean released;
+    private long prepareGeneration;
 
     /**
      * 后台合成听力原文，为「播放 / 重听」准备真实音频。
      */
-    void prepare(Context context, String transcript) {
-        released = false;
-        audioFile = null;
+    synchronized void prepare(Context context, String transcript) {
+        audioFiles = Collections.emptyList();
         realAudioAvailable = false;
-        final DoubaoSpeechSynthesizer synthesizer = synthesizerHolder.get(context);
-        new Thread(() -> synthesizer.synthesize(transcript, new DoubaoSpeechSynthesizer.Callback() {
-            @Override
-            public void onAudioReady(File file) {
-                audioFile = file;
-                realAudioAvailable = true;
-            }
+        final long generation = ++prepareGeneration;
+        new Thread(() -> {
+            synchronized (ListeningAudioPlayer.this) {
+                if (!isCurrentPreparation(generation)) {
+                    return;
+                }
+                synthesizerHolder.get(context).synthesize(
+                        transcript,
+                        new DoubaoSpeechSynthesizer.Callback() {
+                            @Override
+                            public void onAudioReady(List<File> files) {
+                                synchronized (ListeningAudioPlayer.this) {
+                                    if (!isCurrentPreparation(generation)) {
+                                        return;
+                                    }
+                                    audioFiles = new ArrayList<>(files);
+                                    realAudioAvailable = !audioFiles.isEmpty();
+                                }
+                                Log.d(TAG, "豆包合成音频已就绪，segments=" + files.size());
+                            }
 
-            @Override
-            public void onError(String message) {
-                realAudioAvailable = false;
-            }
+                            @Override
+                            public void onError(String message) {
+                                synchronized (ListeningAudioPlayer.this) {
+                                    if (!isCurrentPreparation(generation)) {
+                                        return;
+                                    }
+                                    realAudioAvailable = false;
+                                }
+                                Log.e(TAG, "豆包语音合成失败: " + message);
+                            }
 
-            @Override
-            public void onUnavailable(String reason) {
-                realAudioAvailable = false;
+                            @Override
+                            public void onUnavailable(String reason) {
+                                synchronized (ListeningAudioPlayer.this) {
+                                    if (!isCurrentPreparation(generation)) {
+                                        return;
+                                    }
+                                    realAudioAvailable = false;
+                                }
+                                Log.w(TAG, "豆包语音不可用: " + reason);
+                            }
+                        });
             }
-        }), "doubao-tts-prepare").start();
+        }, "doubao-tts-prepare").start();
     }
 
     /**
-     * 播放音频：真实合成已就绪则播真实 wav，否则播占位 mp3。
+     * 播放音频：真实合成已就绪则播合成音频，否则播占位 mp3。
      */
-    void play(Context context) {
+    synchronized void play(Context context) {
         releaseMediaPlayer();
-        if (realAudioAvailable && audioFile != null && audioFile.exists()) {
-            playFile(audioFile);
+        playingSegmentIndex = 0;
+        if (realAudioAvailable && allAudioFilesExist()) {
+            playCurrentSegment();
         } else {
             playPlaceholder(context);
         }
     }
 
     void stop() {
-        releaseMediaPlayer();
+        synchronized (this) {
+            prepareGeneration++;
+            releaseMediaPlayer();
+        }
         synthesizerHolder.stop();
     }
 
     void release() {
-        released = true;
-        releaseMediaPlayer();
+        synchronized (this) {
+            prepareGeneration++;
+            releaseMediaPlayer();
+        }
         synthesizerHolder.destroy();
     }
 
     // ===== 内部实现 =====
+
+    private boolean isCurrentPreparation(long generation) {
+        return generation == prepareGeneration;
+    }
 
     private void playPlaceholder(Context context) {
         try {
@@ -105,7 +145,25 @@ final class ListeningAudioPlayer {
         }
     }
 
-    private void playFile(File file) {
+    private boolean allAudioFilesExist() {
+        if (audioFiles.isEmpty()) {
+            return false;
+        }
+        for (File file : audioFiles) {
+            if (!file.exists()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private synchronized void playCurrentSegment() {
+        if (playingSegmentIndex >= audioFiles.size()) {
+            releaseMediaPlayer();
+            return;
+        }
+        File file = audioFiles.get(playingSegmentIndex);
+        int segmentNumber = playingSegmentIndex + 1;
         try {
             MediaPlayer player = new MediaPlayer();
             player.setAudioAttributes(new AudioAttributes.Builder()
@@ -114,19 +172,37 @@ final class ListeningAudioPlayer {
                     .build());
             player.setDataSource(file.getAbsolutePath());
             player.setOnPreparedListener(mp -> mp.start());
-            player.setOnCompletionListener(mp -> releaseMediaPlayer());
+            player.setOnCompletionListener(this::playNextSegment);
             player.setOnErrorListener((mp, what, extra) -> {
                 Log.w(TAG, "播放合成音频出错 what=" + what + ", extra=" + extra);
-                releaseMediaPlayer();
+                releaseCompletedPlayer(mp);
                 return true;
             });
             player.prepareAsync();
             mediaPlayer = player;
-            Log.d(TAG, "播放豆包合成音频");
+            Log.d(TAG, "播放豆包合成音频: segment=" + segmentNumber + "/" + audioFiles.size());
         } catch (Exception e) {
             Log.e(TAG, "播放合成音频异常", e);
             releaseMediaPlayer();
         }
+    }
+
+    private synchronized void playNextSegment(MediaPlayer completedPlayer) {
+        if (mediaPlayer != completedPlayer) {
+            completedPlayer.release();
+            return;
+        }
+        completedPlayer.release();
+        mediaPlayer = null;
+        playingSegmentIndex++;
+        playCurrentSegment();
+    }
+
+    private synchronized void releaseCompletedPlayer(MediaPlayer completedPlayer) {
+        if (mediaPlayer == completedPlayer) {
+            mediaPlayer = null;
+        }
+        completedPlayer.release();
     }
 
     private void releaseMediaPlayer() {

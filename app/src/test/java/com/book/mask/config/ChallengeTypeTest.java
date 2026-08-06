@@ -13,6 +13,8 @@ public class ChallengeTypeTest {
                 new ChallengeType[]{
                         ChallengeType.ARITHMETIC,
                         ChallengeType.REASONING,
+                        ChallengeType.RETELLING,
+                        ChallengeType.LISTENING,
                         ChallengeType.MIXED
                 },
                 ChallengeType.settingsOptions(false));

@@ -8,6 +8,8 @@ import android.view.View;
 
 import com.book.mask.challenge.ChallengeSession;
 import com.book.mask.constant.Const;
+import com.book.mask.personalize.ListeningRecord;
+import com.book.mask.personalize.ListeningRecordStore;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -168,7 +170,9 @@ public final class ListeningChallengeSession implements ChallengeSession {
             return;
         }
         String answer = answerLetter == null ? "" : answerLetter.trim().toUpperCase();
-        if (currentQuestion.getAnswer().equalsIgnoreCase(answer)) {
+        boolean correct = currentQuestion.getAnswer().equalsIgnoreCase(answer);
+        saveRecord(correct, answer);
+        if (correct) {
             Log.d(TAG, "听力题答对");
             state = State.ANSWER;
             view.showCorrectAnswer();
@@ -185,6 +189,35 @@ public final class ListeningChallengeSession implements ChallengeSession {
         Log.d(TAG, "听力题答错: " + answer + " (正确答案: " + currentQuestion.getAnswer() + ")");
         state = State.WRONG;
         view.showWrongAnswer();
+    }
+
+    /** 落地一条听力答题记录：题干 + 听力原文 + 我的答案 + 正确答案，供「答题记录」展示。 */
+    private void saveRecord(boolean passed, String answerLetter) {
+        try {
+            ListeningQuestion q = currentQuestion;
+            if (q == null) {
+                return;
+            }
+            ListeningRecord record = new ListeningRecord();
+            record.timestamp = System.currentTimeMillis();
+            record.question = q.getQuestion();
+            record.transcript = q.getTranscript();
+            record.passed = passed;
+            record.userAnswer = optionLabelOf(q, answerLetter);
+            record.correctAnswer = q.optionLabel(q.answerIndex());
+            new ListeningRecordStore().addRecord(record);
+            Log.d(TAG, "已保存听力答题记录，答对=" + passed);
+        } catch (Exception e) {
+            Log.e(TAG, "保存听力答题记录失败", e);
+        }
+    }
+
+    private static String optionLabelOf(ListeningQuestion q, String letter) {
+        if (letter == null || letter.length() != 1) {
+            return letter == null ? "" : letter;
+        }
+        String label = q.optionLabel(letter.charAt(0) - 'A');
+        return label.isEmpty() ? letter : label;
     }
 
     private void handleRevealTranscript() {

@@ -38,8 +38,11 @@ import com.book.mask.personalize.DoubaoTtsConfigManager;
 import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.personalize.RetellingRecord;
 import com.book.mask.personalize.RetellingRecordStore;
+import com.book.mask.personalize.SoeConfigManager;
 import com.book.mask.personalize.ReasoningRecord;
 import com.book.mask.personalize.ReasoningRecordStore;
+import com.book.mask.personalize.ListeningRecord;
+import com.book.mask.personalize.ListeningRecordStore;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.reminder.config.ProviderSecretStore;
@@ -1688,24 +1691,20 @@ public class SettingsDialogManager {
     }
 
     /**
-     * 豆包语音（听力题）凭据设置弹窗：AppID / Token / Cluster / 音色代号 / 发音人。
+     * 豆包语音（听力题）凭据设置弹窗：API Key / ResourceID / Speaker（双向流式 TTS）。
      * 留空任一字段即视为未配置，听力题回退占位音频。
      */
     public void showDoubaoTtsSettingsDialog() {
         View dialogView = LayoutInflater.from(context)
                 .inflate(R.layout.dialog_doubao_tts_settings, null);
-        EditText appIdInput = dialogView.findViewById(R.id.et_doubao_tts_app_id);
-        EditText tokenInput = dialogView.findViewById(R.id.et_doubao_tts_token);
-        EditText clusterInput = dialogView.findViewById(R.id.et_doubao_tts_cluster);
-        EditText voiceTypeInput = dialogView.findViewById(R.id.et_doubao_tts_voice_type);
-        EditText voiceInput = dialogView.findViewById(R.id.et_doubao_tts_voice);
+        EditText apiKeyInput = dialogView.findViewById(R.id.et_doubao_tts_api_key);
+        EditText resourceIdInput = dialogView.findViewById(R.id.et_doubao_tts_resource_id);
+        EditText speakerInput = dialogView.findViewById(R.id.et_doubao_tts_speaker);
 
         DoubaoTtsConfigManager config = new DoubaoTtsConfigManager(context);
-        appIdInput.setText(config.getAppId());
-        tokenInput.setText(config.getToken());
-        clusterInput.setText(config.getCluster());
-        voiceTypeInput.setText(config.getVoiceType());
-        voiceInput.setText(config.getVoice());
+        apiKeyInput.setText(config.getApiKey());
+        resourceIdInput.setText(config.getResourceId());
+        speakerInput.setText(config.getSpeaker());
 
         final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("豆包语音（听力题）")
@@ -1715,11 +1714,9 @@ public class SettingsDialogManager {
                 .create();
         dialog.setOnShowListener(ignored ->
                 dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    config.setAppId(appIdInput.getText().toString());
-                    config.setToken(tokenInput.getText().toString());
-                    config.setCluster(clusterInput.getText().toString());
-                    config.setVoiceType(voiceTypeInput.getText().toString());
-                    config.setVoice(voiceInput.getText().toString());
+                    config.setApiKey(apiKeyInput.getText().toString());
+                    config.setResourceId(resourceIdInput.getText().toString());
+                    config.setSpeaker(speakerInput.getText().toString());
                     dialog.dismiss();
                     UiFeedback.show(context,
                             config.isConfigured()
@@ -1727,6 +1724,56 @@ public class SettingsDialogManager {
                                     : "已保存（未完整配置，听力题使用占位音频）");
                 }));
         dialog.show();
+    }
+
+    /**
+     * 腾讯口语评测（复述题）凭据设置弹窗：AppID / SecretId / SecretKey / ScoreCoeff。
+     * 留空关键凭据即视为未配置，复述题回退本地识别 + 纯文本评分。
+     */
+    public void showSoeSettingsDialog() {
+        View dialogView = LayoutInflater.from(context)
+                .inflate(R.layout.dialog_soe_settings, null);
+        EditText appIdInput = dialogView.findViewById(R.id.et_soe_app_id);
+        EditText secretIdInput = dialogView.findViewById(R.id.et_soe_secret_id);
+        EditText secretKeyInput = dialogView.findViewById(R.id.et_soe_secret_key);
+        EditText scoreCoeffInput = dialogView.findViewById(R.id.et_soe_score_coeff);
+
+        SoeConfigManager config = new SoeConfigManager(context);
+        appIdInput.setText(config.getAppId());
+        secretIdInput.setText(config.getSecretId());
+        secretKeyInput.setText(config.getSecretKey());
+        scoreCoeffInput.setText(String.valueOf(config.getScoreCoeff()));
+
+        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("腾讯口语评测（复述题）")
+                .setView(dialogView)
+                .setPositiveButton("保存", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    config.setAppId(appIdInput.getText().toString());
+                    config.setSecretId(secretIdInput.getText().toString());
+                    config.setSecretKey(secretKeyInput.getText().toString());
+                    config.setScoreCoeff(parseScoreCoeff(scoreCoeffInput.getText().toString()));
+                    dialog.dismiss();
+                    UiFeedback.show(context,
+                            config.isConfigured()
+                                    ? "已保存腾讯口语评测配置"
+                                    : "已保存（未完整配置，复述题使用本地识别）");
+                }));
+        dialog.show();
+    }
+
+    private static float parseScoreCoeff(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return SoeConfigManager.DEFAULT_SCORE_COEFF;
+        }
+        try {
+            return Float.parseFloat(text.trim());
+        } catch (NumberFormatException e) {
+            return SoeConfigManager.DEFAULT_SCORE_COEFF;
+        }
     }
 
     /**
@@ -1952,7 +1999,7 @@ public class SettingsDialogManager {
     }
 
     /**
-     * 展示答题记录弹窗：滚动列表按时间倒序展示复述题与推理题记录，点击卡片展开详情。
+     * 展示答题记录弹窗：滚动列表按时间倒序展示复述题、推理题与听力题记录，点击卡片展开详情。
      */
     public void showAnswerRecordsDialog() {
         View dialogView = LayoutInflater.from(context)
@@ -1973,7 +2020,9 @@ public class SettingsDialogManager {
             for (AnswerRecordEntry entry : entries) {
                 container.addView(entry.isReasoning
                         ? buildReasoningRecordCard(entry.reasoning)
-                        : buildRecordCard(entry.retelling));
+                        : entry.isListening
+                                ? buildListeningRecordCard(entry.listening)
+                                : buildRecordCard(entry.retelling));
             }
         }
 
@@ -1990,6 +2039,7 @@ public class SettingsDialogManager {
                     .setPositiveButton("清空", (d, w) -> {
                         new RetellingRecordStore().clear();
                         new ReasoningRecordStore().clear();
+                        new ListeningRecordStore().clear();
                         dialog.dismiss();
                         showAnswerRecordsDialog();
                     })
@@ -2000,7 +2050,7 @@ public class SettingsDialogManager {
         dialog.show();
     }
 
-    /** 汇总复述题与推理题记录，按答题时间倒序合并，供「答题记录」统一展示。 */
+    /** 汇总复述题、推理题与听力题记录，按答题时间倒序合并，供「答题记录」统一展示。 */
     private List<AnswerRecordEntry> collectAnswerRecordEntries() {
         List<AnswerRecordEntry> entries = new ArrayList<>();
         for (RetellingRecord record : new RetellingRecordStore().getRecords()) {
@@ -2009,29 +2059,47 @@ public class SettingsDialogManager {
         for (ReasoningRecord record : new ReasoningRecordStore().getRecords()) {
             entries.add(new AnswerRecordEntry(record));
         }
+        for (ListeningRecord record : new ListeningRecordStore().getRecords()) {
+            entries.add(new AnswerRecordEntry(record));
+        }
         entries.sort((a, b) -> Long.compare(b.timestamp, a.timestamp));
         return entries;
     }
 
-    /** 复述题 / 推理题记录的统一展示封装，卡片渲染时按类型取对应字段。 */
+    /** 复述题 / 推理题 / 听力题记录的统一展示封装，卡片渲染时按类型取对应字段。 */
     private static final class AnswerRecordEntry {
         final long timestamp;
         final boolean isReasoning;
+        final boolean isListening;
         final ReasoningRecord reasoning;
         final RetellingRecord retelling;
+        final ListeningRecord listening;
 
         AnswerRecordEntry(ReasoningRecord record) {
             this.timestamp = record.timestamp;
             this.isReasoning = true;
+            this.isListening = false;
             this.reasoning = record;
             this.retelling = null;
+            this.listening = null;
         }
 
         AnswerRecordEntry(RetellingRecord record) {
             this.timestamp = record.timestamp;
             this.isReasoning = false;
+            this.isListening = false;
             this.reasoning = null;
             this.retelling = record;
+            this.listening = null;
+        }
+
+        AnswerRecordEntry(ListeningRecord record) {
+            this.timestamp = record.timestamp;
+            this.isReasoning = false;
+            this.isListening = true;
+            this.reasoning = null;
+            this.retelling = null;
+            this.listening = record;
         }
     }
 
@@ -2076,6 +2144,54 @@ public class SettingsDialogManager {
         return card;
     }
 
+    /**
+     * 构造听力题记录卡片：头部（题型/时间/对错）+ 摘要 + 可展开的完整详情。
+     * 展开详情含听力原文，答对 / 答错均支持查看原文。
+     */
+    private View buildListeningRecordCard(final ListeningRecord record) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(14), dp(12), dp(14), dp(12));
+        card.setBackgroundResource(R.drawable.bg_answer_record_card);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        cardParams.bottomMargin = dp(10);
+        card.setLayoutParams(cardParams);
+        card.setClickable(true);
+        card.setFocusable(true);
+
+        String resultText = record.passed ? "[答对]" : "[答错]";
+        TextView header = new TextView(context);
+        header.setText("听力题    " + DateUtils.formatTime(record.timestamp)
+                + "    " + resultText);
+        header.setTextColor(0xFF252525);
+        header.setTextSize(14);
+        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
+        card.addView(header);
+
+        card.addView(buildRecordLine("题干：" + truncate(record.question, 40), 13, 0xFF333333, 2));
+        card.addView(buildRecordLine("我的答案：" + truncate(record.userAnswer, 40), 13, 0xFF333333, 2));
+        card.addView(buildRecordLine("正确答案：" + truncate(record.correctAnswer, 40), 13, 0xFF333333, 2));
+        if (record.passed) {
+            card.addView(buildRecordLine("点卡片可查看听力原文", 12, 0xFF8A8A8A, 1));
+        }
+
+        final LinearLayout detail = new LinearLayout(context);
+        detail.setOrientation(LinearLayout.VERTICAL);
+        detail.setVisibility(View.GONE);
+        detail.setPadding(0, dp(6), 0, 0);
+        detail.addView(buildRecordLine("【完整题干】\n" + record.question, 13, 0xFF333333, 0));
+        detail.addView(buildRecordLine("【听力原文】\n" + record.transcript, 13, 0xFF333333, 0));
+        detail.addView(buildRecordLine("【我的答案】\n" + record.userAnswer, 13, 0xFF333333, 0));
+        detail.addView(buildRecordLine("【正确答案】\n" + record.correctAnswer, 13, 0xFF333333, 0));
+        card.addView(detail);
+
+        card.setOnClickListener(v ->
+                detail.setVisibility(detail.getVisibility() == View.VISIBLE
+                        ? View.GONE : View.VISIBLE));
+        return card;
+    }
+
     /** 构造单条记录卡片：头部（时间/得分/通过）+ 摘要 + 可展开的完整详情。 */
     private View buildRecordCard(final RetellingRecord record) {
         LinearLayout card = new LinearLayout(context);
@@ -2102,6 +2218,10 @@ public class SettingsDialogManager {
 
         card.addView(buildRecordLine("故事：" + truncate(record.story, 40), 13, 0xFF333333, 2));
         card.addView(buildRecordLine("回答：" + truncate(record.recognizedText, 40), 13, 0xFF333333, 2));
+        String pronunciation = record.formatPronunciationSummary();
+        if (pronunciation != null) {
+            card.addView(buildRecordLine("口语评测：" + pronunciation, 13, 0xFF333333, 2));
+        }
         if (record.feedback != null && !record.feedback.isEmpty()) {
             card.addView(buildRecordLine("建议：" + record.feedback, 12, 0xFF8A8A8A, 3));
         }
@@ -2116,6 +2236,9 @@ public class SettingsDialogManager {
                 + " · 逻辑连贯 " + record.order
                 + " · 事实准确 " + record.accuracy
                 + " · 表达完整 " + record.expression, 12, 0xFF8A8A8A, 0));
+        if (pronunciation != null) {
+            detail.addView(buildRecordLine("【口语评测】" + pronunciation, 12, 0xFF8A8A8A, 0));
+        }
         if (record.feedback != null && !record.feedback.isEmpty()) {
             detail.addView(buildRecordLine("【建议】\n" + record.feedback, 12, 0xFF8A8A8A, 0));
         }

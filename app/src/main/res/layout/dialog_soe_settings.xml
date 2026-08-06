@@ -12,7 +12,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="在火山引擎控制台开通「双向流式 TTS」后，将以下参数填在此处；留空则听力题回退占位音频。"
+            android:text="在腾讯云控制台开通「智聆口语评测（SOE）」后填写以下参数；留空则复述题回退本地识别 + 纯文本评分。"
             android:textSize="13sp"
             android:textColor="#888888"
             android:lineSpacingMultiplier="1.2" />
@@ -21,52 +21,78 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="API Key"
+            android:text="AppID"
             android:textSize="14sp"
             android:textColor="#666666" />
 
         <EditText
-            android:id="@+id/et_doubao_tts_api_key"
+            android:id="@+id/et_soe_app_id"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="控制台 > API Key"
-            android:inputType="text"
-            android:maxLength="128"
-            android:textSize="16sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="ResourceID"
-            android:textSize="14sp"
-            android:textColor="#666666" />
-
-        <EditText
-            android:id="@+id/et_doubao_tts_resource_id"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="音色克隆/大模型资源 ID"
-            android:inputType="text"
-            android:maxLength="128"
-            android:textSize="16sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Speaker（发音人）"
-            android:textSize="14sp"
-            android:textColor="#666666" />
-
-        <EditText
-            android:id="@+id/et_doubao_tts_speaker"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="如 zh_female_vv_uranus_bigtts"
+            android:hint="腾讯云账号 AppID"
             android:inputType="text"
             android:maxLength="64"
             android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="SecretId"
+            android:textSize="14sp"
+            android:textColor="#666666" />
+
+        <EditText
+            android:id="@+id/et_soe_secret_id"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="访问密钥 SecretId"
+            android:inputType="text"
+            android:maxLength="128"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="SecretKey"
+            android:textSize="14sp"
+            android:textColor="#666666" />
+
+        <EditText
+            android:id="@+id/et_soe_secret_key"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="访问密钥 SecretKey"
+            android:inputType="textPassword"
+            android:maxLength="128"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="评分苛刻指数 ScoreCoeff"
+            android:textSize="14sp"
+            android:textColor="#666666" />
+
+        <EditText
+            android:id="@+id/et_soe_score_coeff"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="1.0 - 4.0，默认 1.5，越大越严格"
+            android:inputType="numberDecimal"
+            android:maxLength="4"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="注意：SecretKey 保存在本机（MMKV），仅供本地验证；正式发布建议改用后端签发短期签名 URL，避免密钥落入 APK。"
+            android:textSize="12sp"
+            android:textColor="#CC6600"
+            android:lineSpacingMultiplier="1.2" />
 
     </LinearLayout>
 </ScrollView>

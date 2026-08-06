@@ -1,5 +1,7 @@
 package com.book.mask.personalize;
 
+import java.util.Locale;
+
 /**
  * 复述题单次答题记录。仅用于「答题记录」展示，字段由 Gson 序列化到 MMKV。
  */
@@ -27,7 +29,33 @@ public final class RetellingRecord {
     public boolean passed;
     /** 故事来源标识（builtin / custom） */
     public String storyId = "";
+    /** 腾讯口语评测发音准确度（0-100），未评测为 -1 */
+    public float pronunciationAccuracy = -1f;
+    /** 腾讯口语评测发音流利度（0-100，原始 0-1 已 ×100），未评测为 -1 */
+    public float pronunciationFluency = -1f;
+    /** 腾讯口语评测建议得分（0-100），未评测为 -1 */
+    public float suggestedScore = -1f;
 
     public RetellingRecord() {
+    }
+
+    /** 是否包含腾讯口语评测数据。 */
+    public boolean hasPronunciationScore() {
+        return pronunciationAccuracy >= 0 && pronunciationFluency >= 0;
+    }
+
+    /**
+     * 口语评测三字段展示文本：建议分（1 位小数）/ 发音准确（1 位小数）/ 流利（3 位小数）。
+     * 建议分未返回时以 {@code -} 占位；未评测返回 null。
+     */
+    public String formatPronunciationSummary() {
+        if (!hasPronunciationScore()) {
+            return null;
+        }
+        String suggested = suggestedScore >= 0
+                ? String.format(Locale.US, "%.1f", suggestedScore)
+                : "-";
+        return String.format(Locale.US, "建议分 %s · 发音准确 %.1f 分 · 流利 %.3f",
+                suggested, pronunciationAccuracy, pronunciationFluency);
     }
 }

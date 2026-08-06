@@ -22,8 +22,8 @@ import java.util.Locale;
  * 复述题录音 Activity。
  *
  * <p>透明主题，启动后本应用处于前台，可稳定取得麦克风「使用期间」权限。目标 APP 仍在背景可见，
- * 视觉上接近悬浮窗。录音数据只保存在内存，结束即交回 {@link RetellingChallengeSession}，
- * 不保存录音文件、不上传。
+ * 视觉上接近悬浮窗。录音数据保存在内存，结束即交回 {@link RetellingChallengeSession}，不保存录音文件；
+ * 若会话已配置腾讯口语评测，则采集到的 PCM 分块会实时上传进行发音评测。
  */
 public class RetellingRecordActivity extends AppCompatActivity {
 
@@ -81,6 +81,10 @@ public class RetellingRecordActivity extends AppCompatActivity {
             notifyError("无法开始录音");
             finish();
             return;
+        }
+        RetellingChallengeSession session = RetellingSessionRegistry.getActiveSession();
+        if (session != null) {
+            session.attachRecordingListener(audioCapture);
         }
 
         timerText.setText(formatTime(0));
