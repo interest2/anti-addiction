@@ -173,7 +173,7 @@
         android:paddingTop="4dp"
         android:paddingEnd="10dp"
         android:paddingBottom="4dp"
-        android:text="0:0"
+        android:text="00:0"
         android:textColor="#FFFFFF"
         android:textSize="14sp"
         android:textStyle="bold"

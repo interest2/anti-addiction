@@ -434,12 +434,8 @@ public class AppStateManager {
                 return;
             }
 
-            // 如果答题验证界面正在显示，暂停状态检测
-            if (listener != null && listener.isChallengeActive()) {
-                Log.v(TAG, "答题验证界面活跃，暂停应用状态检测");
-                return;
-            }
-
+            // 答题期间只暂停页面关键词扫描，前台包名检测必须继续运行。
+            // 否则离开目标 APP 的窗口事件一旦漏报，悬浮窗会永久停留并继续接收桌面触摸。
             // 获取当前窗口信息
             AccessibilityNodeInfo rootNode = service.getRootInActiveWindow();
             if (rootNode != null) {
@@ -743,7 +739,7 @@ public class AppStateManager {
                 } else {
                     checkTextContentOptimized(false, "entry_direct_check");
                 }
-            } else {
+            } else if (listener == null || !listener.isChallengeActive()) {
                 requestContentCheck(source + "_same_target_package");
             }
             return;

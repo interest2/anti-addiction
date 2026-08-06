@@ -6,6 +6,7 @@
 /app/lite
 /app/libs
 /app/src/full/assets
+
 /local.properties
 __pycache__/
 *.pyc

@@ -18,6 +18,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
@@ -57,6 +58,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 设置对话框管理器
@@ -65,6 +67,10 @@ import java.util.List;
 public class SettingsDialogManager {
     private static final long LEISURE_STATE_REFRESH_INTERVAL_MS = 200;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 2001;
+
+    /** 答题记录表格中使用的紧凑时间格式（月-日 时:分）。 */
+    private static final java.text.SimpleDateFormat RECORD_TABLE_TIME_FORMAT =
+            new java.text.SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
 
     /** 复述题保存前申请麦克风权限：权限结果返回后继续保存流程。 */
     public interface PendingRetellingAction {
@@ -2065,12 +2071,9 @@ public class SettingsDialogManager {
             empty.setPadding(0, dp(36), 0, dp(36));
             container.addView(empty);
         } else {
+            container.addView(buildRecordTableHeader());
             for (AnswerRecordEntry entry : entries) {
-                container.addView(entry.isChallenge
-                        ? buildChallengeRecordCard(entry.challenge)
-                        : entry.isListening
-                                ? buildListeningRecordCard(entry.listening)
-                                : buildRecordCard(entry.retelling));
+                container.addView(buildRecordTableRow(entry));
             }
         }
 
@@ -2151,162 +2154,226 @@ public class SettingsDialogManager {
         }
     }
 
-    /** 构造单条非算术题记录卡片：头部（题型/时间/对错）+ 摘要 + 可展开的完整详情。 */
-    private View buildChallengeRecordCard(final ChallengeRecord record) {
-        LinearLayout card = new LinearLayout(context);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        card.setBackgroundResource(R.drawable.bg_answer_record_card);
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        cardParams.bottomMargin = dp(10);
-        card.setLayoutParams(cardParams);
-        card.setClickable(true);
-        card.setFocusable(true);
-
-        String resultText = record.passed ? "[答对]" : "[答错]";
-        String elapsedText = record.elapsedSeconds > 0
-                ? "    耗时 " + formatChallengeDuration(record.elapsedSeconds)
-                : "";
-        TextView header = new TextView(context);
-        header.setText("挑战题    " + DateUtils.formatTime(record.timestamp)
-                + elapsedText
-                + "    " + resultText);
-        header.setTextColor(0xFF252525);
-        header.setTextSize(14);
-        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
-        card.addView(header);
-
-        card.addView(buildRecordLine("题干：" + truncate(record.question, 40), 13, 0xFF333333, 2));
-        card.addView(buildRecordLine("我的答案：" + truncate(record.userAnswer, 40), 13, 0xFF333333, 2));
-        card.addView(buildRecordLine("正确答案：" + truncate(record.correctAnswer, 40), 13, 0xFF333333, 2));
-
-        final LinearLayout detail = new LinearLayout(context);
-        detail.setOrientation(LinearLayout.VERTICAL);
-        detail.setVisibility(View.GONE);
-        detail.setPadding(0, dp(6), 0, 0);
-        detail.addView(buildRecordLine("【完整题干】\n" + record.question, 13, 0xFF333333, 0));
-        detail.addView(buildRecordLine("【我的答案】\n" + record.userAnswer, 13, 0xFF333333, 0));
-        detail.addView(buildRecordLine("【正确答案】\n" + record.correctAnswer, 13, 0xFF333333, 0));
-        card.addView(detail);
-
-        card.setOnClickListener(v ->
-                detail.setVisibility(detail.getVisibility() == View.VISIBLE
-                        ? View.GONE : View.VISIBLE));
-        return card;
+    /** 构造答题记录表头：题型 / 时间 / 耗时 / 结果。 */
+    private View buildRecordTableHeader() {
+        LinearLayout header = new LinearLayout(context);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(8), dp(8), dp(8), dp(8));
+        header.setBackgroundColor(0xFFE8E8E8);
+        header.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        header.addView(buildTableHeaderCell("题型", 1));
+        header.addView(buildTableHeaderCell("时间", 2));
+        header.addView(buildTableHeaderCell("耗时", 1));
+        header.addView(buildTableHeaderCell("结果", 1));
+        return header;
     }
 
-    /** 与悬浮窗答题正计时一致的 mm:s 格式：秒位只显示到十秒位（0-5）。 */
+    /** 构造单行答题记录：按表头列宽填充单元格，点击弹出详情。 */
+    private View buildRecordTableRow(final AnswerRecordEntry entry) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(8), dp(8), dp(8), dp(8));
+        row.setBackground(buildDayBackground(entry.timestamp));
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowParams.bottomMargin = dp(2);
+        row.setLayoutParams(rowParams);
+        row.setClickable(true);
+        row.setFocusable(true);
+
+        row.addView(buildTableCell(formatRecordType(entry), 1));
+        row.addView(buildTableCell(formatRecordTime(entry.timestamp), 2));
+        row.addView(buildTableCell(formatRecordElapsed(entry), 1));
+        row.addView(buildResultCell(entry));
+
+        row.setOnClickListener(v -> showRecordDetailDialog(entry));
+        return row;
+    }
+
+    /** 表格普通单元格：单行 + 居中 + 超长省略。 */
+    private TextView buildTableCell(String text, int weight) {
+        TextView cell = new TextView(context);
+        cell.setText(text);
+        cell.setTextSize(13);
+        cell.setTextColor(0xFF333333);
+        cell.setSingleLine(true);
+        cell.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        cell.setGravity(Gravity.CENTER);
+        cell.setLayoutParams(new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, weight));
+        return cell;
+    }
+
+    /** 表格表头单元格：加粗。 */
+    private TextView buildTableHeaderCell(String text, int weight) {
+        TextView cell = buildTableCell(text, weight);
+        cell.setTextColor(0xFF252525);
+        cell.setTypeface(cell.getTypeface(), android.graphics.Typeface.BOLD);
+        return cell;
+    }
+
+    private String formatRecordType(AnswerRecordEntry entry) {
+        if (entry.isChallenge) {
+            return "推理";
+        }
+        return entry.isListening ? "听力" : "复述";
+    }
+
+    private String formatRecordTime(long timestamp) {
+        return RECORD_TABLE_TIME_FORMAT.format(new java.util.Date(timestamp));
+    }
+
+    /** 耗时列：仅推理 / 混合题记录带耗时，其余显示 "-"。 */
+    private String formatRecordElapsed(AnswerRecordEntry entry) {
+        if (entry.isChallenge && entry.challenge.elapsedSeconds > 0) {
+            return formatChallengeDuration(entry.challenge.elapsedSeconds);
+        }
+        return "-";
+    }
+
+    /** 记录是否通过。 */
+    private static boolean isPassed(AnswerRecordEntry entry) {
+        if (entry.isChallenge) {
+            return entry.challenge.passed;
+        }
+        if (entry.isListening) {
+            return entry.listening.passed;
+        }
+        return entry.retelling.passed;
+    }
+
+    /** 结果单元格：绿√ / 红×，带浅色圆角底。 */
+    private View buildResultCell(AnswerRecordEntry entry) {
+        boolean passed = isPassed(entry);
+        TextView symbol = new TextView(context);
+        symbol.setText(passed ? "√" : "×");
+        symbol.setTextSize(15);
+        symbol.setTypeface(symbol.getTypeface(), android.graphics.Typeface.BOLD);
+        symbol.setTextColor(passed ? 0xFF2E7D32 : 0xFFD32F2F);
+        android.graphics.drawable.GradientDrawable bg =
+                new android.graphics.drawable.GradientDrawable();
+        bg.setColor(passed ? 0xFFE8F5E9 : 0xFFFFEBEE);
+        bg.setCornerRadius(dp(6));
+        symbol.setBackground(bg);
+        symbol.setPadding(dp(7), dp(2), dp(7), dp(2));
+
+        LinearLayout wrapper = new LinearLayout(context);
+        wrapper.setGravity(Gravity.CENTER);
+        wrapper.addView(symbol);
+        wrapper.setLayoutParams(new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        return wrapper;
+    }
+
+    /** 表格行浅色背景色组，同一整天用同色、相邻不同天交替。 */
+    private static final int[] RECORD_DAY_BG_COLORS = {
+            0xFFF0F4FF, // 浅蓝
+            0xFFFFF8E1, // 浅黄
+            0xFFF3E5F5, // 浅紫
+            0xFFE8F5E9, // 浅绿
+            0xFFFFF3E0, // 浅橙
+    };
+
+    private android.graphics.drawable.GradientDrawable buildDayBackground(long timestamp) {
+        java.util.Calendar calendar = java.util.Calendar.getInstance();
+        calendar.setTimeInMillis(timestamp);
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        calendar.set(java.util.Calendar.MINUTE, 0);
+        calendar.set(java.util.Calendar.SECOND, 0);
+        calendar.set(java.util.Calendar.MILLISECOND, 0);
+        long dayIndex = calendar.getTimeInMillis() / (24 * 60 * 60 * 1000L);
+        int color = RECORD_DAY_BG_COLORS[(int) Math.floorMod(dayIndex, RECORD_DAY_BG_COLORS.length)];
+        android.graphics.drawable.GradientDrawable bg =
+                new android.graphics.drawable.GradientDrawable();
+        bg.setColor(color);
+        bg.setCornerRadius(dp(12));
+        return bg;
+    }
+
+    /** 答题记录使用的完整耗时格式：MM:SS。 */
     private static String formatChallengeDuration(int elapsedSeconds) {
-        int minutes = elapsedSeconds / 60;
-        int tensSeconds = (elapsedSeconds % 60) / 10;
-        return minutes + ":" + tensSeconds;
+        return DateUtils.formatChallengeDurationFull(elapsedSeconds);
     }
 
-    /**
-     * 构造听力题记录卡片：头部（题型/时间/对错）+ 摘要 + 可展开的完整详情。
-     * 展开详情含听力原文，答对 / 答错均支持查看原文。
-     */
-    private View buildListeningRecordCard(final ListeningRecord record) {
-        LinearLayout card = new LinearLayout(context);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        card.setBackgroundResource(R.drawable.bg_answer_record_card);
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        cardParams.bottomMargin = dp(10);
-        card.setLayoutParams(cardParams);
-        card.setClickable(true);
-        card.setFocusable(true);
-
-        String resultText = record.passed ? "[答对]" : "[答错]";
-        TextView header = new TextView(context);
-        header.setText("听力题    " + DateUtils.formatTime(record.timestamp)
-                + "    " + resultText);
-        header.setTextColor(0xFF252525);
-        header.setTextSize(14);
-        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
-        card.addView(header);
-
-        card.addView(buildRecordLine("题干：" + truncate(record.question, 40), 13, 0xFF333333, 2));
-        card.addView(buildRecordLine("我的答案：" + truncate(record.userAnswer, 40), 13, 0xFF333333, 2));
-        card.addView(buildRecordLine("正确答案：" + truncate(record.correctAnswer, 40), 13, 0xFF333333, 2));
-        if (record.passed) {
-            card.addView(buildRecordLine("点卡片可查看听力原文", 12, 0xFF8A8A8A, 1));
+    /** 「我的答案」单字母答案统一转大写显示（如 a → A），其余原样。 */
+    private static String normalizeAnswerCase(String answer) {
+        if (answer == null) {
+            return "";
         }
-
-        final LinearLayout detail = new LinearLayout(context);
-        detail.setOrientation(LinearLayout.VERTICAL);
-        detail.setVisibility(View.GONE);
-        detail.setPadding(0, dp(6), 0, 0);
-        detail.addView(buildRecordLine("【完整题干】\n" + record.question, 13, 0xFF333333, 0));
-        detail.addView(buildRecordLine("【听力原文】\n" + record.transcript, 13, 0xFF333333, 0));
-        detail.addView(buildRecordLine("【我的答案】\n" + record.userAnswer, 13, 0xFF333333, 0));
-        detail.addView(buildRecordLine("【正确答案】\n" + record.correctAnswer, 13, 0xFF333333, 0));
-        card.addView(detail);
-
-        card.setOnClickListener(v ->
-                detail.setVisibility(detail.getVisibility() == View.VISIBLE
-                        ? View.GONE : View.VISIBLE));
-        return card;
+        String trimmed = answer.trim();
+        if (trimmed.length() == 1) {
+            char c = trimmed.charAt(0);
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+                return trimmed.toUpperCase(Locale.US);
+            }
+        }
+        return answer;
     }
 
-    /** 构造单条记录卡片：头部（时间/得分/通过）+ 摘要 + 可展开的完整详情。 */
-    private View buildRecordCard(final RetellingRecord record) {
-        LinearLayout card = new LinearLayout(context);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        card.setBackgroundResource(R.drawable.bg_answer_record_card);
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        cardParams.bottomMargin = dp(10);
-        card.setLayoutParams(cardParams);
-        card.setClickable(true);
-        card.setFocusable(true);
+    /** 点击表格行弹出完整答题详情。 */
+    private void showRecordDetailDialog(final AnswerRecordEntry entry) {
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(20), dp(12), dp(20), dp(8));
 
-        String passText = record.passed ? "[通过]" : "[未通过]";
-        int passColor = record.passed ? 0xFF4CAF50 : 0xFFFF9800;
-        TextView header = new TextView(context);
-        header.setText(DateUtils.formatTime(record.timestamp)
-                + "    得分 " + record.score
-                + "    " + passText);
-        header.setTextColor(0xFF252525);
-        header.setTextSize(14);
-        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
-        card.addView(header);
+        content.addView(buildRecordLine("【答题时间】" + DateUtils.formatTime(entry.timestamp), 14, 0xFF252525, 0));
+        if (entry.isChallenge) {
+            ChallengeRecord r = entry.challenge;
+            content.addView(buildRecordLine("【耗时】"
+                    + (r.elapsedSeconds > 0 ? formatChallengeDuration(r.elapsedSeconds) : "-"), 13, 0xFF333333, 0));
+            content.addView(buildRecordLine("【结果】" + (r.passed ? "√" : "×"), 13,
+                    r.passed ? 0xFF2E7D32 : 0xFFD32F2F, 0));
+            content.addView(buildRecordLine("【完整题干】\n" + r.question, 13, 0xFF333333, 0));
+            if (!r.passed) {
+                content.addView(buildRecordLine("【我的答案】\n"
+                        + normalizeAnswerCase(r.userAnswer), 13, 0xFF333333, 0));
+            }
+            content.addView(buildRecordLine("【正确答案】\n" + r.correctAnswer, 13, 0xFF333333, 0));
+        } else if (entry.isListening) {
+            ListeningRecord r = entry.listening;
+            content.addView(buildRecordLine("【题型】听力题", 13, 0xFF333333, 0));
+            content.addView(buildRecordLine("【结果】" + (r.passed ? "√" : "×"), 13,
+                    r.passed ? 0xFF2E7D32 : 0xFFD32F2F, 0));
+            content.addView(buildRecordLine("【完整题干】\n" + r.question, 13, 0xFF333333, 0));
+            content.addView(buildRecordLine("【听力原文】\n" + r.transcript, 13, 0xFF333333, 0));
+            if (!r.passed) {
+                content.addView(buildRecordLine("【我的答案】\n"
+                        + normalizeAnswerCase(r.userAnswer), 13, 0xFF333333, 0));
+            }
+            content.addView(buildRecordLine("【正确答案】\n" + r.correctAnswer, 13, 0xFF333333, 0));
+        } else {
+            RetellingRecord r = entry.retelling;
+            content.addView(buildRecordLine("【题型】复述题", 13, 0xFF333333, 0));
+            content.addView(buildRecordLine("【结果】" + (r.passed ? "通过" : "未通过")
+                    + " · 得分 " + r.score, 13, 0xFF333333, 0));
+            content.addView(buildRecordLine("【完整故事】\n" + r.story, 13, 0xFF333333, 0));
+            content.addView(buildRecordLine("【完整回答】\n" + r.recognizedText, 13, 0xFF333333, 0));
+            content.addView(buildRecordLine("维度：内容完整 " + r.coverage
+                    + " · 逻辑连贯 " + r.order
+                    + " · 事实准确 " + r.accuracy
+                    + " · 表达完整 " + r.expression, 12, 0xFF8A8A8A, 0));
+            String pronunciation = r.formatPronunciationSummary();
+            if (pronunciation != null) {
+                content.addView(buildRecordLine("【口语评测】" + pronunciation, 12, 0xFF8A8A8A, 0));
+            }
+            if (r.feedback != null && !r.feedback.isEmpty()) {
+                content.addView(buildRecordLine("【建议】\n" + r.feedback, 12, 0xFF8A8A8A, 0));
+            }
+        }
 
-        card.addView(buildRecordLine("故事：" + truncate(record.story, 40), 13, 0xFF333333, 2));
-        card.addView(buildRecordLine("回答：" + truncate(record.recognizedText, 40), 13, 0xFF333333, 2));
-        String pronunciation = record.formatPronunciationSummary();
-        if (pronunciation != null) {
-            card.addView(buildRecordLine("口语评测：" + pronunciation, 13, 0xFF333333, 2));
-        }
-        if (record.feedback != null && !record.feedback.isEmpty()) {
-            card.addView(buildRecordLine("建议：" + record.feedback, 12, 0xFF8A8A8A, 3));
-        }
+        ScrollView scrollView = new ScrollView(context);
+        scrollView.addView(content);
+        scrollView.setLayoutParams(new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT, dp(400)));
 
-        final LinearLayout detail = new LinearLayout(context);
-        detail.setOrientation(LinearLayout.VERTICAL);
-        detail.setVisibility(View.GONE);
-        detail.setPadding(0, dp(6), 0, 0);
-        detail.addView(buildRecordLine("【完整故事】\n" + record.story, 13, 0xFF333333, 0));
-        detail.addView(buildRecordLine("【完整回答】\n" + record.recognizedText, 13, 0xFF333333, 0));
-        detail.addView(buildRecordLine("维度：内容完整 " + record.coverage
-                + " · 逻辑连贯 " + record.order
-                + " · 事实准确 " + record.accuracy
-                + " · 表达完整 " + record.expression, 12, 0xFF8A8A8A, 0));
-        if (pronunciation != null) {
-            detail.addView(buildRecordLine("【口语评测】" + pronunciation, 12, 0xFF8A8A8A, 0));
-        }
-        if (record.feedback != null && !record.feedback.isEmpty()) {
-            detail.addView(buildRecordLine("【建议】\n" + record.feedback, 12, 0xFF8A8A8A, 0));
-        }
-        card.addView(detail);
-
-        card.setOnClickListener(v ->
-                detail.setVisibility(detail.getVisibility() == View.VISIBLE
-                        ? View.GONE : View.VISIBLE));
-        return card;
+        new android.app.AlertDialog.Builder(context)
+                .setTitle("答题详情")
+                .setView(scrollView)
+                .setNegativeButton("关闭", null)
+                .show();
     }
 
     private TextView buildRecordLine(String text, int sp, int color, int maxLines) {
@@ -2320,13 +2387,6 @@ public class SettingsDialogManager {
             tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
         }
         return tv;
-    }
-
-    private String truncate(String text, int max) {
-        if (text == null) {
-            return "";
-        }
-        return text.length() > max ? text.substring(0, max) + "…" : text;
     }
 
     private int dp(int value) {

@@ -62,6 +62,8 @@ final class ListeningChallengeViewController {
     private final List<TextView> optionViews = new ArrayList<>();
     private int selectedOptionIndex = -1;
     private boolean optionsEnabled = true;
+    /** 题干与选项是否已在播放结束后揭示。 */
+    private boolean questionRevealed;
 
     private boolean initialized;
     private boolean shown;
@@ -88,6 +90,7 @@ final class ListeningChallengeViewController {
         shown = true;
         resetSelection();
         optionsEnabled = true;
+        questionRevealed = false;
         hideTopInfo();
         hideStrictReminder();
         listeningLayout.setVisibility(View.VISIBLE);
@@ -115,22 +118,44 @@ final class ListeningChallengeViewController {
         }
         optionsEnabled = true;
         resetSelection();
+        questionRevealed = false;
+        audioPlayer.stop();
         // 后台用豆包语音合成听力原文，供「播放 / 重听」使用；未配置凭据时自动回退占位音频
         audioPlayer.prepare(context, question == null ? "" : question.getTranscript());
+        // 题干与选项待整段播放结束后才揭示，避免先读题再听音降低难度
+        audioPlayer.setOnPlaybackCompleted(this::onPlaybackCompleted);
         questionText.setText(question == null ? "" : question.getQuestion());
-        questionText.setVisibility(View.VISIBLE);
+        questionText.setVisibility(View.GONE);
         buildOptions(question);
-        optionsContainer.setVisibility(View.VISIBLE);
+        optionsContainer.setVisibility(View.GONE);
         transcriptScrollView.setVisibility(View.GONE);
         playButton.setVisibility(View.VISIBLE);
         replayButton.setVisibility(View.VISIBLE);
-        submitButton.setVisibility(View.VISIBLE);
+        submitButton.setVisibility(View.GONE);
         cancelButton.setVisibility(View.VISIBLE);
         revealButton.setVisibility(View.GONE);
         nextButton.setVisibility(View.GONE);
-        setOptionsEnabled(true);
+        setOptionsEnabled(false);
+        playButton.setEnabled(true);
+        replayButton.setEnabled(true);
         hideResult();
-        hintText.setText("请播放听力，然后选择答案");
+        hintText.setText("请先听完整段听力");
+        hintText.setTextColor(Color.WHITE);
+    }
+
+    /**
+     * 整段播放结束后揭示题干与选项并允许作答。
+     */
+    void onPlaybackCompleted() {
+        if (!initialized || !shown || questionRevealed) {
+            return;
+        }
+        questionRevealed = true;
+        questionText.setVisibility(View.VISIBLE);
+        optionsContainer.setVisibility(View.VISIBLE);
+        submitButton.setVisibility(View.VISIBLE);
+        setOptionsEnabled(true);
+        hintText.setText("请选择答案");
         hintText.setTextColor(Color.WHITE);
     }
 
@@ -186,10 +211,20 @@ final class ListeningChallengeViewController {
             return;
         }
         shown = false;
-        audioPlayer.release();
+        audioPlayer.stop();
         listeningLayout.setVisibility(View.GONE);
         restoreTopInfo();
         restoreStrictReminder();
+    }
+
+    void destroy() {
+        shown = false;
+        audioPlayer.release();
+        if (initialized) {
+            listeningLayout.setVisibility(View.GONE);
+            restoreTopInfo();
+            restoreStrictReminder();
+        }
     }
 
     boolean isShown() {

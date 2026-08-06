@@ -55,6 +55,11 @@ final class ChallengeQuestionProvider {
         REMOTE_CACHE.put(
                 ChallengeType.ENGLISH_READING,
                 new Question(FIRST_Q_READING, FIRST_A_READING));
+        // MIXED 与 REASONING 同为远程推理 / 应用题，兜底题共用：
+        // 否则远程题未就绪时会 fallback 成本地算术题，却仍按 MIXED 的小字号渲染。
+        REMOTE_CACHE.put(
+                ChallengeType.MIXED,
+                new Question(FIRST_Q_REASON, FIRST_A_REASON));
     }
 
     private final Context context;

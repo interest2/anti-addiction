@@ -12,6 +12,10 @@ import com.book.mask.constant.Const;
 import com.book.mask.personalize.ChallengeRecord;
 import com.book.mask.personalize.ChallengeRecordStore;
 import com.book.mask.personalize.ChallengeSettingsManager;
+import com.book.mask.util.DateUtils;
+
+import java.util.Locale;
+
 
 /**
  * 文本类答题会话：算术题 / 推理题 / 英文阅读。负责出题、答案校验、答错换题与回调。
@@ -136,6 +140,9 @@ final class TextChallengeSession implements ChallengeSession {
             stopTimer();
             viewController.showCorrectAnswer();
             handler.postDelayed(() -> {
+                if (!shown) {
+                    return;
+                }
                 viewController.hideKeyboard();
                 if (callbacks != null) {
                     callbacks.onCorrect();
@@ -215,18 +222,11 @@ final class TextChallengeSession implements ChallengeSession {
         questionStartTime = 0;
     }
 
-    /** 按当前「答题计时」模式格式化：仅分钟（mm）或分钟和秒（mm:s）。 */
+    /** 按当前「答题计时」模式格式化：仅分钟（mm，两位）或分钟和秒（mm:s）。 */
     private String formatElapsed(long elapsedSeconds) {
         if (questionProvider.getChallengeTimerMode() == ChallengeSettingsManager.TIMER_MODE_MINUTES) {
-            return String.valueOf(elapsedSeconds / 60);
+            return String.format(Locale.US, "%02d", elapsedSeconds / 60);
         }
-        return formatTimer(elapsedSeconds);
-    }
-
-    /** 格式化为 mm:s，秒位只显示到十秒位（0-5），如 83 秒 → "1:3"。 */
-    private static String formatTimer(long elapsedSeconds) {
-        long minutes = elapsedSeconds / 60;
-        long tensSeconds = (elapsedSeconds % 60) / 10;
-        return minutes + ":" + tensSeconds;
+        return DateUtils.formatChallengeDuration(elapsedSeconds);
     }
 }

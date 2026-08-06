@@ -211,9 +211,9 @@ public class FloatingWindowManager {
         if (isFloatingWindowVisible) {
             Log.d(TAG, "开始隐藏悬浮窗");
             
-            // 隐藏答题验证界面
-            if (challengeManager != null && challengeManager.isChallengeActive()) {
-                challengeManager.hideChallenge();
+            // 永久移除窗口，同时释放答题会话持有的线程、播放器和语音引擎资源。
+            if (challengeManager != null) {
+                challengeManager.destroy();
             }
 
             try {
@@ -291,6 +291,9 @@ public class FloatingWindowManager {
         // 而是就地把已绘制的 Window 重新适配到新 APP（几何、内容、答题上下文）后复用。
         boolean switchingTargetApp = !targetPackage.equals(pageTransitionTargetPackage);
         if (switchingTargetApp) {
+            if (challengeManager != null && challengeManager.isChallengeActive()) {
+                challengeManager.hideChallenge();
+            }
             adaptSuspendedWindowToApp(targetApp);
         }
         updateFloatingWindowContent(targetApp);

@@ -176,6 +176,20 @@ public class ChallengeManager {
         Log.d(TAG, "隐藏答题验证界面");
     }
 
+    /** 永久移除悬浮窗时释放各题型会话持有的线程与媒体资源。 */
+    public void destroy() {
+        boolean wasActive = challengeActive;
+        challengeActive = false;
+        listener = null;
+        textSession.destroy();
+        retellingSession.destroy();
+        listeningSession.destroy();
+        if (wasActive && accessibilityService != null) {
+            accessibilityService.onChallengeEnd();
+        }
+        Log.d(TAG, "销毁答题验证会话");
+    }
+
     private void handleCancelInternal() {
         Log.d(TAG, "用户取消关闭");
         boolean isWechat =

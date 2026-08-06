@@ -103,7 +103,7 @@ public class ChallengeSettingsManager {
     }
 
     public int getChallengeTimerMode() {
-        int mode = mmkv.getInt(KEY_CHALLENGE_TIMER_MODE, TIMER_MODE_MINUTES_SECONDS);
+        int mode = mmkv.getInt(KEY_CHALLENGE_TIMER_MODE, TIMER_MODE_NONE);
         return clamp(mode, TIMER_MODE_NONE, TIMER_MODE_MINUTES_SECONDS);
     }
 

@@ -125,7 +125,7 @@ public final class ListeningChallengeSession implements ChallengeSession {
         active = false;
         sessionId++;
         handler.removeCallbacksAndMessages(null);
-        view.hide();
+        view.destroy();
         executor.shutdownNow();
     }
 

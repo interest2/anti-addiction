@@ -40,6 +40,20 @@ public class DateUtils {
         return String.format("%02d:%02d", minutes, seconds);
     }
 
+    /** 答题计时格式：分钟两位，秒仅显示十秒位。 */
+    public static String formatChallengeDuration(long elapsedSeconds) {
+        long minutes = elapsedSeconds / 60;
+        long tensSeconds = (elapsedSeconds % 60) / 10;
+        return String.format(Locale.US, "%02d:%d", minutes, tensSeconds);
+    }
+
+    /** 答题记录用完整耗时格式：MM:SS，秒补零。 */
+    public static String formatChallengeDurationFull(long elapsedSeconds) {
+        long minutes = elapsedSeconds / 60;
+        long seconds = elapsedSeconds % 60;
+        return String.format(Locale.US, "%02d:%02d", minutes, seconds);
+    }
+
 
     /**
      * 获取当前日期字符串 "yyyy-MM-dd"

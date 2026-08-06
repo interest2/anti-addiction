@@ -49,7 +49,7 @@
 
                 <ToggleButton
                     android:id="@+id/btn_start_relaxed_leisure_time"
-                    android:layout_width="58dp"
+                    android:layout_width="50dp"
                     android:layout_height="22dp"
                     android:layout_marginTop="6dp"
                     android:background="@drawable/toggle_switch_background_large"
@@ -156,7 +156,7 @@
 
                 <ToggleButton
                     android:id="@+id/btn_start_strict_leisure_time"
-                    android:layout_width="58dp"
+                    android:layout_width="50dp"
                     android:layout_height="22dp"
                     android:layout_marginTop="6dp"
                     android:background="@drawable/toggle_switch_background_large"
