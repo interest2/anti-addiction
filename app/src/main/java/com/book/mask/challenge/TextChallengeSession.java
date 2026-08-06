@@ -9,8 +9,8 @@ import android.view.WindowManager;
 
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
-import com.book.mask.personalize.ReasoningRecord;
-import com.book.mask.personalize.ReasoningRecordStore;
+import com.book.mask.personalize.ChallengeRecord;
+import com.book.mask.personalize.ChallengeRecordStore;
 
 /**
  * 文本类答题会话：算术题 / 推理题 / 英文阅读。负责出题、答案校验、答错换题与回调。
@@ -111,7 +111,7 @@ final class TextChallengeSession implements ChallengeSession {
 
         if (currentAnswer.equalsIgnoreCase(userAnswer)) {
             Log.d(TAG, "答题正确");
-            recordReasoningAnswer(userAnswer, true);
+            recordNotArithmeticAnswer(userAnswer, true);
             viewController.showCorrectAnswer();
             handler.postDelayed(() -> {
                 viewController.hideKeyboard();
@@ -123,7 +123,7 @@ final class TextChallengeSession implements ChallengeSession {
         }
 
         Log.d(TAG, "答题错误: " + userAnswer + " (正确答案: " + currentAnswer + ")");
-        recordReasoningAnswer(userAnswer, false);
+        recordNotArithmeticAnswer(userAnswer, false);
         viewController.showWrongAnswer();
         handler.postDelayed(() -> {
             if (!shown) {
@@ -139,24 +139,24 @@ final class TextChallengeSession implements ChallengeSession {
     }
 
     /**
-     * 落地一条推理题答题记录（含混合题型中抽到的推理题），供「答题记录」展示；
-     * 纯算术题不入记录。
+     * 落地一条非算术题答题记录（推理 / 混合等云端题目），供「答题记录」展示；
+     * 纯算术题为本地生成，不入记录。
      */
-    private void recordReasoningAnswer(String userAnswer, boolean passed) {
-        if (currentType != ChallengeType.REASONING) {
+    private void recordNotArithmeticAnswer(String userAnswer, boolean passed) {
+        if (currentType == ChallengeType.ARITHMETIC) {
             return;
         }
         try {
-            ReasoningRecord record = new ReasoningRecord();
+            ChallengeRecord record = new ChallengeRecord();
             record.timestamp = System.currentTimeMillis();
             record.question = currentQuestion == null ? "" : currentQuestion;
             record.userAnswer = userAnswer == null ? "" : userAnswer;
             record.correctAnswer = currentAnswer == null ? "" : currentAnswer;
             record.passed = passed;
-            new ReasoningRecordStore().addRecord(record);
-            Log.d(TAG, "已保存推理题答题记录, 答对=" + passed);
+            new ChallengeRecordStore().addRecord(record);
+            Log.d(TAG, "已保存非算术题答题记录, 答对=" + passed);
         } catch (Exception e) {
-            Log.e(TAG, "保存推理题答题记录失败", e);
+            Log.e(TAG, "保存非算术题答题记录失败", e);
         }
     }
 }

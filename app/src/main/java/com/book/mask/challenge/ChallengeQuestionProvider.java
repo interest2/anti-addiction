@@ -71,8 +71,9 @@ final class ChallengeQuestionProvider {
         if (configuredType != ChallengeType.MIXED) {
             return configuredType;
         }
+        // 命中非算术分支：以 MIXED 透传，由 /challenge 接口按 type=1 返回推理 / 应用题等非算术题目。
         return random.nextDouble() < AppConfigManager.getMixedReasoningQuizRatio()
-                ? ChallengeType.REASONING
+                ? ChallengeType.MIXED
                 : ChallengeType.ARITHMETIC;
     }
 
@@ -120,7 +121,7 @@ final class ChallengeQuestionProvider {
         Log.d(TAG, "开始获取最新" + type.getDisplayName());
         new Thread(() -> {
             try {
-                String remoteChallenge = httpObtainChallenge(type.getRequestType());
+                String remoteChallenge = httpObtainChallenge(type);
                 cacheRemoteQuestion(type, remoteChallenge);
             } catch (Exception e) {
                 Log.e(TAG, "获取" + type.getDisplayName() + "时发生异常", e);
@@ -153,10 +154,14 @@ final class ChallengeQuestionProvider {
         Log.d(TAG, type.getDisplayName() + "获取成功并已缓存");
     }
 
-    private String httpObtainChallenge(int type) {
+    private String httpObtainChallenge(ChallengeType type) {
         try {
             JSONObject request = createBaseRequest();
-            request.put("type", type);
+            request.put("type", type.getRequestType());
+            // 听力题 / 复述题走各自的专用接口，不打印 challenge 接口请求参数。
+            if (type != ChallengeType.LISTENING && type != ChallengeType.RETELLING) {
+                Log.d(TAG, "调用challenge接口, 请求参数: " + request);
+            }
             String response = ContentUtils.doHttpPost(
                     CloudConst.DOMAIN_URL + CloudConst.CHALLENGE,
                     request.toString(),

@@ -1,9 +1,9 @@
 package com.book.mask.personalize;
 
 /**
- * 推理题单次答题记录。仅用于「答题记录」展示，字段由 Gson 序列化到 MMKV。
+ * 非算术题（推理 / 混合等云端题目）单次答题记录。仅用于「答题记录」展示，字段由 Gson 序列化到 MMKV。
  */
-public final class ReasoningRecord {
+public final class ChallengeRecord {
 
     /** 答题完成时间（毫秒时间戳） */
     public long timestamp;
@@ -16,6 +16,6 @@ public final class ReasoningRecord {
     /** 是否答对 */
     public boolean passed;
 
-    public ReasoningRecord() {
+    public ChallengeRecord() {
     }
 }

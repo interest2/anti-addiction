@@ -39,8 +39,8 @@ import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.personalize.RetellingRecord;
 import com.book.mask.personalize.RetellingRecordStore;
 import com.book.mask.personalize.SoeConfigManager;
-import com.book.mask.personalize.ReasoningRecord;
-import com.book.mask.personalize.ReasoningRecordStore;
+import com.book.mask.personalize.ChallengeRecord;
+import com.book.mask.personalize.ChallengeRecordStore;
 import com.book.mask.personalize.ListeningRecord;
 import com.book.mask.personalize.ListeningRecordStore;
 import com.book.mask.config.CustomApp;
@@ -1244,6 +1244,9 @@ public class SettingsDialogManager {
                 ChallengeType.settingsOptions(QuestionConst.ENGLISH_READING_ENABLED);
         ChallengeType currentType = challengeSettingsManager.getChallengeType();
 
+        android.util.Log.d("SettingsDialog", "答题类型弹窗: 显示, 当前题型=" + currentType.getDisplayName()
+                + " (枚举=" + currentType + ")");
+
         View dialogView = LayoutInflater.from(context)
                 .inflate(R.layout.dialog_challenge_type_list, null);
         LinearLayout list = dialogView.findViewById(R.id.challenge_type_list);
@@ -1293,6 +1296,9 @@ public class SettingsDialogManager {
                                          android.app.AlertDialog dialog,
                                          List<View> rows,
                                          List<ChallengeType> rowTypes) {
+        android.util.Log.d("SettingsDialog", "答题类型弹窗: 选择修改题型=" + selectedType.getDisplayName()
+                + " (枚举=" + selectedType + ")");
+
         // 复述题勾选即切换：先做前置检查（大模型/ASR），任一不满足则不切换、保留弹窗供改选。
         if (selectedType == ChallengeType.RETELLING) {
             String preflightError = checkRetellingPreflight();
@@ -1303,11 +1309,14 @@ public class SettingsDialogManager {
             challengeSettingsManager.setChallengeType(ChallengeType.RETELLING);
             dialog.dismiss();
             UiFeedback.show(context, "已设置复述题");
+            android.util.Log.d("SettingsDialog", "答题类型弹窗: 已切换为复述题 (枚举=" + ChallengeType.RETELLING + ")");
             return;
         }
 
         challengeSettingsManager.setChallengeType(selectedType);
         dialog.dismiss();
+        android.util.Log.d("SettingsDialog", "答题类型弹窗: 已设置题型=" + selectedType.getDisplayName()
+                + " (枚举=" + selectedType + ")");
 
         if (selectedType == ChallengeType.ARITHMETIC) {
             showArithmeticDifficultyDialog();
@@ -1389,6 +1398,9 @@ public class SettingsDialogManager {
         challengeSettingsManager.setChallengeType(ChallengeType.RETELLING);
         dialog.dismiss();
         UiFeedback.show(context, "已设置复述题");
+        android.util.Log.d("SettingsDialog", "答题类型弹窗: 保存复述题设置 字数=" + values.storyLength
+                + " 秒数=" + values.displaySeconds + " 合格线=" + values.passScore
+                + " 题型设为复述题 (枚举=" + ChallengeType.RETELLING + ")");
         if (onSaved != null) {
             onSaved.run();
         }
@@ -2018,8 +2030,8 @@ public class SettingsDialogManager {
             container.addView(empty);
         } else {
             for (AnswerRecordEntry entry : entries) {
-                container.addView(entry.isReasoning
-                        ? buildReasoningRecordCard(entry.reasoning)
+                container.addView(entry.isChallenge
+                        ? buildChallengeRecordCard(entry.challenge)
                         : entry.isListening
                                 ? buildListeningRecordCard(entry.listening)
                                 : buildRecordCard(entry.retelling));
@@ -2038,7 +2050,7 @@ public class SettingsDialogManager {
                     .setMessage("确定清空全部答题记录？此操作不可恢复。")
                     .setPositiveButton("清空", (d, w) -> {
                         new RetellingRecordStore().clear();
-                        new ReasoningRecordStore().clear();
+                        new ChallengeRecordStore().clear();
                         new ListeningRecordStore().clear();
                         dialog.dismiss();
                         showAnswerRecordsDialog();
@@ -2050,13 +2062,13 @@ public class SettingsDialogManager {
         dialog.show();
     }
 
-    /** 汇总复述题、推理题与听力题记录，按答题时间倒序合并，供「答题记录」统一展示。 */
+    /** 汇总复述题、非算术题与听力题记录，按答题时间倒序合并，供「答题记录」统一展示。 */
     private List<AnswerRecordEntry> collectAnswerRecordEntries() {
         List<AnswerRecordEntry> entries = new ArrayList<>();
         for (RetellingRecord record : new RetellingRecordStore().getRecords()) {
             entries.add(new AnswerRecordEntry(record));
         }
-        for (ReasoningRecord record : new ReasoningRecordStore().getRecords()) {
+        for (ChallengeRecord record : new ChallengeRecordStore().getRecords()) {
             entries.add(new AnswerRecordEntry(record));
         }
         for (ListeningRecord record : new ListeningRecordStore().getRecords()) {
@@ -2066,45 +2078,45 @@ public class SettingsDialogManager {
         return entries;
     }
 
-    /** 复述题 / 推理题 / 听力题记录的统一展示封装，卡片渲染时按类型取对应字段。 */
+    /** 复述题 / 非算术题 / 听力题记录的统一展示封装，卡片渲染时按类型取对应字段。 */
     private static final class AnswerRecordEntry {
         final long timestamp;
-        final boolean isReasoning;
+        final boolean isChallenge;
         final boolean isListening;
-        final ReasoningRecord reasoning;
+        final ChallengeRecord challenge;
         final RetellingRecord retelling;
         final ListeningRecord listening;
 
-        AnswerRecordEntry(ReasoningRecord record) {
+        AnswerRecordEntry(ChallengeRecord record) {
             this.timestamp = record.timestamp;
-            this.isReasoning = true;
+            this.isChallenge = true;
             this.isListening = false;
-            this.reasoning = record;
+            this.challenge = record;
             this.retelling = null;
             this.listening = null;
         }
 
         AnswerRecordEntry(RetellingRecord record) {
             this.timestamp = record.timestamp;
-            this.isReasoning = false;
+            this.isChallenge = false;
             this.isListening = false;
-            this.reasoning = null;
+            this.challenge = null;
             this.retelling = record;
             this.listening = null;
         }
 
         AnswerRecordEntry(ListeningRecord record) {
             this.timestamp = record.timestamp;
-            this.isReasoning = false;
+            this.isChallenge = false;
             this.isListening = true;
-            this.reasoning = null;
+            this.challenge = null;
             this.retelling = null;
             this.listening = record;
         }
     }
 
-    /** 构造单条推理题记录卡片：头部（题型/时间/对错）+ 摘要 + 可展开的完整详情。 */
-    private View buildReasoningRecordCard(final ReasoningRecord record) {
+    /** 构造单条非算术题记录卡片：头部（题型/时间/对错）+ 摘要 + 可展开的完整详情。 */
+    private View buildChallengeRecordCard(final ChallengeRecord record) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(14), dp(12), dp(14), dp(12));
@@ -2118,7 +2130,7 @@ public class SettingsDialogManager {
 
         String resultText = record.passed ? "[答对]" : "[答错]";
         TextView header = new TextView(context);
-        header.setText("推理题    " + DateUtils.formatTime(record.timestamp)
+        header.setText("挑战题    " + DateUtils.formatTime(record.timestamp)
                 + "    " + resultText);
         header.setTextColor(0xFF252525);
         header.setTextSize(14);
