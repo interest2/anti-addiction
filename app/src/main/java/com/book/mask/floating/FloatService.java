@@ -295,9 +295,16 @@ public class FloatService extends AccessibilityService
         boolean isRelaxedMode = relaxManager.isAppRelaxedMode(currentActiveApp);
         if (isRelaxedMode) {
             int currentCount = relaxManager.getAppRelaxedCloseCount(currentActiveApp);
-            relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
-            Log.d(TAG, "APP " + appName + " 宽松模式关闭。之前次数: " + currentCount
-                    + ", 现在次数: " + (currentCount + 1));
+            if (currentCount < currentActiveApp.getRelaxedLimitCount()) {
+                relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
+                Log.d(TAG, "APP " + appName + " 宽松模式关闭。之前次数: " + currentCount
+                        + ", 现在次数: " + (currentCount + 1));
+            } else {
+                // 宽松次数已用完：强制切回严格档，本次关闭按严格档计时
+                relaxManager.setAppInterval(
+                        currentActiveApp, RelaxManager.getMaxStrictInterval());
+                Log.d(TAG, "APP " + appName + " 宽松次数已用完，强制切回严格模式");
+            }
             notifyHomeFragmentUpdate(currentActiveApp);
         }
 

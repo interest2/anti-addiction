@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.text.TextUtils;
 
 import com.book.mask.R;
 import com.book.mask.challenge.ChallengeManager;
@@ -577,7 +578,7 @@ public class FloatingWindowManager {
             }
     
             // 显示动态文字和时间间隔信息
-            String content = dynamicText;
+            CharSequence content = dynamicText;
             if (relaxManager != null) {
                 // 使用当前APP的时间间隔显示
                 int intervalSeconds;
@@ -590,7 +591,7 @@ public class FloatingWindowManager {
     //                        intervalSeconds = relaxManager.getMaxStrictInterval();
     //                        relaxManager.setAppInterval(currentActiveApp, intervalSeconds);
     //                    }else {
-                        intervalSeconds = relaxManager.getAppInterval(currentActiveApp);
+                        intervalSeconds = relaxManager.getEffectiveAppInterval(currentActiveApp);
     //                    }
                 } else {
                     intervalSeconds = relaxManager.getDefaultInterval();
@@ -608,13 +609,13 @@ public class FloatingWindowManager {
                     unlockDurationText.setVisibility(View.VISIBLE);
                 }
                  
-                // 添加日期前缀
+                // 添加日期前缀（含目标内容与颜色，用 TextUtils.concat 保留 span）
                 String targetDateStr = appSettingsManager.getTargetCompletionDate();
-                String datePrefix = DateUtils.hintDate(targetDateStr);
-                content = datePrefix + content;
+                CharSequence datePrefix = DateUtils.hintDate(targetDateStr, appSettingsManager.getMotivationTag());
+                content = TextUtils.concat(datePrefix, content);
 
                 contentText.setText(content);
-                contentText.setVisibility(content.isEmpty() ? View.GONE : View.VISIBLE);
+                contentText.setVisibility(content.length() == 0 ? View.GONE : View.VISIBLE);
             }
         }
         

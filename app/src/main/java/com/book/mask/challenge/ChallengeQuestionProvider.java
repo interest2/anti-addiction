@@ -116,13 +116,17 @@ final class ChallengeQuestionProvider {
                     challengeSettingsManager.getMathAdditionDigits(),
                     challengeSettingsManager.getMathSubtractionDigits(),
                     challengeSettingsManager.getMathMultiplicationMultiplierDigits(),
-                    challengeSettingsManager.getMathMultiplicationMultiplicandDigits());
+                    challengeSettingsManager.getMathMultiplicationMultiplierTier(),
+                    challengeSettingsManager.getMathMultiplicationMultiplicandDigits(),
+                    challengeSettingsManager.getMathMultiplicationMultiplicandTier());
         } else {
             question = ArithmeticUtils.customArithmetic(
                     QuestionConst.ADD_LEN_DEFAULT,
                     QuestionConst.SUB_LEN_DEFAULT,
                     QuestionConst.MUL_FIRST_LEN_DEFAULT,
-                    QuestionConst.MUL_SECOND_LEN_DEFAULT);
+                    ArithmeticUtils.MultiplicationTier.UPPER_HALF,
+                    QuestionConst.MUL_SECOND_LEN_DEFAULT,
+                    ArithmeticUtils.MultiplicationTier.LOWER_HALF);
         }
         return new Question(question, String.valueOf(ArithmeticUtils.getMathAnswer(question)));
     }

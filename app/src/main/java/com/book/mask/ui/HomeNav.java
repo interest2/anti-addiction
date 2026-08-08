@@ -24,6 +24,8 @@ import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.ToggleButton;
 import android.view.inputmethod.EditorInfo;
 import android.content.Context;
@@ -41,6 +43,7 @@ import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.CustomApp;
+import com.book.mask.floating.FloatService;
 import com.book.mask.network.LatestVersionManager;
 import com.book.mask.util.ArithmeticUtils;
 import com.google.android.material.textfield.TextInputEditText;
@@ -670,7 +673,7 @@ public class HomeNav extends Fragment implements
     @Override
     public void onAppCardClick(CustomApp app) {
         // 显示APP设置弹窗
-        showAppSettingsDialog(app);
+        showConfigDialogForApp(app);
     }
 
     @Override
@@ -718,48 +721,51 @@ public class HomeNav extends Fragment implements
         return app.getAppName();
     }
 
-    private void showAppSettingsDialog(CustomApp app) {
-        // 显示"单次解禁时长"弹窗
-        showTimeSettingDialogForApp(app);
-    }
-
-    private void showTimeSettingDialogForApp(CustomApp app) {
-        // 创建自定义布局的弹窗
+    private void showConfigDialogForApp(CustomApp app) {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_time_setting, null);
-        
-        Button strictModeButton = dialogView.findViewById(R.id.btn_strict_mode);
-        Button relaxedModeButton = dialogView.findViewById(R.id.btn_relaxed_mode);
+
         ToggleButton globalBlockToggle = dialogView.findViewById(R.id.toggle_global_block);
         ImageView globalBlockHelp = dialogView.findViewById(R.id.iv_global_block_help);
+        View targetWordSetting = dialogView.findViewById(R.id.layout_target_word_setting);
+        View strictIntervalSetting = dialogView.findViewById(R.id.layout_strict_interval_setting);
+        View relaxedIntervalSetting = dialogView.findViewById(R.id.layout_relaxed_interval_setting);
+        TextView targetWordValue = dialogView.findViewById(R.id.tv_target_word_value);
+        TextView strictIntervalValue = dialogView.findViewById(R.id.tv_strict_interval_value);
+        TextView relaxedIntervalValue = dialogView.findViewById(R.id.tv_relaxed_interval_value);
+        TextView relaxedRemainingCount = dialogView.findViewById(R.id.tv_relaxed_remaining_count);
+        TextView floatingTextSourceValue = dialogView.findViewById(R.id.tv_floating_text_source_value);
+        View floatingTextSourceSetting =
+                dialogView.findViewById(R.id.layout_floating_text_source_setting);
+        View floatingSizeSetting = dialogView.findViewById(R.id.layout_floating_size_setting);
 
-        // 新的UI组件
-        LinearLayout layoutRelaxedCountDisplay = dialogView.findViewById(R.id.layout_relaxed_count_display);
-        LinearLayout layoutRelaxedCountEdit = dialogView.findViewById(R.id.layout_relaxed_count_edit);
-        TextView tvRelaxedCountDisplay = dialogView.findViewById(R.id.tv_relaxed_count_display);
-        ImageView ivEditRelaxedCount = dialogView.findViewById(R.id.iv_edit_relaxed_count);
-        EditText etRelaxedLimitCount = dialogView.findViewById(R.id.et_relaxed_limit_count);
-        TextView ivSaveRelaxedCount = dialogView.findViewById(R.id.iv_save_relaxed_count);
-        
-        // targetWord编辑组件
-        LinearLayout layoutTargetWordDisplay = dialogView.findViewById(R.id.layout_target_word_display);
-        LinearLayout layoutTargetWordEdit = dialogView.findViewById(R.id.layout_target_word_edit);
-        TextView tvTargetWordDisplay = dialogView.findViewById(R.id.tv_target_word_display);
-        ImageView ivEditTargetWord = dialogView.findViewById(R.id.iv_edit_target_word);
-        EditText etTargetWord = dialogView.findViewById(R.id.et_target_word);
-        TextView ivSaveTargetWord = dialogView.findViewById(R.id.iv_save_target_word);
-        
-        // 获取APP信息
-        String appName;
-        int relaxedLimitCount;
-        String targetWord;
-        
-        appName = app.getAppName();
-        relaxedLimitCount = app.getRelaxedLimitCount();
-        targetWord = app.getTargetWord();
-        
-        // 设置显示文本的当前值
-        tvRelaxedCountDisplay.setText(String.valueOf(relaxedLimitCount));
-        tvTargetWordDisplay.setText(targetWord);
+        targetWordValue.setText(app.getTargetWord());
+        floatingTextSourceValue.setText(
+                appSettingsManager.getAppHintSource(app.getPackageName()));
+
+        Runnable refreshIntervalState = () -> updateIntervalSettingValues(
+                app,
+                strictIntervalValue,
+                relaxedIntervalValue,
+                relaxedRemainingCount);
+        refreshIntervalState.run();
+
+        strictIntervalSetting.setOnClickListener(v -> showIntervalOptionsDialog(
+                "严格模式",
+                app,
+                RelaxManager.getStrictIntervals(),
+                refreshIntervalState));
+        relaxedIntervalSetting.setOnClickListener(v -> showRelaxedModeDialog(
+                app,
+                refreshIntervalState));
+
+        targetWordSetting.setOnClickListener(v ->
+                showTargetWordInputDialog(app, targetWordValue));
+        floatingTextSourceSetting.setOnClickListener(v ->
+                showFloatingTextSourceDialog(app, () -> floatingTextSourceValue.setText(
+                        appSettingsManager.getAppHintSource(app.getPackageName()))));
+        floatingSizeSetting.setOnClickListener(v ->
+                settingsDialogManager.showFloatingPositionDialogForApp(app));
+
         globalBlockToggle.setChecked(app.isGlobalBlock());
         bindGlobalBlockToggle(globalBlockToggle, app);
         globalBlockHelp.setOnClickListener(v -> new android.app.AlertDialog.Builder(requireContext())
@@ -767,184 +773,26 @@ public class HomeNav extends Fragment implements
                 .setPositiveButton("知道了", null)
                 .show());
 
-        // 检查宽松模式剩余次数
-        int relaxedCount = relaxManager.getAppRelaxedCloseCount(app);
-        int remainingCount = Math.max(0, relaxedLimitCount - relaxedCount);
-        
-        // 如果宽松模式次数用完，置灰按钮
-        if (remainingCount <= 0) {
-            relaxedModeButton.setEnabled(false);
-            relaxedModeButton.setAlpha(0.5f);
-            relaxedModeButton.setText("宽松模式 (次数已用完)");
-        }
-        
+        // 弹窗标题（APP名），水平居中
+        TextView dialogTitleView = new TextView(requireContext());
+        dialogTitleView.setText(app.getAppName());
+        dialogTitleView.setTextSize(20);
+        dialogTitleView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        dialogTitleView.setTextColor(0xFF333333);
+        dialogTitleView.setGravity(android.view.Gravity.CENTER);
+        int titleTopPadding = (int) (10 * getResources().getDisplayMetrics().density);
+        dialogTitleView.setPadding(0, titleTopPadding, 0, 0);
+
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-            .setTitle(appName)
-            .setView(dialogView)
-            .setPositiveButton("退出", null)
-            .create();
-        
-        // 编辑图标点击事件
-        ivEditRelaxedCount.setOnClickListener(v -> {
-            // 隐藏显示布局，显示编辑布局
-            layoutRelaxedCountDisplay.setVisibility(View.GONE);
-            layoutRelaxedCountEdit.setVisibility(View.VISIBLE);
-            
-            // 设置输入框的当前值
-            etRelaxedLimitCount.setText(tvRelaxedCountDisplay.getText().toString());
-            etRelaxedLimitCount.requestFocus();
-            
-            // 显示软键盘
-            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
-                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.showSoftInput(etRelaxedLimitCount, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
-            }
-        });
-        
-        // 保存图标点击事件
-        ivSaveRelaxedCount.setOnClickListener(v -> {
-            etRelaxedLimitCount.setError(null);
-            String inputText = etRelaxedLimitCount.getText().toString().trim();
-            if (inputText.isEmpty()) {
-                showInputError(etRelaxedLimitCount, "请输入数字");
-                return;
-            }
-            
-            try {
-                int newLimitCount = Integer.parseInt(inputText);
-                if (newLimitCount < 1 || newLimitCount > 3) {
-                    showInputError(etRelaxedLimitCount, "请输入 1-3 之间的数字");
-                    return;
-                }
-                
-                // 更新显示文本
-                tvRelaxedCountDisplay.setText(String.valueOf(newLimitCount));
-                
-                // 更新APP的relaxedLimitCount
-                app.setRelaxedLimitCount(newLimitCount);
-                customAppManager.persistAppChange(app); // 按 APP 种别保存到本地存储
-                UiFeedback.show(requireContext(), "保存成功");
-                
-                // 更新APP列表显示
-                updateAppCardsDisplay();
-                
-                // 隐藏编辑布局，显示正常布局
-                layoutRelaxedCountEdit.setVisibility(View.GONE);
-                layoutRelaxedCountDisplay.setVisibility(View.VISIBLE);
-                
-                // 隐藏软键盘
-                android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
-                    requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.hideSoftInputFromWindow(etRelaxedLimitCount.getWindowToken(), 0);
-                }
-                
-            } catch (NumberFormatException e) {
-                showInputError(etRelaxedLimitCount, "请输入有效的数字");
-            }
-        });
-        
-        // 输入框回车键保存
-        etRelaxedLimitCount.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || 
-                (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
-                ivSaveRelaxedCount.performClick();
-                return true;
-            }
-            return false;
-        });
-        
-        // targetWord编辑图标点击事件
-        ivEditTargetWord.setOnClickListener(v -> {
-            // 隐藏显示布局，显示编辑布局
-            layoutTargetWordDisplay.setVisibility(View.GONE);
-            layoutTargetWordEdit.setVisibility(View.VISIBLE);
-            
-            // 设置输入框的当前值
-            etTargetWord.setText(tvTargetWordDisplay.getText().toString());
-            etTargetWord.requestFocus();
-            
-            // 显示软键盘
-            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
-                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.showSoftInput(etTargetWord, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
-            }
-        });
-        
-        // targetWord保存图标点击事件
-        ivSaveTargetWord.setOnClickListener(v -> {
-            etTargetWord.setError(null);
-            String inputText = etTargetWord.getText().toString().trim();
-            if (inputText.isEmpty()) {
-                showInputError(etTargetWord, "请输入关键词");
-                return;
-            }
-            
-            // 更新显示文本
-            tvTargetWordDisplay.setText(inputText);
-            
-            // 更新APP的targetWord
-            app.setTargetWord(inputText);
+                .setCustomTitle(dialogTitleView)
+                .setView(dialogView)
+                .setPositiveButton("关闭", null)
+                .create();
 
-            // 按 APP 种别（自定义 / 预定义）落到正确的存储
-            customAppManager.persistAppChange(app);
-            
-            UiFeedback.show(requireContext(), "关键词保存成功");
-            
-            // 更新APP列表显示
-            updateAppCardsDisplay();
-            
-            // 隐藏编辑布局，显示正常布局
-            layoutTargetWordEdit.setVisibility(View.GONE);
-            layoutTargetWordDisplay.setVisibility(View.VISIBLE);
-            
-            // 隐藏软键盘
-            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) 
-                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.hideSoftInputFromWindow(etTargetWord.getWindowToken(), 0);
-            }
-        });
-        
-        // targetWord输入框回车键保存
-        etTargetWord.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE || 
-                (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER)) {
-                ivSaveTargetWord.performClick();
-                return true;
-            }
-            return false;
-        });
-        
-        // 设置按钮点击事件
-        strictModeButton.setOnClickListener(v -> {
-            dialog.dismiss();
-            settingsDialogManager.showTimeSettingDialogForApp(app, true);
-        });
-        
-        relaxedModeButton.setOnClickListener(v -> {
-            // 只有在按钮可用时才执行
-            if (relaxedModeButton.isEnabled()) {
-                dialog.dismiss();
-                settingsDialogManager.showTimeSettingDialogForApp(app, false);
-            }
-        });
 
-        // 设置更换悬浮窗警示语来源按钮点击事件
-        Button changeFloatingTextSourceButton = dialogView.findViewById(R.id.btn_change_floating_text_source);
-        changeFloatingTextSourceButton.setOnClickListener(v -> {
-            showFloatingTextSourceDialog(app);
-        });
-
-        Button floatingSizeSettingsButton = dialogView.findViewById(R.id.btn_floating_size_settings);
-        floatingSizeSettingsButton.setOnClickListener(v ->
-                settingsDialogManager.showFloatingPositionDialogForApp(app));
-        
         dialog.show();
 
-        // 缩小底部"退出"按钮的上下边距
+        // 缩小底部“关闭”按钮的上下边距
         Button exitButton = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE);
         if (exitButton != null) {
             int vPad = (int) (4 * getResources().getDisplayMetrics().density);
@@ -956,10 +804,207 @@ public class HomeNav extends Fragment implements
         }
     }
 
+    private void updateIntervalSettingValues(
+            CustomApp app,
+            TextView strictIntervalValue,
+            TextView relaxedIntervalValue,
+            TextView relaxedRemainingCount) {
+        int currentInterval = relaxManager.getAppInterval(app);
+        // 实际生效间隔：宽松次数用完时回退到严格档最长时长，严格行应显示该回退值
+        int effectiveInterval = relaxManager.getEffectiveAppInterval(app);
+        boolean relaxedMode = relaxManager.isAppRelaxedMode(app);
+        int usedCount = relaxManager.getAppRelaxedCloseCount(app);
+        int remainingCount = Math.max(0, app.getRelaxedLimitCount() - usedCount);
+        // 宽松模式但次数已用完：宽松不可用，实际回退到严格档，严格行显示回退时长
+        boolean relaxedUsable = relaxedMode && remainingCount > 0;
+
+        strictIntervalValue.setText(relaxedUsable
+                ? "-"
+                : RelaxManager.getIntervalDisplayText(effectiveInterval));
+        relaxedIntervalValue.setText(relaxedUsable
+                ? RelaxManager.getIntervalDisplayText(currentInterval)
+                : "-");
+        relaxedRemainingCount.setText("剩余 " + remainingCount + " 次");
+    }
+
+    private void showIntervalOptionsDialog(
+            String title,
+            CustomApp app,
+            int[] intervals,
+            Runnable onSelectionChanged) {
+        String[] options = new String[intervals.length];
+        // 用实际生效间隔计算选中项：宽松次数用完时回退到严格档最长时长，严格弹窗应选中该项
+        int effectiveInterval = relaxManager.getEffectiveAppInterval(app);
+        int checkedItem = -1;
+        for (int i = 0; i < intervals.length; i++) {
+            options[i] = RelaxManager.getIntervalDisplayText(intervals[i]);
+            if (intervals[i] == effectiveInterval) {
+                checkedItem = i;
+            }
+        }
+
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle(title)
+                .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
+                    relaxManager.setAppInterval(app, intervals[which]);
+                    FloatService.notifyIntervalChanged();
+                    onSelectionChanged.run();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("关闭", null)
+                .show();
+    }
+
+    /**
+     * 宽松模式设置弹窗：左列选时长、右列选宽松次数，一次保存。
+     * 宽松次数已用完时禁用时长列（今日无法再进入宽松），但仍可调整次数。
+     */
+    private void showRelaxedModeDialog(CustomApp app, Runnable onSelectionChanged) {
+        int[] intervals = RelaxManager.getRelaxedIntervals();
+        int currentInterval = relaxManager.getAppInterval(app);
+        int usedCount = relaxManager.getAppRelaxedCloseCount(app);
+        int remainingCount = Math.max(0, app.getRelaxedLimitCount() - usedCount);
+
+        LinearLayout root = new LinearLayout(requireContext());
+        root.setOrientation(LinearLayout.HORIZONTAL);
+        int pad = dp(24);
+        root.setPadding(pad, dp(16), pad, 0);
+
+        RadioGroup durationGroup = buildRelaxedOptionColumn(
+                root,
+                "时长",
+                intervalOptions(intervals),
+                indexOfInterval(intervals, currentInterval),
+                remainingCount > 0);
+        RadioGroup countGroup = buildRelaxedOptionColumn(
+                root,
+                "宽松次数",
+                new String[]{"1 次", "2 次", "3 次"},
+                Math.max(0, Math.min(app.getRelaxedLimitCount() - 1, 2)),
+                true);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("宽松模式")
+                .setView(root)
+                .setPositiveButton("确定", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    int intervalIndex = durationGroup.getCheckedRadioButtonId();
+                    int countIndex = countGroup.getCheckedRadioButtonId();
+                    if (countIndex >= 0 && countIndex < 3) {
+                        app.setRelaxedLimitCount(countIndex + 1);
+                        customAppManager.persistAppChange(app);
+                    }
+                    if (intervalIndex >= 0 && intervalIndex < intervals.length) {
+                        relaxManager.setAppInterval(app, intervals[intervalIndex]);
+                        FloatService.notifyIntervalChanged();
+                    }
+                    onSelectionChanged.run();
+                    updateAppCardsDisplay();
+                    dialog.dismiss();
+                }));
+        dialog.show();
+    }
+
+    /**
+     * 构造宽松弹窗的一列单选组：标题 + RadioGroup，加入横向 root 中。
+     */
+    private RadioGroup buildRelaxedOptionColumn(
+            LinearLayout root,
+            String title,
+            String[] options,
+            int checkedIndex,
+            boolean enabled) {
+        LinearLayout column = new LinearLayout(requireContext());
+        column.setOrientation(LinearLayout.VERTICAL);
+        column.setLayoutParams(new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView titleView = new TextView(requireContext());
+        titleView.setText(title);
+        titleView.setTextSize(15);
+        titleView.setTextColor(0xFF333333);
+        titleView.setTypeface(titleView.getTypeface(), android.graphics.Typeface.BOLD);
+        titleView.setPadding(0, 0, 0, dp(8));
+        column.addView(titleView);
+
+        RadioGroup group = new RadioGroup(requireContext());
+        group.setOrientation(RadioGroup.VERTICAL);
+        for (int i = 0; i < options.length; i++) {
+            RadioButton rb = new RadioButton(requireContext());
+            rb.setText(options[i]);
+            rb.setTextSize(15);
+            rb.setId(i);
+            rb.setEnabled(enabled);
+            group.addView(rb);
+        }
+        if (checkedIndex >= 0 && checkedIndex < options.length) {
+            group.check(checkedIndex);
+        }
+        group.setEnabled(enabled);
+        column.addView(group);
+        root.addView(column);
+        return group;
+    }
+
+    private String[] intervalOptions(int[] intervals) {
+        String[] options = new String[intervals.length];
+        for (int i = 0; i < intervals.length; i++) {
+            options[i] = RelaxManager.getIntervalDisplayText(intervals[i]);
+        }
+        return options;
+    }
+
+    private int indexOfInterval(int[] intervals, int interval) {
+        for (int i = 0; i < intervals.length; i++) {
+            if (intervals[i] == interval) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density);
+    }
+
+    private void showTargetWordInputDialog(CustomApp app, TextView targetWordValue) {
+        EditText input = new EditText(requireContext());
+        input.setHint("若多个关键词需空格分隔");
+        input.setSingleLine(true);
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(50)});
+        input.setText(app.getTargetWord());
+        input.setSelection(input.length());
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("页面屏蔽关键词")
+                .setView(input)
+                .setPositiveButton("确定", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    input.setError(null);
+                    String targetWord = input.getText().toString().trim();
+                    if (targetWord.isEmpty()) {
+                        showInputError(input, "请输入关键词");
+                        return;
+                    }
+                    app.setTargetWord(targetWord);
+                    customAppManager.persistAppChange(app);
+                    targetWordValue.setText(targetWord);
+                    updateAppCardsDisplay();
+                    dialog.dismiss();
+                }));
+        dialog.show();
+    }
+
     /**
      * 显示悬浮窗警示语来源选择对话框（单选列表风格）
      */
-    private void showFloatingTextSourceDialog(CustomApp app) {
+    private void showFloatingTextSourceDialog(CustomApp app, Runnable onSourceChanged) {
         String packageName = getPackageName(app);
         String currentSource = appSettingsManager.getAppHintSource(packageName);
 
@@ -976,9 +1021,10 @@ public class HomeNav extends Fragment implements
             .setTitle("选择悬浮窗警示语来源")
             .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
                 if (which == 0) {
-                    showCustomTextInputDialog(app);
+                    showCustomTextInputDialog(app, onSourceChanged);
                 } else if (which == 1) {
                     recordFloatingTextSource(Const.DEFAULT_HINT_SOURCE, app);
+                    onSourceChanged.run();
                     UiFeedback.show(requireContext(), "已选择大模型作为悬浮窗警示语来源");
                 }
                 dialog.dismiss();
@@ -990,7 +1036,7 @@ public class HomeNav extends Fragment implements
     /**
      * 显示自定义文字输入对话框
      */
-    private void showCustomTextInputDialog(CustomApp app) {
+    private void showCustomTextInputDialog(CustomApp app, Runnable onSourceChanged) {
         EditText input = new EditText(requireContext());
         input.setHint("请输入自定义警示语（不超过100字）");
         input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(100)});
@@ -1012,6 +1058,7 @@ public class HomeNav extends Fragment implements
                 String customText = input.getText().toString().trim();
                 if (!customText.isEmpty()) {
                     recordFloatingTextSource(Const.CUSTOM_HINT_SOURCE, customText, app);
+                    onSourceChanged.run();
                     dialog.dismiss();
                     UiFeedback.show(requireContext(), "自定义警示语设置成功");
                 } else {

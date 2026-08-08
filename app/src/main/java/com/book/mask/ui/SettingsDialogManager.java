@@ -14,6 +14,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -48,6 +50,7 @@ import com.book.mask.floating.FloatService;
 import com.book.mask.reminder.config.ProviderSecretStore;
 import com.book.mask.reminder.config.ReminderProviderConfig;
 import com.book.mask.reminder.config.ReminderProviderConfigStore;
+import com.book.mask.util.ArithmeticUtils.MultiplicationTier;
 import com.book.mask.util.DateUtils;
 import com.book.mask.R;
 import com.google.android.material.slider.Slider;
@@ -237,6 +240,18 @@ public class SettingsDialogManager {
         setupLeisureModeInputs(relaxedViews);
         setupLeisureModeInputs(strictViews);
 
+        // 输入框失焦即自动保存（内容合法才写入），点击空白处收起键盘同样会触发
+        View.OnFocusChangeListener leisureBlurAutoSave = (v, hasFocus) -> {
+            if (!hasFocus
+                    && saveLeisureTimeSettingsSilently(relaxedViews, strictViews)) {
+                FloatService.notifyLeisureTimeChanged();
+            }
+        };
+        relaxedViews.durationInput.setOnFocusChangeListener(leisureBlurAutoSave);
+        relaxedViews.countInput.setOnFocusChangeListener(leisureBlurAutoSave);
+        strictViews.durationInput.setOnFocusChangeListener(leisureBlurAutoSave);
+        strictViews.countInput.setOnFocusChangeListener(leisureBlurAutoSave);
+
         // 点击弹窗空白处，让输入框失焦并收起键盘
         dialogView.setOnClickListener(v ->
                 clearLeisureInputFocus(dialogView, relaxedViews, strictViews));
@@ -244,8 +259,7 @@ public class SettingsDialogManager {
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("休闲时刻（免答题）")
                 .setView(dialogView)
-                .setPositiveButton("保存", null)
-                .setNegativeButton("取消", null)
+                .setPositiveButton("关闭", null)
                 .create();
 
         Handler stateHandler = new Handler(Looper.getMainLooper());
@@ -312,8 +326,7 @@ public class SettingsDialogManager {
                     return;
                 }
                 FloatService.notifyLeisureTimeChanged();
-                clearLeisureInputFocus(dialogView, relaxedViews, strictViews);
-                UiFeedback.show(dialogView, "保存成功");
+                dialog.dismiss();
             });
 
             setLeisureStartListener(
@@ -323,6 +336,10 @@ public class SettingsDialogManager {
         });
         dialog.setOnDismissListener(ignored -> {
             stopLeisureRefresh.run();
+            // 点击弹窗之外/返回键等导致的关闭，也自动保存一次
+            if (saveLeisureTimeSettingsSilently(relaxedViews, strictViews)) {
+                FloatService.notifyLeisureTimeChanged();
+            }
             if (lifecycleOwner != null) {
                 lifecycleOwner.getLifecycle().removeObserver(lifecycleObserver[0]);
             }
@@ -403,8 +420,41 @@ public class SettingsDialogManager {
     }
 
     private boolean saveLeisureTimeSettings(LeisureModeViews... modeViews) {
-        boolean valid = true;
+        if (!isLeisureTimeSettingsValid(modeViews)) {
+            showLeisureTimeValidationErrors(modeViews);
+            return false;
+        }
+        persistLeisureTimeSettings(modeViews);
+        return true;
+    }
 
+    /** 静默保存：不展示错误、不抢焦点；任一输入非法则整体不写入。 */
+    private boolean saveLeisureTimeSettingsSilently(LeisureModeViews... modeViews) {
+        if (!isLeisureTimeSettingsValid(modeViews)) {
+            return false;
+        }
+        persistLeisureTimeSettings(modeViews);
+        return true;
+    }
+
+    private boolean isLeisureTimeSettingsValid(LeisureModeViews... modeViews) {
+        for (LeisureModeViews views : modeViews) {
+            Integer durationMinutes = parseInteger(views.durationInput);
+            Integer dailyCount = parseInteger(views.countInput);
+            if (durationMinutes == null
+                    || !LeisureTimeManager.isValidLeisureDurationMinutes(
+                    views.mode, durationMinutes)) {
+                return false;
+            }
+            if (dailyCount == null
+                    || !LeisureTimeManager.isValidLeisureDailyCount(views.mode, dailyCount)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void showLeisureTimeValidationErrors(LeisureModeViews... modeViews) {
         for (LeisureModeViews views : modeViews) {
             views.durationLayout.setError(null);
             views.countLayout.setError(null);
@@ -419,7 +469,6 @@ public class SettingsDialogManager {
                         views.durationInput,
                         "请输入" + LeisureTimeManager.getLeisureDurationRangeText(views.mode)
                                 + "分钟");
-                valid = false;
             }
             if (dailyCount == null
                     || !LeisureTimeManager.isValidLeisureDailyCount(views.mode, dailyCount)) {
@@ -428,20 +477,17 @@ public class SettingsDialogManager {
                         views.countInput,
                         "请输入" + LeisureTimeManager.getLeisureDailyCountRangeText(views.mode)
                                 + "次");
-                valid = false;
             }
         }
-        if (!valid) {
-            return false;
-        }
+    }
 
+    private void persistLeisureTimeSettings(LeisureModeViews... modeViews) {
         for (LeisureModeViews views : modeViews) {
             leisureTimeManager.setLeisureTimeSettings(
                     views.mode,
                     parseInteger(views.durationInput),
                     parseInteger(views.countInput));
         }
-        return true;
     }
 
     private void updateLeisureStartState(LeisureModeViews views) {
@@ -1545,7 +1591,7 @@ public class SettingsDialogManager {
      * 显示纯算术题难度设置对话框（次级弹窗）
      */
     private void showArithmeticDifficultyDialog() {
-        String[] difficultyOptions = {"默认难度", "自定义难度"};
+        String[] difficultyOptions = {"默认", "自定义"};
         String currentMode = challengeSettingsManager.getMathDifficultyMode();
         int checkedItem = "custom".equals(currentMode) ? 1 : 0;
 
@@ -1556,7 +1602,7 @@ public class SettingsDialogManager {
                     // 选择默认难度
                     challengeSettingsManager.setMathDifficultyMode("default");
                     dialog.dismiss();
-                    UiFeedback.show(context, "已设置为默认难度");
+                    UiFeedback.show(context, "已设置为默认");
                 } else if (which == 1) {
                     // 选择自定义难度
                     challengeSettingsManager.setMathDifficultyMode("custom");
@@ -1576,19 +1622,33 @@ public class SettingsDialogManager {
         android.view.LayoutInflater inflater = android.view.LayoutInflater.from(context);
         android.view.View dialogView = inflater.inflate(R.layout.dialog_math_difficulty_custom, null);
         
-        // 获取输入框
-        android.widget.EditText etAdditionDigits = dialogView.findViewById(R.id.et_addition_digits);
-        android.widget.EditText etSubtractionDigits = dialogView.findViewById(R.id.et_subtraction_digits);
-        android.widget.EditText etMultiplicationMultiplierDigits = dialogView.findViewById(R.id.et_multiplication_multiplier_digits);
-        android.widget.EditText etMultiplicationMultiplicandDigits = dialogView.findViewById(R.id.et_multiplication_multiplicand_digits);
-        
-        // 设置当前值
-        etAdditionDigits.setText(String.valueOf(challengeSettingsManager.getMathAdditionDigits()));
-        etSubtractionDigits.setText(String.valueOf(challengeSettingsManager.getMathSubtractionDigits()));
-        etMultiplicationMultiplierDigits.setText(String.valueOf(
+        EditText additionDigitsInput = dialogView.findViewById(R.id.et_addition_digits);
+        EditText subtractionDigitsInput = dialogView.findViewById(R.id.et_subtraction_digits);
+        EditText multiplierDigitsInput =
+                dialogView.findViewById(R.id.et_multiplication_multiplier_digits);
+        AutoCompleteTextView multiplierTierInput =
+                dialogView.findViewById(R.id.act_multiplication_multiplier_tier);
+        EditText multiplicandDigitsInput =
+                dialogView.findViewById(R.id.et_multiplication_multiplicand_digits);
+        AutoCompleteTextView multiplicandTierInput =
+                dialogView.findViewById(R.id.act_multiplication_multiplicand_tier);
+
+        additionDigitsInput.setText(String.valueOf(
+                challengeSettingsManager.getMathAdditionDigits()));
+        subtractionDigitsInput.setText(String.valueOf(
+                challengeSettingsManager.getMathSubtractionDigits()));
+        multiplierDigitsInput.setText(String.valueOf(
                 challengeSettingsManager.getMathMultiplicationMultiplierDigits()));
-        etMultiplicationMultiplicandDigits.setText(String.valueOf(
+        multiplicandDigitsInput.setText(String.valueOf(
                 challengeSettingsManager.getMathMultiplicationMultiplicandDigits()));
+        bindMultiplicationTierInput(
+                multiplierDigitsInput,
+                multiplierTierInput,
+                challengeSettingsManager.getMathMultiplicationMultiplierTier());
+        bindMultiplicationTierInput(
+                multiplicandDigitsInput,
+                multiplicandTierInput,
+                challengeSettingsManager.getMathMultiplicationMultiplicandTier());
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
             .setTitle("数字位数设置")
@@ -1599,10 +1659,12 @@ public class SettingsDialogManager {
         dialog.setOnShowListener(ignored ->
             dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
                 if (!saveCustomMathDifficulty(
-                        etAdditionDigits,
-                        etSubtractionDigits,
-                        etMultiplicationMultiplierDigits,
-                        etMultiplicationMultiplicandDigits)) {
+                        additionDigitsInput,
+                        subtractionDigitsInput,
+                        multiplierDigitsInput,
+                        multiplierTierInput,
+                        multiplicandDigitsInput,
+                        multiplicandTierInput)) {
                     return;
                 }
                 dialog.dismiss();
@@ -1615,7 +1677,9 @@ public class SettingsDialogManager {
             EditText additionInput,
             EditText subtractionInput,
             EditText multiplierInput,
-            EditText multiplicandInput) {
+            AutoCompleteTextView multiplierTierInput,
+            EditText multiplicandInput,
+            AutoCompleteTextView multiplicandTierInput) {
         additionInput.setError(null);
         subtractionInput.setError(null);
         multiplierInput.setError(null);
@@ -1644,13 +1708,13 @@ public class SettingsDialogManager {
                 multiplierDigits,
                 QuestionConst.MUL_LEN_MIN,
                 QuestionConst.MUL_LEN_MAX,
-                "乘数位数");
+                "乘数1位数");
         valid &= validateIntegerInput(
                 multiplicandInput,
                 multiplicandDigits,
                 QuestionConst.MUL_LEN_MIN,
                 QuestionConst.MUL_LEN_MAX,
-                "被乘数位数");
+                "乘数2位数");
         if (!valid) {
             return false;
         }
@@ -1658,8 +1722,110 @@ public class SettingsDialogManager {
         challengeSettingsManager.setMathAdditionDigits(additionDigits);
         challengeSettingsManager.setMathSubtractionDigits(subtractionDigits);
         challengeSettingsManager.setMathMultiplicationMultiplierDigits(multiplierDigits);
+        challengeSettingsManager.setMathMultiplicationMultiplierTier(
+                selectedMultiplicationTier(multiplierTierInput));
         challengeSettingsManager.setMathMultiplicationMultiplicandDigits(multiplicandDigits);
+        challengeSettingsManager.setMathMultiplicationMultiplicandTier(
+                selectedMultiplicationTier(multiplicandTierInput));
         return true;
+    }
+
+    private void bindMultiplicationTierInput(
+            EditText digitsInput,
+            AutoCompleteTextView tierInput,
+            MultiplicationTier selectedTier) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                context,
+                android.R.layout.simple_dropdown_item_1line,
+                new ArrayList<>()) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                TextView itemView = (TextView) super.getView(position, convertView, parent);
+                itemView.setMinimumHeight(0);
+                itemView.setLayoutParams(new android.widget.AbsListView.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dpToPx(28)));
+                itemView.setPadding(itemView.getPaddingLeft(), 0, itemView.getPaddingRight(), 0);
+                itemView.setGravity(Gravity.CENTER_VERTICAL);
+                return itemView;
+            }
+        };
+        tierInput.setAdapter(adapter);
+        tierInput.setThreshold(0);
+        tierInput.setTag(selectedTier == MultiplicationTier.UPPER_HALF ? 1 : 0);
+        tierInput.setOnItemClickListener((parent, view, position, id) ->
+                tierInput.setTag(position));
+        tierInput.setOnFocusChangeListener((view, hasFocus) -> {
+            if (hasFocus) {
+                showMultiplicationTierMenu(tierInput);
+            }
+        });
+        tierInput.setOnClickListener(view -> showMultiplicationTierMenu(tierInput));
+        refreshMultiplicationTierLabels(digitsInput, tierInput, adapter);
+        digitsInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                refreshMultiplicationTierLabels(digitsInput, tierInput, adapter);
+            }
+        });
+    }
+
+    private void showMultiplicationTierMenu(AutoCompleteTextView tierInput) {
+        tierInput.post(() -> {
+            int popupHeight = dpToPx(56);
+            tierInput.setDropDownWidth(tierInput.getWidth());
+            tierInput.setDropDownVerticalOffset(-tierInput.getHeight() - popupHeight);
+            tierInput.showDropDown();
+        });
+    }
+
+    private void refreshMultiplicationTierLabels(
+            EditText digitsInput,
+            AutoCompleteTextView tierInput,
+            ArrayAdapter<String> adapter) {
+        int selectedPosition = selectedMultiplicationTierPosition(tierInput);
+        Integer digits = parseInteger(digitsInput);
+        String lowerLabel = "";
+        String upperLabel = "";
+        if (digits != null
+                && digits >= QuestionConst.MUL_LEN_MIN
+                && digits <= QuestionConst.MUL_LEN_MAX) {
+            int minimum = minimumMultiplicationValue(digits);
+            int boundary = minimum * 3;
+            int maximum = minimum * 10 - 1;
+            lowerLabel = minimum + "~" + boundary;
+            upperLabel = boundary + "~" + maximum;
+        }
+        adapter.clear();
+        adapter.add(lowerLabel);
+        adapter.add(upperLabel);
+        tierInput.setText(adapter.getItem(selectedPosition), false);
+    }
+
+    private int minimumMultiplicationValue(int digits) {
+        int value = 1;
+        for (int i = 1; i < digits; i++) {
+            value *= 10;
+        }
+        return value;
+    }
+
+    private int selectedMultiplicationTierPosition(AutoCompleteTextView tierInput) {
+        return Integer.valueOf(1).equals(tierInput.getTag()) ? 1 : 0;
+    }
+
+    private MultiplicationTier selectedMultiplicationTier(AutoCompleteTextView tierInput) {
+        return selectedMultiplicationTierPosition(tierInput) == 1
+                ? MultiplicationTier.UPPER_HALF
+                : MultiplicationTier.LOWER_HALF;
     }
 
     private boolean validateIntegerInput(

@@ -20,7 +20,7 @@ public class DateUtils {
     // 日期前缀着色：目标剩余天数
     private static final int COLOR_ORANGE_RED = Color.parseColor("#FF5722");  // 橙红色：X 天 >= 10 时数字颜色
     private static final int COLOR_BRIGHT_RED = Color.parseColor("#FF1744");  // 鲜红色：X 天 < 10 时数字颜色（更紧急）
-    private static final int COLOR_LIGHT_PURPLE = Color.parseColor("#CE93D8"); // 浅紫色：其余文字颜色
+    private static final int COLOR_LIGHT_PURPLE = Color.parseColor("#E1BEE7"); // 浅紫色：其余文字颜色
     private static final int GOAL_TEXT_MAX_LENGTH = 6;                        // 目标内容最多展示 6 个字，超出用…省略
 
     // 时间格式化器
@@ -86,22 +86,63 @@ public class DateUtils {
         return String.format(Locale.getDefault(), "%.3f", millis);
     }
 
-    public static String hintDate(String targetDateStr) {
+    /**
+     * 生成悬浮窗日期前缀（带颜色）：
+     * 目标替换为实际目标内容（超 6 字省略）；剩余天数 X 默认橙红，X<10 时鲜红；其余文字浅紫。
+     */
+    public static CharSequence hintDate(String targetDateStr, String motivationTag) {
         Integer daysRemaining = getDaysRemaining(targetDateStr);
         if (daysRemaining == null) {
             return "";
         }
 
-        String dateHint;
+        String goalText = formatGoalText(motivationTag);
+
+        String prefix;
+        Integer dayValue = null;
         if (daysRemaining > 0) {
-            dateHint = "距离目标只剩 " + daysRemaining + " 天！";
+            dayValue = daysRemaining;
+            prefix = "距离" + goalText + "只剩 ";
         } else if (daysRemaining == 0) {
-            dateHint = "今天是目标日期！";
+            prefix = "今天是" + goalText + "的完成日期！";
         } else {
-            dateHint = "目标日期已过期 " + Math.abs(daysRemaining) + " 天！";
+            dayValue = Math.abs(daysRemaining);
+            prefix = goalText + "已过期 ";
         }
-        Log.d(TAG, "日期提示: " + dateHint);
-        return dateHint + "\n";
+
+        String full;
+        int dayStart = -1;
+        int dayEnd = -1;
+        if (dayValue != null) {
+            String dayText = String.valueOf(dayValue);
+            full = prefix + dayText + " 天！\n";
+            dayStart = prefix.length();
+            dayEnd = dayStart + dayText.length();
+        } else {
+            full = prefix + "\n";
+        }
+
+        SpannableString spannable = new SpannableString(full);
+        spannable.setSpan(new ForegroundColorSpan(COLOR_LIGHT_PURPLE), 0, full.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (dayValue != null) {
+            int dayColor = dayValue < 10 ? COLOR_BRIGHT_RED : COLOR_ORANGE_RED;
+            spannable.setSpan(new ForegroundColorSpan(dayColor), dayStart, dayEnd,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+
+        Log.d(TAG, "日期提示: " + full.trim());
+        return spannable;
+    }
+
+    /** 目标内容展示：未设置时回落为“目标”；超过 6 字保留前 6 字并用…省略。 */
+    private static String formatGoalText(String motivationTag) {
+        if (motivationTag == null || motivationTag.isEmpty() || Const.TARGET_TO_BE_SET.equals(motivationTag)) {
+            return "目标";
+        }
+        return motivationTag.length() > GOAL_TEXT_MAX_LENGTH
+                ? motivationTag.substring(0, GOAL_TEXT_MAX_LENGTH) + "…"
+                : motivationTag;
     }
 
     public static String countdownDate(String targetDateStr) {

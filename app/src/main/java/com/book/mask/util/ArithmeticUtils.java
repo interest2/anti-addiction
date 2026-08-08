@@ -4,10 +4,66 @@ import java.util.Random;
 
 public class ArithmeticUtils {
 
+    public enum MultiplicationTier {
+        FULL_RANGE("full_range", 2, 9),
+        LOWER_HALF("lower_half", 1, 2),
+        UPPER_HALF("upper_half", 3, 9);
+
+        private final String preferenceValue;
+        private final int leadingDigitMin;
+        private final int leadingDigitMax;
+
+        MultiplicationTier(String preferenceValue, int leadingDigitMin, int leadingDigitMax) {
+            this.preferenceValue = preferenceValue;
+            this.leadingDigitMin = leadingDigitMin;
+            this.leadingDigitMax = leadingDigitMax;
+        }
+
+        public String getPreferenceValue() {
+            return preferenceValue;
+        }
+
+        private int randomLeadingDigit(Random random) {
+            return random.nextInt(leadingDigitMax - leadingDigitMin + 1) + leadingDigitMin;
+        }
+
+        public static MultiplicationTier fromPreferenceValue(String preferenceValue) {
+            for (MultiplicationTier tier : values()) {
+                if (tier.preferenceValue.equals(preferenceValue)) {
+                    return tier;
+                }
+            }
+            return LOWER_HALF;
+        }
+    }
+
     /**
-     * 生成算术题（自定义位数）
+     * 生成算术题（自定义位数，乘法使用完整数字范围）
      */
-    public static String customArithmetic(int addendLen, int subtrahendLen, int multiplierLen1, int multiplierLen2) {
+    public static String customArithmetic(
+            int addendLen,
+            int subtrahendLen,
+            int multiplierLen,
+            int multiplicandLen) {
+        return customArithmetic(
+                addendLen,
+                subtrahendLen,
+                multiplierLen,
+                MultiplicationTier.FULL_RANGE,
+                multiplicandLen,
+                MultiplicationTier.FULL_RANGE);
+    }
+
+    /**
+     * 生成算术题（自定义位数和乘法档位）
+     */
+    public static String customArithmetic(
+            int addendLen,
+            int subtrahendLen,
+            int multiplierLen,
+            MultiplicationTier multiplierTier,
+            int multiplicandLen,
+            MultiplicationTier multiplicandTier) {
         Random random = new Random();
         int operationType = random.nextInt(3); // 0: 加, 1: 减, 2: 乘
         String[] addTemp;
@@ -28,7 +84,11 @@ public class ArithmeticUtils {
                 operator = "-";
                 break;
             case 2: // 乘法
-                String[] mulTemp = hardMul(multiplierLen1, multiplierLen2).split(",");
+                String[] mulTemp = hardMul(
+                        multiplierLen,
+                        multiplierTier,
+                        multiplicandLen,
+                        multiplicandTier).split(",");
                 num1 = Integer.parseInt(mulTemp[0]);
                 num2 = Integer.parseInt(mulTemp[1]);
                 operator = "×";
@@ -42,38 +102,40 @@ public class ArithmeticUtils {
         return num1 + " " + operator + " " + num2 + " = ?";
     }
 
-    public static String hardMul(int mulLen1, int mulLen2){
+    public static String hardMul(int multiplierLen, int multiplicandLen) {
+        return hardMul(
+                multiplierLen,
+                MultiplicationTier.FULL_RANGE,
+                multiplicandLen,
+                MultiplicationTier.FULL_RANGE);
+    }
+
+    public static String hardMul(
+            int multiplierLen,
+            MultiplicationTier multiplierTier,
+            int multiplicandLen,
+            MultiplicationTier multiplicandTier) {
         Random random = new Random();
         StringBuilder first = new StringBuilder();
         StringBuilder second = new StringBuilder();
 
-        int firstInit = random.nextInt(8) + 2;
-        int secondInit = random.nextInt(8) + 2;
+        int firstInit = multiplierTier.randomLeadingDigit(random);
+        int secondInit = multiplicandTier.randomLeadingDigit(random);
 
         first.append(firstInit);
         second.append(secondInit);
 
-        createMulNum(mulLen1, first, firstInit);
-        createMulNum(mulLen2, second, secondInit);
+        createMulNum(multiplierLen, first, firstInit);
+        createMulNum(multiplicandLen, second, secondInit);
         return first + "," + second;
     }
 
-    private static void createMulNum(int mulLen, StringBuilder initialNumChar, int initialNum){
-        CharSequence charSequence = "2345678";
-
+    private static void createMulNum(int mulLen, StringBuilder initialNumChar, int initialNum) {
+        String digitCandidates = "2345678".replace(String.valueOf(initialNum), "");
         Random random = new Random();
         for (int i = 0; i < mulLen - 1; i++) {
-            char randChar = charSequence.charAt(random.nextInt(7));
-            int randNum = Integer.parseInt(String.valueOf(randChar));
-            // 两位数乘法时，避免（被）乘数的两位相同
-            if(randNum == initialNum){
-                charSequence =
-                        charSequence.subSequence(0, initialNum - 2).toString()
-                                + charSequence.subSequence(initialNum - 1, 7);
-                randChar = charSequence.charAt(random.nextInt(6));
-                randNum = Integer.parseInt(String.valueOf(randChar));
-            }
-            initialNumChar.append(randNum);
+            char randomDigit = digitCandidates.charAt(random.nextInt(digitCandidates.length()));
+            initialNumChar.append(randomDigit);
         }
     }
 

@@ -76,9 +76,9 @@ public class RelaxManager {
      */
     public static String getIntervalDisplayText(int seconds) {
         if (seconds < 60) {
-            return seconds + "秒";
+            return seconds + " 秒";
         } else {
-            return (seconds / 60) + "分钟";
+            return (seconds / 60) + " 分钟";
         }
     }
     
@@ -117,6 +117,20 @@ public class RelaxManager {
      */
     public long getAppIntervalMillis(CustomApp app) {
         return getAppInterval(app) * 1000L;
+    }
+
+    /**
+     * 计算指定 APP 当前实际生效的解禁时长（秒）。
+     * 处于宽松模式但今日宽松次数已用完时，宽松档不可用，实际回退到严格档最长时长；
+     * 其余情况等同 {@link #getAppInterval(CustomApp)}。
+     */
+    public int getEffectiveAppInterval(CustomApp app) {
+        int interval = getAppInterval(app);
+        if (isAppRelaxedMode(app)
+                && getAppRelaxedCloseCount(app) >= app.getRelaxedLimitCount()) {
+            return getMaxStrictInterval();
+        }
+        return interval;
     }
 
     /**

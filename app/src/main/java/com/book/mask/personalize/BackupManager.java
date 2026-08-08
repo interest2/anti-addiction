@@ -45,6 +45,8 @@ public class BackupManager {
             AppSettingsManager.KEY_FLOATING_STRICT_REMINDER,   // 座右铭内容
             ChallengeSettingsManager.KEY_MATH_QUESTION_TYPE,   // 题目类型
             ChallengeSettingsManager.KEY_MATH_DIFFICULTY_MODE, // 算术题难度模式（default / custom）
+            ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_TIER,
+            ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER,
     };
 
     // 个性化：整型配置键

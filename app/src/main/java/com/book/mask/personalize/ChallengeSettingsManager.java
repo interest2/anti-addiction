@@ -4,6 +4,7 @@ import android.content.Context;
 
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.QuestionConst;
+import com.book.mask.util.ArithmeticUtils.MultiplicationTier;
 import com.tencent.mmkv.MMKV;
 
 /**
@@ -18,6 +19,10 @@ public class ChallengeSettingsManager {
             "math_multiplication_multiplier_digits";
     static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS =
             "math_multiplication_multiplicand_digits";
+    static final String KEY_MATH_MULTIPLICATION_MULTIPLIER_TIER =
+            "math_multiplication_multiplier_tier";
+    static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER =
+            "math_multiplication_multiplicand_tier";
     static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
     static final String KEY_CHALLENGE_TIMER_MODE = "challenge_timer_mode";
     static final String KEY_ENGLISH_READING_LENGTH = "english_reading_length";
@@ -85,6 +90,30 @@ public class ChallengeSettingsManager {
         return mmkv.getInt(
                 KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS,
                 QuestionConst.MUL_SECOND_LEN_DEFAULT);
+    }
+
+    public void setMathMultiplicationMultiplierTier(MultiplicationTier tier) {
+        mmkv.putString(
+                KEY_MATH_MULTIPLICATION_MULTIPLIER_TIER,
+                tier.getPreferenceValue()).commit();
+    }
+
+    public MultiplicationTier getMathMultiplicationMultiplierTier() {
+        return MultiplicationTier.fromPreferenceValue(mmkv.getString(
+                KEY_MATH_MULTIPLICATION_MULTIPLIER_TIER,
+                MultiplicationTier.LOWER_HALF.getPreferenceValue()));
+    }
+
+    public void setMathMultiplicationMultiplicandTier(MultiplicationTier tier) {
+        mmkv.putString(
+                KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER,
+                tier.getPreferenceValue()).commit();
+    }
+
+    public MultiplicationTier getMathMultiplicationMultiplicandTier() {
+        return MultiplicationTier.fromPreferenceValue(mmkv.getString(
+                KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER,
+                MultiplicationTier.LOWER_HALF.getPreferenceValue()));
     }
 
     public ChallengeType getChallengeType() {
