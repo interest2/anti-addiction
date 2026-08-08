@@ -8,8 +8,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.book.mask.R;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,12 +19,19 @@ import java.util.concurrent.Executors;
  * 听力音频播放器。
  *
  * <p>出题时调用 {@link #prepare} 用豆包语音（火山引擎 Speech SDK）后台合成听力原文；用户点击
- * 「播放 / 重听」时 {@link #play} 优先播放合成好的音频，尚未就绪或未配置凭据时回退内置占位 mp3，
+ * 「播放 / 重听」时 {@link #play} 优先播放合成好的音频，确定无法合成时才回退内置占位 mp3，
  * 保证听力题始终可用。
  */
 final class ListeningAudioPlayer {
 
     private static final String TAG = "ListeningAudio";
+
+    private enum AudioState {
+        IDLE,
+        PREPARING,
+        REAL_AUDIO_READY,
+        PLACEHOLDER_READY
+    }
 
     private static final ExecutorService PLAYER_RELEASE_EXECUTOR =
             Executors.newSingleThreadExecutor(r -> {
@@ -46,18 +51,21 @@ final class ListeningAudioPlayer {
     private MediaPlayer mediaPlayer;
     private List<File> audioFiles = Collections.emptyList();
     private int playingSegmentIndex;
-    private boolean realAudioAvailable;
+    private AudioState audioState = AudioState.IDLE;
     private long prepareGeneration;
     private long playbackGeneration;
+    /** 播放引导语所需的上下文（来自 prepare / play 入参）。 */
+    private Context appContext;
     /** 整段播放结束（或播放失败兜底）时的回调，用于揭示题干与选项。 */
     private Runnable onPlaybackCompleted;
 
     /**
      * 后台合成听力原文，为「播放 / 重听」准备真实音频。
      */
-    synchronized void prepare(Context context, String transcript) {
+    synchronized void prepare(Context context, String transcript, Runnable onPrepared) {
+        this.appContext = context;
         audioFiles = Collections.emptyList();
-        realAudioAvailable = false;
+        audioState = AudioState.PREPARING;
         final long generation = ++prepareGeneration;
         synthesizerExecutor.execute(() -> {
             if (!isCurrentPreparation(generation)) {
@@ -73,9 +81,12 @@ final class ListeningAudioPlayer {
                                     return;
                                 }
                                 audioFiles = new ArrayList<>(files);
-                                realAudioAvailable = !audioFiles.isEmpty();
+                                audioState = audioFiles.isEmpty()
+                                        ? AudioState.PLACEHOLDER_READY
+                                        : AudioState.REAL_AUDIO_READY;
                             }
                             Log.d(TAG, "豆包合成音频已就绪，segments=" + files.size());
+                            notifyAudioPrepared(generation, onPrepared);
                         }
 
                         @Override
@@ -84,9 +95,10 @@ final class ListeningAudioPlayer {
                                 if (!isCurrentPreparation(generation)) {
                                     return;
                                 }
-                                realAudioAvailable = false;
+                                audioState = AudioState.PLACEHOLDER_READY;
                             }
                             Log.e(TAG, "豆包语音合成失败: " + message);
+                            notifyAudioPrepared(generation, onPrepared);
                         }
 
                         @Override
@@ -95,24 +107,31 @@ final class ListeningAudioPlayer {
                                 if (!isCurrentPreparation(generation)) {
                                     return;
                                 }
-                                realAudioAvailable = false;
+                                audioState = AudioState.PLACEHOLDER_READY;
                             }
                             Log.w(TAG, "豆包语音不可用: " + reason);
+                            notifyAudioPrepared(generation, onPrepared);
                         }
                     });
         });
     }
 
     /**
-     * 播放音频：真实合成已就绪则播合成音频，否则播占位 mp3。
+     * 播放音频：等待合成结束后，播放真实合成音频或确定需要使用的占位音频。
      */
     synchronized void play(Context context) {
+        if (audioState == AudioState.PREPARING || audioState == AudioState.IDLE) {
+            Log.d(TAG, "听力音频尚未就绪，忽略播放请求");
+            return;
+        }
+        this.appContext = context;
         releaseCurrentMediaPlayerAsync(true);
         playingSegmentIndex = 0;
         long generation = ++playbackGeneration;
-        if (realAudioAvailable && allAudioFilesExist()) {
+        if (audioState == AudioState.REAL_AUDIO_READY && allAudioFilesExist()) {
             playCurrentSegment(generation);
         } else {
+            audioState = AudioState.PLACEHOLDER_READY;
             playPlaceholder(context, generation);
         }
     }
@@ -128,6 +147,8 @@ final class ListeningAudioPlayer {
         synchronized (this) {
             prepareGeneration++;
             playbackGeneration++;
+            audioFiles = Collections.emptyList();
+            audioState = AudioState.IDLE;
             releaseCurrentMediaPlayerAsync(true);
         }
         synthesizerExecutor.execute(() -> {
@@ -142,6 +163,8 @@ final class ListeningAudioPlayer {
         synchronized (this) {
             prepareGeneration++;
             playbackGeneration++;
+            audioFiles = Collections.emptyList();
+            audioState = AudioState.IDLE;
             onPlaybackCompleted = null;
             releaseCurrentMediaPlayerAsync(true);
         }
@@ -160,6 +183,24 @@ final class ListeningAudioPlayer {
         return generation == prepareGeneration;
     }
 
+    private void notifyAudioPrepared(long generation, Runnable callback) {
+        Runnable notification = () -> {
+            synchronized (ListeningAudioPlayer.this) {
+                if (!isCurrentPreparation(generation)) {
+                    return;
+                }
+            }
+            if (callback != null) {
+                callback.run();
+            }
+        };
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            notification.run();
+        } else {
+            mainHandler.post(notification);
+        }
+    }
+
     private void playPlaceholder(Context context, long generation) {
         try {
             MediaPlayer player = new MediaPlayer();
@@ -171,7 +212,11 @@ final class ListeningAudioPlayer {
                     "android.resource://" + context.getPackageName() + "/raw/listening_placeholder");
             player.setDataSource(context, placeholderUri);
             player.setOnPreparedListener(mp -> mp.start());
-            player.setOnCompletionListener(mp -> finishPlayback(mp, generation, false));
+            player.setOnCompletionListener(mp -> {
+                // 占位正文播完后，末尾追加引导语
+                onSegmentFinished(mp, generation);
+                playGuide(generation);
+            });
             player.setOnErrorListener((mp, what, extra) -> {
                 finishPlayback(mp, generation, false);
                 return true;
@@ -247,6 +292,7 @@ final class ListeningAudioPlayer {
     }
 
     private void playNextSegment(MediaPlayer completedPlayer, long generation) {
+        boolean hasMoreSegments;
         synchronized (this) {
             if (mediaPlayer != completedPlayer || generation != playbackGeneration) {
                 releaseMediaPlayerAsync(completedPlayer, false);
@@ -254,9 +300,66 @@ final class ListeningAudioPlayer {
             }
             mediaPlayer = null;
             playingSegmentIndex++;
+            hasMoreSegments = playingSegmentIndex < audioFiles.size();
         }
         releaseMediaPlayerAsync(completedPlayer, false);
-        playCurrentSegment(generation);
+        if (hasMoreSegments) {
+            playCurrentSegment(generation);
+        } else {
+            // 最后一段正文播完后，末尾追加引导语
+            playGuide(generation);
+        }
+    }
+
+    /**
+     * 一段音频（非末段）正常播完后的收尾：仅释放，不触发整段完成回调。
+     */
+    private void onSegmentFinished(MediaPlayer completedPlayer, long generation) {
+        synchronized (this) {
+            if (mediaPlayer == completedPlayer) {
+                mediaPlayer = null;
+            }
+        }
+        releaseMediaPlayerAsync(completedPlayer, false);
+    }
+
+    /**
+     * 整段听力正文播完后，末尾追加一句引导语「请看提问，并做选择」；
+     * 引导语播完（或播放失败）才回调整段播放完成，由界面揭示题干与选项。
+     */
+    private void playGuide(long generation) {
+        Context context = appContext;
+        if (context == null) {
+            notifyPlaybackCompleted(generation);
+            return;
+        }
+        try {
+            MediaPlayer player = new MediaPlayer();
+            player.setAudioAttributes(new AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .build());
+            Uri guideUri = Uri.parse(
+                    "android.resource://" + context.getPackageName() + "/raw/listening_guide");
+            player.setDataSource(context, guideUri);
+            player.setOnPreparedListener(mp -> mp.start());
+            player.setOnCompletionListener(mp -> finishPlayback(mp, generation, false));
+            player.setOnErrorListener((mp, what, extra) -> {
+                finishPlayback(mp, generation, false);
+                return true;
+            });
+            synchronized (this) {
+                mediaPlayer = player;
+            }
+            player.prepareAsync();
+            Log.d(TAG, "播放听力引导语");
+        } catch (Exception e) {
+            Log.e(TAG, "播放听力引导语异常", e);
+            synchronized (this) {
+                releaseCurrentMediaPlayerAsync(true);
+            }
+            notifyPlaybackCompleted(generation);
+        }
     }
 
     private void finishPlayback(MediaPlayer completedPlayer, long generation, boolean stopFirst) {

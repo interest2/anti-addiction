@@ -29,6 +29,7 @@ public class GoalNav extends Fragment {
     private TextView tvReminderStyleValue;
     private TextView tvReminderProviderValue;
     private TextView tvFloatingStrictReminderValue;
+    private TextView tvChallengeTypeValue;
     private Button btnTagSetting, btnTargetDateSetting;
 
     @Nullable
@@ -44,6 +45,7 @@ public class GoalNav extends Fragment {
         tvReminderStyleValue = view.findViewById(R.id.tv_reminder_style_value);
         tvReminderProviderValue = view.findViewById(R.id.tv_reminder_provider_value);
         tvFloatingStrictReminderValue = view.findViewById(R.id.tv_floating_strict_reminder_value);
+        tvChallengeTypeValue = view.findViewById(R.id.tv_challenge_type_value);
         btnTagSetting = view.findViewById(R.id.btn_tag_setting);
         btnTargetDateSetting = view.findViewById(R.id.btn_target_date_setting);
 
@@ -65,12 +67,10 @@ public class GoalNav extends Fragment {
             reminderProviderRow.setOnClickListener(v -> openReminderProviderSettings());
         }
 
-        // 设置算术题难度设置按钮
-        View mathDifficultyRow = view.findViewById(R.id.btn_math_difficulty);
-        mathDifficultyRow.setOnClickListener(v -> {
-            settingsDialogManager.showMathDifficultyDialog();
-        });
-        
+        // 设置答题类型入口：打开「题目类型」子页面
+        View challengeTypeRow = view.findViewById(R.id.btn_challenge_type);
+        challengeTypeRow.setOnClickListener(v -> openChallengeTypeSettings());
+
         View reminderStyleRow = view.findViewById(R.id.btn_reminder_style);
         reminderStyleRow.setOnClickListener(v ->
                 settingsDialogManager.showReminderStyleDialog(this::onReminderStyleChanged));
@@ -106,6 +106,20 @@ public class GoalNav extends Fragment {
                 )
                 .replace(R.id.fragment_container, new ReminderProviderSettingsNav())
                 .addToBackStack(ReminderProviderSettingsNav.class.getSimpleName())
+                .commit();
+    }
+
+    private void openChallengeTypeSettings() {
+        getParentFragmentManager().beginTransaction()
+                .setReorderingAllowed(true)
+                .setCustomAnimations(
+                        R.anim.slide_in_right,
+                        R.anim.slide_out_left,
+                        0,
+                        0
+                )
+                .replace(R.id.fragment_container, new ChallengeTypeSettingsNav())
+                .addToBackStack(ChallengeTypeSettingsNav.class.getSimpleName())
                 .commit();
     }
 
@@ -151,6 +165,8 @@ public class GoalNav extends Fragment {
         btnTargetDateSetting.setText((date == null || date.isEmpty() || "待设置".equals(date)) ? "目标日期" : date);
         // 倒计时
         tvGoalCountdown.setText(DateUtils.countdownDate(date));
+        // 答题类型
+        tvChallengeTypeValue.setText(settingsDialogManager.getChallengeType().getDisplayName());
         updateReminderValues();
     }
 }

@@ -50,6 +50,8 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private final SpeechTranscriber transcriber;
     private final Handler handler;
     private final ExecutorService executor;
+    /** 离线对比识别专用线程池：SOE 在线转写成功时额外跑一次本地识别，不阻塞主流程评分 / 取故事。 */
+    private final ExecutorService offlineExecutor;
     private final Callbacks callbacks;
 
     private RetellingState state = RetellingState.ERROR;
@@ -73,6 +75,10 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private boolean soeResultReceived;
     /** SOE 失败回退本地识别所需的本次录音采样。 */
     private float[] pendingFallbackSamples;
+    /** 腾讯在线（SOE）转写文本，非 null 表示本次评分/展示使用的是在线转写，用于与离线识别对比。 */
+    private String onlineTranscript;
+    /** 本地离线（Sherpa）识别文本，仅用于与在线转写对比准确性展示。 */
+    private String offlineTranscript;
 
     private final Runnable countdownRunnable = new Runnable() {
         @Override
@@ -122,6 +128,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
                 SherpaOnnxTranscriber.getInstance(context));
         this.handler = new Handler(Looper.getMainLooper());
         this.executor = Executors.newSingleThreadExecutor();
+        this.offlineExecutor = Executors.newSingleThreadExecutor();
     }
 
     public boolean start() {
@@ -180,6 +187,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         }
         view.hide();
         executor.shutdownNow();
+        offlineExecutor.shutdownNow();
     }
 
     /**
@@ -267,8 +275,12 @@ public final class RetellingChallengeSession implements ChallengeSession {
             fallbackToLocalTranscription(soeEvaluated);
             return;
         }
+        onlineTranscript = transcript;
+        // 先取走样本再 settle（settle 会把 pendingFallbackSamples 置空），供离线识别对比
+        float[] comparisonSamples = pendingFallbackSamples;
         settleSoeResult();
         onTranscribed(transcript);
+        runOfflineComparison(comparisonSamples);
     }
 
     private void handleSoeError(String message) {
@@ -280,12 +292,41 @@ public final class RetellingChallengeSession implements ChallengeSession {
     }
 
     private void fallbackToLocalTranscription(boolean keepPronunciationScore) {
+        onlineTranscript = null;
         float[] samples = pendingFallbackSamples;
         if (!keepPronunciationScore) {
             soeEvaluated = false;
         }
         settleSoeResult();
         runLocalTranscription(samples);
+    }
+
+    /**
+     * 腾讯在线转写已到手时，额外用本地离线模型识别同一段录音，供对比在线 / 离线准确性。
+     * 结果异步返回后更新识别文本区为两行对比；离线识别失败不影响已进行的在线评分。
+     */
+    private void runOfflineComparison(float[] samples) {
+        if (samples == null || samples.length == 0) {
+            return;
+        }
+        final long sid = sessionId;
+        offlineExecutor.execute(() -> {
+            TranscriptionResult result = transcriber.transcribe(samples, RECORD_SAMPLE_RATE);
+            handler.post(() -> {
+                if (sid != sessionId || !active) {
+                    return;
+                }
+                offlineTranscript = result.isSuccess() ? result.getText() : null;
+                showTranscriptComparison();
+            });
+        });
+    }
+
+    private void showTranscriptComparison() {
+        if (!active || state == RetellingState.RECORDING) {
+            return;
+        }
+        view.showTranscriptComparison(onlineTranscript, offlineTranscript);
     }
 
     private void settleSoeResult() {
@@ -431,6 +472,8 @@ public final class RetellingChallengeSession implements ChallengeSession {
         soeSuggestedScore = -1f;
         soeEvaluated = false;
         soeResultReceived = false;
+        onlineTranscript = null;
+        offlineTranscript = null;
         handler.removeCallbacks(soeTimeoutRunnable);
         pendingFallbackSamples = null;
         closeSoe();
@@ -474,7 +517,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         lastRecognizedText = recognizedText;
         Log.d(TAG, "语音识别文本：" + (recognizedText == null ? "" : recognizedText));
         setState(RetellingState.SCORING);
-        view.showRecognizedText(recognizedText);
+        view.showRecognizedText(onlineTranscript != null ? "腾讯转写：" : null, recognizedText);
         view.showScoring();
         runEvaluation();
     }
@@ -567,6 +610,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
             record.timestamp = System.currentTimeMillis();
             record.story = story == null ? "" : story.getStory();
             record.recognizedText = lastRecognizedText == null ? "" : lastRecognizedText;
+            record.offlineRecognizedText = offlineTranscript == null ? "" : offlineTranscript;
             record.score = score.getScore();
             record.coverage = score.getCoverage();
             record.order = score.getOrder();

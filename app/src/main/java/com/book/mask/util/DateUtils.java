@@ -1,5 +1,9 @@
 package com.book.mask.util;
 
+import android.graphics.Color;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 
 import com.book.mask.constant.Const;
@@ -12,6 +16,12 @@ import java.util.Locale;
 public class DateUtils {
 
     private static final String TAG = "DateUtils";
+
+    // 日期前缀着色：目标剩余天数
+    private static final int COLOR_ORANGE_RED = Color.parseColor("#FF5722");  // 橙红色：X 天 >= 10 时数字颜色
+    private static final int COLOR_BRIGHT_RED = Color.parseColor("#FF1744");  // 鲜红色：X 天 < 10 时数字颜色（更紧急）
+    private static final int COLOR_LIGHT_PURPLE = Color.parseColor("#CE93D8"); // 浅紫色：其余文字颜色
+    private static final int GOAL_TEXT_MAX_LENGTH = 6;                        // 目标内容最多展示 6 个字，超出用…省略
 
     // 时间格式化器
     public static final SimpleDateFormat timeFormatter =

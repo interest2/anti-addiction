@@ -22,7 +22,8 @@ import java.util.List;
 /**
  * 听力题答题界面（悬浮窗内）。负责听力题布局的懒加载、状态渲染与按钮回调。
  *
- * <p>默认只展示题干与选项，听力原文隐藏；答错后可揭示原文，揭示后本题进入「无法解禁」态，只能换一题。
+ * <p>默认只展示题干与选项，听力原文隐藏；答错后可揭示原文，揭示后本题进入「无法解禁」态，只能换一题；
+ * 答对后可回看原文，不影响解禁。
  */
 final class ListeningChallengeViewController {
 
@@ -49,7 +50,6 @@ final class ListeningChallengeViewController {
     private ScrollView transcriptScrollView;
     private TextView transcriptText;
     private LinearLayout optionsContainer;
-    private Button playButton;
     private Button replayButton;
     private Button submitButton;
     private Button cancelButton;
@@ -98,12 +98,13 @@ final class ListeningChallengeViewController {
         questionText.setVisibility(View.GONE);
         transcriptScrollView.setVisibility(View.GONE);
         optionsContainer.setVisibility(View.GONE);
-        playButton.setVisibility(View.GONE);
         replayButton.setVisibility(View.GONE);
         submitButton.setVisibility(View.GONE);
         cancelButton.setVisibility(View.VISIBLE);
+        cancelButton.setText("取消");
         revealButton.setVisibility(View.GONE);
         nextButton.setVisibility(View.GONE);
+        nextButton.setText("换一题");
         hideResult();
         hintText.setText("正在生成听力题…");
         return true;
@@ -120,8 +121,6 @@ final class ListeningChallengeViewController {
         resetSelection();
         questionRevealed = false;
         audioPlayer.stop();
-        // 后台用豆包语音合成听力原文，供「播放 / 重听」使用；未配置凭据时自动回退占位音频
-        audioPlayer.prepare(context, question == null ? "" : question.getTranscript());
         // 题干与选项待整段播放结束后才揭示，避免先读题再听音降低难度
         audioPlayer.setOnPlaybackCompleted(this::onPlaybackCompleted);
         questionText.setText(question == null ? "" : question.getQuestion());
@@ -129,18 +128,36 @@ final class ListeningChallengeViewController {
         buildOptions(question);
         optionsContainer.setVisibility(View.GONE);
         transcriptScrollView.setVisibility(View.GONE);
-        playButton.setVisibility(View.VISIBLE);
         replayButton.setVisibility(View.VISIBLE);
         submitButton.setVisibility(View.GONE);
         cancelButton.setVisibility(View.VISIBLE);
+        cancelButton.setText("取消");
         revealButton.setVisibility(View.GONE);
+        revealButton.setText("显示听力原文");
         nextButton.setVisibility(View.GONE);
+        nextButton.setText("换一题");
         setOptionsEnabled(false);
-        playButton.setEnabled(true);
-        replayButton.setEnabled(true);
         hideResult();
-        hintText.setText("请先听完整段听力");
+        hintText.setText("正在生成听力音频…");
         hintText.setTextColor(Color.WHITE);
+        // 后台用豆包语音合成听力原文；确定真实音频或占位回退可用后，才允许播放
+        audioPlayer.prepare(
+                context,
+                question == null ? "" : question.getTranscript(),
+                this::onAudioPrepared);
+    }
+
+    /**
+     * 真实音频或占位回退准备完成后自动开始播放，无需用户点击。
+     */
+    void onAudioPrepared() {
+        if (!initialized || !shown) {
+            return;
+        }
+        replayButton.setEnabled(true);
+        hintText.setText("正在播放听力音频…");
+        hintText.setTextColor(Color.WHITE);
+        audioPlayer.play(context);
     }
 
     /**
@@ -166,7 +183,10 @@ final class ListeningChallengeViewController {
         optionsEnabled = false;
         setOptionsEnabled(false);
         submitButton.setVisibility(View.GONE);
+        cancelButton.setText("取消");
+        revealButton.setText("显示听力原文");
         revealButton.setVisibility(View.VISIBLE);
+        nextButton.setText("换一题");
         nextButton.setVisibility(View.VISIBLE);
         hintText.setText("答案错误");
         hintText.setTextColor(Color.WHITE);
@@ -180,6 +200,7 @@ final class ListeningChallengeViewController {
         transcriptText.setText(transcript == null ? "" : "【听力原文】\n" + transcript);
         transcriptScrollView.setVisibility(View.VISIBLE);
         revealButton.setVisibility(View.GONE);
+        nextButton.setText("换一题");
         nextButton.setVisibility(View.VISIBLE);
         hintText.setText("已显示听力原文");
         hintText.setTextColor(Color.rgb(255, 193, 7));
@@ -191,10 +212,33 @@ final class ListeningChallengeViewController {
             return;
         }
         setOptionsEnabled(false);
+        // 答对后仍可重听听力音频
+        replayButton.setEnabled(true);
         submitButton.setVisibility(View.GONE);
+        cancelButton.setText("完成解禁");
+        revealButton.setText("查看原文");
+        revealButton.setVisibility(View.VISIBLE);
+        nextButton.setVisibility(View.GONE);
         hintText.setText("答案正确");
         hintText.setTextColor(Color.rgb(76, 175, 80));
         showResult("✅ 答案正确！", Color.rgb(76, 175, 80));
+    }
+
+    /**
+     * 答对后回看听力原文，不影响解禁；提供「完成」按钮关闭。
+     */
+    void showTranscriptAfterCorrect(String transcript) {
+        if (!initialized || !shown) {
+            return;
+        }
+        transcriptText.setText(transcript == null ? "" : "【听力原文】\n" + transcript);
+        transcriptScrollView.setVisibility(View.VISIBLE);
+        revealButton.setVisibility(View.GONE);
+        cancelButton.setVisibility(View.GONE);
+        nextButton.setText("立即解锁");
+        replayButton.setEnabled(true);
+        nextButton.setVisibility(View.VISIBLE);
+        hideResult();
     }
 
     void showLoadError(String message) {
@@ -287,7 +331,6 @@ final class ListeningChallengeViewController {
             option.setEnabled(enabled);
         }
         submitButton.setEnabled(enabled);
-        playButton.setEnabled(enabled);
         replayButton.setEnabled(enabled);
     }
 
@@ -333,7 +376,6 @@ final class ListeningChallengeViewController {
         transcriptScrollView = floatingView.findViewById(R.id.sv_listening_transcript);
         transcriptText = floatingView.findViewById(R.id.tv_listening_transcript);
         optionsContainer = floatingView.findViewById(R.id.ll_listening_options);
-        playButton = floatingView.findViewById(R.id.btn_listening_play);
         replayButton = floatingView.findViewById(R.id.btn_listening_replay);
         submitButton = floatingView.findViewById(R.id.btn_listening_submit);
         cancelButton = floatingView.findViewById(R.id.btn_listening_cancel);
@@ -349,7 +391,6 @@ final class ListeningChallengeViewController {
                 || transcriptScrollView == null
                 || transcriptText == null
                 || optionsContainer == null
-                || playButton == null
                 || replayButton == null
                 || submitButton == null
                 || cancelButton == null
@@ -365,7 +406,6 @@ final class ListeningChallengeViewController {
         questionText.setTextIsSelectable(false);
         questionText.setLongClickable(false);
 
-        playButton.setOnClickListener(v -> audioPlayer.play(context));
         replayButton.setOnClickListener(v -> audioPlayer.play(context));
         submitButton.setOnClickListener(v -> {
             if (selectedOptionIndex < 0) {

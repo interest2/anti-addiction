@@ -7,7 +7,6 @@ import android.util.Log;
 import android.view.View;
 
 import com.book.mask.challenge.ChallengeSession;
-import com.book.mask.constant.Const;
 import com.book.mask.personalize.ListeningRecord;
 import com.book.mask.personalize.ListeningRecordStore;
 
@@ -15,10 +14,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * 听力题答题会话：出题 → 播放（模拟豆包语音）→ 选择作答 → 通过 / 答错揭示原文后换题。
+ * 听力题答题会话：出题 → 播放 → 选择作答 → 通过（可回看原文后解禁）/ 答错揭示原文后换题。
  *
- * <p>核心规则：一旦揭示听力原文，本题即「失效」——即使随后答对也不再回调通过，
- * 只能换一题重新作答。sessionId 贯穿一次答题，异步出题返回时先判断是否仍是当前会话，防止取消后旧请求继续改界面。
+ * <p>核心规则：答错后一旦揭示听力原文，本题即「失效」——即使随后答对也不再回调通过，
+ * 只能换一题重新作答；答对后查看原文仅是回看，不影响解禁。sessionId 贯穿一次答题，
+ * 异步出题返回时先判断是否仍是当前会话，防止取消后旧请求继续改界面。
  */
 public final class ListeningChallengeSession implements ChallengeSession {
 
@@ -49,6 +49,8 @@ public final class ListeningChallengeSession implements ChallengeSession {
     private boolean active;
     private ListeningQuestion currentQuestion;
     private boolean forfeited;
+    /** 当前题已答对：允许回看原文并主动完成解禁，不再自动关闭。 */
+    private boolean correctAnswered;
 
     public ListeningChallengeSession(Context context, View floatingView, Callbacks callbacks) {
         this.callbacks = callbacks;
@@ -90,6 +92,7 @@ public final class ListeningChallengeSession implements ChallengeSession {
         sessionId++;
         active = true;
         forfeited = false;
+        correctAnswered = false;
         state = State.LOADING;
         if (!view.show()) {
             Log.w(TAG, "听力题界面展示失败");
@@ -115,7 +118,13 @@ public final class ListeningChallengeSession implements ChallengeSession {
         handler.removeCallbacksAndMessages(null);
         view.hide();
         if (callbacks != null) {
-            callbacks.onCancel();
+            if (correctAnswered) {
+                // 答对后「完成解禁」按钮：直接解禁，而非取消
+                Log.d(TAG, "听力题答对后完成解禁");
+                callbacks.onCorrect();
+            } else {
+                callbacks.onCancel();
+            }
         }
         Log.d(TAG, "听力题已取消");
     }
@@ -157,6 +166,7 @@ public final class ListeningChallengeSession implements ChallengeSession {
                 }
                 currentQuestion = question.getQuestion();
                 forfeited = false;
+                correctAnswered = false;
                 state = State.ANSWER;
                 view.showQuestion(currentQuestion);
                 Log.d(TAG, "听力题就绪，questionId=" + question.getQuestionId());
@@ -174,16 +184,9 @@ public final class ListeningChallengeSession implements ChallengeSession {
         saveRecord(correct, answer);
         if (correct) {
             Log.d(TAG, "听力题答对");
+            correctAnswered = true;
             state = State.ANSWER;
             view.showCorrectAnswer();
-            handler.postDelayed(() -> {
-                if (!active) {
-                    return;
-                }
-                if (callbacks != null) {
-                    callbacks.onCorrect();
-                }
-            }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
             return;
         }
         Log.d(TAG, "听力题答错: " + answer + " (正确答案: " + currentQuestion.getAnswer() + ")");
@@ -221,7 +224,16 @@ public final class ListeningChallengeSession implements ChallengeSession {
     }
 
     private void handleRevealTranscript() {
-        if (!active || state != State.WRONG || currentQuestion == null) {
+        if (!active || currentQuestion == null) {
+            return;
+        }
+        if (correctAnswered) {
+            // 答对后回看原文，不使本题失效
+            view.showTranscriptAfterCorrect(currentQuestion.getTranscript());
+            Log.d(TAG, "答对后已显示听力原文");
+            return;
+        }
+        if (state != State.WRONG) {
             return;
         }
         forfeited = true;
@@ -232,6 +244,13 @@ public final class ListeningChallengeSession implements ChallengeSession {
 
     private void handleNextQuestion() {
         if (!active) {
+            return;
+        }
+        if (correctAnswered) {
+            // 答对后「完成」按钮：直接解禁
+            if (callbacks != null) {
+                callbacks.onCorrect();
+            }
             return;
         }
         state = State.LOADING;

@@ -218,7 +218,7 @@ public final class SoeSpeechEvaluator {
             }
             if (json.optInt("final", 0) == 1) {
                 SoeResult result = parseResult(json.optJSONObject("result"));
-                Log.i(TAG, String.format("SOE 评分：SuggestedScore=%.1f, PronAccuracy=%.1f, PronFluency=%.3f",
+                Log.i(TAG, String.format("SOE 评分：SuggestedScore=%.1f, PronAccuracy=%.1f, PronFluency=%.1f",
                         result.getSuggestedScore(), result.getAccuracy(), result.getFluency()));
                 closeQuietly(ws);
                 active = false;

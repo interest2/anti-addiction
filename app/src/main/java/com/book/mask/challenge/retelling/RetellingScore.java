@@ -109,14 +109,14 @@ public final class RetellingScore {
     }
 
     /**
-     * 口语评测三字段展示文本：建议分（1 位小数）/ 发音准确（1 位小数）/ 流利（3 位小数）。
+     * 口语评测三字段展示文本：建议分（1 位小数）/ 发音准确（1 位小数）/ 流利（1 位小数）。
      * 建议分未返回时以 {@code -} 占位。
      */
     public String formatPronunciationSummary() {
         String suggested = suggestedScore >= 0
                 ? String.format(Locale.US, "%.1f", suggestedScore)
                 : "-";
-        return String.format(Locale.US, "建议分 %s · 发音准确 %.1f 分 · 流利 %.3f",
+        return String.format(Locale.US, "建议分 %s · 发音准确 %.1f 分 · 流利 %.1f",
                 suggested, pronunciationAccuracy, pronunciationFluency);
     }
 }

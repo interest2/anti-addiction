@@ -11,8 +11,10 @@ public final class RetellingRecord {
     public long timestamp;
     /** 原始故事 */
     public String story = "";
-    /** 本地语音识别得到的复述文本 */
+    /** 评分使用的复述文本（腾讯在线转写，未配置时回退本地离线识别） */
     public String recognizedText = "";
+    /** 本地离线语音识别（Sherpa）转写文本，仅用于与在线转写对比准确性，未跑离线识别为空串 */
+    public String offlineRecognizedText = "";
     /** 总分（0-100） */
     public int score;
     /** 内容完整度（权重 40） */
@@ -45,7 +47,7 @@ public final class RetellingRecord {
     }
 
     /**
-     * 口语评测三字段展示文本：建议分（1 位小数）/ 发音准确（1 位小数）/ 流利（3 位小数）。
+     * 口语评测三字段展示文本：建议分（1 位小数）/ 发音准确（1 位小数）/ 流利（1 位小数）。
      * 建议分未返回时以 {@code -} 占位；未评测返回 null。
      */
     public String formatPronunciationSummary() {
@@ -55,7 +57,7 @@ public final class RetellingRecord {
         String suggested = suggestedScore >= 0
                 ? String.format(Locale.US, "%.1f", suggestedScore)
                 : "-";
-        return String.format(Locale.US, "建议分 %s · 发音准确 %.1f 分 · 流利 %.3f",
+        return String.format(Locale.US, "建议分 %s · 发音准确 %.1f 分 · 流利 %.1f",
                 suggested, pronunciationAccuracy, pronunciationFluency);
     }
 }

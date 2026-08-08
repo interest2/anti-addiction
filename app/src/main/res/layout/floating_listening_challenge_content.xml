@@ -17,7 +17,7 @@
         android:textSize="24sp"
         android:textStyle="bold" />
 
-    <!-- 阶段提示：正在生成听力题… / 请播放听力，然后作答 / 答案错误 / 已显示原文，本题无法解禁 -->
+    <!-- 阶段提示：正在生成听力题… / 正在播放听力音频… / 请选择答案 / 答案错误 / 已显示原文，本题无法解禁 -->
     <TextView
         android:id="@+id/tv_listening_hint"
         android:layout_width="wrap_content"
@@ -37,12 +37,81 @@
         android:textSize="16sp"
         android:lineSpacingMultiplier="1.2" />
 
-    <!-- 听力原文：默认隐藏，答错后用户主动选择揭示；揭示后仅剩「换一题」 -->
+    <!-- 选项：由代码按题目动态生成 A/B/C/D 按钮 -->
+    <LinearLayout
+        android:id="@+id/ll_listening_options"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <!-- 音频合成完成后自动播放，仅保留「重听」供重新播放 -->
+    <Button
+        android:id="@+id/btn_listening_replay"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_marginTop="10dp"
+        android:backgroundTint="#FF9800"
+        android:text="重听"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btn_listening_submit"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:layout_marginEnd="8dp"
+            android:backgroundTint="#2196F3"
+            android:text="确定"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btn_listening_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:backgroundTint="#F44336"
+            android:text="取消"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+    <!-- 答错后出现：揭示听力原文（揭示后本题无法解禁） -->
+    <Button
+        android:id="@+id/btn_listening_reveal"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#9C27B0"
+        android:text="显示听力原文"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <!-- 换一题：答错后 / 揭示原文后，进入下一题 -->
+    <Button
+        android:id="@+id/btn_listening_next"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#009688"
+        android:text="换一题"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <!-- 听力原文：显示在「查看原文」等按钮下方 -->
     <ScrollView
         android:id="@+id/sv_listening_transcript"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
+        android:layout_marginTop="8dp"
         android:maxHeight="150dp"
         android:visibility="gone">
 
@@ -55,94 +124,6 @@
             android:textSize="14sp"
             android:lineSpacingMultiplier="1.2" />
     </ScrollView>
-
-    <!-- 选项：由代码按题目动态生成 A/B/C/D 按钮 -->
-    <LinearLayout
-        android:id="@+id/ll_listening_options"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:gravity="center"
-        android:orientation="horizontal">
-
-        <Button
-            android:id="@+id/btn_listening_play"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:backgroundTint="#4CAF50"
-            android:text="播放"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-
-        <Button
-            android:id="@+id/btn_listening_replay"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
-            android:backgroundTint="#FF9800"
-            android:text="重听"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:gravity="center"
-        android:orientation="horizontal">
-
-        <Button
-            android:id="@+id/btn_listening_submit"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:backgroundTint="#4CAF50"
-            android:text="确定"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-
-        <Button
-            android:id="@+id/btn_listening_cancel"
-            android:layout_width="0dp"
-            android:layout_height="44dp"
-            android:layout_weight="1"
-            android:text="取消"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
-    </LinearLayout>
-
-    <!-- 答错后出现：揭示听力原文（揭示后本题无法解禁） -->
-    <Button
-        android:id="@+id/btn_listening_reveal"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="8dp"
-        android:backgroundTint="#FF9800"
-        android:text="显示听力原文"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
-        android:visibility="gone" />
-
-    <!-- 换一题：答错后 / 揭示原文后，进入下一题 -->
-    <Button
-        android:id="@+id/btn_listening_next"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="8dp"
-        android:backgroundTint="#4CAF50"
-        android:text="换一题"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
-        android:visibility="gone" />
 
     <TextView
         android:id="@+id/tv_listening_result"
