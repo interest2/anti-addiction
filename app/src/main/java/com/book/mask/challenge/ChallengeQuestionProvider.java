@@ -15,9 +15,16 @@ import com.book.mask.util.ContentUtils;
 
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 负责题型选择、题目生成、远程题目请求与缓存。
@@ -47,6 +54,9 @@ final class ChallengeQuestionProvider {
             + "C.Supermarkets were the dominant form of food shopping in all "
             + "districts, with no use of small groceries or open markets.";
     private static final String FIRST_A_READING = "A";
+
+    /** 匹配选项前缀（半角点），题干中的实体名是顿号「A、」或全角冒号「A：」，不会误配。 */
+    private static final Pattern OPTION_PATTERN = Pattern.compile("([ABCD])\\.\\s*");
 
     private static final ConcurrentMap<ChallengeType, Question> REMOTE_CACHE =
             new ConcurrentHashMap<>();
@@ -104,11 +114,98 @@ final class ChallengeQuestionProvider {
 
         if (cachedQuestion != null) {
             Log.d(TAG, "使用缓存的" + type.getDisplayName());
+            // 推理 / 混合题每次出题重新打乱选项并同步更正答案，防止记住选项位置；
+            // 缓存里保留原始题，供下次重新随机。
+            if (type == ChallengeType.REASONING || type == ChallengeType.MIXED) {
+                return randomizeOptions(cachedQuestion);
+            }
             return cachedQuestion;
         }
 
         Log.w(TAG, "缓存中没有" + type.getDisplayName() + "，使用本地算术题作为备选");
         return generateArithmeticQuestion();
+    }
+
+    /**
+     * 打乱题干末尾选项块中 A/B/C/D 的顺序，并按选项文本重映射 answer。
+     * 题干正文（选项区之前）若也含「A.」等前缀则不随机化，原样返回；无选项的题（数字 / 文本答案）也原样返回。
+     */
+    private Question randomizeOptions(Question question) {
+        String content = question.getContent();
+        String answer = question.getAnswer();
+
+        Matcher first = OPTION_PATTERN.matcher(content);
+        if (!first.find()) {
+            return question;
+        }
+        int start = first.start();
+        // 防御：题干正文里出现「A.」等选项前缀，说明误配，保守不随机化
+        if (OPTION_PATTERN.matcher(content.substring(0, start)).find()) {
+            return question;
+        }
+
+        String optsArea = content.substring(start);
+        Matcher om = OPTION_PATTERN.matcher(optsArea);
+        List<String> letters = new ArrayList<>();
+        List<String> texts = new ArrayList<>();
+        List<Integer> starts = new ArrayList<>();
+        List<Integer> ends = new ArrayList<>();
+        while (om.find()) {
+            starts.add(om.start());
+            ends.add(om.end());
+            letters.add(om.group(1));
+        }
+        int count = letters.size();
+        if (count < 2) {
+            return question;
+        }
+        for (int i = 0; i < count; i++) {
+            int textStart = (i == 0) ? 0 : ends.get(i - 1);
+            texts.add(optsArea.substring(textStart, starts.get(i)).trim());
+        }
+        texts.add(optsArea.substring(ends.get(count - 1)).trim());
+        // 第一个选项前缀前是空串占位，去掉后 texts[i] 与 letters[i] 一一对应
+        if (!texts.isEmpty() && texts.get(0).isEmpty()) {
+            texts.remove(0);
+        }
+        if (texts.size() != letters.size()) {
+            return question;
+        }
+
+        int answerIndex = letters.indexOf(answer);
+        if (answerIndex < 0) {
+            return question;
+        }
+        String correctText = texts.get(answerIndex);
+        // 选项文本必须唯一，否则无法可靠重映射
+        Set<String> uniqueTexts = new HashSet<>(texts);
+        if (uniqueTexts.size() != texts.size()) {
+            return question;
+        }
+
+        List<Integer> indices = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            indices.add(i);
+        }
+        Collections.shuffle(indices, random);
+
+        StringBuilder builder = new StringBuilder(content.substring(0, start).trim());
+        String[] newLetters = new String[count];
+        for (int i = 0; i < count; i++) {
+            newLetters[i] = String.valueOf((char) ('A' + i));
+            builder.append('\n')
+                    .append(newLetters[i])
+                    .append(". ")
+                    .append(texts.get(indices.get(i)));
+        }
+        String newAnswer = null;
+        for (int i = 0; i < count; i++) {
+            if (texts.get(indices.get(i)).equals(correctText)) {
+                newAnswer = newLetters[i];
+                break;
+            }
+        }
+        return new Question(builder.toString(), newAnswer);
     }
 
     private Question generateArithmeticQuestion() {
