@@ -1238,7 +1238,7 @@ public class SettingsDialogManager {
             .setTitle(title)
             .setView(layout)
             .setPositiveButton("确定", null)
-            .setNegativeButton("取消", null)
+            .setNegativeButton("关闭", null)
             .create();
         dialog.setOnShowListener(ignored ->
             dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -1610,7 +1610,7 @@ public class SettingsDialogManager {
                     showCustomMathDifficultyDialog();
                 }
             })
-            .setNegativeButton("取消", null)
+            .setNegativeButton("关闭", null)
             .show();
     }
 
@@ -1654,7 +1654,7 @@ public class SettingsDialogManager {
             .setTitle("数字位数设置")
             .setView(dialogView)
             .setPositiveButton("保存", null)
-            .setNegativeButton("取消", null)
+            .setNegativeButton("关闭", null)
             .create();
         dialog.setOnShowListener(ignored ->
             dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {

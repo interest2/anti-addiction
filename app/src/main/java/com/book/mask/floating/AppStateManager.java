@@ -199,7 +199,8 @@ public class AppStateManager {
             }
 
             String currentPackageName = currentActiveApp.getPackageName();
-            if (currentActiveApp.isGlobalBlock()) {
+            if (currentActiveApp.isGlobalBlock()
+                    && !CustomAppManager.WECHAT_PACKAGE.equals(currentPackageName)) {
                 dispatchAppStateChange(currentActiveApp, true, forceCheck, appManuallyHidden);
                 lastDetectionNotTarget.put(currentPackageName, false);
                 Log.d(TAG, "全局屏蔽已开启，跳过页面关键词检测，APP="

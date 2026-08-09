@@ -16,6 +16,7 @@ import com.book.mask.R;
 import com.book.mask.challenge.ChallengeManager;
 import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
+import com.book.mask.config.CustomAppManager;
 import com.book.mask.config.InputMethodPackageManager;
 import com.book.mask.config.Share;
 import com.book.mask.personalize.AppSettingsManager;
@@ -166,20 +167,27 @@ public class FloatingWindowManager {
             closeButton.setOnClickListener(v -> {
                 Log.d(TAG, "用户点击关闭按钮");
 
-                if (leisureTimeManager.isLeisureTimeArmed()
+                boolean wechatChallengeRequired = currentWindowApp != null
+                        && CustomAppManager.WECHAT_PACKAGE.equals(
+                                currentWindowApp.getPackageName())
+                        && currentWindowApp.isGlobalBlock();
+                if (wechatChallengeRequired) {
+                    Log.d(TAG, "微信已开启答题解锁，显示答题验证界面");
+                    InputMethodPackageManager.getInstance().registerDefaultInputMethod(context);
+                    challengeManager.showChallenge();
+                } else if (leisureTimeManager.isLeisureTimeArmed()
                         && listener != null
                         && listener.onLeisureTimeCloseRequested()) {
                     Log.d(TAG, "使用休闲时刻免答题关闭悬浮窗");
-                // 微信APP直接当作答题通过，不显示数学题
-                } else if (currentWindowApp != null &&
-                    "com.tencent.mm".equals(currentWindowApp.getPackageName())) {
-                    Log.d(TAG, "微信APP直接当作答题通过");
-                    // 直接调用答题成功的逻辑
-                    if (challengeManager != null && challengeManager.getOnChallengeListener() != null) {
+                } else if (currentWindowApp != null
+                        && CustomAppManager.WECHAT_PACKAGE.equals(
+                                currentWindowApp.getPackageName())) {
+                    Log.d(TAG, "微信未开启答题解锁，直接关闭悬浮窗");
+                    if (challengeManager != null
+                            && challengeManager.getOnChallengeListener() != null) {
                         challengeManager.getOnChallengeListener().onAnswerCorrect();
                     }
                 } else {
-                    // 其他APP显示答题验证界面
                     InputMethodPackageManager.getInstance().registerDefaultInputMethod(context);
                     challengeManager.showChallenge();
                 }

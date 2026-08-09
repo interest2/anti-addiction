@@ -20,7 +20,7 @@ public class DateUtils {
     // 日期前缀着色：目标剩余天数
     private static final int COLOR_ORANGE_RED = Color.parseColor("#FF5722");  // 橙红色：X 天 >= 10 时数字颜色
     private static final int COLOR_BRIGHT_RED = Color.parseColor("#FF1744");  // 鲜红色：X 天 < 10 时数字颜色（更紧急）
-    private static final int COLOR_LIGHT_PURPLE = Color.parseColor("#E1BEE7"); // 浅紫色：其余文字颜色
+    private static final int COLOR_LIGHT_PURPLE = Color.parseColor("#EAD2EE"); // 浅紫色：其余文字颜色
     private static final int GOAL_TEXT_MAX_LENGTH = 6;                        // 目标内容最多展示 6 个字，超出用…省略
 
     // 时间格式化器

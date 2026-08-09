@@ -26,11 +26,14 @@ final class ChallengeQuestionProvider {
 
     private static final String TAG = "ChallengeProvider";
     private static final String FIRST_Q_REASON = "甲、乙、丙、丁四人参加比赛，名次各不相同。已知：\n" +
-            "①甲、乙中恰有一人是第一名；\n" +
-            "②若甲是第一名，则丙是第三名；\n" +
-            "③若乙是第一名，则丁是第二名；\n" +
-            "④丁比丙高一个名次。问谁是第二名\n";
-    private static final String FIRST_A_REASON = "丁";
+            "① 甲、乙中恰有一人是第一名；\n" +
+            "② 若甲是第一名，则丙是第三名；\n" +
+            "③ 若乙是第一名，则丁是第二名；\n" +
+            "④ 丁比丙高一个名次。\n" +
+            "问：谁是第二名\n" +
+            "A. 甲 B. 乙 C. 丙 D. 丁\n"
+            ;
+    private static final String FIRST_A_REASON = "D";
 
     private static final String FIRST_Q_READING = "Supermarkets were still a California phenomenon; District food shopping "
             + "was done in small groceries, in red-fronted outlets of the Great "

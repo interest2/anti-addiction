@@ -225,9 +225,10 @@
 
   点击关闭按钮的优先级：
 
-  1. 已预备休闲时刻：免答题关闭。
-  2. 微信：直接按答题成功处理。
-  3. 其他应用：显示答题界面。
+  1. 微信已开启“答题解锁”：显示答题界面。
+  2. 已预备休闲时刻：免答题关闭。
+  3. 微信未开启“答题解锁”：直接按答题成功处理。
+  4. 其他应用：显示答题界面。
 
   [`ChallengeViewController`](../app/src/main/java/com/book/mask/challenge/ChallengeViewController.java) 通过 `ViewStub` 在首次答题时懒加载答题布局，而不是在普通悬浮窗创建时加载。答题界面会：
 

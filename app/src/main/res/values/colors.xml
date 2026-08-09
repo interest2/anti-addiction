@@ -8,4 +8,8 @@
     <color name="grey">#BDBDBD</color>
     <color name="provider_status_success">#2E7D32</color>
     <color name="provider_status_error">#B3261E</color>
+    <color name="bottom_nav_active_indicator">#DCEBFF</color>
+    <color name="bottom_nav_selected">#2468AA</color>
+    <color name="bottom_nav_unselected">#737B86</color>
+    <color name="bottom_nav_ripple">#1F2468AA</color>
 </resources>

@@ -192,16 +192,17 @@ public class ChallengeManager {
 
     private void handleCancelInternal() {
         Log.d(TAG, "用户取消关闭");
-        boolean isWechat =
+        boolean canCloseWechatWithoutChallenge =
                 currentApp != null
-                        && CustomAppManager.WECHAT_PACKAGE.equals(currentApp.getPackageName());
+                        && CustomAppManager.WECHAT_PACKAGE.equals(currentApp.getPackageName())
+                        && !currentApp.isGlobalBlock();
         hideChallenge();
 
         if (listener == null) {
             return;
         }
-        if (isWechat) {
-            Log.d(TAG, "微信APP取消按钮被点击，直接当作答题通过");
+        if (canCloseWechatWithoutChallenge) {
+            Log.d(TAG, "微信未开启答题解锁，取消答题时直接关闭");
             listener.onAnswerCorrect();
         } else {
             listener.onChallengeCancel();

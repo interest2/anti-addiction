@@ -7,6 +7,14 @@
 
     <style name="Theme.Basic" parent="Base.Theme.Basic" />
 
+    <style name="BottomNavigationActiveIndicator">
+        <item name="android:color">@color/bottom_nav_active_indicator</item>
+    </style>
+
+    <style name="BottomNavigationNoMotionTheme">
+        <item name="motionDurationLong2">0</item>
+    </style>
+
     <!-- 让 API Key 输入框内占位提示与正式输入内容同为 14sp -->
     <style name="TextAppearance.Provider.Placeholder" parent="TextAppearance.Material3.BodyLarge">
         <item name="android:textSize">13sp</item>

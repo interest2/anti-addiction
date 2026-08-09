@@ -7,7 +7,9 @@ import com.tencent.mmkv.MMKV;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public final class ReminderProviderConfigStore {
@@ -202,6 +204,50 @@ public final class ReminderProviderConfigStore {
         }
         mmkv.putString(KEY_CUSTOM_MODELS_PREFIX + ownerKey, gson.toJson(models)).commit();
         return true;
+    }
+
+    /**
+     * 备份导出：扫描所有 {@code custom_models_} 前缀键，按 ownerKey（预置服务商 id 或自定义 Provider
+     * profileId）归组成 {ownerKey: [模型名...]}。仅含非空列表，无任何自定义模型时返回空 Map。
+     */
+    public synchronized Map<String, List<String>> exportCustomModels() {
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        String[] allKeys = mmkv.allKeys();
+        if (allKeys == null) {
+            return result;
+        }
+        for (String key : allKeys) {
+            if (key.startsWith(KEY_CUSTOM_MODELS_PREFIX)) {
+                String ownerKey = key.substring(KEY_CUSTOM_MODELS_PREFIX.length());
+                List<String> models = getCustomModels(ownerKey);
+                if (!models.isEmpty()) {
+                    result.put(ownerKey, models);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 备份导入：按 ownerKey 逐条合并自定义模型名（去重），返回实际写入的模型数。
+     */
+    public synchronized int restoreCustomModels(Map<String, List<String>> customModels) {
+        if (customModels == null || customModels.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (Map.Entry<String, List<String>> entry : customModels.entrySet()) {
+            if (entry.getKey() == null || entry.getKey().isEmpty()) {
+                continue;
+            }
+            for (String model : entry.getValue()) {
+                if (model != null && !model.trim().isEmpty()) {
+                    addCustomModel(entry.getKey(), model);
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private ReminderProviderConfig[] readProfiles() {        String json = mmkv.getString(KEY_PROFILES, "[]");

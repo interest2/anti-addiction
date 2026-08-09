@@ -721,9 +721,19 @@ public class HomeNav extends Fragment implements
         return app.getAppName();
     }
 
+    private boolean isWechat(CustomApp app) {
+        return app != null
+                && CustomAppManager.WECHAT_PACKAGE.equals(app.getPackageName());
+    }
+
+    private String getBlockSettingLabel(CustomApp app) {
+        return isWechat(app) ? "答题解锁" : "全局屏蔽";
+    }
+
     private void showConfigDialogForApp(CustomApp app) {
         View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_time_setting, null);
 
+        TextView globalBlockLabel = dialogView.findViewById(R.id.tv_global_block_label);
         ToggleButton globalBlockToggle = dialogView.findViewById(R.id.toggle_global_block);
         ImageView globalBlockHelp = dialogView.findViewById(R.id.iv_global_block_help);
         View targetWordSetting = dialogView.findViewById(R.id.layout_target_word_setting);
@@ -738,7 +748,16 @@ public class HomeNav extends Fragment implements
                 dialogView.findViewById(R.id.layout_floating_text_source_setting);
         View floatingSizeSetting = dialogView.findViewById(R.id.layout_floating_size_setting);
 
-        targetWordValue.setText(app.getTargetWord());
+        boolean wechat = isWechat(app);
+        globalBlockLabel.setText(getBlockSettingLabel(app));
+        if (wechat) {
+            targetWordSetting.setVisibility(View.GONE);
+            globalBlockHelp.setContentDescription("答题解锁说明");
+        } else {
+            targetWordValue.setText(app.getTargetWord());
+            targetWordSetting.setOnClickListener(v ->
+                    showTargetWordInputDialog(app, targetWordValue));
+        }
         floatingTextSourceValue.setText(
                 appSettingsManager.getAppHintSource(app.getPackageName()));
 
@@ -758,8 +777,6 @@ public class HomeNav extends Fragment implements
                 app,
                 refreshIntervalState));
 
-        targetWordSetting.setOnClickListener(v ->
-                showTargetWordInputDialog(app, targetWordValue));
         floatingTextSourceSetting.setOnClickListener(v ->
                 showFloatingTextSourceDialog(app, () -> floatingTextSourceValue.setText(
                         appSettingsManager.getAppHintSource(app.getPackageName()))));
@@ -768,8 +785,11 @@ public class HomeNav extends Fragment implements
 
         globalBlockToggle.setChecked(app.isGlobalBlock());
         bindGlobalBlockToggle(globalBlockToggle, app);
+        String globalBlockHelpMessage = wechat
+                ? "开启后，微信需答题的有：关闭悬浮窗、关闭本按钮、关闭卡片右上角开关"
+                : "开启后该 APP 所有页面都会被遮挡，也无法搜索，如需保留搜索功能可留言反馈";
         globalBlockHelp.setOnClickListener(v -> new android.app.AlertDialog.Builder(requireContext())
-                .setMessage("开启后该 APP 所有页面都会被遮挡，也无法搜索，如需保留搜索功能可留言反馈")
+                .setMessage(globalBlockHelpMessage)
                 .setPositiveButton("知道了", null)
                 .show());
 
@@ -886,25 +906,27 @@ public class HomeNav extends Fragment implements
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
                 .setTitle("宽松模式")
                 .setView(root)
-                .setPositiveButton("确定", null)
-                .setNegativeButton("取消", null)
+                .setNegativeButton("关闭", null)
                 .create();
-        dialog.setOnShowListener(ignored ->
-                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    int intervalIndex = durationGroup.getCheckedRadioButtonId();
-                    int countIndex = countGroup.getCheckedRadioButtonId();
-                    if (countIndex >= 0 && countIndex < 3) {
-                        app.setRelaxedLimitCount(countIndex + 1);
-                        customAppManager.persistAppChange(app);
-                    }
-                    if (intervalIndex >= 0 && intervalIndex < intervals.length) {
-                        relaxManager.setAppInterval(app, intervals[intervalIndex]);
-                        FloatService.notifyIntervalChanged();
-                    }
-                    onSelectionChanged.run();
-                    updateAppCardsDisplay();
-                    dialog.dismiss();
-                }));
+
+        // 即时保存：选中时长/次数即生效，弹窗仅保留「关闭」
+        countGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId >= 0 && checkedId < 3) {
+                app.setRelaxedLimitCount(checkedId + 1);
+                customAppManager.persistAppChange(app);
+                onSelectionChanged.run();
+                updateAppCardsDisplay();
+            }
+        });
+        durationGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId >= 0 && checkedId < intervals.length) {
+                relaxManager.setAppInterval(app, intervals[checkedId]);
+                FloatService.notifyIntervalChanged();
+                onSelectionChanged.run();
+                updateAppCardsDisplay();
+            }
+        });
+
         dialog.show();
     }
 
@@ -1087,13 +1109,14 @@ public class HomeNav extends Fragment implements
         Button submitButton = dialogView.findViewById(R.id.btn_submit_answer);
         Button cancelButton = dialogView.findViewById(R.id.btn_cancel_close);
 
-        headerText.setText("🔢 回答算术题才能关闭全局屏蔽");
+        String settingLabel = getBlockSettingLabel(app);
+        headerText.setText("🔢 回答算术题才能关闭" + settingLabel);
         String question = createDefaultMathQuestion();
         final int[] correctAnswer = {ArithmeticUtils.getMathAnswer(question)};
         questionText.setText(question);
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("关闭全局屏蔽验证")
+                .setTitle("关闭" + settingLabel + "验证")
                 .setView(dialogView)
                 .create();
         final boolean[] answerVerified = {false};
@@ -1172,7 +1195,8 @@ public class HomeNav extends Fragment implements
     private void setGlobalBlock(CustomApp app, boolean enabled) {
         app.setGlobalBlock(enabled);
         customAppManager.persistAppChange(app);
-        UiFeedback.show(requireContext(), enabled ? "已开启全局屏蔽" : "已关闭全局屏蔽");
+        String settingLabel = getBlockSettingLabel(app);
+        UiFeedback.show(requireContext(), (enabled ? "已开启" : "已关闭") + settingLabel);
     }
 
     /**
@@ -1314,7 +1338,7 @@ public class HomeNav extends Fragment implements
      * 显示算术题验证弹窗用于关闭屏蔽
      */
     private void showMathChallengeForMonitorToggle(CustomApp app, String packageName) {
-        if(CustomAppManager.WECHAT_PACKAGE.equals(packageName)){
+        if (isWechat(app) && !app.isGlobalBlock()) {
             relaxManager.setAppMonitoringEnabled(packageName, false);
             updateAppCardsDisplay();
             return;
@@ -1338,7 +1362,8 @@ public class HomeNav extends Fragment implements
             .setTitle("关闭屏蔽验证")
             .setView(dialogView)
             .create();
-        
+        dialog.setOnCancelListener(ignored -> updateAppCardsDisplay());
+
         // 提交答案按钮
         submitButton.setOnClickListener(v -> {
             String userAnswer = answerEdit.getText().toString().trim();
@@ -1392,14 +1417,8 @@ public class HomeNav extends Fragment implements
             }
         });
         
-        // 取消按钮
-        cancelButton.setOnClickListener(v -> {
-            dialog.dismiss();
-            // 取消关闭屏蔽，恢复开关状态
-            if (appCardAdapter != null) {
-                appCardAdapter.updateData(allApps);
-            }
-        });
+        // 取消关闭屏蔽，恢复开关状态
+        cancelButton.setOnClickListener(v -> dialog.cancel());
         
         // 回车键提交答案
         answerEdit.setOnEditorActionListener((v, actionId, event) -> {

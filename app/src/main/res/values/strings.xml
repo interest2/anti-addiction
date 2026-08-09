@@ -37,7 +37,7 @@
     <string name="provider_name">服务商名称</string>
     <string name="provider_endpoint">Chat Completions 接口地址</string>
     <string name="provider_api_key">API Key</string>
-    <string name="provider_api_key_hint">API Key 只存储在手机本地，且导出备份时会忽略它</string>
+    <string name="provider_api_key_hint">API Key 只存储在手机本地</string>
     <string name="provider_model">模型名</string>
     <string name="provider_api_key_saved">API Key（已保存）</string>
     <string name="provider_preset_openai" translatable="false">OpenAI</string>
