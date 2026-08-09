@@ -36,6 +36,7 @@ public class Const {
      */
     public static final int TRANSIENT_FEEDBACK_DURATION_MS = 1000; // 非常驻 UI 提示时长
     public static final boolean REMINDER_PROVIDER_SETTINGS_ENABLED = true;
+    public static final boolean ANSWER_RECORDS_ENABLED = false;
 
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";

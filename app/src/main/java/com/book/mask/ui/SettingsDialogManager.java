@@ -1372,6 +1372,13 @@ public class SettingsDialogManager {
                 + " · 合格线" + challengeSettingsManager.getRetellingPassScore();
     }
 
+    /** 算术题生效难度文案：default 显示「默认难度」，custom 显示「自定义难度」。 */
+    public String getMathDifficultyModeLabel() {
+        return "custom".equals(challengeSettingsManager.getMathDifficultyMode())
+                ? "自定义难度"
+                : "默认难度";
+    }
+
     /**
      * 复述题设置弹窗：一次保存故事字数、展示秒数、通过分数三个值。
      * 保存前检查麦克风权限（未授予则回调 MainActivity 申请）、大模型配置、ASR 模型状态；
@@ -2169,7 +2176,7 @@ public class SettingsDialogManager {
         List<AnswerRecordEntry> entries = collectAnswerRecordEntries();
         if (entries.isEmpty()) {
             TextView empty = new TextView(context);
-            empty.setText("暂无答题记录\n答题完成后会自动记录在这里");
+            empty.setText("暂无答题记录\n此处展示非算术题的答题记录");
             empty.setTextColor(0xFF8A8A8A);
             empty.setTextSize(15);
             empty.setGravity(Gravity.CENTER);

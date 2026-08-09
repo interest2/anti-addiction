@@ -56,4 +56,13 @@
                 android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_right_hint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textColor="#999999"
+        android:textSize="12sp"
+        android:visibility="gone" />
 </LinearLayout>

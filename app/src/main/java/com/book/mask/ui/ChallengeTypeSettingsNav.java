@@ -85,6 +85,8 @@ public class ChallengeTypeSettingsNav extends Fragment {
                             subtitle.setText(settingsDialogManager.formatRetellingSummary());
                             refreshCheckedRows();
                         }));
+            } else if (type == ChallengeType.ARITHMETIC) {
+                updateArithmeticHint(row);
             }
 
             row.setOnClickListener(v -> onTypeSelected(type));
@@ -102,13 +104,23 @@ public class ChallengeTypeSettingsNav extends Fragment {
         }
     }
 
-    /** 按下标同步选中态：当前题型所在行选中，其余取消。 */
+    /** 按下标同步选中态：当前题型所在行选中，其余取消；算术题行同步刷新生效难度提示。 */
     private void refreshCheckedRows() {
         ChallengeType currentType = settingsDialogManager.getChallengeType();
         for (int i = 0; i < rows.size(); i++) {
             ImageView radio = rows.get(i).findViewById(R.id.iv_radio);
             radio.setImageResource(rowTypes.get(i) == currentType
                     ? R.drawable.ic_radio_checked : R.drawable.ic_radio_unchecked);
+            if (rowTypes.get(i) == ChallengeType.ARITHMETIC) {
+                updateArithmeticHint(rows.get(i));
+            }
         }
+    }
+
+    /** 算术题行右侧灰色小字：展示当前生效难度（默认难度 / 自定义难度）。 */
+    private void updateArithmeticHint(View row) {
+        TextView hint = row.findViewById(R.id.tv_right_hint);
+        hint.setText(settingsDialogManager.getMathDifficultyModeLabel());
+        hint.setVisibility(View.VISIBLE);
     }
 }

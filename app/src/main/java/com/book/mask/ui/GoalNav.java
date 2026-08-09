@@ -86,11 +86,19 @@ public class GoalNav extends Fragment {
             settingsDialogManager.showLeisureTimeDialog();
         });
 
-        // 复述题答题记录
+        // 复述题答题记录（可用 Const.ANSWER_RECORDS_ENABLED 控制入口显隐，便于后续恢复）
         View answerRecordsRow = view.findViewById(R.id.btn_answer_records);
-        answerRecordsRow.setOnClickListener(v -> {
-            settingsDialogManager.showAnswerRecordsDialog();
-        });
+        View answerRecordsDivider = view.findViewById(R.id.divider_answer_records);
+        int answerRecordsVisibility = Const.ANSWER_RECORDS_ENABLED
+                ? View.VISIBLE
+                : View.GONE;
+        answerRecordsRow.setVisibility(answerRecordsVisibility);
+        answerRecordsDivider.setVisibility(answerRecordsVisibility);
+        if (Const.ANSWER_RECORDS_ENABLED) {
+            answerRecordsRow.setOnClickListener(v -> {
+                settingsDialogManager.showAnswerRecordsDialog();
+            });
+        }
 
         return view;
     }
