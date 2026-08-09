@@ -747,13 +747,16 @@ public class HomeNav extends Fragment implements
         View floatingTextSourceSetting =
                 dialogView.findViewById(R.id.layout_floating_text_source_setting);
         View floatingSizeSetting = dialogView.findViewById(R.id.layout_floating_size_setting);
+        TextView wechatSpecialNote = dialogView.findViewById(R.id.tv_wechat_special_note);
 
         boolean wechat = isWechat(app);
+        wechatSpecialNote.setVisibility(wechat ? View.VISIBLE : View.GONE);
         globalBlockLabel.setText(getBlockSettingLabel(app));
         if (wechat) {
             targetWordSetting.setVisibility(View.GONE);
-            globalBlockHelp.setContentDescription("答题解锁说明");
+            globalBlockHelp.setVisibility(View.GONE);
         } else {
+            globalBlockHelp.setVisibility(View.VISIBLE);
             targetWordValue.setText(app.getTargetWord());
             targetWordSetting.setOnClickListener(v ->
                     showTargetWordInputDialog(app, targetWordValue));
@@ -786,7 +789,7 @@ public class HomeNav extends Fragment implements
         globalBlockToggle.setChecked(app.isGlobalBlock());
         bindGlobalBlockToggle(globalBlockToggle, app);
         String globalBlockHelpMessage = wechat
-                ? "开启后，微信需答题的有：关闭悬浮窗、关闭本按钮、关闭卡片右上角开关"
+                ? ""
                 : "开启后该 APP 所有页面都会被遮挡，也无法搜索，如需保留搜索功能可留言反馈";
         globalBlockHelp.setOnClickListener(v -> new android.app.AlertDialog.Builder(requireContext())
                 .setMessage(globalBlockHelpMessage)

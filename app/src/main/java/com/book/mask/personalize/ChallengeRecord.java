@@ -1,7 +1,7 @@
 package com.book.mask.personalize;
 
 /**
- * 非算术题（推理 / 混合等云端题目）单次答题记录。仅用于「答题记录」展示，字段由 Gson 序列化到 MMKV。
+ * 文本类单次答题记录（算术 / 推理 / 混合 / 英文阅读）。仅用于「答题记录」展示，字段由 Gson 序列化到 MMKV。
  */
 public final class ChallengeRecord {
 

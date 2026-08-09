@@ -16,6 +16,18 @@
         android:paddingBottom="8dp">
 
         <TextView
+            android:id="@+id/tv_wechat_special_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:background="#F5F5F5"
+            android:padding="8dp"
+            android:text="微信无法按页面屏蔽，故整体屏蔽，但关悬浮窗默认无需答题，如需答题可开启下方按钮。小程序界面不保证成功弹窗。"
+            android:textColor="#999999"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="2dp"

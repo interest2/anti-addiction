@@ -9,8 +9,10 @@ import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.book.mask.R;
@@ -29,6 +31,8 @@ public class RetellingRecordActivity extends AppCompatActivity {
 
     private static final String TAG = "RetellingRecord";
     private static final long TICK_MS = 1000L;
+    /** 录音运行时权限请求码。 */
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 1001;
 
     /** 录音上限（秒），由会话按故事长度计算后传入；缺省回退默认 45 秒。 */
     public static final String EXTRA_RECORD_MAX_SECONDS = "record_max_seconds";
@@ -69,12 +73,22 @@ public class RetellingRecordActivity extends AppCompatActivity {
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "录音权限缺失，无法录音");
-            notifyError("缺少麦克风权限");
-            finish();
+            requestMicPermission();
             return;
         }
+        startCapture();
+    }
 
+    /** 请求麦克风运行时权限；结果在 {@link #onRequestPermissionsResult} 回调。 */
+    private void requestMicPermission() {
+        Log.d(TAG, "申请麦克风权限");
+        ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.RECORD_AUDIO},
+                REQUEST_RECORD_AUDIO_PERMISSION);
+    }
+
+    /** 权限已就绪时启动麦克风采集，并把 PCM 流接给会话。 */
+    private void startCapture() {
         audioCapture = new AudioCaptureManager(maxSeconds);
         if (!audioCapture.start()) {
             Log.e(TAG, "启动录音失败");
@@ -89,6 +103,25 @@ public class RetellingRecordActivity extends AppCompatActivity {
 
         timerText.setText(formatTime(0));
         handler.postDelayed(ticker, TICK_MS);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_RECORD_AUDIO_PERMISSION) {
+            return;
+        }
+        if (grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "麦克风权限已授予");
+            startCapture();
+        } else {
+            Log.e(TAG, "麦克风权限被拒绝");
+            notifyError("缺少麦克风权限，请在系统设置中允许本应用录音后重试");
+            finish();
+        }
     }
 
     @Override

@@ -8,6 +8,7 @@
     android:paddingEnd="12dp">
 
     <ScrollView
+        android:id="@+id/scroll_answer_records"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:maxHeight="460dp"
@@ -19,19 +20,5 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" />
     </ScrollView>
-
-    <Button
-        android:id="@+id/btn_clear_answer_records"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp"
-        android:backgroundTint="#E53935"
-        android:minHeight="0dp"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp"
-        android:text="清空记录"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp" />
 
 </LinearLayout>

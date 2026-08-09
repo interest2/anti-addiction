@@ -1,9 +1,7 @@
 package com.book.mask.challenge.retelling;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -13,6 +11,8 @@ import com.book.mask.challenge.ChallengeSession;
 import com.book.mask.challenge.retelling.soe.SoeSpeechEvaluator;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.floating.FloatService;
+import com.book.mask.personalize.AnswerOverviewRecord;
+import com.book.mask.personalize.AnswerOverviewStore;
 import com.book.mask.personalize.ChallengeSettingsManager;
 import com.book.mask.personalize.RetellingRecord;
 import com.book.mask.personalize.RetellingRecordStore;
@@ -424,11 +424,6 @@ public final class RetellingChallengeSession implements ChallengeSession {
                 && state != RetellingState.READING)) {
             return;
         }
-        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-            view.showRecordingUnavailable();
-            return;
-        }
         // 阅读阶段可提前开始复述：停止倒计时并清空原文，避免边看边念。
         if (state == RetellingState.READING) {
             handler.removeCallbacks(countdownRunnable);
@@ -607,7 +602,8 @@ public final class RetellingChallengeSession implements ChallengeSession {
         try {
             RetellingStoryRepository.Story story = currentStory;
             RetellingRecord record = new RetellingRecord();
-            record.timestamp = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
+            record.timestamp = now;
             record.story = story == null ? "" : story.getStory();
             record.recognizedText = lastRecognizedText == null ? "" : lastRecognizedText;
             record.offlineRecognizedText = offlineTranscript == null ? "" : offlineTranscript;
@@ -623,6 +619,11 @@ public final class RetellingChallengeSession implements ChallengeSession {
             record.pronunciationFluency = score.getPronunciationFluency();
             record.suggestedScore = score.getSuggestedScore();
             new RetellingRecordStore().addRecord(record);
+            AnswerOverviewRecord overview = new AnswerOverviewRecord();
+            overview.type = AnswerOverviewRecord.TYPE_RETELLING;
+            overview.timestamp = now;
+            overview.passed = passed;
+            new AnswerOverviewStore().addRecord(overview);
             Log.d(TAG, "已保存复述答题记录，得分=" + record.score + ", 通过=" + passed);
         } catch (Exception e) {
             Log.e(TAG, "保存复述答题记录失败", e);

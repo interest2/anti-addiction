@@ -1,5 +1,6 @@
 package com.book.mask.personalize;
 
+import com.book.mask.constant.QuestionConst;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.tencent.mmkv.MMKV;
@@ -14,8 +15,6 @@ import java.util.List;
 public final class RetellingRecordStore {
 
     private static final String KEY = "retelling_answer_records";
-    /** 最多保留的记录条数 */
-    private static final int MAX_RECORDS = 50;
 
     private final MMKV mmkv;
     private final Gson gson = new Gson();
@@ -47,8 +46,8 @@ public final class RetellingRecordStore {
         }
         List<RetellingRecord> records = getRecords();
         records.add(0, record);
-        if (records.size() > MAX_RECORDS) {
-            records = new ArrayList<>(records.subList(0, MAX_RECORDS));
+        if (records.size() > QuestionConst.RETELLING_RECORD_MAX) {
+            records = new ArrayList<>(records.subList(0, QuestionConst.RETELLING_RECORD_MAX));
         }
         mmkv.putString(KEY, gson.toJson(records)).commit();
     }

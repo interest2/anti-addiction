@@ -7,6 +7,8 @@ import android.util.Log;
 import android.view.View;
 
 import com.book.mask.challenge.ChallengeSession;
+import com.book.mask.personalize.AnswerOverviewRecord;
+import com.book.mask.personalize.AnswerOverviewStore;
 import com.book.mask.personalize.ListeningRecord;
 import com.book.mask.personalize.ListeningRecordStore;
 
@@ -202,13 +204,19 @@ public final class ListeningChallengeSession implements ChallengeSession {
                 return;
             }
             ListeningRecord record = new ListeningRecord();
-            record.timestamp = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
+            record.timestamp = now;
             record.question = q.getQuestion();
             record.transcript = q.getTranscript();
             record.passed = passed;
             record.userAnswer = optionLabelOf(q, answerLetter);
             record.correctAnswer = q.optionLabel(q.answerIndex());
             new ListeningRecordStore().addRecord(record);
+            AnswerOverviewRecord overview = new AnswerOverviewRecord();
+            overview.type = AnswerOverviewRecord.TYPE_LISTENING;
+            overview.timestamp = now;
+            overview.passed = passed;
+            new AnswerOverviewStore().addRecord(overview);
             Log.d(TAG, "已保存听力答题记录，答对=" + passed);
         } catch (Exception e) {
             Log.e(TAG, "保存听力答题记录失败", e);

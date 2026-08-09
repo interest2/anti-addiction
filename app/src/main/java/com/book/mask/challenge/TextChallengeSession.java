@@ -9,6 +9,8 @@ import android.view.WindowManager;
 
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
+import com.book.mask.personalize.AnswerOverviewRecord;
+import com.book.mask.personalize.AnswerOverviewStore;
 import com.book.mask.personalize.ChallengeRecord;
 import com.book.mask.personalize.ChallengeRecordStore;
 import com.book.mask.personalize.ChallengeSettingsManager;
@@ -136,7 +138,7 @@ final class TextChallengeSession implements ChallengeSession {
 
         if (currentAnswer.equalsIgnoreCase(userAnswer)) {
             Log.d(TAG, "答题正确");
-            recordNotArithmeticAnswer(userAnswer, true);
+            recordAnswer(userAnswer, true);
             stopTimer();
             viewController.showCorrectAnswer();
             handler.postDelayed(() -> {
@@ -152,7 +154,7 @@ final class TextChallengeSession implements ChallengeSession {
         }
 
         Log.d(TAG, "答题错误: " + userAnswer + " (正确答案: " + currentAnswer + ")");
-        recordNotArithmeticAnswer(userAnswer, false);
+        recordAnswer(userAnswer, false);
         viewController.showWrongAnswer();
         handler.postDelayed(() -> {
             if (!shown) {
@@ -169,25 +171,31 @@ final class TextChallengeSession implements ChallengeSession {
     }
 
     /**
-     * 落地一条非算术题答题记录（推理 / 混合等云端题目），供「答题记录」展示；
-     * 纯算术题为本地生成，不入记录。
+     * 落地一条文本类答题记录（算术 / 推理 / 混合 / 英文阅读），供「答题记录」展示；
+     * 详情统一存 {@link ChallengeRecordStore}，概况按题型区分标签（算术 / 推理）。
      */
-    private void recordNotArithmeticAnswer(String userAnswer, boolean passed) {
-        if (currentType == ChallengeType.ARITHMETIC) {
-            return;
-        }
+    private void recordAnswer(String userAnswer, boolean passed) {
         try {
             ChallengeRecord record = new ChallengeRecord();
-            record.timestamp = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
+            record.timestamp = now;
             record.question = currentQuestion == null ? "" : currentQuestion;
             record.userAnswer = userAnswer == null ? "" : userAnswer;
             record.correctAnswer = currentAnswer == null ? "" : currentAnswer;
             record.passed = passed;
             record.elapsedSeconds = (int) computeElapsedSeconds();
             new ChallengeRecordStore().addRecord(record);
-            Log.d(TAG, "已保存非算术题答题记录, 答对=" + passed + ", 耗时=" + record.elapsedSeconds);
+            AnswerOverviewRecord overview = new AnswerOverviewRecord();
+            overview.type = currentType == ChallengeType.ARITHMETIC
+                    ? AnswerOverviewRecord.TYPE_ARITHMETIC
+                    : AnswerOverviewRecord.TYPE_CHALLENGE;
+            overview.timestamp = now;
+            overview.elapsedSeconds = record.elapsedSeconds;
+            overview.passed = passed;
+            new AnswerOverviewStore().addRecord(overview);
+            Log.d(TAG, "已保存文本类答题记录, 答对=" + passed + ", 耗时=" + record.elapsedSeconds);
         } catch (Exception e) {
-            Log.e(TAG, "保存非算术题答题记录失败", e);
+            Log.e(TAG, "保存文本类答题记录失败", e);
         }
     }
 
@@ -206,12 +214,12 @@ final class TextChallengeSession implements ChallengeSession {
         return (System.currentTimeMillis() - questionStartTime) / 1000;
     }
 
-    /** 启动 / 停止当前题目正计时：计时时重置起点并开始刷新，否则隐藏左上角计时。 */
+    /** 启动当前题目正计时：内部始终记录耗时（供答题记录统计），show 仅控制悬浮窗左上角是否展示计时。 */
     private void startTimer(boolean show) {
-        stopTimer();
+        handler.removeCallbacks(timerTick);
+        questionStartTime = System.currentTimeMillis();
         viewController.showTimer(show);
         if (show) {
-            questionStartTime = System.currentTimeMillis();
             viewController.setTimerText(formatElapsed(0));
             handler.postDelayed(timerTick, TIMER_TICK_INTERVAL_MILLIS);
         }

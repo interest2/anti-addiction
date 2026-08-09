@@ -58,6 +58,9 @@ final class ChallengeQuestionProvider {
     /** 匹配选项前缀（半角点），题干中的实体名是顿号「A、」或全角冒号「A：」，不会误配。 */
     private static final Pattern OPTION_PATTERN = Pattern.compile("([ABCD])\\.\\s*");
 
+    /** 选项总字数（不含 A. 等标识）超过该值，则从 C 选项开始换到下一行；否则全部同行。 */
+    private static final int OPTION_WRAP_THRESHOLD = 12;
+
     private static final ConcurrentMap<ChallengeType, Question> REMOTE_CACHE =
             new ConcurrentHashMap<>();
 
@@ -189,14 +192,25 @@ final class ChallengeQuestionProvider {
         }
         Collections.shuffle(indices, random);
 
+        // 选项总字数（去空格，不含 A. 等标识）超过阈值则从 C 选项开始换行，否则全部同行
+        int totalChars = 0;
+        for (String text : texts) {
+            totalChars += text.replace(" ", "").length();
+        }
+        boolean wrapFromC = totalChars > OPTION_WRAP_THRESHOLD;
+
         StringBuilder builder = new StringBuilder(content.substring(0, start).trim());
         String[] newLetters = new String[count];
         for (int i = 0; i < count; i++) {
             newLetters[i] = String.valueOf((char) ('A' + i));
-            builder.append('\n')
-                    .append(newLetters[i])
-                    .append(". ")
-                    .append(texts.get(indices.get(i)));
+            if (i == 0) {
+                builder.append('\n');
+            } else if (wrapFromC && i == 2) {
+                builder.append('\n');
+            } else {
+                builder.append("  ");
+            }
+            builder.append(newLetters[i]).append(". ").append(texts.get(indices.get(i)));
         }
         String newAnswer = null;
         for (int i = 0; i < count; i++) {

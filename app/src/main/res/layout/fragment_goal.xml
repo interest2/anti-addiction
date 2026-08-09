@@ -22,7 +22,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="20dp"
             android:gravity="center"
-            android:text="个性化设置"
+            android:text="个性化"
             android:textColor="#202020"
             android:textSize="24sp"
             android:textStyle="bold" />
@@ -81,7 +81,7 @@
                             android:layout_marginStart="6dp"
                             android:layout_weight="1"
                             android:gravity="start"
-                            android:text="倒计时 -- 天"
+                            android:text="只剩 -- 天"
                             android:textColor="#E91E63"
                             android:textSize="16sp" />
 

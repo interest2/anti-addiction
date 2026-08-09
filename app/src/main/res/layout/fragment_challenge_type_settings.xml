@@ -96,11 +96,12 @@
 
                     <TextView
                         android:id="@+id/tv_timer_none"
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="36dp"
-                        android:layout_weight="1"
                         android:background="@drawable/bg_challenge_timer_option"
                         android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
                         android:singleLine="true"
                         android:text="不显示"
                         android:textColor="@color/text_challenge_timer_option"
@@ -108,12 +109,13 @@
 
                     <TextView
                         android:id="@+id/tv_timer_minutes"
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="36dp"
                         android:layout_marginStart="8dp"
-                        android:layout_weight="1"
                         android:background="@drawable/bg_challenge_timer_option"
                         android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
                         android:singleLine="true"
                         android:text="分钟 mm"
                         android:textColor="@color/text_challenge_timer_option"
@@ -121,12 +123,13 @@
 
                     <TextView
                         android:id="@+id/tv_timer_minutes_seconds"
-                        android:layout_width="0dp"
+                        android:layout_width="wrap_content"
                         android:layout_height="36dp"
                         android:layout_marginStart="8dp"
-                        android:layout_weight="1"
                         android:background="@drawable/bg_challenge_timer_option"
                         android:gravity="center"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
                         android:singleLine="true"
                         android:text="分钟和秒 mm:s"
                         android:textColor="@color/text_challenge_timer_option"
@@ -137,7 +140,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="仅算术 / 推理 / 混合题生效，听力、复述除外"
+                    android:text="若显示计时，将出现在悬浮窗左上角"
                     android:textColor="#999999"
                     android:textSize="12sp" />
             </LinearLayout>

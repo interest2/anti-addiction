@@ -147,7 +147,7 @@ public class DateUtils {
 
     public static String countdownDate(String targetDateStr) {
         Integer daysRemaining = getDaysRemaining(targetDateStr);
-        return daysRemaining == null ? "倒计时 -- 天" : "倒计时 " + daysRemaining + " 天";
+        return daysRemaining == null ? "只剩 -- 天" : "只剩 " + daysRemaining + " 天";
     }
 
     private static Integer getDaysRemaining(String targetDateStr) {

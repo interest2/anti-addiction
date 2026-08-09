@@ -50,6 +50,14 @@ public final class QuestionConst {
     public static final double RETELLING_TEXT_TOO_SHORT_RATIO = 0.15D;
     // 听力题：选项个数
     public static final int LISTENING_OPTION_COUNT = 4;
+    // 答题记录：各类题型「详情」最多保留的记录条数，新的在前，超过上限丢弃最旧
+    public static final int CHALLENGE_RECORD_MAX = 3; // 文本类：算术 / 推理 / 混合 / 英文阅读
+    public static final int LISTENING_RECORD_MAX = 3; // 听力题
+    public static final int RETELLING_RECORD_MAX = 3; // 复述题
+    // 答题记录：各类题型「概况」最多保留的记录条数，为详情量的 10 倍（仅存概要字段，内存占用低）
+    public static final int CHALLENGE_OVERVIEW_MAX = CHALLENGE_RECORD_MAX * 10;
+    public static final int LISTENING_OVERVIEW_MAX = LISTENING_RECORD_MAX * 10;
+    public static final int RETELLING_OVERVIEW_MAX = RETELLING_RECORD_MAX * 10;
 
     /**
      * 复述题录音上限随故事长度动态化：约 0.6 秒/字（按偏慢语速估算，余量充足），

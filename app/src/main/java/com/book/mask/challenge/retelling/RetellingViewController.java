@@ -242,14 +242,6 @@ final class RetellingViewController {
         resultLayout.setVisibility(View.GONE);
     }
 
-    void showRecordingUnavailable() {
-        if (!initialized) {
-            return;
-        }
-        showError("无法开始录音，请检查麦克风权限");
-        recordButton.setEnabled(true);
-    }
-
     void hide() {
         if (!initialized) {
             return;
