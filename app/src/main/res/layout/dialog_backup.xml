@@ -7,10 +7,11 @@
     android:padding="24dp">
 
     <TextView
+        android:id="@+id/tv_backup_hint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:text="可导出备份您的大多数个性化配置数据，减免换机或卸载重装等场景的麻烦"
+        android:layout_marginBottom="8dp"
+        android:text="@string/export_backup_hint"
         android:textColor="#666666"
         android:textSize="14sp"
         android:lineSpacingMultiplier="1.3" />
@@ -22,18 +23,59 @@
         android:gravity="center">
 
         <Button
-            android:id="@+id/btn_backup_export"
+            android:id="@+id/btn_backup_export_full"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
-            android:text="导出"
+            android:layout_marginEnd="8dp"
+            android:minHeight="34dp"
+            android:insetTop="3dp"
+            android:insetBottom="3dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:textSize="16sp"
+            android:text="导出(完整)"
             android:backgroundTint="#2196F3"
             style="@style/Widget.Material3.Button" />
+
+        <Button
+            android:id="@+id/btn_backup_export_no_secret"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="34dp"
+            android:insetTop="3dp"
+            android:insetBottom="3dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:textSize="16sp"
+            android:text="导出(不含密钥)"
+            android:backgroundTint="#2196F3"
+            style="@style/Widget.Material3.Button" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:gravity="center">
 
         <Button
             android:id="@+id/btn_backup_import"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minHeight="34dp"
+            android:insetTop="3dp"
+            android:insetBottom="3dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:textSize="16sp"
             android:text="导入恢复"
             android:backgroundTint="#4CAF50"
             style="@style/Widget.Material3.Button" />

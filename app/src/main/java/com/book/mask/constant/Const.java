@@ -37,6 +37,12 @@ public class Const {
     public static final int TRANSIENT_FEEDBACK_DURATION_MS = 1000; // 非常驻 UI 提示时长
     public static final boolean REMINDER_PROVIDER_SETTINGS_ENABLED = true;
     public static final boolean ANSWER_RECORDS_ENABLED = true;
+    /**
+     * 语音类答题功能设置入口开关（听力题 / 复述题 / 相关服务配置区）。
+     * 关闭时：「题目类型」页不展示「听力题」「复述题」条目，也不展示「相关服务」区块；
+     * 答题逻辑与代码全部保留，改回 true 即可恢复入口。
+     */
+    public static final boolean VOICE_QUESTION_SETTINGS_ENABLED = false;
 
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";

@@ -31,8 +31,9 @@ import java.util.Map;
  * 默认排除，导入后需用户重填密钥再启用。
  * <p>
  * 如需把密钥一并带走（Provider API Key / SOE 凭据 / 豆包 TTS API Key），调用
- * {@link #exportToJson(boolean)} 并传 {@code true}；调用方需先经 {@link #hasSensitiveData()}
- * 判断是否存在密钥，并向用户确认后再导出。
+ * {@link #exportToJson(boolean)} 并传 {@code true}。导出入口向用户同时提供
+ * 「导出(完整) / 导出(不含密钥)」两个按钮，并用 {@link #hasSensitiveData()} 在界面提示
+ * 是否存在密钥及导出风险，由用户自行决定。
  */
 public class BackupManager {
 

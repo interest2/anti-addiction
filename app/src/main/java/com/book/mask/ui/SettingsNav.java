@@ -240,9 +240,26 @@ public class SettingsNav extends Fragment {
                 .setView(dialogView)
                 .create();
 
-        dialogView.findViewById(R.id.btn_backup_export).setOnClickListener(v -> {
+        BackupManager backupManager = new BackupManager(requireContext());
+        // 配置了密钥时，在提示文案后追加密钥导出风险说明，由用户自行决定用哪个按钮
+        TextView hintView = dialogView.findViewById(R.id.tv_backup_hint);
+        String hint = getString(R.string.export_backup_hint);
+        try {
+            if (backupManager.hasSensitiveData()) {
+                hint += getString(R.string.export_backup_secret_warning);
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "检查密钥配置失败，按不含密钥提示", e);
+        }
+        hintView.setText(hint);
+
+        dialogView.findViewById(R.id.btn_backup_export_full).setOnClickListener(v -> {
             dialog.dismiss();
-            startBackupExport();
+            exportBackup(backupManager, true);
+        });
+        dialogView.findViewById(R.id.btn_backup_export_no_secret).setOnClickListener(v -> {
+            dialog.dismiss();
+            exportBackup(backupManager, false);
         });
         dialogView.findViewById(R.id.btn_backup_import).setOnClickListener(v -> {
             dialog.dismiss();
@@ -250,33 +267,6 @@ public class SettingsNav extends Fragment {
         });
 
         dialog.show();
-    }
-
-    private void startBackupExport() {
-        BackupManager backupManager = new BackupManager(requireContext());
-        try {
-            if (backupManager.hasSensitiveData()) {
-                showSensitiveExportDialog(backupManager);
-            } else {
-                exportBackup(backupManager, false);
-            }
-        } catch (Exception e) {
-            android.util.Log.e(TAG, "检查密钥配置失败，按不含密钥导出", e);
-            exportBackup(backupManager, false);
-        }
-    }
-
-    /**
-     * 用户配置了密钥时先确认是否随备份导出。
-     * 导出文件由用户自行选择保存位置（可能是云盘），含密钥的明文 JSON 有泄露风险，故默认不导出。
-     */
-    private void showSensitiveExportDialog(BackupManager backupManager) {
-        new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("您的数据包含密钥，是否一并导出？")
-                .setMessage("若导出，密钥只存在您手机本地文件；一般不建议导出，即使本地文件也有泄露风险")
-                .setNegativeButton("不导出", (dialog, which) -> exportBackup(backupManager, false))
-                .setPositiveButton("导出", (dialog, which) -> exportBackup(backupManager, true))
-                .show();
     }
 
     private void exportBackup(BackupManager backupManager, boolean includeSecrets) {
