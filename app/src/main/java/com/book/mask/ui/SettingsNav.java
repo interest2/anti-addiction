@@ -241,23 +241,37 @@ public class SettingsNav extends Fragment {
                 .create();
 
         BackupManager backupManager = new BackupManager(requireContext());
-        // 配置了密钥时，在提示文案后追加密钥导出风险说明，由用户自行决定用哪个按钮
+        // 无密钥时仅提供「导出」；有密钥时提供「导出(含密钥) / 导出(不含密钥)」，并追加风险说明
+        boolean hasSensitive;
         TextView hintView = dialogView.findViewById(R.id.tv_backup_hint);
         String hint = getString(R.string.export_backup_hint);
         try {
-            if (backupManager.hasSensitiveData()) {
+            hasSensitive = backupManager.hasSensitiveData();
+            if (hasSensitive) {
                 hint += getString(R.string.export_backup_secret_warning);
             }
         } catch (Exception e) {
             android.util.Log.w(TAG, "检查密钥配置失败，按不含密钥提示", e);
+            hasSensitive = false;
         }
         hintView.setText(hint);
 
-        dialogView.findViewById(R.id.btn_backup_export_full).setOnClickListener(v -> {
+        View singleExport = dialogView.findViewById(R.id.btn_backup_export);
+        View withSecretExport = dialogView.findViewById(R.id.btn_backup_export_with_secret);
+        View noSecretExport = dialogView.findViewById(R.id.btn_backup_export_no_secret);
+        singleExport.setVisibility(hasSensitive ? View.GONE : View.VISIBLE);
+        withSecretExport.setVisibility(hasSensitive ? View.VISIBLE : View.GONE);
+        noSecretExport.setVisibility(hasSensitive ? View.VISIBLE : View.GONE);
+
+        singleExport.setOnClickListener(v -> {
+            dialog.dismiss();
+            exportBackup(backupManager, false);
+        });
+        withSecretExport.setOnClickListener(v -> {
             dialog.dismiss();
             exportBackup(backupManager, true);
         });
-        dialogView.findViewById(R.id.btn_backup_export_no_secret).setOnClickListener(v -> {
+        noSecretExport.setOnClickListener(v -> {
             dialog.dismiss();
             exportBackup(backupManager, false);
         });

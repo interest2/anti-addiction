@@ -139,7 +139,7 @@
             android:text="此文字修改方式：APP底栏-个性化->座右铭"
             android:textColor="#4CAF50"
             android:textSize="14sp"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="10dp"
             android:gravity="center" />
 
     </LinearLayout>

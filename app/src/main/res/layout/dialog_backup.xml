@@ -23,7 +23,23 @@
         android:gravity="center">
 
         <Button
-            android:id="@+id/btn_backup_export_full"
+            android:id="@+id/btn_backup_export"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minHeight="34dp"
+            android:insetTop="3dp"
+            android:insetBottom="3dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:textSize="16sp"
+            android:text="导出"
+            android:backgroundTint="#2196F3"
+            style="@style/Widget.Material3.Button" />
+
+        <Button
+            android:id="@+id/btn_backup_export_with_secret"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
@@ -35,7 +51,7 @@
             android:paddingTop="5dp"
             android:paddingBottom="5dp"
             android:textSize="16sp"
-            android:text="导出(完整)"
+            android:text="导出(含密钥)"
             android:backgroundTint="#2196F3"
             style="@style/Widget.Material3.Button" />
 
