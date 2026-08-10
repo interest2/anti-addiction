@@ -9,11 +9,15 @@ import com.k2fsa.sherpa.onnx.OfflineModelConfig;
 import com.k2fsa.sherpa.onnx.OfflineParaformerModelConfig;
 import com.k2fsa.sherpa.onnx.OfflineRecognizer;
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig;
+import com.k2fsa.sherpa.onnx.OfflineRecognizerResult;
 import com.k2fsa.sherpa.onnx.OfflineStream;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * 基于 Sherpa-ONNX 的离线语音识别实现。
@@ -88,10 +92,13 @@ public final class SherpaOnnxTranscriber implements SpeechTranscriber {
             stream = current.createStream();
             stream.acceptWaveform(samples, sampleRate > 0 ? sampleRate : SAMPLE_RATE);
             current.decode(stream);
-            String text = current.getResult(stream).getText();
+            OfflineRecognizerResult result = current.getResult(stream);
+            String text = result.getText();
             text = text == null ? "" : text.trim();
-            Log.d(TAG, "识别完成，文本长度=" + text.length());
-            return TranscriptionResult.success(text);
+            List<TranscriptionResult.TimedToken> timedTokens = extractTimedTokens(result);
+            Log.d(TAG, "识别完成，文本长度=" + text.length()
+                    + "，时间戳 token=" + timedTokens.size());
+            return TranscriptionResult.success(text, timedTokens);
         } catch (Throwable e) {
             Log.e(TAG, "识别失败", e);
             return TranscriptionResult.failure("识别失败：" + e.getMessage());
@@ -104,6 +111,35 @@ public final class SherpaOnnxTranscriber implements SpeechTranscriber {
                 }
             }
         }
+    }
+
+    private static List<TranscriptionResult.TimedToken> extractTimedTokens(
+            OfflineRecognizerResult result) {
+        String[] tokens = result.getTokens();
+        float[] timestamps = result.getTimestamps();
+        if (tokens == null || timestamps == null
+                || tokens.length == 0 || timestamps.length != tokens.length) {
+            return Collections.emptyList();
+        }
+        float[] durations = result.getDurations();
+        List<TranscriptionResult.TimedToken> timedTokens = new ArrayList<>(tokens.length);
+        for (int index = 0; index < tokens.length; index++) {
+            float start = timestamps[index];
+            if (!Float.isFinite(start) || start < 0f) {
+                continue;
+            }
+            float end = start;
+            if (durations != null && durations.length == tokens.length
+                    && Float.isFinite(durations[index]) && durations[index] > 0f) {
+                end += durations[index];
+            } else if (index + 1 < timestamps.length
+                    && Float.isFinite(timestamps[index + 1])
+                    && timestamps[index + 1] > start) {
+                end = timestamps[index + 1];
+            }
+            timedTokens.add(new TranscriptionResult.TimedToken(tokens[index], start, end));
+        }
+        return timedTokens;
     }
 
     @Override

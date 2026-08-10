@@ -565,8 +565,11 @@ public final class RetellingChallengeSession implements ChallengeSession {
             runEvaluation();
         } else {
             Log.w(TAG, "评分连续失败，等待用户手动进入下一题: " + message);
-            showResult(new RetellingScore(
-                    0, 0, 0, 0, 0, "评分失败，请点击下一题重新作答"), false);
+            // 把具体失败原因透传到反馈文案，便于直接在悬浮窗排查（同时写入答题记录）
+            String detail = (message == null || message.trim().isEmpty())
+                    ? "评分失败，请点击下一题重新作答"
+                    : "评分失败：" + message;
+            showResult(new RetellingScore(0, 0, 0, 0, 0, detail), false);
         }
     }
 
