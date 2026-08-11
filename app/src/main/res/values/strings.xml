@@ -19,7 +19,7 @@
     <string name="floating_window_settings">悬浮窗改默认大小</string>
     <string name="douyin_first_text_check_delay">抖音首次检测延迟</string>
     <string name="export_backup">导出备份&amp;恢复</string>
-    <string name="export_backup_hint">可导出备份大多数个性化配置数据；\n</string>
+    <string name="export_backup_hint">可导出备份大多数个性化配置数据。\n</string>
     <string name="export_backup_secret_warning">密钥通常不建议导出，因有泄露风险（虽然仅导出到手机本地）</string>
     <string name="special_details">备用按钮</string>
     <string name="back">返回</string>

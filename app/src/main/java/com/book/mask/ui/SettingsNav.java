@@ -102,8 +102,6 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> showInstallTroubleshootingDialog());
         view.findViewById(R.id.row_appreciate)
                 .setOnClickListener(v -> showAppreciateDialog());
-        view.findViewById(R.id.row_floating_settings)
-                .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
         view.findViewById(R.id.row_export_backup)
                 .setOnClickListener(v -> showBackupOptionsDialog());
         view.findViewById(R.id.row_special_details)

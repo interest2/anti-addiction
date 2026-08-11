@@ -15,10 +15,13 @@ import androidx.fragment.app.Fragment;
 import com.book.mask.R;
 import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
+import com.book.mask.personalize.RelaxManager;
 
 import java.util.List;
 
 public class SpecialDetailsNav extends Fragment {
+    private SettingsDialogManager settingsDialogManager;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -26,8 +29,13 @@ public class SpecialDetailsNav extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_special_details, container, false);
 
+        settingsDialogManager = new SettingsDialogManager(
+                requireContext(), new RelaxManager(requireContext()));
+
         view.findViewById(R.id.btn_special_details_back)
                 .setOnClickListener(v -> getParentFragmentManager().popBackStack());
+        view.findViewById(R.id.row_floating_settings)
+                .setOnClickListener(v -> settingsDialogManager.showFloatingPositionDialog());
         view.findViewById(R.id.row_reset_floating)
                 .setOnClickListener(v -> showResetFloatingDialog());
         view.findViewById(R.id.row_package_log)
