@@ -8,17 +8,21 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.InputFilter;
+import android.text.SpannableString;
+import android.text.Spanned;
 import android.text.TextWatcher;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -56,11 +60,10 @@ import com.book.mask.util.ArithmeticUtils.MultiplicationTier;
 import com.book.mask.util.DateUtils;
 import com.book.mask.R;
 import com.google.android.material.slider.Slider;
-import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
 
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -226,41 +229,26 @@ public class SettingsDialogManager {
         TextView description = dialogView.findViewById(R.id.tv_leisure_description);
         LeisureModeViews relaxedViews = new LeisureModeViews(
                 LeisureTimeManager.LeisureMode.RELAXED,
-                dialogView.findViewById(R.id.layout_relaxed_leisure_duration),
-                dialogView.findViewById(R.id.layout_relaxed_leisure_count),
-                dialogView.findViewById(R.id.et_relaxed_leisure_duration),
-                dialogView.findViewById(R.id.et_relaxed_leisure_count),
+                dialogView.findViewById(R.id.rb_relaxed_tier_large),
+                dialogView.findViewById(R.id.rb_relaxed_tier_short),
+                dialogView.findViewById(R.id.tv_relaxed_tier_large_remaining),
+                dialogView.findViewById(R.id.tv_relaxed_tier_short_remaining),
+                null,
                 dialogView.findViewById(R.id.btn_start_relaxed_leisure_time),
                 dialogView.findViewById(R.id.tv_relaxed_leisure_remaining_count));
         LeisureModeViews strictViews = new LeisureModeViews(
                 LeisureTimeManager.LeisureMode.STRICT,
-                dialogView.findViewById(R.id.layout_strict_leisure_duration),
-                dialogView.findViewById(R.id.layout_strict_leisure_count),
-                dialogView.findViewById(R.id.et_strict_leisure_duration),
-                dialogView.findViewById(R.id.et_strict_leisure_count),
+                null,
+                null,
+                null,
+                null,
+                dialogView.findViewById(R.id.tv_strict_remaining),
                 dialogView.findViewById(R.id.btn_start_strict_leisure_time),
                 dialogView.findViewById(R.id.tv_strict_leisure_remaining_count));
 
         description.setText(
-                "开启后，首个关闭悬浮窗的 APP 无需答题即可解禁");
+                "开启后，各 APP 关闭悬浮窗均无需答题；宽松模式的再次使用有3小时窗口期");
         setupLeisureModeInputs(relaxedViews);
-        setupLeisureModeInputs(strictViews);
-
-        // 输入框失焦即自动保存（内容合法才写入），点击空白处收起键盘同样会触发
-        View.OnFocusChangeListener leisureBlurAutoSave = (v, hasFocus) -> {
-            if (!hasFocus
-                    && saveLeisureTimeSettingsSilently(relaxedViews, strictViews)) {
-                FloatService.notifyLeisureTimeChanged();
-            }
-        };
-        relaxedViews.durationInput.setOnFocusChangeListener(leisureBlurAutoSave);
-        relaxedViews.countInput.setOnFocusChangeListener(leisureBlurAutoSave);
-        strictViews.durationInput.setOnFocusChangeListener(leisureBlurAutoSave);
-        strictViews.countInput.setOnFocusChangeListener(leisureBlurAutoSave);
-
-        // 点击弹窗空白处，让输入框失焦并收起键盘
-        dialogView.setOnClickListener(v ->
-                clearLeisureInputFocus(dialogView, relaxedViews, strictViews));
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("休闲时刻（免答题）")
@@ -289,22 +277,6 @@ public class SettingsDialogManager {
             leisureRefreshEnabled[0] = false;
             stateHandler.removeCallbacks(refreshLeisureState[0]);
         };
-        TextWatcher countWatcher = new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                refreshLeisureState[0].run();
-            }
-        };
-        relaxedViews.countInput.addTextChangedListener(countWatcher);
-        strictViews.countInput.addTextChangedListener(countWatcher);
 
         LifecycleOwner lifecycleOwner = context instanceof LifecycleOwner
                 ? (LifecycleOwner) context
@@ -353,47 +325,55 @@ public class SettingsDialogManager {
         dialog.show();
     }
 
-    private void clearLeisureInputFocus(
-            View dialogView, LeisureModeViews... modeViews) {
-        for (LeisureModeViews views : modeViews) {
-            views.durationInput.clearFocus();
-            views.countInput.clearFocus();
-        }
-        dialogView.requestFocus();
-
-        InputMethodManager inputMethodManager = (InputMethodManager)
-                context.getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (inputMethodManager != null) {
-            inputMethodManager.hideSoftInputFromWindow(dialogView.getWindowToken(), 0);
-        }
-    }
-
     private void setupLeisureModeInputs(LeisureModeViews views) {
-        String durationRange = LeisureTimeManager.getLeisureDurationRangeText(views.mode)
-                .replace('-', '~');
-        String countRange = LeisureTimeManager.getLeisureDailyCountRangeText(views.mode)
-                .replace('-', '~');
-        views.durationInput.setHint(durationRange);
-        views.countInput.setHint(countRange);
-        centerLeisureInputSuffix(views.durationLayout);
-        centerLeisureInputSuffix(views.countLayout);
-        views.durationInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(
-                String.valueOf(
-                        LeisureTimeManager.getLeisureDurationMaxMinutes(views.mode)).length())});
-        views.countInput.setFilters(new InputFilter[]{new InputFilter.LengthFilter(
-                String.valueOf(LeisureTimeManager.getLeisureDailyCountMax(views.mode)).length())});
-        views.durationInput.setText(String.valueOf(
-                leisureTimeManager.getLeisureDurationMinutes(views.mode)));
-        views.countInput.setText(String.valueOf(
-                leisureTimeManager.getLeisureDailyCount(views.mode)));
+        if (views.mode == LeisureTimeManager.LeisureMode.RELAXED) {
+            setupRelaxedTierRadio(views);
+        }
     }
 
-    private void centerLeisureInputSuffix(TextInputLayout inputLayout) {
-        TextView suffixText = inputLayout.findViewById(
-                com.google.android.material.R.id.textinput_suffix_text);
-        suffixText.setGravity(Gravity.CENTER_VERTICAL);
-        if (suffixText.getParent() instanceof LinearLayout) {
-            ((LinearLayout) suffixText.getParent()).setGravity(Gravity.CENTER_VERTICAL);
+    /** 宽松模式：勾选即选定档位，变化即静默保存；右侧同步剩余次数。 */
+    private void setupRelaxedTierRadio(LeisureModeViews views) {
+        boolean largeSelected = leisureTimeManager.getSelectedRelaxedTier()
+                == LeisureTimeManager.LeisureTier.LARGE;
+        views.tierLargeRadio.setChecked(largeSelected);
+        views.tierShortRadio.setChecked(!largeSelected);
+        updateRelaxedTierRemainingCounts(views);
+
+        views.tierLargeRadio.setOnCheckedChangeListener((button, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+            views.tierShortRadio.setChecked(false);
+            if (saveLeisureTimeSettingsSilently(views)) {
+                FloatService.notifyLeisureTimeChanged();
+            }
+        });
+        views.tierShortRadio.setOnCheckedChangeListener((button, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+            views.tierLargeRadio.setChecked(false);
+            if (saveLeisureTimeSettingsSilently(views)) {
+                FloatService.notifyLeisureTimeChanged();
+            }
+        });
+    }
+
+    /** 刷新宽松模式两个档位的余额；用尽的档位不可再选。 */
+    private void updateRelaxedTierRemainingCounts(LeisureModeViews views) {
+        int largeRemaining = leisureTimeManager.getLeisureLargeRemainingCountToday();
+        int shortRemaining = leisureTimeManager.getLeisureShortRemainingCountToday();
+        views.tierLargeRemainingText.setText("余" + largeRemaining + "次");
+        views.tierShortRemainingText.setText("余" + shortRemaining + "次");
+        views.tierLargeRadio.setEnabled(largeRemaining > 0);
+        views.tierShortRadio.setEnabled(shortRemaining > 0);
+
+        if (views.tierLargeRadio.isChecked() && largeRemaining == 0) {
+            views.tierLargeRadio.setChecked(false);
+            views.tierShortRadio.setChecked(shortRemaining > 0);
+        } else if (views.tierShortRadio.isChecked() && shortRemaining == 0) {
+            views.tierShortRadio.setChecked(false);
+            views.tierLargeRadio.setChecked(largeRemaining > 0);
         }
     }
 
@@ -412,10 +392,19 @@ public class SettingsDialogManager {
                 refreshLeisureState.run();
                 return;
             }
+            if (targetViews.mode == LeisureTimeManager.LeisureMode.RELAXED
+                    && !isSelectedRelaxedTierAvailable(targetViews)) {
+                UiFeedback.showError(dialogView, "所选档位今日次数已用完");
+                refreshLeisureState.run();
+                return;
+            }
             if (leisureTimeManager.tryStartLeisureTime(targetViews.mode)) {
                 FloatService.notifyLeisureTimeChanged();
             } else if (leisureTimeManager.isLeisureTimeActive(targetViews.mode)) {
                 UiFeedback.show(dialogView, getLeisureModeName(targetViews.mode) + "正在进行中");
+            } else if (targetViews.mode == LeisureTimeManager.LeisureMode.RELAXED
+                    && leisureTimeManager.isRelaxedTriggerCoolingDown()) {
+                UiFeedback.showError(dialogView, "宽松模式仍在 3 小时触发冷却中");
             } else {
                 UiFeedback.showError(
                         dialogView,
@@ -425,95 +414,67 @@ public class SettingsDialogManager {
         });
     }
 
+    private boolean isSelectedRelaxedTierAvailable(LeisureModeViews views) {
+        if (views.tierLargeRadio.isChecked()) {
+            return leisureTimeManager.getLeisureLargeRemainingCountToday() > 0;
+        }
+        return views.tierShortRadio.isChecked()
+                && leisureTimeManager.getLeisureShortRemainingCountToday() > 0;
+    }
+
     private boolean saveLeisureTimeSettings(LeisureModeViews... modeViews) {
-        if (!isLeisureTimeSettingsValid(modeViews)) {
-            showLeisureTimeValidationErrors(modeViews);
-            return false;
-        }
         persistLeisureTimeSettings(modeViews);
         return true;
     }
 
-    /** 静默保存：不展示错误、不抢焦点；任一输入非法则整体不写入。 */
+    /** 静默保存：宽松模式勾选档位后即时落盘，严格模式为固定档位无需保存。 */
     private boolean saveLeisureTimeSettingsSilently(LeisureModeViews... modeViews) {
-        if (!isLeisureTimeSettingsValid(modeViews)) {
-            return false;
-        }
         persistLeisureTimeSettings(modeViews);
         return true;
-    }
-
-    private boolean isLeisureTimeSettingsValid(LeisureModeViews... modeViews) {
-        for (LeisureModeViews views : modeViews) {
-            Integer durationMinutes = parseInteger(views.durationInput);
-            Integer dailyCount = parseInteger(views.countInput);
-            if (durationMinutes == null
-                    || !LeisureTimeManager.isValidLeisureDurationMinutes(
-                    views.mode, durationMinutes)) {
-                return false;
-            }
-            if (dailyCount == null
-                    || !LeisureTimeManager.isValidLeisureDailyCount(views.mode, dailyCount)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private void showLeisureTimeValidationErrors(LeisureModeViews... modeViews) {
-        for (LeisureModeViews views : modeViews) {
-            views.durationLayout.setError(null);
-            views.countLayout.setError(null);
-
-            Integer durationMinutes = parseInteger(views.durationInput);
-            Integer dailyCount = parseInteger(views.countInput);
-            if (durationMinutes == null
-                    || !LeisureTimeManager.isValidLeisureDurationMinutes(
-                    views.mode, durationMinutes)) {
-                UiFeedback.showInputError(
-                        views.durationLayout,
-                        views.durationInput,
-                        "请输入" + LeisureTimeManager.getLeisureDurationRangeText(views.mode)
-                                + "分钟");
-            }
-            if (dailyCount == null
-                    || !LeisureTimeManager.isValidLeisureDailyCount(views.mode, dailyCount)) {
-                UiFeedback.showInputError(
-                        views.countLayout,
-                        views.countInput,
-                        "请输入" + LeisureTimeManager.getLeisureDailyCountRangeText(views.mode)
-                                + "次");
-            }
-        }
     }
 
     private void persistLeisureTimeSettings(LeisureModeViews... modeViews) {
         for (LeisureModeViews views : modeViews) {
-            leisureTimeManager.setLeisureTimeSettings(
-                    views.mode,
-                    parseInteger(views.durationInput),
-                    parseInteger(views.countInput));
+            if (views.mode != LeisureTimeManager.LeisureMode.RELAXED) {
+                continue;
+            }
+            if (views.tierLargeRadio.isChecked()) {
+                leisureTimeManager.setSelectedRelaxedTier(
+                        LeisureTimeManager.LeisureTier.LARGE);
+            } else if (views.tierShortRadio.isChecked()) {
+                leisureTimeManager.setSelectedRelaxedTier(
+                        LeisureTimeManager.LeisureTier.SHORT);
+            }
         }
     }
 
     private void updateLeisureStartState(LeisureModeViews views) {
-        Integer configuredDailyCount = parseInteger(views.countInput);
-        Integer remainingCount = configuredDailyCount == null
-                || !LeisureTimeManager.isValidLeisureDailyCount(
-                views.mode, configuredDailyCount)
-                ? null
-                : Math.max(
-                        0,
-                        configuredDailyCount
-                                - leisureTimeManager.getLeisureUsedCountToday(views.mode));
-        views.remainingCountText.setText(remainingCount == null
-                ? "今日剩余 -- 次"
-                : "今日剩余 " + remainingCount + " 次");
+        if (views.mode == LeisureTimeManager.LeisureMode.RELAXED) {
+            int remaining = leisureTimeManager.getLeisureRemainingCountToday(views.mode);
+            views.remainingCountText.setText(
+                    "今日剩余 " + remaining + "/"
+                            + LeisureTimeManager.RELAXED_DAILY_TOTAL + " 次");
+            updateRelaxedTierRemainingCounts(views);
+        } else {
+            int remaining = leisureTimeManager.getLeisureRemainingCountToday(views.mode);
+            views.remainingCountText.setText(
+                    "今日剩余 " + remaining + "/"
+                            + LeisureTimeManager.STRICT_LEISURE_DAILY_COUNT + " 次");
+            views.strictRemainingText.setText("余" + remaining + "次");
+        }
 
         if (leisureTimeManager.isLeisureTimeActive(views.mode)) {
             views.startButton.setEnabled(false);
             views.startButton.setTextOn("进行中");
             views.startButton.setChecked(true);
+            return;
+        }
+
+        if (views.mode == LeisureTimeManager.LeisureMode.RELAXED
+                && leisureTimeManager.isRelaxedTriggerCoolingDown()) {
+            views.startButton.setEnabled(true);
+            views.startButton.setTextOff("");
+            views.startButton.setChecked(false);
             return;
         }
 
@@ -537,26 +498,31 @@ public class SettingsDialogManager {
 
     private static class LeisureModeViews {
         private final LeisureTimeManager.LeisureMode mode;
-        private final TextInputLayout durationLayout;
-        private final TextInputLayout countLayout;
-        private final TextInputEditText durationInput;
-        private final TextInputEditText countInput;
+        // 宽松模式：档位单选（大档 30 分钟 / 小档 15 分钟）+ 右侧剩余次数
+        private final RadioButton tierLargeRadio;
+        private final RadioButton tierShortRadio;
+        private final TextView tierLargeRemainingText;
+        private final TextView tierShortRemainingText;
+        // 严格模式：固定时长选项 + 右侧剩余次数
+        private final TextView strictRemainingText;
         private final ToggleButton startButton;
         private final TextView remainingCountText;
 
         private LeisureModeViews(
                 LeisureTimeManager.LeisureMode mode,
-                TextInputLayout durationLayout,
-                TextInputLayout countLayout,
-                TextInputEditText durationInput,
-                TextInputEditText countInput,
+                RadioButton tierLargeRadio,
+                RadioButton tierShortRadio,
+                TextView tierLargeRemainingText,
+                TextView tierShortRemainingText,
+                TextView strictRemainingText,
                 ToggleButton startButton,
                 TextView remainingCountText) {
             this.mode = mode;
-            this.durationLayout = durationLayout;
-            this.countLayout = countLayout;
-            this.durationInput = durationInput;
-            this.countInput = countInput;
+            this.tierLargeRadio = tierLargeRadio;
+            this.tierShortRadio = tierShortRadio;
+            this.tierLargeRemainingText = tierLargeRemainingText;
+            this.tierShortRemainingText = tierShortRemainingText;
+            this.strictRemainingText = strictRemainingText;
             this.startButton = startButton;
             this.remainingCountText = remainingCountText;
         }
@@ -1306,6 +1272,8 @@ public class SettingsDialogManager {
                 + " (枚举=" + selectedType + ")");
         if (selectedType == ChallengeType.ARITHMETIC) {
             showArithmeticDifficultyDialog(onApplied);
+        } else if (selectedType == ChallengeType.REASONING) {
+            showReasoningDifficultyDialog(onApplied);
         } else if (selectedType == ChallengeType.ENGLISH_READING) {
             showEnglishReadingLengthDialog();
         } else {
@@ -1363,6 +1331,17 @@ public class SettingsDialogManager {
         return "custom".equals(challengeSettingsManager.getMathDifficultyMode())
                 ? "自定义难度"
                 : "默认难度";
+    }
+
+    public String getReasoningDifficultyLevelLabel() {
+        int level = challengeSettingsManager.getReasoningDifficultyLevel();
+        return level == ChallengeSettingsManager.REASONING_LEVEL_DEFAULT
+                ? "默认"
+                : reasoningDifficultyLabels()[level];
+    }
+
+    private String[] reasoningDifficultyLabels() {
+        return new String[]{"基础", "进阶", "挑战"};
     }
 
     /**
@@ -1578,6 +1557,52 @@ public class SettingsDialogManager {
                 UiFeedback.show(context, "已设置阅读字数为：" + length);
             }));
         dialog.show();
+    }
+
+    private void showReasoningDifficultyDialog(Runnable onDifficultyChanged) {
+        String[] difficultyLabels = reasoningDifficultyLabels();
+        CharSequence[] difficultyOptions = new CharSequence[difficultyLabels.length + 1];
+        difficultyOptions[0] = formatReasoningDefaultOption(difficultyLabels);
+        System.arraycopy(difficultyLabels, 0, difficultyOptions, 1, difficultyLabels.length);
+        int currentLevel = challengeSettingsManager.getReasoningDifficultyLevel();
+        int checkedItem = currentLevel == ChallengeSettingsManager.REASONING_LEVEL_DEFAULT
+                ? 0
+                : currentLevel + 1;
+
+        new android.app.AlertDialog.Builder(context)
+                .setTitle("推理题难度设置")
+                .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
+                    int level = which == 0
+                            ? ChallengeSettingsManager.REASONING_LEVEL_DEFAULT
+                            : which - 1;
+                    challengeSettingsManager.setReasoningDifficultyLevel(level);
+                    dialog.dismiss();
+                    UiFeedback.show(context, "已设置推理题难度为" + difficultyOptions[which]);
+                    if (onDifficultyChanged != null) {
+                        onDifficultyChanged.run();
+                    }
+                })
+                .setNegativeButton("关闭", null)
+                .show();
+    }
+
+    private CharSequence formatReasoningDefaultOption(String[] difficultyLabels) {
+        String label = "默认";
+        String hint = "  " + String.join(
+                "、", Arrays.copyOf(difficultyLabels, 2)) + "的混合";
+        SpannableString option = new SpannableString(label + hint);
+        int hintStart = label.length();
+        option.setSpan(
+                new ForegroundColorSpan(0xFF999999),
+                hintStart,
+                option.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        option.setSpan(
+                new RelativeSizeSpan(0.8f),
+                hintStart,
+                option.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return option;
     }
 
     /**

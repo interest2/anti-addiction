@@ -532,7 +532,7 @@ public class HomeNav extends Fragment implements
         View pickerView = LayoutInflater.from(requireContext())
                 .inflate(R.layout.dialog_app_picker, null);
         EditText etFilter = pickerView.findViewById(R.id.et_app_filter);
-        android.widget.ListView listView = pickerView.findViewById(R.id.lv_installed_apps);
+        android.widget.GridView gridView = pickerView.findViewById(R.id.lv_installed_apps);
 
         final List<InstalledAppInfo> shown = new java.util.ArrayList<>(allInstalled);
         android.widget.BaseAdapter adapter = new android.widget.BaseAdapter() {
@@ -568,14 +568,14 @@ public class HomeNav extends Fragment implements
                 return row;
             }
         };
-        listView.setAdapter(adapter);
+        gridView.setAdapter(adapter);
 
         android.app.AlertDialog pickerDialog = new android.app.AlertDialog.Builder(requireContext())
                 .setView(pickerView)
                 .setNegativeButton("取消", null)
                 .create();
 
-        listView.setOnItemClickListener((parent, view, position, id) -> {
+        gridView.setOnItemClickListener((parent, view, position, id) -> {
             InstalledAppInfo picked = shown.get(position);
             pickerDialog.dismiss();
             onPicked.accept(picked);

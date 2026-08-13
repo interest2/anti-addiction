@@ -30,6 +30,7 @@ import com.book.mask.config.CustomApp;
 import com.book.mask.lifecycle.AppLifecycleObserver;
 import com.book.mask.network.AppConfigManager;
 import com.book.mask.network.DeviceInfoReporter;
+import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.network.TextFetcher;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -48,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private AppLifecycleObserver appLifecycleObserver;
     private DeviceInfoReporter deviceInfoReporter;
     private RelaxManager relaxManager;
+    private LeisureTimeManager leisureTimeManager;
     private SettingsDialogManager settingsDialogManager;
     private HomeNav homeNav;
     private GoalNav goalNav;
@@ -179,8 +181,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
         bottomNav.setOnItemReselectedListener(item -> {
-            if (item.getItemId() == R.id.navigation_settings
-                    && getSupportFragmentManager().getBackStackEntryCount() > 0) {
+            if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
                 getSupportFragmentManager().popBackStack();
             }
         });
@@ -411,7 +412,12 @@ public class MainActivity extends AppCompatActivity {
         if (relaxManager == null) {
             relaxManager = new RelaxManager(this);
         }
-        
+        // 休闲-宽松：只要当天没用完，余额重置为小档 1 次（15 分钟）
+        if (leisureTimeManager == null) {
+            leisureTimeManager = new LeisureTimeManager(this);
+        }
+        leisureTimeManager.resetRelaxedRemainingToShort();
+
         CustomAppManager customAppManager = CustomAppManager.getInstance();
         List<CustomApp> allApps = customAppManager.getAllApps();
         

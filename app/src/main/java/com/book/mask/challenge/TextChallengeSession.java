@@ -131,6 +131,12 @@ final class TextChallengeSession implements ChallengeSession {
     }
 
     private void handleSubmitAnswer(String userAnswer) {
+        if (questionStartTime != 0
+                && System.currentTimeMillis() - questionStartTime < Const.MIN_ANSWER_DELAY_MS) {
+            viewController.showWaitHint();
+            return;
+        }
+
         if (TextUtils.isEmpty(userAnswer)) {
             viewController.showEmptyAnswer();
             return;

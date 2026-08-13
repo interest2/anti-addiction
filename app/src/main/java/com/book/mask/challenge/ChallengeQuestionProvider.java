@@ -61,20 +61,28 @@ final class ChallengeQuestionProvider {
     /** 选项总字数（不含 A. 等标识）超过该值，则从 C 选项开始换到下一行；否则全部同行。 */
     private static final int OPTION_WRAP_THRESHOLD = 12;
 
-    private static final ConcurrentMap<ChallengeType, Question> REMOTE_CACHE =
+    private static final ConcurrentMap<String, Question> REMOTE_CACHE =
             new ConcurrentHashMap<>();
 
     static {
+        for (int level = ChallengeSettingsManager.REASONING_LEVEL_DEFAULT;
+             level <= ChallengeSettingsManager.REASONING_LEVEL_MAX;
+             level++) {
+            REMOTE_CACHE.put(
+                    cacheKey(ChallengeType.REASONING, level),
+                    new Question(FIRST_Q_REASON, FIRST_A_REASON));
+        }
         REMOTE_CACHE.put(
-                ChallengeType.REASONING,
-                new Question(FIRST_Q_REASON, FIRST_A_REASON));
-        REMOTE_CACHE.put(
-                ChallengeType.ENGLISH_READING,
+                cacheKey(
+                        ChallengeType.ENGLISH_READING,
+                        ChallengeSettingsManager.REASONING_LEVEL_DEFAULT),
                 new Question(FIRST_Q_READING, FIRST_A_READING));
         // MIXED 与 REASONING 同为远程推理 / 应用题，兜底题共用：
         // 否则远程题未就绪时会 fallback 成本地算术题，却仍按 MIXED 的小字号渲染。
         REMOTE_CACHE.put(
-                ChallengeType.MIXED,
+                cacheKey(
+                        ChallengeType.MIXED,
+                        ChallengeSettingsManager.REASONING_LEVEL_DEFAULT),
                 new Question(FIRST_Q_REASON, FIRST_A_REASON));
     }
 
@@ -108,11 +116,14 @@ final class ChallengeQuestionProvider {
             return generateArithmeticQuestion();
         }
 
-        Question cachedQuestion = REMOTE_CACHE.get(type);
+        int reasoningLevel = type == ChallengeType.REASONING
+                ? challengeSettingsManager.getReasoningDifficultyLevel()
+                : ChallengeSettingsManager.REASONING_LEVEL_DEFAULT;
+        Question cachedQuestion = REMOTE_CACHE.get(cacheKey(type, reasoningLevel));
         if (type == ChallengeType.ENGLISH_READING) {
             fetchLatestEnglishReading();
         } else {
-            fetchLatestChallenge(type);
+            fetchLatestChallenge(type, reasoningLevel);
         }
 
         if (cachedQuestion != null) {
@@ -245,12 +256,12 @@ final class ChallengeQuestionProvider {
         return new Question(question, String.valueOf(ArithmeticUtils.getMathAnswer(question)));
     }
 
-    private void fetchLatestChallenge(ChallengeType type) {
+    private void fetchLatestChallenge(ChallengeType type, int reasoningLevel) {
         Log.d(TAG, "开始获取最新" + type.getDisplayName());
         new Thread(() -> {
             try {
-                String remoteChallenge = httpObtainChallenge(type);
-                cacheRemoteQuestion(type, remoteChallenge);
+                String remoteChallenge = httpObtainChallenge(type, reasoningLevel);
+                cacheRemoteQuestion(type, reasoningLevel, remoteChallenge);
             } catch (Exception e) {
                 Log.e(TAG, "获取" + type.getDisplayName() + "时发生异常", e);
             }
@@ -262,14 +273,18 @@ final class ChallengeQuestionProvider {
         new Thread(() -> {
             try {
                 String remoteChallenge = httpObtainEnglishReading();
-                cacheRemoteQuestion(ChallengeType.ENGLISH_READING, remoteChallenge);
+                cacheRemoteQuestion(
+                        ChallengeType.ENGLISH_READING,
+                        ChallengeSettingsManager.REASONING_LEVEL_DEFAULT,
+                        remoteChallenge);
             } catch (Exception e) {
                 Log.e(TAG, "获取英文阅读题时发生异常", e);
             }
         }).start();
     }
 
-    private void cacheRemoteQuestion(ChallengeType type, String remoteChallenge) throws Exception {
+    private void cacheRemoteQuestion(
+            ChallengeType type, int reasoningLevel, String remoteChallenge) throws Exception {
         if (remoteChallenge == null) {
             Log.w(TAG, "获取" + type.getDisplayName() + "失败");
             return;
@@ -278,14 +293,19 @@ final class ChallengeQuestionProvider {
         Question question = new Question(
                 jsonResponse.getString("question"),
                 jsonResponse.getString("answer"));
-        REMOTE_CACHE.put(type, question);
+        REMOTE_CACHE.put(cacheKey(type, reasoningLevel), question);
         Log.d(TAG, type.getDisplayName() + "获取成功并已缓存");
     }
 
-    private String httpObtainChallenge(ChallengeType type) {
+    private String httpObtainChallenge(ChallengeType type, int reasoningLevel) {
         try {
             JSONObject request = createBaseRequest();
             request.put("type", type.getRequestType());
+            if (type == ChallengeType.REASONING || type == ChallengeType.MIXED) {
+                request.put("level", type == ChallengeType.REASONING
+                        ? reasoningLevel
+                        : ChallengeSettingsManager.REASONING_LEVEL_DEFAULT);
+            }
             // 听力题 / 复述题走各自的专用接口，不打印 challenge 接口请求参数。
             if (type != ChallengeType.LISTENING && type != ChallengeType.RETELLING) {
                 Log.d(TAG, "调用challenge接口, 请求参数: " + request);
@@ -315,6 +335,10 @@ final class ChallengeQuestionProvider {
             Log.e(TAG, "HTTP请求英文阅读题异常", e);
             return null;
         }
+    }
+
+    private static String cacheKey(ChallengeType type, int reasoningLevel) {
+        return type.name() + ':' + reasoningLevel;
     }
 
     private JSONObject createBaseRequest() throws Exception {

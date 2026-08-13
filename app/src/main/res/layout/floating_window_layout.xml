@@ -147,12 +147,15 @@
     <!-- 关闭按钮 - 右上角 -->
     <Button
         android:id="@+id/btn_close"
-        android:layout_width="80dp"
+        android:layout_width="wrap_content"
         android:layout_height="40dp"
+        android:minWidth="0dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="10dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
         android:text="关闭"
         android:textColor="#FFFFFF"
         android:textSize="12sp"

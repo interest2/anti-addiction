@@ -35,6 +35,7 @@ public class Const {
      * 非核心逻辑的常量
      */
     public static final int TRANSIENT_FEEDBACK_DURATION_MS = 1000; // 非常驻 UI 提示时长
+    public static final long MIN_ANSWER_DELAY_MS = 5000; // 题目展示后最短作答等待时长；5 秒内点确定仅提示不校验
     public static final boolean REMINDER_PROVIDER_SETTINGS_ENABLED = true;
     public static final boolean ANSWER_RECORDS_ENABLED = true;
     /**

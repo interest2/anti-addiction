@@ -59,6 +59,7 @@ public class BackupManager {
             ChallengeSettingsManager.KEY_MATH_DIFFICULTY_MODE, // 算术题难度模式（default / custom）
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_TIER,
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER,
+            LeisureTimeManager.KEY_LEISURE_RELAXED_TIER,                     // 休闲时刻·宽松模式：当前档位
     };
 
     // 个性化：整型配置键
@@ -69,15 +70,12 @@ public class BackupManager {
             ChallengeSettingsManager.KEY_MATH_SUBTRACTION_DIGITS,                 // 算术题难度：减法位数
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS,   // 算术题难度：乘数位数
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, // 算术题难度：被乘数位数
+            ChallengeSettingsManager.KEY_REASONING_DIFFICULTY_LEVEL,              // 推理题难度：默认 / 0档 / 1档 / 2档
             ChallengeSettingsManager.KEY_CHALLENGE_TIMER_MODE,                    // 答题计时显示模式
             ChallengeSettingsManager.KEY_ENGLISH_READING_LENGTH,                  // 英文阅读题长度
             ChallengeSettingsManager.KEY_RETELLING_STORY_LENGTH,                  // 复述题：故事字数
             ChallengeSettingsManager.KEY_RETELLING_DISPLAY_SECONDS,               // 复述题：展示秒数
             ChallengeSettingsManager.KEY_RETELLING_PASS_SCORE,                    // 复述题：通过分数
-            LeisureTimeManager.KEY_LEISURE_DURATION_MINUTES,                      // 休闲时刻·宽松模式：时长
-            LeisureTimeManager.KEY_LEISURE_DAILY_COUNT,                           // 休闲时刻·宽松模式：次数
-            LeisureTimeManager.KEY_STRICT_LEISURE_DURATION_MINUTES,               // 休闲时刻·严格模式：时长
-            LeisureTimeManager.KEY_STRICT_LEISURE_DAILY_COUNT,                    // 休闲时刻·严格模式：次数
     };
 
     // 更多：悬浮窗默认大小（全局）

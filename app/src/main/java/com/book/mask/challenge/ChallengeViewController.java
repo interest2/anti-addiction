@@ -30,6 +30,8 @@ import com.book.mask.R;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
 
+import java.util.Locale;
+
 /**
  * 负责答题悬浮层的组件绑定、渲染、输入法与焦点管理。
  */
@@ -156,6 +158,13 @@ final class ChallengeViewController {
 
     void showEmptyAnswer() {
         showResult("⚠️ 请输入答案", 0xFFFF5722);
+    }
+
+    /** 题目展示后过早点确定：仅提示等待，不进入校验。 */
+    void showWaitHint() {
+        showResult(
+                String.format(Locale.US, "请等待%d秒再作答", Const.MIN_ANSWER_DELAY_MS / 1000),
+                0xFFFF9800);
     }
 
     void showCorrectAnswer() {

@@ -24,11 +24,16 @@ public class ChallengeSettingsManager {
     static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER =
             "math_multiplication_multiplicand_tier";
     static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
+    static final String KEY_REASONING_DIFFICULTY_LEVEL = "reasoning_difficulty_level";
     static final String KEY_CHALLENGE_TIMER_MODE = "challenge_timer_mode";
     static final String KEY_ENGLISH_READING_LENGTH = "english_reading_length";
     static final String KEY_RETELLING_STORY_LENGTH = "retelling_story_length";
     static final String KEY_RETELLING_DISPLAY_SECONDS = "retelling_display_seconds";
     static final String KEY_RETELLING_PASS_SCORE = "retelling_pass_score";
+
+    public static final int REASONING_LEVEL_DEFAULT = -1;
+    public static final int REASONING_LEVEL_MIN = 0;
+    public static final int REASONING_LEVEL_MAX = 2;
 
     /** 答题计时显示模式：不显示 / 仅显示分钟（mm）/ 显示分钟和秒（mm:s）。 */
     public static final int TIMER_MODE_NONE = 0;
@@ -129,6 +134,20 @@ public class ChallengeSettingsManager {
 
     public void setChallengeType(ChallengeType challengeType) {
         mmkv.putString(KEY_MATH_QUESTION_TYPE, challengeType.getPreferenceValue()).commit();
+    }
+
+    public int getReasoningDifficultyLevel() {
+        int level = mmkv.getInt(KEY_REASONING_DIFFICULTY_LEVEL, REASONING_LEVEL_DEFAULT);
+        return level >= REASONING_LEVEL_MIN && level <= REASONING_LEVEL_MAX
+                ? level
+                : REASONING_LEVEL_DEFAULT;
+    }
+
+    public void setReasoningDifficultyLevel(int level) {
+        int validLevel = level >= REASONING_LEVEL_MIN && level <= REASONING_LEVEL_MAX
+                ? level
+                : REASONING_LEVEL_DEFAULT;
+        mmkv.putInt(KEY_REASONING_DIFFICULTY_LEVEL, validLevel).commit();
     }
 
     public int getChallengeTimerMode() {

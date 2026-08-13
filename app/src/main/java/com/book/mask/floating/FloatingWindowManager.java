@@ -70,7 +70,12 @@ public class FloatingWindowManager {
     public interface OnFloatingWindowListener {
         void onChallengeCorrect();
         void onChallengeCancel();
-        boolean onLeisureTimeCloseRequested();
+        /**
+         * 请求用休闲时刻免答题关闭悬浮窗。
+         *
+         * @param tier 宽松模式选中的档位（大档/小档）；严格模式或休闲已激活时传 null
+         */
+        boolean onLeisureTimeCloseRequested(LeisureTimeManager.LeisureTier tier);
         void onFloatingWindowShownFromHidden();
     }
     
@@ -96,14 +101,6 @@ public class FloatingWindowManager {
      * 显示悬浮窗
      */
     public void showFloatingWindow(CustomApp currentActiveApp) {
-        if (currentActiveApp != null
-                && leisureTimeManager.isLeisureTimeActiveForApp(
-                        currentActiveApp.getPackageName())) {
-            Log.v(TAG, "APP " + currentActiveApp.getAppName()
-                    + " 正在休闲解禁，跳过显示悬浮窗");
-            return;
-        }
-
         if (tryResumeFromPageTransition(currentActiveApp)) {
             return;
         }
@@ -171,14 +168,24 @@ public class FloatingWindowManager {
                         && CustomAppManager.WECHAT_PACKAGE.equals(
                                 currentWindowApp.getPackageName())
                         && currentWindowApp.isGlobalBlock();
-                if (wechatChallengeRequired) {
+                if (leisureTimeManager.isAnyLeisureTimeActive()
+                        && listener != null
+                        && listener.onLeisureTimeCloseRequested(null)) {
+                    Log.d(TAG, "休闲解禁期间免答题关闭悬浮窗");
+                } else if (leisureTimeManager.isLeisureTimeArmed(
+                                LeisureTimeManager.LeisureMode.RELAXED)
+                        && listener != null
+                        && listener.onLeisureTimeCloseRequested(
+                                leisureTimeManager.getSelectedRelaxedTier())) {
+                    Log.d(TAG, "宽松休闲待触发，按设置档位免答题关闭悬浮窗");
+                } else if (leisureTimeManager.isLeisureTimeArmed()
+                        && listener != null
+                        && listener.onLeisureTimeCloseRequested(null)) {
+                    Log.d(TAG, "使用休闲时刻免答题关闭悬浮窗");
+                } else if (wechatChallengeRequired) {
                     Log.d(TAG, "微信已开启答题解锁，显示答题验证界面");
                     InputMethodPackageManager.getInstance().registerDefaultInputMethod(context);
                     challengeManager.showChallenge();
-                } else if (leisureTimeManager.isLeisureTimeArmed()
-                        && listener != null
-                        && listener.onLeisureTimeCloseRequested()) {
-                    Log.d(TAG, "使用休闲时刻免答题关闭悬浮窗");
                 } else if (currentWindowApp != null
                         && CustomAppManager.WECHAT_PACKAGE.equals(
                                 currentWindowApp.getPackageName())) {

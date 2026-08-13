@@ -117,7 +117,7 @@
                         android:paddingStart="14dp"
                         android:paddingEnd="14dp"
                         android:singleLine="true"
-                        android:text="分钟 mm"
+                        android:text="显示分钟"
                         android:textColor="@color/text_challenge_timer_option"
                         android:textSize="12sp" />
 
@@ -131,7 +131,7 @@
                         android:paddingStart="14dp"
                         android:paddingEnd="14dp"
                         android:singleLine="true"
-                        android:text="分钟和秒 mm:s"
+                        android:text="分钟和十秒位"
                         android:textColor="@color/text_challenge_timer_option"
                         android:textSize="12sp" />
                 </LinearLayout>

@@ -217,8 +217,9 @@ public class FloatService extends AccessibilityService
             }
 
             @Override
-            public boolean onLeisureTimeCloseRequested() {
-                return handleLeisureTimeClose();
+            public boolean onLeisureTimeCloseRequested(
+                    LeisureTimeManager.LeisureTier tier) {
+                return handleLeisureTimeClose(tier);
             }
 
             @Override
@@ -245,27 +246,33 @@ public class FloatService extends AccessibilityService
 
     /**
      * 尝试使用一次休闲时刻免答题关闭悬浮窗。
+     *
+     * @param tier 宽松模式选中的档位；严格模式或休闲已激活时传 null
      */
-    private boolean handleLeisureTimeClose() {
+    private boolean handleLeisureTimeClose(LeisureTimeManager.LeisureTier tier) {
         CustomApp currentActiveApp = Share.currentApp;
         if (currentActiveApp == null) {
             return false;
         }
 
         LeisureTimeManager.LeisureMode leisureMode =
-                leisureTimeManager.activateLeisureTimeForClose(currentActiveApp.getPackageName());
+                leisureTimeManager.activateLeisureTimeForClose(tier);
         if (leisureMode == null) {
+            leisureMode = leisureTimeManager.getActiveLeisureMode();
+            if (leisureMode == null) {
+                return false;
+            }
+        }
+
+        // 首次触发按完整时长计时；全局解禁期间关闭其他 APP 时沿用剩余时间
+        int leisureSeconds = (int) (leisureTimeManager
+                .getLeisureTimeRemainingMillis(leisureMode) / 1000);
+        if (leisureSeconds <= 0) {
             return false;
         }
-
-        int leisureSeconds = leisureTimeManager.getLeisureDurationMinutes(leisureMode) * 60;
         logInfoOfLeisure(currentActiveApp, leisureMode, leisureSeconds);
 
-        // 仅当休闲时刻用的宽松档，才消耗宽松次数
-        if (leisureMode == LeisureTimeManager.LeisureMode.RELAXED) {
-            relaxManager.incrementAppRelaxedCloseCount(currentActiveApp);
-            notifyHomeFragmentUpdate(currentActiveApp);
-        }
+        // 休闲时刻不消耗该 APP 的宽松次数
         // 记录本次关闭时间，供暖窗口复用期间按"记录的剩余时长"判断是否仍应隐藏
         relaxManager.recordAppCloseTime(currentActiveApp, leisureSeconds);
         // 标为手动隐藏，防止后续检测

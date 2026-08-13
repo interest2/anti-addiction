@@ -10,39 +10,34 @@ import com.tencent.mmkv.MMKV;
  */
 public class LeisureTimeManager {
 
-    // 宽松模式范围
-    public static final int LEISURE_DURATION_MIN_MINUTES = 10;
-    public static final int LEISURE_DURATION_MAX_MINUTES = 30;
-    public static final int LEISURE_DAILY_COUNT_MIN = 1;
-    public static final int LEISURE_DAILY_COUNT_MAX = 2;
+    // 宽松模式档位：一天总共 3 次 = 大档 2 次 + 小档 1 次
+    public static final int RELAXED_PLAN_MINUTES_OPTION_30 = 30; // 大档固定时长
+    public static final int RELAXED_SHORT_MINUTES = 15;          // 小档固定时长
+    public static final int RELAXED_LARGE_DAILY_LIMIT = 2;       // 大档每日次数
+    public static final int RELAXED_SHORT_DAILY_LIMIT = 1;       // 小档每日次数
+    public static final int RELAXED_DAILY_TOTAL = 3;             // 每天总次数
+    private static final long RELAXED_TRIGGER_COOLDOWN_MILLIS = 3 * 60 * 60_000L;
 
-    // 严格模式范围
-    public static final int STRICT_LEISURE_DURATION_MIN_MINUTES = 1;
-    public static final int STRICT_LEISURE_DURATION_MAX_MINUTES = 2;
-    public static final int STRICT_LEISURE_DAILY_COUNT_MIN = 1;
-    public static final int STRICT_LEISURE_DAILY_COUNT_MAX = 3;
+    // 严格模式固定档位：仅 2 分钟一档，每天最多 3 次
+    public static final int STRICT_LEISURE_DURATION_MINUTES = 2;
+    public static final int STRICT_LEISURE_DAILY_COUNT = 3;
 
-    private static final int DEFAULT_LEISURE_DURATION_MINUTES = 15;
-    private static final int DEFAULT_LEISURE_DAILY_COUNT = 2;
-    private static final int DEFAULT_STRICT_LEISURE_DURATION_MINUTES = 2;
-    private static final int DEFAULT_STRICT_LEISURE_DAILY_COUNT = 2;
-
+    // 宽松模式旧配置键（改档位方案后废弃，仅保留常量避免误用）
     static final String KEY_LEISURE_DURATION_MINUTES = "leisure_duration_minutes";
     static final String KEY_LEISURE_DAILY_COUNT = "leisure_daily_count";
     static final String KEY_LEISURE_USED_COUNT = "leisure_used_count";
     static final String KEY_LEISURE_LAST_USED_DATE = "leisure_last_used_date";
-    static final String KEY_STRICT_LEISURE_DURATION_MINUTES =
-            "strict_leisure_duration_minutes";
-    static final String KEY_STRICT_LEISURE_DAILY_COUNT = "strict_leisure_daily_count";
+    static final String KEY_LEISURE_RELAXED_TIER = "leisure_relaxed_tier";
+    static final String KEY_LEISURE_RELAXED_LARGE_USED = "leisure_relaxed_large_used";
+    static final String KEY_LEISURE_RELAXED_SHORT_USED = "leisure_relaxed_short_used";
+    static final String KEY_LEISURE_RELAXED_COOLDOWN_UNTIL =
+            "leisure_relaxed_cooldown_until";
     static final String KEY_STRICT_LEISURE_USED_COUNT = "strict_leisure_used_count";
     static final String KEY_STRICT_LEISURE_LAST_USED_DATE =
             "strict_leisure_last_used_date";
     static final String KEY_LEISURE_ACTIVE_UNTIL = "leisure_active_until";
-    static final String KEY_LEISURE_ACTIVE_PACKAGE = "leisure_active_package";
     static final String KEY_STRICT_LEISURE_ACTIVE_UNTIL =
             "strict_leisure_active_until";
-    static final String KEY_STRICT_LEISURE_ACTIVE_PACKAGE =
-            "strict_leisure_active_package";
     static final String KEY_LEISURE_ARMED = "leisure_armed";
     static final String KEY_LEISURE_ARMED_MODE = "leisure_armed_mode";
 
@@ -61,138 +56,156 @@ public class LeisureTimeManager {
         }
     }
 
+    /** 宽松模式的休闲档位：大档（30 分钟）与小档（15 分钟）。 */
+    public enum LeisureTier {
+        LARGE,
+        SHORT
+    }
+
     private final MMKV mmkv;
 
     public LeisureTimeManager(Context context) {
         mmkv = SettingsStorage.open();
     }
 
-    public static boolean isValidLeisureDurationMinutes(
-            LeisureMode mode, int durationMinutes) {
-        return durationMinutes >= getLeisureDurationMinMinutes(mode)
-                && durationMinutes <= getLeisureDurationMaxMinutes(mode);
-    }
-
-    public static boolean isValidLeisureDailyCount(LeisureMode mode, int dailyCount) {
-        return dailyCount >= getLeisureDailyCountMin(mode)
-                && dailyCount <= getLeisureDailyCountMax(mode);
-    }
-
-    public static int getLeisureDurationMaxMinutes(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? STRICT_LEISURE_DURATION_MAX_MINUTES
-                : LEISURE_DURATION_MAX_MINUTES;
-    }
-
-    public static int getLeisureDailyCountMax(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? STRICT_LEISURE_DAILY_COUNT_MAX
-                : LEISURE_DAILY_COUNT_MAX;
-    }
-
-    public static String getLeisureDurationRangeText(LeisureMode mode) {
-        return getLeisureDurationMinMinutes(mode) + "-" + getLeisureDurationMaxMinutes(mode);
-    }
-
-    public static String getLeisureDailyCountRangeText(LeisureMode mode) {
-        return getLeisureDailyCountMin(mode) + "-" + getLeisureDailyCountMax(mode);
-    }
-
-    private static int getLeisureDurationMinMinutes(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? STRICT_LEISURE_DURATION_MIN_MINUTES
-                : LEISURE_DURATION_MIN_MINUTES;
-    }
-
-    private static int getLeisureDailyCountMin(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? STRICT_LEISURE_DAILY_COUNT_MIN
-                : LEISURE_DAILY_COUNT_MIN;
-    }
-
-    /**
-     * 保存休闲时刻设置。
-     */
-    public void setLeisureTimeSettings(
-            LeisureMode mode, int durationMinutes, int dailyCount) {
-        if (!isValidLeisureDurationMinutes(mode, durationMinutes)) {
-            throw new IllegalArgumentException(
-                    "休闲时刻时长必须在" + getLeisureDurationRangeText(mode) + "分钟之间");
-        }
-        if (!isValidLeisureDailyCount(mode, dailyCount)) {
-            throw new IllegalArgumentException(
-                    "休闲时刻次数必须在" + getLeisureDailyCountRangeText(mode) + "次之间");
-        }
-
-        mmkv.putInt(getLeisureDurationKey(mode), durationMinutes)
-                .putInt(getLeisureDailyCountKey(mode), dailyCount)
-                .commit();
-    }
-
+    /** 休闲时刻时长：宽松模式大档 30 分钟、严格模式固定 2 分钟。 */
     public int getLeisureDurationMinutes(LeisureMode mode) {
-        int durationMinutes = mmkv.getInt(
-                getLeisureDurationKey(mode),
-                mode == LeisureMode.STRICT
-                        ? DEFAULT_STRICT_LEISURE_DURATION_MINUTES
-                        : DEFAULT_LEISURE_DURATION_MINUTES);
-        return Math.max(
-                getLeisureDurationMinMinutes(mode),
-                Math.min(durationMinutes, getLeisureDurationMaxMinutes(mode)));
+        return mode == LeisureMode.RELAXED
+                ? getRelaxedPlanMinutes()
+                : STRICT_LEISURE_DURATION_MINUTES;
     }
 
+    /** 休闲时刻每日次数：宽松 / 严格均为一天最多 3 次。 */
     public int getLeisureDailyCount(LeisureMode mode) {
-        int dailyCount = mmkv.getInt(
-                getLeisureDailyCountKey(mode),
-                mode == LeisureMode.STRICT
-                        ? DEFAULT_STRICT_LEISURE_DAILY_COUNT
-                        : DEFAULT_LEISURE_DAILY_COUNT);
-        return Math.max(
-                getLeisureDailyCountMin(mode),
-                Math.min(dailyCount, getLeisureDailyCountMax(mode)));
+        return mode == LeisureMode.RELAXED
+                ? RELAXED_DAILY_TOTAL
+                : STRICT_LEISURE_DAILY_COUNT;
     }
 
     public int getLeisureUsedCountToday(LeisureMode mode) {
-        String lastUsedDate = mmkv.getString(getLeisureLastUsedDateKey(mode), "");
+        if (mode == LeisureMode.RELAXED) {
+            return getLargeUsedCountToday() + getShortUsedCountToday();
+        }
+        String lastUsedDate = mmkv.getString(
+                KEY_STRICT_LEISURE_LAST_USED_DATE, "");
         if (!DateUtils.getCurrentDate().equals(lastUsedDate)) {
             return 0;
         }
-        return mmkv.getInt(getLeisureUsedCountKey(mode), 0);
+        return mmkv.getInt(KEY_STRICT_LEISURE_USED_COUNT, 0);
     }
 
     public int getLeisureRemainingCountToday(LeisureMode mode) {
+        if (mode == LeisureMode.RELAXED) {
+            return getLeisureLargeRemainingCountToday()
+                    + getLeisureShortRemainingCountToday();
+        }
         return Math.max(0, getLeisureDailyCount(mode) - getLeisureUsedCountToday(mode));
     }
 
-    public long getLeisureTimeRemainingMillis() {
-        long relaxedRemaining = getLeisureTimeRemainingMillis(LeisureMode.RELAXED);
-        long strictRemaining = getLeisureTimeRemainingMillis(LeisureMode.STRICT);
-        if (relaxedRemaining == 0) {
-            return strictRemaining;
+    /**
+     * 保存宽松模式当前选中的档位（大档 30 分钟 / 小档 15 分钟）。
+     */
+    public void setSelectedRelaxedTier(LeisureTier tier) {
+        if (tier == null) {
+            throw new IllegalArgumentException("宽松模式档位不能为 null");
         }
-        if (strictRemaining == 0) {
-            return relaxedRemaining;
-        }
-        return Math.min(relaxedRemaining, strictRemaining);
+        mmkv.putString(KEY_LEISURE_RELAXED_TIER, tier.name()).commit();
     }
 
-    public long getLeisureTimeRemainingMillisForApp(String packageName) {
-        long remainingMillis = 0;
-        for (LeisureMode mode : LeisureMode.values()) {
-            if (isLeisureTimeActiveForApp(mode, packageName)) {
-                remainingMillis = Math.max(
-                        remainingMillis, getLeisureTimeRemainingMillis(mode));
-            }
+    /** 宽松模式当前选中的档位，默认大档。 */
+    public LeisureTier getSelectedRelaxedTier() {
+        String value = mmkv.getString(KEY_LEISURE_RELAXED_TIER, LeisureTier.LARGE.name());
+        try {
+            return LeisureTier.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return LeisureTier.LARGE;
         }
-        return remainingMillis;
+    }
+
+    /** 宽松模式大档固定时长。 */
+    public int getRelaxedPlanMinutes() {
+        return RELAXED_PLAN_MINUTES_OPTION_30;
+    }
+
+    /** 宽松模式大档今日剩余次数（每天最多 2 次）。 */
+    public int getLeisureLargeRemainingCountToday() {
+        return Math.max(0, RELAXED_LARGE_DAILY_LIMIT - getLargeUsedCountToday());
+    }
+
+    /** 宽松模式小档今日剩余次数（每天最多 1 次）。 */
+    public int getLeisureShortRemainingCountToday() {
+        return Math.max(0, RELAXED_SHORT_DAILY_LIMIT - getShortUsedCountToday());
+    }
+
+    /**
+     * 20 点后的宽松休闲额度回收：只要当天还没用完，就把余额重置为「小档 1 次（15 分钟）」。
+     *
+     * @return 是否发生了重置
+     */
+    public boolean resetRelaxedRemainingToShort() {
+        synchronized (LeisureTimeManager.class) {
+            if (getLeisureRemainingCountToday(LeisureMode.RELAXED) <= 0) {
+                return false;
+            }
+            String currentDate = DateUtils.getCurrentDate();
+            mmkv.putInt(KEY_LEISURE_RELAXED_LARGE_USED, RELAXED_LARGE_DAILY_LIMIT)
+                    .putInt(KEY_LEISURE_RELAXED_SHORT_USED, 0)
+                    .putString(KEY_LEISURE_LAST_USED_DATE, currentDate)
+                    .commit();
+            return true;
+        }
+    }
+
+    private int getLargeUsedCountToday() {
+        return isTodayLeisureDate()
+                ? mmkv.getInt(KEY_LEISURE_RELAXED_LARGE_USED, 0)
+                : 0;
+    }
+
+    private int getShortUsedCountToday() {
+        return isTodayLeisureDate()
+                ? mmkv.getInt(KEY_LEISURE_RELAXED_SHORT_USED, 0)
+                : 0;
+    }
+
+    private boolean isTodayLeisureDate() {
+        return DateUtils.getCurrentDate()
+                .equals(mmkv.getString(KEY_LEISURE_LAST_USED_DATE, ""));
+    }
+
+    public boolean isRelaxedTriggerCoolingDown() {
+        return getRelaxedTriggerCooldownRemainingMillis() > 0;
+    }
+
+    public long getRelaxedTriggerCooldownRemainingMillis() {
+        return Math.max(
+                0,
+                mmkv.getLong(KEY_LEISURE_RELAXED_COOLDOWN_UNTIL, 0)
+                        - System.currentTimeMillis());
     }
 
     public boolean isLeisureTimeActive(LeisureMode mode) {
         return getLeisureTimeRemainingMillis(mode) > 0;
     }
 
-    public boolean isLeisureTimeActiveForApp(String packageName) {
-        return isLeisureTimeActiveForApp(LeisureMode.RELAXED, packageName)
-                || isLeisureTimeActiveForApp(LeisureMode.STRICT, packageName);
+    public boolean isAnyLeisureTimeActive() {
+        return isLeisureTimeActive(LeisureMode.RELAXED)
+                || isLeisureTimeActive(LeisureMode.STRICT);
+    }
+
+    public long getMaxLeisureTimeRemainingMillis() {
+        return Math.max(
+                getLeisureTimeRemainingMillis(LeisureMode.RELAXED),
+                getLeisureTimeRemainingMillis(LeisureMode.STRICT));
+    }
+
+    public LeisureMode getActiveLeisureMode() {
+        for (LeisureMode mode : LeisureMode.values()) {
+            if (isLeisureTimeActive(mode)) {
+                return mode;
+            }
+        }
+        return null;
     }
 
     public boolean isLeisureTimeArmed() {
@@ -210,7 +223,16 @@ public class LeisureTimeManager {
         if (!isLeisureTimeArmed()) {
             return null;
         }
-        return getLeisureDurationMinutes(getArmedLeisureMode());
+        LeisureMode mode = getArmedLeisureMode();
+        return mode == LeisureMode.RELAXED
+                ? getSelectedRelaxedDurationMinutes()
+                : getLeisureDurationMinutes(mode);
+    }
+
+    private int getSelectedRelaxedDurationMinutes() {
+        return getSelectedRelaxedTier() == LeisureTier.LARGE
+                ? getRelaxedPlanMinutes()
+                : RELAXED_SHORT_MINUTES;
     }
 
     /**
@@ -220,10 +242,12 @@ public class LeisureTimeManager {
      */
     public boolean tryStartLeisureTime(LeisureMode mode) {
         synchronized (LeisureTimeManager.class) {
-            if (isLeisureTimeActive(mode)) {
+            if (isAnyLeisureTimeActive()) {
                 return false;
             }
-
+            if (mode == LeisureMode.RELAXED && isRelaxedTriggerCoolingDown()) {
+                return false;
+            }
             if (getLeisureRemainingCountToday(mode) <= 0) {
                 return false;
             }
@@ -249,13 +273,13 @@ public class LeisureTimeManager {
     }
 
     /**
-     * 关闭悬浮窗并正式开始休闲时刻。每段休闲时刻只在首次关闭时消耗一次。
+     * 首次关闭悬浮窗时正式开始全局休闲解禁，并只消耗一次所选档位额度。
      *
-     * @return 成功绑定当前 APP 的模式；没有待触发模式时返回 null
+     * @return 成功触发的模式；没有待触发模式或所选档位不可用时返回 null
      */
-    public LeisureMode activateLeisureTimeForClose(String packageName) {
+    public LeisureMode activateLeisureTimeForClose(LeisureTier tier) {
         synchronized (LeisureTimeManager.class) {
-            if (packageName == null || !isLeisureTimeArmed()) {
+            if (!isLeisureTimeArmed()) {
                 return null;
             }
             LeisureMode mode = getArmedLeisureMode();
@@ -263,28 +287,65 @@ public class LeisureTimeManager {
                 mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
                 return null;
             }
-            if (getLeisureRemainingCountToday(mode) <= 0) {
-                mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
-                return null;
+
+            if (mode == LeisureMode.RELAXED) {
+                return activateRelaxedLeisure(tier);
             }
-
-            String currentDate = DateUtils.getCurrentDate();
-            String lastUsedDate = mmkv.getString(getLeisureLastUsedDateKey(mode), "");
-            int usedCount = currentDate.equals(lastUsedDate)
-                    ? mmkv.getInt(getLeisureUsedCountKey(mode), 0)
-                    : 0;
-
-            mmkv.putInt(getLeisureUsedCountKey(mode), usedCount + 1)
-                    .putString(getLeisureLastUsedDateKey(mode), currentDate)
-                    .putLong(
-                            getLeisureActiveUntilKey(mode),
-                            System.currentTimeMillis()
-                                    + getLeisureDurationMinutes(mode) * 60_000L)
-                    .putString(getLeisureActivePackageKey(mode), packageName)
-                    .putBoolean(KEY_LEISURE_ARMED, false)
-                    .commit();
-            return mode;
+            return activateStrictLeisure();
         }
+    }
+
+    private LeisureMode activateRelaxedLeisure(LeisureTier tier) {
+        if (isRelaxedTriggerCoolingDown()) {
+            mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
+            return null;
+        }
+        LeisureTier effectiveTier = tier != null ? tier : getSelectedRelaxedTier();
+        if (getRemainingCount(effectiveTier) <= 0) {
+            mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
+            return null;
+        }
+
+        int durationMinutes = effectiveTier == LeisureTier.LARGE
+                ? getRelaxedPlanMinutes()
+                : RELAXED_SHORT_MINUTES;
+        String tierUsedKey = effectiveTier == LeisureTier.LARGE
+                ? KEY_LEISURE_RELAXED_LARGE_USED
+                : KEY_LEISURE_RELAXED_SHORT_USED;
+        int tierUsedCount = isTodayLeisureDate() ? mmkv.getInt(tierUsedKey, 0) : 0;
+        long now = System.currentTimeMillis();
+        mmkv.putInt(tierUsedKey, tierUsedCount + 1)
+                .putString(KEY_LEISURE_LAST_USED_DATE, DateUtils.getCurrentDate())
+                .putLong(KEY_LEISURE_ACTIVE_UNTIL, now + durationMinutes * 60_000L)
+                .putLong(
+                        KEY_LEISURE_RELAXED_COOLDOWN_UNTIL,
+                        now + RELAXED_TRIGGER_COOLDOWN_MILLIS)
+                .putBoolean(KEY_LEISURE_ARMED, false)
+                .commit();
+        return LeisureMode.RELAXED;
+    }
+
+    private int getRemainingCount(LeisureTier tier) {
+        return tier == LeisureTier.LARGE
+                ? getLeisureLargeRemainingCountToday()
+                : getLeisureShortRemainingCountToday();
+    }
+
+    private LeisureMode activateStrictLeisure() {
+        if (getLeisureRemainingCountToday(LeisureMode.STRICT) <= 0) {
+            mmkv.putBoolean(KEY_LEISURE_ARMED, false).commit();
+            return null;
+        }
+        int strictUsedCount = getLeisureUsedCountToday(LeisureMode.STRICT);
+        mmkv.putInt(KEY_STRICT_LEISURE_USED_COUNT, strictUsedCount + 1)
+                .putString(KEY_STRICT_LEISURE_LAST_USED_DATE, DateUtils.getCurrentDate())
+                .putLong(
+                        KEY_STRICT_LEISURE_ACTIVE_UNTIL,
+                        System.currentTimeMillis()
+                                + getLeisureDurationMinutes(LeisureMode.STRICT) * 60_000L)
+                .putBoolean(KEY_LEISURE_ARMED, false)
+                .commit();
+        return LeisureMode.STRICT;
     }
 
     private LeisureMode getArmedLeisureMode() {
@@ -292,51 +353,15 @@ public class LeisureTimeManager {
                 KEY_LEISURE_ARMED_MODE, LeisureMode.RELAXED.preferenceValue));
     }
 
-    private long getLeisureTimeRemainingMillis(LeisureMode mode) {
+    public long getLeisureTimeRemainingMillis(LeisureMode mode) {
         long remainingMillis = mmkv.getLong(getLeisureActiveUntilKey(mode), 0)
                 - System.currentTimeMillis();
         return Math.max(remainingMillis, 0);
-    }
-
-    private boolean isLeisureTimeActiveForApp(LeisureMode mode, String packageName) {
-        return packageName != null
-                && isLeisureTimeActive(mode)
-                && packageName.equals(mmkv.getString(getLeisureActivePackageKey(mode), ""));
-    }
-
-    private static String getLeisureDurationKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_DURATION_MINUTES
-                : KEY_LEISURE_DURATION_MINUTES;
-    }
-
-    private static String getLeisureDailyCountKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_DAILY_COUNT
-                : KEY_LEISURE_DAILY_COUNT;
-    }
-
-    private static String getLeisureUsedCountKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_USED_COUNT
-                : KEY_LEISURE_USED_COUNT;
-    }
-
-    private static String getLeisureLastUsedDateKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_LAST_USED_DATE
-                : KEY_LEISURE_LAST_USED_DATE;
     }
 
     private static String getLeisureActiveUntilKey(LeisureMode mode) {
         return mode == LeisureMode.STRICT
                 ? KEY_STRICT_LEISURE_ACTIVE_UNTIL
                 : KEY_LEISURE_ACTIVE_UNTIL;
-    }
-
-    private static String getLeisureActivePackageKey(LeisureMode mode) {
-        return mode == LeisureMode.STRICT
-                ? KEY_STRICT_LEISURE_ACTIVE_PACKAGE
-                : KEY_LEISURE_ACTIVE_PACKAGE;
     }
 }

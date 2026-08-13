@@ -322,10 +322,8 @@ public class AppStateManager {
             Log.d(TAG, appForTimer + " 到达预期时间");
             if (appForTimer != null) {
                 long leisureRemainingMillis =
-                        leisureTimeManager.getLeisureTimeRemainingMillisForApp(
-                                appForTimer.getPackageName());
-                if (leisureTimeManager.isLeisureTimeActiveForApp(
-                        appForTimer.getPackageName())) {
+                        leisureTimeManager.getMaxLeisureTimeRemainingMillis();
+                if (leisureTimeManager.isAnyLeisureTimeActive()) {
                     scheduleTimer(appForTimer,
                             leisureRemainingMillis + 100, resetRelaxedModeOnTrigger);
                     Log.d(TAG, "休闲时刻进行中，APP " + appForTimer.getAppName()
@@ -801,7 +799,7 @@ public class AppStateManager {
     private void rememberNextEntryDisplayOrder(CustomApp app) {
         boolean shouldDetectBeforeShow = lastDetectionNotTarget.getOrDefault(
                         app.getPackageName(), false)
-                && !leisureTimeManager.isLeisureTimeActiveForApp(app.getPackageName())
+                && !leisureTimeManager.isAnyLeisureTimeActive()
                 && !Share.isAppManuallyHidden(app);
         detectBeforeShowOnNextEntry.put(app.getPackageName(), shouldDetectBeforeShow);
         Log.d(TAG, "记录 " + app.getAppName() + " 下次进入策略: "
@@ -853,12 +851,8 @@ public class AppStateManager {
     }
 
     private boolean isDetectionPaused() {
-        return isLeisureDetectionPaused() || isPackageTransitionDetectionPaused();
-    }
-
-    private boolean isLeisureDetectionPaused() {
-        return currentActiveApp != null
-                && leisureTimeManager.isLeisureTimeActiveForApp(currentActiveApp.getPackageName());
+        // 休闲期间悬浮窗照常展示，仅点关闭时免答题；因此不因休闲暂停页面检测。
+        return isPackageTransitionDetectionPaused();
     }
 
     private boolean isPackageTransitionDetectionPaused() {
