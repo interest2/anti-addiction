@@ -11,8 +11,6 @@ import com.tencent.mmkv.MMKV;
 public class LeisureTimeManager {
 
     // 宽松模式档位：一天总共 3 次 = 大档 2 次 + 小档 1 次
-    public static final int RELAXED_PLAN_MINUTES_OPTION_30 = 30; // 大档固定时长
-    public static final int RELAXED_SHORT_MINUTES = 15;          // 小档固定时长
     public static final int RELAXED_LARGE_DAILY_LIMIT = 2;       // 大档每日次数
     public static final int RELAXED_SHORT_DAILY_LIMIT = 1;       // 小档每日次数
     public static final int RELAXED_DAILY_TOTAL = 3;             // 每天总次数
@@ -28,6 +26,9 @@ public class LeisureTimeManager {
     static final String KEY_LEISURE_USED_COUNT = "leisure_used_count";
     static final String KEY_LEISURE_LAST_USED_DATE = "leisure_last_used_date";
     static final String KEY_LEISURE_RELAXED_TIER = "leisure_relaxed_tier";
+    // 宽松模式两档时长：用户可在各档允许区间内修改
+    static final String KEY_LEISURE_RELAXED_LARGE_MINUTES = "leisure_relaxed_large_minutes";
+    static final String KEY_LEISURE_RELAXED_SHORT_MINUTES = "leisure_relaxed_short_minutes";
     static final String KEY_LEISURE_RELAXED_LARGE_USED = "leisure_relaxed_large_used";
     static final String KEY_LEISURE_RELAXED_SHORT_USED = "leisure_relaxed_short_used";
     static final String KEY_LEISURE_RELAXED_COOLDOWN_UNTIL =
@@ -56,10 +57,34 @@ public class LeisureTimeManager {
         }
     }
 
-    /** 宽松模式的休闲档位：大档（30 分钟）与小档（15 分钟）。 */
+    /** 宽松模式的休闲档位：大档（默认 30 分钟，可改 15-30）与小档（默认 15 分钟，可改 10-15）。 */
     public enum LeisureTier {
-        LARGE,
-        SHORT
+        LARGE(KEY_LEISURE_RELAXED_LARGE_MINUTES, 30, 15, 30),
+        SHORT(KEY_LEISURE_RELAXED_SHORT_MINUTES, 15, 10, 15);
+
+        private final String minutesKey;
+        private final int defaultMinutes;
+        private final int minMinutes;
+        private final int maxMinutes;
+
+        LeisureTier(String minutesKey, int defaultMinutes, int minMinutes, int maxMinutes) {
+            this.minutesKey = minutesKey;
+            this.defaultMinutes = defaultMinutes;
+            this.minMinutes = minMinutes;
+            this.maxMinutes = maxMinutes;
+        }
+
+        public int getMinMinutes() {
+            return minMinutes;
+        }
+
+        public int getMaxMinutes() {
+            return maxMinutes;
+        }
+
+        private int clampMinutes(int minutes) {
+            return Math.max(minMinutes, Math.min(maxMinutes, minutes));
+        }
     }
 
     private final MMKV mmkv;
@@ -68,10 +93,10 @@ public class LeisureTimeManager {
         mmkv = SettingsStorage.open();
     }
 
-    /** 休闲时刻时长：宽松模式大档 30 分钟、严格模式固定 2 分钟。 */
+    /** 休闲时刻时长：宽松模式取当前所选档位的时长、严格模式固定 2 分钟。 */
     public int getLeisureDurationMinutes(LeisureMode mode) {
         return mode == LeisureMode.RELAXED
-                ? getRelaxedPlanMinutes()
+                ? getRelaxedTierMinutes(getSelectedRelaxedTier())
                 : STRICT_LEISURE_DURATION_MINUTES;
     }
 
@@ -122,9 +147,14 @@ public class LeisureTimeManager {
         }
     }
 
-    /** 宽松模式大档固定时长。 */
-    public int getRelaxedPlanMinutes() {
-        return RELAXED_PLAN_MINUTES_OPTION_30;
+    /** 宽松模式指定档位的解禁时长，取值收敛在该档位允许区间内。 */
+    public int getRelaxedTierMinutes(LeisureTier tier) {
+        return tier.clampMinutes(mmkv.getInt(tier.minutesKey, tier.defaultMinutes));
+    }
+
+    /** 保存宽松模式指定档位的解禁时长；超出允许区间时按边界收敛。 */
+    public void setRelaxedTierMinutes(LeisureTier tier, int minutes) {
+        mmkv.putInt(tier.minutesKey, tier.clampMinutes(minutes)).commit();
     }
 
     /** 宽松模式大档今日剩余次数（每天最多 2 次）。 */
@@ -138,7 +168,7 @@ public class LeisureTimeManager {
     }
 
     /**
-     * 20 点后的宽松休闲额度回收：只要当天还没用完，就把余额重置为「小档 1 次（15 分钟）」。
+     * 20 点后的宽松休闲额度回收：只要当天还没用完，就把余额重置为「小档 1 次」。
      *
      * @return 是否发生了重置
      */
@@ -223,16 +253,7 @@ public class LeisureTimeManager {
         if (!isLeisureTimeArmed()) {
             return null;
         }
-        LeisureMode mode = getArmedLeisureMode();
-        return mode == LeisureMode.RELAXED
-                ? getSelectedRelaxedDurationMinutes()
-                : getLeisureDurationMinutes(mode);
-    }
-
-    private int getSelectedRelaxedDurationMinutes() {
-        return getSelectedRelaxedTier() == LeisureTier.LARGE
-                ? getRelaxedPlanMinutes()
-                : RELAXED_SHORT_MINUTES;
+        return getLeisureDurationMinutes(getArmedLeisureMode());
     }
 
     /**
@@ -306,9 +327,7 @@ public class LeisureTimeManager {
             return null;
         }
 
-        int durationMinutes = effectiveTier == LeisureTier.LARGE
-                ? getRelaxedPlanMinutes()
-                : RELAXED_SHORT_MINUTES;
+        int durationMinutes = getRelaxedTierMinutes(effectiveTier);
         String tierUsedKey = effectiveTier == LeisureTier.LARGE
                 ? KEY_LEISURE_RELAXED_LARGE_USED
                 : KEY_LEISURE_RELAXED_SHORT_USED;

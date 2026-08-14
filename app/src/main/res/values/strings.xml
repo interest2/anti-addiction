@@ -63,4 +63,25 @@
     <string name="delete">删除</string>
     <string name="provider_key_read_failed">无法读取 API Key，请重新输入</string>
     <string name="provider_key_save_failed">API Key 安全保存失败</string>
+    <string name="wallpaper_settings">壁纸保活</string>
+    <string name="wallpaper_privacy_hint">省电模式下，悬浮窗很可能长时间不出现，可通过设置壁纸来解决。</string>
+    <string name="wallpaper_privacy_note">本APP只可设置桌面壁纸、不会获取本机相册权限。</string>
+    <string name="wallpaper_pick_photo">选择照片</string>
+    <string name="wallpaper_apply">应用 ✓</string>
+    <string name="wallpaper_clear">清除照片</string>
+    <string name="wallpaper_preview_empty">尚未选择照片</string>
+    <string name="wallpaper_status_no_image">尚未选择照片</string>
+    <string name="wallpaper_status_not_applied">已选择照片，还需点击「应用」设为桌面壁纸</string>
+    <string name="wallpaper_status_active">已设为桌面壁纸，保活生效中</string>
+    <string name="wallpaper_processing">正在处理照片…</string>
+    <string name="wallpaper_saved">照片已保存到本机</string>
+    <string name="wallpaper_save_failed">照片处理失败，请换一张试试</string>
+    <string name="wallpaper_cleared">已清除所选照片</string>
+    <string name="wallpaper_pick_unavailable">无法打开相册选择界面</string>
+    <string name="wallpaper_need_image_first">请先选择一张照片</string>
+    <string name="wallpaper_chooser_unavailable">无法打开系统壁纸设置，请手动前往「设置-壁纸-动态壁纸」选择本应用</string>
+    <string name="wallpaper_service_description">用于本应用在省电模式下的保活，显示你自己选择的照片</string>
+    <string name="wallpaper_solid_color_label">或直接选用纯色壁纸</string>
+    <string name="wallpaper_solid_color_selected">已选用纯色</string>
+    <string name="wallpaper_solid_color_desc">纯色%1$d</string>
 </resources>

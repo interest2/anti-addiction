@@ -96,7 +96,6 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="30分钟"
                         android:textSize="13sp" />
 
                     <TextView
@@ -120,7 +119,6 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="15分钟"
                         android:textSize="13sp" />
 
                     <TextView
@@ -223,4 +221,22 @@
         </LinearLayout>
 
     </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_edit_relaxed_tier_minutes"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:paddingStart="12dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="4dp"
+        android:text="修改时长"
+        android:textAllCaps="false"
+        android:textColor="@color/blue"
+        android:textSize="14sp" />
 </LinearLayout>

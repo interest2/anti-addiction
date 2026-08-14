@@ -76,6 +76,8 @@ public class BackupManager {
             ChallengeSettingsManager.KEY_RETELLING_STORY_LENGTH,                  // 复述题：故事字数
             ChallengeSettingsManager.KEY_RETELLING_DISPLAY_SECONDS,               // 复述题：展示秒数
             ChallengeSettingsManager.KEY_RETELLING_PASS_SCORE,                    // 复述题：通过分数
+            LeisureTimeManager.KEY_LEISURE_RELAXED_LARGE_MINUTES,                 // 休闲时刻·宽松模式：大档时长
+            LeisureTimeManager.KEY_LEISURE_RELAXED_SHORT_MINUTES,                 // 休闲时刻·宽松模式：小档时长
     };
 
     // 更多：悬浮窗默认大小（全局）

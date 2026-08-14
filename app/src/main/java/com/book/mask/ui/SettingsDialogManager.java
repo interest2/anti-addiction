@@ -249,6 +249,8 @@ public class SettingsDialogManager {
         description.setText(
                 "开启后，各 APP 关闭悬浮窗均无需答题；宽松模式的再次使用有3小时窗口期");
         setupLeisureModeInputs(relaxedViews);
+        dialogView.findViewById(R.id.btn_edit_relaxed_tier_minutes)
+                .setOnClickListener(v -> showRelaxedTierMinutesDialog(relaxedViews));
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("休闲时刻（免答题）")
@@ -337,6 +339,7 @@ public class SettingsDialogManager {
                 == LeisureTimeManager.LeisureTier.LARGE;
         views.tierLargeRadio.setChecked(largeSelected);
         views.tierShortRadio.setChecked(!largeSelected);
+        updateRelaxedTierMinutesLabels(views);
         updateRelaxedTierRemainingCounts(views);
 
         views.tierLargeRadio.setOnCheckedChangeListener((button, isChecked) -> {
@@ -375,6 +378,87 @@ public class SettingsDialogManager {
             views.tierShortRadio.setChecked(false);
             views.tierLargeRadio.setChecked(largeRemaining > 0);
         }
+    }
+
+    /** 两个档位的时长可修改，选项文字随之刷新。 */
+    private void updateRelaxedTierMinutesLabels(LeisureModeViews views) {
+        views.tierLargeRadio.setText(tierMinutesLabel(LeisureTimeManager.LeisureTier.LARGE));
+        views.tierShortRadio.setText(tierMinutesLabel(LeisureTimeManager.LeisureTier.SHORT));
+    }
+
+    private String tierMinutesLabel(LeisureTimeManager.LeisureTier tier) {
+        return leisureTimeManager.getRelaxedTierMinutes(tier) + "分钟";
+    }
+
+    /** 「修改时长」：在各档允许区间内调整宽松模式两个档位的时长。 */
+    private void showRelaxedTierMinutesDialog(LeisureModeViews views) {
+        View dialogView = LayoutInflater.from(context)
+                .inflate(R.layout.dialog_leisure_tier_minutes, null);
+        EditText largeInput = dialogView.findViewById(R.id.et_relaxed_tier_large_minutes);
+        EditText shortInput = dialogView.findViewById(R.id.et_relaxed_tier_short_minutes);
+        bindRelaxedTierMinutesInput(
+                LeisureTimeManager.LeisureTier.LARGE,
+                largeInput,
+                dialogView.findViewById(R.id.tv_relaxed_tier_large_range));
+        bindRelaxedTierMinutesInput(
+                LeisureTimeManager.LeisureTier.SHORT,
+                shortInput,
+                dialogView.findViewById(R.id.tv_relaxed_tier_short_range));
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("修改休闲时长")
+                .setView(dialogView)
+                .setPositiveButton("保存", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    if (!saveRelaxedTierMinutes(largeInput, shortInput)) {
+                        return;
+                    }
+                    dialog.dismiss();
+                    updateRelaxedTierMinutesLabels(views);
+                    FloatService.notifyLeisureTimeChanged();
+                    UiFeedback.show(context, "已保存休闲时长");
+                }));
+        dialog.show();
+    }
+
+    private void bindRelaxedTierMinutesInput(
+            LeisureTimeManager.LeisureTier tier, EditText input, TextView rangeText) {
+        input.setText(String.valueOf(leisureTimeManager.getRelaxedTierMinutes(tier)));
+        rangeText.setText(
+                "分钟（" + tier.getMinMinutes() + "-" + tier.getMaxMinutes() + "）");
+    }
+
+    private boolean saveRelaxedTierMinutes(EditText largeInput, EditText shortInput) {
+        largeInput.setError(null);
+        shortInput.setError(null);
+
+        Integer largeMinutes = parseInteger(largeInput);
+        Integer shortMinutes = parseInteger(shortInput);
+
+        boolean valid = validateIntegerInput(
+                largeInput,
+                largeMinutes,
+                LeisureTimeManager.LeisureTier.LARGE.getMinMinutes(),
+                LeisureTimeManager.LeisureTier.LARGE.getMaxMinutes(),
+                "大档时长");
+        valid &= validateIntegerInput(
+                shortInput,
+                shortMinutes,
+                LeisureTimeManager.LeisureTier.SHORT.getMinMinutes(),
+                LeisureTimeManager.LeisureTier.SHORT.getMaxMinutes(),
+                "小档时长");
+        if (!valid) {
+            return false;
+        }
+
+        leisureTimeManager.setRelaxedTierMinutes(
+                LeisureTimeManager.LeisureTier.LARGE, largeMinutes);
+        leisureTimeManager.setRelaxedTierMinutes(
+                LeisureTimeManager.LeisureTier.SHORT, shortMinutes);
+        return true;
     }
 
     private void setLeisureStartListener(

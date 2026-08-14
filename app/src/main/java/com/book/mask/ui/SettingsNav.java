@@ -104,8 +104,10 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> showAppreciateDialog());
         view.findViewById(R.id.row_export_backup)
                 .setOnClickListener(v -> showBackupOptionsDialog());
+        view.findViewById(R.id.row_wallpaper_settings)
+                .setOnClickListener(v -> openSubPage(new WallpaperSettingsNav()));
         view.findViewById(R.id.row_special_details)
-                .setOnClickListener(v -> openSpecialDetails());
+                .setOnClickListener(v -> openSubPage(new SpecialDetailsNav()));
     }
 
     private void refreshAppreciateVisibility(View view) {
@@ -375,7 +377,7 @@ public class SettingsNav extends Fragment {
         return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
     }
 
-    private void openSpecialDetails() {
+    private void openSubPage(Fragment page) {
         getParentFragmentManager().beginTransaction()
                 .setCustomAnimations(
                         R.anim.slide_in_right,
@@ -383,8 +385,8 @@ public class SettingsNav extends Fragment {
                         R.anim.slide_in_left,
                         R.anim.slide_out_right
                 )
-                .replace(R.id.fragment_container, new SpecialDetailsNav())
-                .addToBackStack(SpecialDetailsNav.class.getSimpleName())
+                .replace(R.id.fragment_container, page)
+                .addToBackStack(page.getClass().getSimpleName())
                 .commit();
     }
 

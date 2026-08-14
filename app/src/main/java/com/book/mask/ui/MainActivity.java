@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         settingsDialogManager = new SettingsDialogManager(this, relaxManager);
 
         // 设置底部导航
-        setupBottomNavigation();
+        setupBottomNavigation(savedInstanceState != null);
         
         // 注册广播接收器
         registerRelaxedCountUpdateReceiver();
@@ -140,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setupBottomNavigation() {
+    private void setupBottomNavigation(boolean restored) {
         bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.setOnNavigationItemSelectedListener(item -> {
             FragmentManager fragmentManager = getSupportFragmentManager();
@@ -185,13 +185,35 @@ public class MainActivity extends AppCompatActivity {
                 getSupportFragmentManager().popBackStack();
             }
         });
+        if (restored && adoptRestoredFragment()) {
+            // Activity 重建（如设置壁纸后系统重建）时，FragmentManager 与底栏各自恢复上次的状态，
+            // 此处若再铺一次首页，就会变成「底栏高亮更多、内容却是首页」，
+            // 且底栏认为更多仍是选中项，再点它只走 reselect 不换页，表现为点击无反应。
+            return;
+        }
+
         // 默认显示首页
         if (homeNav == null) homeNav = new HomeNav();
         getSupportFragmentManager().beginTransaction()
             .replace(R.id.fragment_container, homeNav)
             .commit();
         bottomNav.setSelectedItemId(R.id.navigation_home);
-        
+
+    }
+
+    /**
+     * 把重建后 FragmentManager 恢复出来的页面接回成员变量，避免下次切换时重复新建。
+     *
+     * @return 容器里确有恢复出来的页面，调用方无需再铺默认页
+     */
+    private boolean adoptRestoredFragment() {
+        Fragment restored = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (restored instanceof HomeNav) {
+            homeNav = (HomeNav) restored;
+        } else if (restored instanceof GoalNav) {
+            goalNav = (GoalNav) restored;
+        }
+        return restored != null;
     }
 
     private Intent overlaySettingsIntent() {
