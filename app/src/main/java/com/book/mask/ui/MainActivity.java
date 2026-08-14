@@ -81,7 +81,11 @@ public class MainActivity extends AppCompatActivity {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
+            // 系统栏已在根布局统一让开，这里必须消费掉：原样返回会继续下发给子 View，
+            // 而 BottomNavigationView 自带的 inset 处理会把同一份底部 inset 再加成自己的
+            // paddingBottom，把固定高度（55dp）的底栏内容整个挤没，只剩背景胶囊。
+            // 将来若有子 View 需要 inset，应在此处按需分发，不要恢复成原样返回。
+            return WindowInsetsCompat.CONSUMED;
         });
 
         // 初始化自定义应用管理器 - 提前到这里，为其他组件提供基础数据
@@ -199,6 +203,22 @@ public class MainActivity extends AppCompatActivity {
             .commit();
         bottomNav.setSelectedItemId(R.id.navigation_home);
 
+    }
+
+    /**
+     * 打开二级页面。转场动画与回退栈规则收敛在此，避免各 tab 页各写一套逐渐漂移。
+     */
+    public void openSubPage(Fragment page) {
+        getSupportFragmentManager().beginTransaction()
+                .setCustomAnimations(
+                        R.anim.slide_in_right,
+                        R.anim.slide_out_left,
+                        R.anim.slide_in_left,
+                        R.anim.slide_out_right
+                )
+                .replace(R.id.fragment_container, page)
+                .addToBackStack(page.getClass().getSimpleName())
+                .commit();
     }
 
     /**

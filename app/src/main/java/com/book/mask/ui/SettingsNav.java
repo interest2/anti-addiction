@@ -378,16 +378,9 @@ public class SettingsNav extends Fragment {
     }
 
     private void openSubPage(Fragment page) {
-        getParentFragmentManager().beginTransaction()
-                .setCustomAnimations(
-                        R.anim.slide_in_right,
-                        R.anim.slide_out_left,
-                        R.anim.slide_in_left,
-                        R.anim.slide_out_right
-                )
-                .replace(R.id.fragment_container, page)
-                .addToBackStack(page.getClass().getSimpleName())
-                .commit();
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).openSubPage(page);
+        }
     }
 
     private void showVersionUpdateDialog() {

@@ -43,7 +43,7 @@ public class Const {
      * 关闭时：「题目类型」页不展示「听力题」「复述题」条目，也不展示「相关服务」区块；
      * 答题逻辑与代码全部保留，改回 true 即可恢复入口。
      */
-    public static final boolean VOICE_QUESTION_SETTINGS_ENABLED = true;
+    public static final boolean VOICE_QUESTION_SETTINGS_ENABLED = false;
 
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";

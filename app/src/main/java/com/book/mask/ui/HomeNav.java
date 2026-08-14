@@ -225,10 +225,7 @@ public class HomeNav extends Fragment implements
                 message,
                 "1.开机自启",
                 "建议加上，请自行设置");
-        appendPlainPermissionHint(
-                message,
-                "2.省电模式",
-                "可能导致悬浮窗延迟出现，如需排查可尝试关闭省电模式");
+        appendPowerSaveHint(message, dialogHolder);
         message.append('\n').append("3.忽略电池优化设置").append("：");
         int hintStart = message.length();
         message.append("点击开启");
@@ -278,6 +275,47 @@ public class HomeNav extends Fragment implements
             String label,
             String hint) {
         text.append('\n').append(label).append("：").append(hint);
+    }
+
+    /**
+     * 「壁纸保活」做成可点入口直达设置页，省得用户自己去「更多」里翻。
+     */
+    private void appendPowerSaveHint(SpannableStringBuilder text,
+                                     android.app.AlertDialog[] dialogHolder) {
+        appendPlainPermissionHint(
+                text,
+                "2.省电模式",
+                "可能导致悬浮窗延迟出现，解决方式二选一：① 关闭省电模式 ② 开启 ");
+
+        int clickStart = text.length();
+        text.append(getString(R.string.wallpaper_settings));
+        int clickColor = Color.rgb(66, 133, 190);
+        text.setSpan(new ClickableSpan() {
+            @Override
+            public void onClick(@NonNull View widget) {
+                if (dialogHolder[0] != null) {
+                    dialogHolder[0].dismiss();
+                }
+                openWallpaperSettings();
+            }
+
+            @Override
+            public void updateDrawState(@NonNull TextPaint drawState) {
+                drawState.setColor(clickColor);
+                drawState.setUnderlineText(true);
+            }
+        }, clickStart, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        text.setSpan(
+                new StyleSpan(Typeface.BOLD),
+                clickStart,
+                text.length(),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    private void openWallpaperSettings() {
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).openSubPage(new WallpaperSettingsNav());
+        }
     }
 
     private void appendBackgroundRunHint(SpannableStringBuilder text) {

@@ -107,7 +107,7 @@
                         android:textColor="@color/bottom_nav_selected"
                         android:textSize="16sp" />
 
-                    <Button
+                    <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_wallpaper_apply"
                         style="@style/Widget.Material3.Button.TonalButton"
                         android:layout_width="wrap_content"
@@ -121,7 +121,9 @@
                         android:paddingEnd="18dp"
                         android:text="@string/wallpaper_apply"
                         android:textColor="#24693C"
-                        android:textSize="16sp" />
+                        android:textSize="16sp"
+                        app:strokeColor="@color/wallpaper_apply_stroke"
+                        app:strokeWidth="1.5dp" />
 
                 </LinearLayout>
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 可点时描深绿边强调「应用」，禁用（已生效）时收成透明，只剩淡化的浅绿底 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:color="#24693C"
+        android:state_enabled="true" />
+    <item android:color="@android:color/transparent" />
+</selector>

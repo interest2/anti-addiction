@@ -71,11 +71,12 @@ public class FloatHelper {
             } else {
                 diagnostics.onTargetHit(depth, visible);
             }
-            if (visible) {
-                Log.d(TAG, "找到目标文本: " + targetText + " (可见)");
-                return true;
-            }
-            Log.d(TAG, "找到目标文本: " + targetText + " (不可见，忽略)");
+            return true;
+//            if (visible) {
+//                Log.d(TAG, "找到目标文本: " + targetText + " (可见)");
+//                return true;
+//            }
+//            Log.d(TAG, "找到目标文本: " + targetText + " (不可见，忽略)");
         }
 
         for (int i = 0; i < node.getChildCount(); i++) {
