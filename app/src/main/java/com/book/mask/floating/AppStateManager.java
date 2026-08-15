@@ -49,6 +49,7 @@ public class AppStateManager {
     private long packageTransitionGeneration = 0;
     private long packageDetectPauseUtil = 0;
     private Runnable floatingShowPackageDetectionResumeRunnable;
+    private Runnable pendingBackgroundWindowRecheck;
     private final Map<String, Boolean> lastDetectionNotTarget = new HashMap<>();
     private final Map<String, Boolean> detectBeforeShowOnNextEntry = new HashMap<>();
 
@@ -117,8 +118,82 @@ public class AppStateManager {
             return;
         }
         String packageName = windowInspector.extractObservablePackageName(event);
-        if (packageName != null) {
-            handleObservedPackage(packageName, "窗口事件");
+        if (packageName == null) {
+            return;
+        }
+        String foregroundPackage = resolveForegroundPackage(packageName);
+        if (foregroundPackage == null) {
+            return;
+        }
+        handleObservedPackage(foregroundPackage, "窗口事件");
+    }
+
+    /**
+     * 窗口事件的包名只代表"哪个窗口发生了状态变化"，不代表"哪个 APP 在前台"：后台窗口
+     * （典型如桌面被全屏遮挡后滞后数百毫秒才结算的 stop）同样带着自己的包名上报，直接采信
+     * 会误判为离开目标 APP，把悬浮窗降级为暖态后又被复核拉回，表现为遮罩闪烁并空窗 1 秒余。
+     * <p>
+     * 因此仅在事件可能触发"离开目标 APP"时，才用活动窗口的根包名校正（进入方向不校验，
+     * 以免活动窗口滞后拖慢悬浮窗抢先显示）：
+     * <ul>
+     *   <li>活动窗口不明确：沿用事件包名，宁可误判也不漏判离开，避免遮罩久留在桌面上；</li>
+     *   <li>活动窗口仍是当前目标 APP：判为后台窗口事件并丢弃，另安排一次兜底复核；</li>
+     *   <li>活动窗口是其他包名：以活动窗口为准，它比事件包名更贴近真实前台。</li>
+     * </ul>
+     *
+     * @return 应交给 handleObservedPackage 的包名；null 表示本次事件应丢弃
+     */
+    private String resolveForegroundPackage(String eventPackage) {
+        boolean mayLeaveCurrentTarget = currentActiveApp != null
+                && !currentActiveApp.getPackageName().equals(eventPackage);
+        if (!mayLeaveCurrentTarget) {
+            return eventPackage;
+        }
+
+        String activePackage = windowInspector.getActiveRootPackage();
+        if (activePackage.isEmpty() || activePackage.equals(eventPackage)) {
+            return eventPackage;
+        }
+
+        if (currentActiveApp.getPackageName().equals(activePackage)) {
+            Log.d(TAG, "窗口事件包名 " + eventPackage + " 与活动窗口 " + activePackage
+                    + " 不一致，判为后台窗口事件并忽略");
+            scheduleBackgroundWindowEventRecheck();
+            return null;
+        }
+
+        Log.d(TAG, "窗口事件包名 " + eventPackage + " 与活动窗口 " + activePackage
+                + " 不一致，改以活动窗口包名为准");
+        return activePackage;
+    }
+
+    /**
+     * 丢弃疑似后台窗口事件后的兜底复核：万一活动窗口当时正滞后于真实切换，几百毫秒后即可纠正，
+     * 不必等 2 秒轮询；复核时仍在目标 APP 则说明确为噪声，直接返回，不触发多余的页面检测。
+     */
+    private void scheduleBackgroundWindowEventRecheck() {
+        if (pendingBackgroundWindowRecheck != null) {
+            return;
+        }
+
+        pendingBackgroundWindowRecheck = () -> {
+            pendingBackgroundWindowRecheck = null;
+            String activePackage = windowInspector.getActiveRootPackage();
+            if (activePackage.isEmpty()
+                    || (currentActiveApp != null
+                    && currentActiveApp.getPackageName().equals(activePackage))) {
+                return;
+            }
+            handleObservedPackage(activePackage, "后台窗口事件复核");
+        };
+        handler.postDelayed(pendingBackgroundWindowRecheck,
+                Const.BACKGROUND_WINDOW_EVENT_RECHECK_DELAY_MS);
+    }
+
+    private void cancelBackgroundWindowEventRecheck() {
+        if (pendingBackgroundWindowRecheck != null) {
+            handler.removeCallbacks(pendingBackgroundWindowRecheck);
+            pendingBackgroundWindowRecheck = null;
         }
     }
 
@@ -834,6 +909,7 @@ public class AppStateManager {
         cancelPendingContentCheck();
         cancelPendingPackageConfirmation();
         cancelPackageTransition();
+        cancelBackgroundWindowEventRecheck();
         packageDetectPauseUtil = 0;
         if (floatingShowPackageDetectionResumeRunnable != null) {
             handler.removeCallbacks(floatingShowPackageDetectionResumeRunnable);

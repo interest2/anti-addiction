@@ -52,6 +52,9 @@ class AccessibilityWindowInspector {
      * 从窗口状态事件中取出应当处理的包名，并记入 PackageLogManager；
      * 包名为空、或为本 APP 自身 / 输入法应用时返回 null。
      * 注意：包名防抖暂停由调用方在入口处判断，此处不涉及运行时状态。
+     * <p>
+     * 事件包名只说明"哪个窗口变了"，不等于前台包名，是否采信由调用方结合活动窗口判断；
+     * 日志一并带上窗口 id 与窗口类名，便于事后区分前台切换与后台窗口的滞后事件。
      */
     String extractObservablePackageName(AccessibilityEvent event) {
         CharSequence packageName = event.getPackageName();
@@ -64,7 +67,9 @@ class AccessibilityWindowInspector {
         if (shouldIgnorePackage(packageNameString)) {
             return null;
         }
-        Log.d(TAG, "窗口状态改变，当前包名: " + packageNameString);
+        Log.d(TAG, "窗口状态改变，当前包名: " + packageNameString
+                + "，windowId=" + event.getWindowId()
+                + "，className=" + event.getClassName());
         return packageNameString;
     }
 

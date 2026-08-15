@@ -23,6 +23,7 @@ public class Const {
     public static final int PACKAGE_TRANSITION_CHECK_DELAY_MS = 300; // 离开目标 APP 后：首次复核当前前台包名的等待时间，用于过滤过渡动画期间的短暂包名变化。
     public static final int TRANSITION_EARLY_RETURN_BUFFER_MS = 100; // 首次复核已返回目标 APP 时追加的暂停缓冲，避免动画尾段的包名抖动触发悬浮窗闪现。
     public static final long FLOATING_SHOW_PACKAGE_DETECTION_DEBOUNCE_MS = 500; // 悬浮窗由隐藏变为显示后的包名检测暂停时间，避免窗口创建阶段的瞬时事件干扰前台 APP 判断。
+    public static final long BACKGROUND_WINDOW_EVENT_RECHECK_DELAY_MS = 300; // 窗口事件被判为后台窗口噪声而丢弃后的兜底复核延迟，用于纠正活动窗口偶尔滞后于真实切换的情况。
 
     /**
      * 快速复用悬浮窗的配置
