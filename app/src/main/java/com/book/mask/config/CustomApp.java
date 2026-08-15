@@ -6,6 +6,9 @@ import java.util.List;
  * 自定义APP管理类，用于管理所有APP（包括预定义和用户自定义）
  */
 public class CustomApp {
+    /** 每日宽松次数上限。改这里即可，UI 选项与导入钳位都由它派生。 */
+    public static final int MAX_RELAXED_LIMIT_COUNT = 2;
+
     private final String appName;
     private final String packageName;
     private String targetWord; // 改为非final，支持修改
@@ -51,6 +54,14 @@ public class CustomApp {
     
     public void setRelaxedLimitCount(int relaxedLimitCount) {
         this.relaxedLimitCount = relaxedLimitCount;
+    }
+
+    /**
+     * 把外部来源（备份导入、历史数据）的宽松次数钳位到 1 ~ {@link #MAX_RELAXED_LIMIT_COUNT}。
+     * 旧版本备份里可能存着超出当前上限的次数，不钳位会绕过上限继续生效。
+     */
+    public static int clampRelaxedLimitCount(int count) {
+        return Math.max(1, Math.min(count, MAX_RELAXED_LIMIT_COUNT));
     }
     
     public void setTargetWord(String targetWord) {

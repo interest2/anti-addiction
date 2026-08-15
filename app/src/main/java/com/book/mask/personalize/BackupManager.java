@@ -459,7 +459,7 @@ public class BackupManager {
                         o.get("appName").getAsString(),
                         o.get("packageName").getAsString(),
                         optString(o, "targetWord", ""),
-                        optInt(o, "relaxedLimitCount", 1),
+                        CustomApp.clampRelaxedLimitCount(optInt(o, "relaxedLimitCount", 1)),
                         optBoolean(o, "globalBlock", false));
                 if (ok) {
                     result.imported++;
@@ -620,7 +620,7 @@ public class BackupManager {
                         o.get("appName").getAsString(),
                         o.get("packageName").getAsString(),
                         optString(o, "targetWord", ""),
-                        optInt(o, "relaxedLimitCount", 1),
+                        CustomApp.clampRelaxedLimitCount(optInt(o, "relaxedLimitCount", 1)),
                         optBoolean(o, "globalBlock", false));
                 manager.updatePredefinedApp(app);
                 result.imported++;

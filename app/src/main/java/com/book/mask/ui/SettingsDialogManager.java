@@ -247,7 +247,7 @@ public class SettingsDialogManager {
                 dialogView.findViewById(R.id.tv_strict_leisure_remaining_count));
 
         description.setText(
-                "开启后，各 APP 关闭悬浮窗均无需答题；宽松模式的再次使用有3小时窗口期");
+                "休闲开启期间，各 APP 关悬浮窗均无需答题；其中宽松模式有3小时窗口期");
         setupLeisureModeInputs(relaxedViews);
         dialogView.findViewById(R.id.btn_edit_relaxed_tier_minutes)
                 .setOnClickListener(v -> showRelaxedTierMinutesDialog(relaxedViews));

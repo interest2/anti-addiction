@@ -29,8 +29,8 @@ public class RelaxManager {
     static final String KEY_APP_MONITORING_ENABLED = "app_monitoring_enabled_";
 
     // 严格、宽松模式的各选项
-    private static final int[] strictIntervalArray = {30, 60, 120};
-    private static final int[] relaxedIntervalArray = {600, 900, 1200, 1800};
+    private static final int[] strictIntervalArray = {60, 120};
+    private static final int[] relaxedIntervalArray = {600, 1200, 1800};
 //    private static final int[] strictIntervalArray = {3, 6, 12};
 //    private static final int[] relaxedIntervalArray = {20, 30, 40};
     private MMKV mmkv;
@@ -134,28 +134,26 @@ public class RelaxManager {
     }
 
     /**
+     * 判断某个解禁时长是否属于宽松档。
+     * 按「超过严格档最长时长」判定而非按选项数组逐项匹配：选项列表调整（如去掉 15 分钟）后，
+     * 历史已保存的旧宽松时长仍能被正确识别为宽松档，不会被误判成严格模式。
+     */
+    private static boolean isRelaxedInterval(int seconds) {
+        return seconds > getMaxStrictInterval();
+    }
+
+    /**
      * 判断指定APP当前是否是宽松版模式
      */
     public boolean isAppRelaxedMode(CustomApp app) {
-        int currentInterval = getAppInterval(app);
-        for (int interval : relaxedIntervalArray) {
-            if (interval == currentInterval) {
-                return true;
-            }
-        }
-        return false;
+        return isRelaxedInterval(getAppInterval(app));
     }
 
     /**
      * 判断指定APP上次关闭时是否是宽松模式
      */
     public boolean isLastRelaxedMode(int lastInterval) {
-        for (int interval : relaxedIntervalArray) {
-            if (interval == lastInterval) {
-                return true;
-            }
-        }
-        return false;
+        return isRelaxedInterval(lastInterval);
     }
 
     /**

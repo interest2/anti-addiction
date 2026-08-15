@@ -284,8 +284,8 @@ public class HomeNav extends Fragment implements
                                      android.app.AlertDialog[] dialogHolder) {
         appendPlainPermissionHint(
                 text,
-                "2.省电模式",
-                "可能导致悬浮窗延迟出现，解决方式二选一：① 关闭省电模式 ② 开启 ");
+                "2.非省电模式",
+                "省电可能使悬浮窗延迟出现，以下方式二选一即可：① 关闭省电模式 ② 开启 ");
 
         int clickStart = text.length();
         text.append(getString(R.string.wallpaper_settings));
@@ -469,11 +469,12 @@ public class HomeNav extends Fragment implements
             if (!relaxedLimitCountStr.isEmpty()) {
                 try {
                     relaxedLimitCount = Integer.parseInt(relaxedLimitCountStr);
-                    if (relaxedLimitCount < 1 || relaxedLimitCount > 3) {
+                    if (relaxedLimitCount < 1
+                            || relaxedLimitCount > CustomApp.MAX_RELAXED_LIMIT_COUNT) {
                         showInputError(
                                 relaxedLimitCountLayout,
                                 etRelaxedLimitCount,
-                                "请输入 1-3 之间的数字");
+                                "请输入 1-" + CustomApp.MAX_RELAXED_LIMIT_COUNT + " 之间的数字");
                         valid = false;
                     }
                 } catch (NumberFormatException e) {
@@ -921,10 +922,11 @@ public class HomeNav extends Fragment implements
      * 宽松次数已用完时禁用时长列（今日无法再进入宽松），但仍可调整次数。
      */
     private void showRelaxedModeDialog(CustomApp app, Runnable onSelectionChanged) {
+        int limitCount = alignRelaxedLimitCount(app, onSelectionChanged);
         int[] intervals = RelaxManager.getRelaxedIntervals();
         int currentInterval = relaxManager.getAppInterval(app);
         int usedCount = relaxManager.getAppRelaxedCloseCount(app);
-        int remainingCount = Math.max(0, app.getRelaxedLimitCount() - usedCount);
+        int remainingCount = Math.max(0, limitCount - usedCount);
 
         LinearLayout root = new LinearLayout(requireContext());
         root.setOrientation(LinearLayout.HORIZONTAL);
@@ -937,11 +939,12 @@ public class HomeNav extends Fragment implements
                 intervalOptions(intervals),
                 indexOfInterval(intervals, currentInterval),
                 remainingCount > 0);
+        String[] countOptions = relaxedCountOptions();
         RadioGroup countGroup = buildRelaxedOptionColumn(
                 root,
                 "宽松次数",
-                new String[]{"1 次", "2 次", "3 次"},
-                Math.max(0, Math.min(app.getRelaxedLimitCount() - 1, 2)),
+                countOptions,
+                limitCount - 1,
                 true);
 
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
@@ -952,7 +955,7 @@ public class HomeNav extends Fragment implements
 
         // 即时保存：选中时长/次数即生效，弹窗仅保留「关闭」
         countGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId >= 0 && checkedId < 3) {
+            if (checkedId >= 0 && checkedId < countOptions.length) {
                 app.setRelaxedLimitCount(checkedId + 1);
                 customAppManager.persistAppChange(app);
                 onSelectionChanged.run();
@@ -969,6 +972,32 @@ public class HomeNav extends Fragment implements
         });
 
         dialog.show();
+    }
+
+    /**
+     * 取该 APP 的宽松次数，超出当前上限时就地降到上限并落库。
+     * 旧版本备份里可能存着更大的次数，不修正会「弹窗显示 2 次、实际按更大次数放行」。
+     * @return 已对齐上限的宽松次数
+     */
+    private int alignRelaxedLimitCount(CustomApp app, Runnable onSelectionChanged) {
+        int limitCount = app.getRelaxedLimitCount();
+        int aligned = CustomApp.clampRelaxedLimitCount(limitCount);
+        if (aligned != limitCount) {
+            app.setRelaxedLimitCount(aligned);
+            customAppManager.persistAppChange(app);
+            onSelectionChanged.run();
+            updateAppCardsDisplay();
+        }
+        return aligned;
+    }
+
+    /** 宽松次数的可选项文案：1 次 ~ 上限次。 */
+    private String[] relaxedCountOptions() {
+        String[] options = new String[CustomApp.MAX_RELAXED_LIMIT_COUNT];
+        for (int i = 0; i < options.length; i++) {
+            options[i] = (i + 1) + " 次";
+        }
+        return options;
     }
 
     /**

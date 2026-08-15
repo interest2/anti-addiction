@@ -59,7 +59,7 @@ public class LeisureTimeManager {
 
     /** 宽松模式的休闲档位：大档（默认 30 分钟，可改 15-30）与小档（默认 15 分钟，可改 10-15）。 */
     public enum LeisureTier {
-        LARGE(KEY_LEISURE_RELAXED_LARGE_MINUTES, 30, 15, 30),
+        LARGE(KEY_LEISURE_RELAXED_LARGE_MINUTES, 25, 15, 30),
         SHORT(KEY_LEISURE_RELAXED_SHORT_MINUTES, 15, 10, 15);
 
         private final String minutesKey;
