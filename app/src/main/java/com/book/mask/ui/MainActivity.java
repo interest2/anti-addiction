@@ -121,6 +121,56 @@ public class MainActivity extends AppCompatActivity {
         });
 
         resetRelaxedCount();
+        alignRelaxedCountToLimit();
+    }
+
+    /**
+     * 宽松次数上限下调后的一次性对齐。
+     *
+     * <p>20 点重置把「剩余 1 次」编码成「已用 = 上限 - 1」（见 {@link #performAfterEightPMAction()}），
+     * 这个编码绑死了写入时的上限。上限一旦下调，同一份已用次数会被重新翻译成剩余 0 次，
+     * 表现为升级当天各卡片突然全部显示 0 次，且当天再也补不回来
+     * （剩余为 0 时不满足 20 点重置的 {@code > 1} 条件）。
+     *
+     * <p>对齐口径与「20 点后最多 1 次」一致：已用次数够到新上限时压到「剩余 1 次」，够不到则不动。
+     * 标记 key 带上限值，因此以后每次调整上限都会自动再对齐一轮。
+     */
+    private void alignRelaxedCountToLimit() {
+        MMKV mmkv = MMKV.mmkvWithID("relaxed_count_reset");
+        String alignedKey = "limit_aligned_" + CustomApp.MAX_RELAXED_LIMIT_COUNT;
+        if (mmkv.getBoolean(alignedKey, false)) {
+            return;
+        }
+
+        if (relaxManager == null) {
+            relaxManager = new RelaxManager(this);
+        }
+        CustomAppManager customAppManager = CustomAppManager.getInstance();
+        for (CustomApp app : customAppManager.getAllApps()) {
+            int limit = alignLimitCount(customAppManager, app);
+            if (relaxManager.getAppRelaxedCloseCount(app) >= limit) {
+                relaxManager.setAppRelaxedCloseCount(app, limit - 1);
+                android.util.Log.d("MainActivity",
+                        app.getAppName() + " 宽松已用次数按新上限 " + limit + " 对齐为剩余 1 次");
+            }
+        }
+
+        mmkv.putBoolean(alignedKey, true).commit();
+    }
+
+    /**
+     * 把该 APP 存量的宽松次数上限钳到当前上限并落库，返回对齐后的上限。
+     * 存量值可能来自旧版本的默认值或旧备份，不一起降下来的话，之后打开宽松弹窗才降，
+     * 那时对齐已经跑过，用户又会撞上一次剩余 0 次。
+     */
+    private int alignLimitCount(CustomAppManager customAppManager, CustomApp app) {
+        int limit = app.getRelaxedLimitCount();
+        int aligned = CustomApp.clampRelaxedLimitCount(limit);
+        if (aligned != limit) {
+            app.setRelaxedLimitCount(aligned);
+            customAppManager.persistAppChange(app);
+        }
+        return aligned;
     }
 
     private void resetRelaxedCount() {
