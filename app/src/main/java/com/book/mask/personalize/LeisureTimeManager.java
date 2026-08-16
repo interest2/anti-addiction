@@ -203,6 +203,21 @@ public class LeisureTimeManager {
                 .equals(mmkv.getString(KEY_LEISURE_LAST_USED_DATE, ""));
     }
 
+    /**
+     * 跨天后把两档已用次数一起清零，并把共用的日期推进到今天。
+     * 必须在写入任一档已用次数前调用：两档共用一个日期 key，若只清写入档、
+     * 另一档上次使用日的残留值会随日期推进被当成今日已用，凭空少掉次数。
+     */
+    private void rolloverRelaxedCountsIfNewDay() {
+        if (isTodayLeisureDate()) {
+            return;
+        }
+        mmkv.putInt(KEY_LEISURE_RELAXED_LARGE_USED, 0)
+                .putInt(KEY_LEISURE_RELAXED_SHORT_USED, 0)
+                .putString(KEY_LEISURE_LAST_USED_DATE, DateUtils.getCurrentDate())
+                .commit();
+    }
+
     public boolean isRelaxedTriggerCoolingDown() {
         return getRelaxedTriggerCooldownRemainingMillis() > 0;
     }
@@ -327,14 +342,14 @@ public class LeisureTimeManager {
             return null;
         }
 
+        rolloverRelaxedCountsIfNewDay();
         int durationMinutes = getRelaxedTierMinutes(effectiveTier);
         String tierUsedKey = effectiveTier == LeisureTier.LARGE
                 ? KEY_LEISURE_RELAXED_LARGE_USED
                 : KEY_LEISURE_RELAXED_SHORT_USED;
-        int tierUsedCount = isTodayLeisureDate() ? mmkv.getInt(tierUsedKey, 0) : 0;
+        int tierUsedCount = mmkv.getInt(tierUsedKey, 0);
         long now = System.currentTimeMillis();
         mmkv.putInt(tierUsedKey, tierUsedCount + 1)
-                .putString(KEY_LEISURE_LAST_USED_DATE, DateUtils.getCurrentDate())
                 .putLong(KEY_LEISURE_ACTIVE_UNTIL, now + durationMinutes * 60_000L)
                 .putLong(
                         KEY_LEISURE_RELAXED_COOLDOWN_UNTIL,
