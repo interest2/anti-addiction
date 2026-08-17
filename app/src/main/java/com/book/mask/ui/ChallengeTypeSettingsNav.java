@@ -14,7 +14,6 @@ import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
 import com.book.mask.config.ChallengeType;
-import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.personalize.RelaxManager;
 
@@ -51,7 +50,7 @@ public class ChallengeTypeSettingsNav extends Fragment {
         view.findViewById(R.id.btn_soe_settings)
                 .setOnClickListener(v -> settingsDialogManager.showSoeSettingsDialog());
 
-        if (!Const.VOICE_QUESTION_SETTINGS_ENABLED) {
+        if (!settingsDialogManager.isVoiceChallengeEnabled()) {
             view.findViewById(R.id.tv_related_services_title).setVisibility(View.GONE);
             view.findViewById(R.id.card_related_services).setVisibility(View.GONE);
         }
@@ -71,7 +70,7 @@ public class ChallengeTypeSettingsNav extends Fragment {
         rowTypes.clear();
 
         for (final ChallengeType type : challengeTypes) {
-            if (!Const.VOICE_QUESTION_SETTINGS_ENABLED
+            if (!settingsDialogManager.isVoiceChallengeEnabled()
                     && (type == ChallengeType.LISTENING || type == ChallengeType.RETELLING)) {
                 continue;
             }

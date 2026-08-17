@@ -39,13 +39,6 @@ public class Const {
     public static final long MIN_ANSWER_DELAY_MS = 5000; // 题目展示后最短作答等待时长；5 秒内点确定仅提示不校验
     public static final boolean REMINDER_PROVIDER_SETTINGS_ENABLED = true;
     public static final boolean ANSWER_RECORDS_ENABLED = true;
-    /**
-     * 语音类答题功能设置入口开关（听力题 / 复述题 / 相关服务配置区）。
-     * 关闭时：「题目类型」页不展示「听力题」「复述题」条目，也不展示「相关服务」区块；
-     * 答题逻辑与代码全部保留，改回 true 即可恢复入口。
-     */
-    public static final boolean VOICE_QUESTION_SETTINGS_ENABLED = false;
-
     public static final String DEFAULT_HINT_SOURCE = "大模型";
     public static final String CUSTOM_HINT_SOURCE = "自定义";
     public static final String TARGET_TO_BE_SET = "待设置";

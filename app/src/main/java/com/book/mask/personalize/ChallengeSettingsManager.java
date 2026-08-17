@@ -4,6 +4,7 @@ import android.content.Context;
 
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.QuestionConst;
+import com.book.mask.network.AppConfigManager;
 import com.book.mask.util.ArithmeticUtils.MultiplicationTier;
 import com.tencent.mmkv.MMKV;
 
@@ -30,6 +31,7 @@ public class ChallengeSettingsManager {
     static final String KEY_RETELLING_STORY_LENGTH = "retelling_story_length";
     static final String KEY_RETELLING_DISPLAY_SECONDS = "retelling_display_seconds";
     static final String KEY_RETELLING_PASS_SCORE = "retelling_pass_score";
+    static final String KEY_VOICE_CHALLENGE_ENABLED = "voice_challenge_enabled";
 
     public static final int REASONING_LEVEL_DEFAULT = -1;
     public static final int REASONING_LEVEL_MIN = 0;
@@ -129,11 +131,26 @@ public class ChallengeSettingsManager {
                 && challengeType == ChallengeType.ENGLISH_READING) {
             return ChallengeType.MIXED;
         }
+        if (!isVoiceChallengeEnabled()
+                && (challengeType == ChallengeType.LISTENING
+                || challengeType == ChallengeType.RETELLING)) {
+            return ChallengeType.MIXED;
+        }
         return challengeType;
     }
 
     public void setChallengeType(ChallengeType challengeType) {
         mmkv.putString(KEY_MATH_QUESTION_TYPE, challengeType.getPreferenceValue()).commit();
+    }
+
+    /** 语音题须同时通过服务端设备授权和本地开关。 */
+    public boolean isVoiceChallengeEnabled() {
+        return AppConfigManager.isVoiceChallengeAvailable()
+                && mmkv.getBoolean(KEY_VOICE_CHALLENGE_ENABLED, true);
+    }
+
+    public void setVoiceChallengeEnabled(boolean enabled) {
+        mmkv.putBoolean(KEY_VOICE_CHALLENGE_ENABLED, enabled).commit();
     }
 
     public int getReasoningDifficultyLevel() {

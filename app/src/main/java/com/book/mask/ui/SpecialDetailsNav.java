@@ -15,12 +15,15 @@ import androidx.fragment.app.Fragment;
 import com.book.mask.R;
 import com.book.mask.config.PackageLogManager;
 import com.book.mask.config.Share;
+import com.book.mask.network.AppConfigManager;
+import com.book.mask.personalize.ChallengeSettingsManager;
 import com.book.mask.personalize.RelaxManager;
 
 import java.util.List;
 
 public class SpecialDetailsNav extends Fragment {
     private SettingsDialogManager settingsDialogManager;
+    private ChallengeSettingsManager challengeSettingsManager;
 
     @Nullable
     @Override
@@ -31,6 +34,7 @@ public class SpecialDetailsNav extends Fragment {
 
         settingsDialogManager = new SettingsDialogManager(
                 requireContext(), new RelaxManager(requireContext()));
+        challengeSettingsManager = new ChallengeSettingsManager(requireContext());
 
         view.findViewById(R.id.btn_special_details_back)
                 .setOnClickListener(v -> getParentFragmentManager().popBackStack());
@@ -40,7 +44,44 @@ public class SpecialDetailsNav extends Fragment {
                 .setOnClickListener(v -> showResetFloatingDialog());
         view.findViewById(R.id.row_package_log)
                 .setOnClickListener(v -> showPackageLogActionsDialog());
+        bindVoiceChallengeSwitch(view);
+        refreshVoiceChallengeAvailability(view);
         return view;
+    }
+
+    private void refreshVoiceChallengeAvailability(View view) {
+        android.content.Context appContext = requireContext().getApplicationContext();
+        new Thread(() -> {
+            AppConfigManager.initialize(appContext);
+            AppConfigManager.refreshConfig();
+            view.post(() -> {
+                if (isAdded() && getView() == view) {
+                    bindVoiceChallengeSwitch(view);
+                }
+            });
+        }).start();
+    }
+
+    private void bindVoiceChallengeSwitch(View view) {
+        View row = view.findViewById(R.id.row_voice_challenge);
+        View divider = view.findViewById(R.id.divider_voice_challenge_bottom);
+        ToggleButton toggle = view.findViewById(R.id.toggle_voice_challenge);
+        boolean available = AppConfigManager.isVoiceChallengeAvailable();
+        row.setVisibility(available ? View.VISIBLE : View.GONE);
+        divider.setVisibility(available ? View.VISIBLE : View.GONE);
+        if (!available) {
+            return;
+        }
+
+        toggle.setOnCheckedChangeListener(null);
+        toggle.setChecked(challengeSettingsManager.isVoiceChallengeEnabled());
+        toggle.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            challengeSettingsManager.setVoiceChallengeEnabled(isChecked);
+            UiFeedback.show(
+                    requireContext(),
+                    isChecked ? "已启用听力题和复述题" : "已关闭听力题和复述题");
+        });
+        row.setOnClickListener(v -> toggle.toggle());
     }
 
     private void showResetFloatingDialog() {

@@ -22,6 +22,8 @@
     <string name="export_backup_hint">可导出备份大多数个性化配置数据。\n</string>
     <string name="export_backup_secret_warning">密钥通常不建议导出，因有泄露风险（虽然仅导出到手机本地）</string>
     <string name="special_details">备用按钮</string>
+    <string name="voice_challenge_toggle_title">启用听力题和复述题</string>
+    <string name="voice_challenge_toggle_hint">启用后可在题目类型中选择</string>
     <string name="back">返回</string>
     <string name="reset_floating_window">重置悬浮窗</string>
     <string name="package_name_log">包名日志</string>

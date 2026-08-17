@@ -100,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
         // 注册广播接收器
         registerRelaxedCountUpdateReceiver();
         
+        AppConfigManager.initialize(this);
         new Thread(AppConfigManager::refreshConfig).start();
 
         // 初始化设备信息上报器并上报设备信息

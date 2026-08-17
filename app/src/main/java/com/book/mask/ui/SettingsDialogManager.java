@@ -1328,6 +1328,11 @@ public class SettingsDialogManager {
         return challengeSettingsManager.getChallengeType();
     }
 
+    /** 当前设备是否可使用听力题与复述题。 */
+    public boolean isVoiceChallengeEnabled() {
+        return challengeSettingsManager.isVoiceChallengeEnabled();
+    }
+
     /**
      * 切换答题类型。
      * 复述题需先通过前置检查（大模型 / ASR），任一不满足则返回错误信息且不切换；

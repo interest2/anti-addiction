@@ -1,5 +1,8 @@
 package com.book.mask.network;
 
+import android.content.Context;
+import android.net.Uri;
+import android.provider.Settings;
 import android.util.Log;
 
 import com.book.mask.config.Share;
@@ -16,8 +19,16 @@ public final class AppConfigManager {
     private static final String TAG = "AppConfigManager";
     private static final Object CONFIG_REQUEST_LOCK = new Object();
     private static final long CONFIG_VALIDITY_MS = 60_000L;
+    private static volatile Context applicationContext;
 
     private AppConfigManager() {
+    }
+
+    /** 保存应用上下文，以便配置请求携带当前设备 ID。 */
+    public static void initialize(Context context) {
+        if (context != null) {
+            applicationContext = context.getApplicationContext();
+        }
     }
 
     public static void refreshConfig() {
@@ -47,6 +58,11 @@ public final class AppConfigManager {
         return localImageCode > 0 && Share.appreciateImageCode == localImageCode;
     }
 
+    /** 是否已获得服务端下发的语音题功能授权。 */
+    public static boolean isVoiceChallengeAvailable() {
+        return Share.voiceChallengeAvailable;
+    }
+
     private static boolean isConfigFresh() {
         long now = System.currentTimeMillis();
         long timestamp = Share.latestVersionTimestamp;
@@ -58,18 +74,21 @@ public final class AppConfigManager {
     private static void requestConfig() {
         try {
             String response = ContentUtils.doHttpGet(
-                    CloudConst.DOMAIN_URL + CloudConst.GET_CONFIG_PATH,
+                    buildConfigUrl(),
                     Collections.singletonMap("Accept", "application/json"));
             JSONObject config = new JSONObject(response);
             String latestVersion = getRequiredString(config, "latestVersion");
             String serverModel = getRequiredString(config, "serverModel");
             double quizRatio = getRequiredQuizRatio(config);
             int appreciateImageCode = getAppreciateImageCode(config);
+            boolean voiceChallengeAvailable = "1".equals(
+                    config.optString("showVoiceChallenge", ""));
 
             Share.latestVersion = latestVersion;
             Share.serverModel = serverModel;
             Share.mixedReasoningQuizRatio = quizRatio;
             Share.appreciateImageCode = appreciateImageCode;
+            Share.voiceChallengeAvailable = voiceChallengeAvailable;
             Share.latestVersionTimestamp = System.currentTimeMillis();
         } catch (Exception e) {
             Share.latestVersionTimestamp = 0L;
@@ -77,8 +96,23 @@ public final class AppConfigManager {
             Share.serverModel = Share.DEFAULT_SERVER_MODEL;
             Share.mixedReasoningQuizRatio = QuestionConst.MIXED_REASONING_QUIZ_RATIO_DEFAULT;
             Share.appreciateImageCode = 0;
+            Share.voiceChallengeAvailable = false;
             Log.w(TAG, "获取远端配置失败，使用本地默认配置", e);
         }
+    }
+
+    private static String buildConfigUrl() {
+        String url = CloudConst.DOMAIN_URL + CloudConst.GET_CONFIG_PATH;
+        Context context = applicationContext;
+        if (context == null) {
+            return url;
+        }
+        String deviceId = Settings.Secure.getString(
+                context.getContentResolver(), Settings.Secure.ANDROID_ID);
+        if (deviceId == null || deviceId.trim().isEmpty()) {
+            return url;
+        }
+        return url + "?devid=" + Uri.encode(deviceId);
     }
 
     private static String getRequiredString(JSONObject config, String fieldName)

@@ -100,6 +100,67 @@
                     android:background="#EEEEEE" />
 
                 <LinearLayout
+                    android:id="@+id/row_voice_challenge"
+                    android:layout_width="match_parent"
+                    android:layout_height="68dp"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="18dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_menu_ai_service" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="18dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/voice_challenge_toggle_title"
+                            android:textColor="#252525"
+                            android:textSize="18sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/voice_challenge_toggle_hint"
+                            android:textColor="#8A8A8A"
+                            android:textSize="12sp" />
+
+                    </LinearLayout>
+
+                    <ToggleButton
+                        android:id="@+id/toggle_voice_challenge"
+                        android:layout_width="46dp"
+                        android:layout_height="24dp"
+                        android:contentDescription="@string/voice_challenge_toggle_title"
+                        android:textOff=""
+                        android:textOn="" />
+
+                </LinearLayout>
+
+                <View
+                    android:id="@+id/divider_voice_challenge_bottom"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="66dp"
+                    android:background="#EEEEEE"
+                    android:visibility="gone" />
+
+                <LinearLayout
                     android:id="@+id/row_reset_floating"
                     android:layout_width="match_parent"
                     android:layout_height="68dp"
