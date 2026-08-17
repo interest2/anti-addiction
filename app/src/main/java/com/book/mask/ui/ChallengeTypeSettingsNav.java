@@ -94,6 +94,15 @@ public class ChallengeTypeSettingsNav extends Fragment {
                             subtitle.setText(settingsDialogManager.formatRetellingSummary());
                             refreshCheckedRows();
                         }));
+            } else if (type == ChallengeType.LISTENING) {
+                subtitle.setVisibility(View.VISIBLE);
+                subtitle.setText(settingsDialogManager.formatListeningSummary());
+                edit.setVisibility(View.VISIBLE);
+                edit.setOnClickListener(v ->
+                        settingsDialogManager.showListeningSettingsDialog(() -> {
+                            subtitle.setText(settingsDialogManager.formatListeningSummary());
+                            refreshCheckedRows();
+                        }));
             } else if (type == ChallengeType.ARITHMETIC) {
                 updateArithmeticHint(row);
             } else if (type == ChallengeType.REASONING) {
@@ -126,6 +135,9 @@ public class ChallengeTypeSettingsNav extends Fragment {
                 updateArithmeticHint(rows.get(i));
             } else if (rowTypes.get(i) == ChallengeType.REASONING) {
                 updateReasoningHint(rows.get(i));
+            } else if (rowTypes.get(i) == ChallengeType.LISTENING) {
+                TextView subtitle = rows.get(i).findViewById(R.id.tv_subtitle);
+                subtitle.setText(settingsDialogManager.formatListeningSummary());
             }
         }
     }

@@ -16,11 +16,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * 听力题答题会话：出题 → 播放 → 选择作答 → 通过（可回看原文后解禁）/ 答错揭示原文后换题。
+ * 听力题答题会话：出题 → 播放 → 选择作答 → 通过（可立即解锁，或换下一题继续练习）/ 答错可重听、揭示原文后换题。
  *
  * <p>核心规则：答错后一旦揭示听力原文，本题即「失效」——即使随后答对也不再回调通过，
- * 只能换一题重新作答；答对后查看原文仅是回看，不影响解禁。sessionId 贯穿一次答题，
- * 异步出题返回时先判断是否仍是当前会话，防止取消后旧请求继续改界面。
+ * 只能换一题重新作答；答对后查看原文仅是回看，不影响解禁；「换下一题」只换题重练、不解禁，
+ * 「立即解锁」才解禁。sessionId 贯穿一次答题，异步出题返回时先判断是否仍是当前会话，
+ * 防止取消后旧请求继续改界面。
  */
 public final class ListeningChallengeSession implements ChallengeSession {
 
@@ -254,13 +255,10 @@ public final class ListeningChallengeSession implements ChallengeSession {
         if (!active) {
             return;
         }
-        if (correctAnswered) {
-            // 答对后「完成」按钮：直接解禁
-            if (callbacks != null) {
-                callbacks.onCorrect();
-            }
-            return;
-        }
+        // 「换下一题 / 换一题」统一换题重练；答对后的「立即解锁」走 cancel()→onCorrect，不在此处。
+        // 先同步清掉答对 / 失效标记，避免换题加载途中点「取消」被误判为解禁。
+        correctAnswered = false;
+        forfeited = false;
         state = State.LOADING;
         view.show();
         loadQuestion(true);

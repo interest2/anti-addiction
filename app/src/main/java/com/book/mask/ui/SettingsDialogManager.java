@@ -1363,6 +1363,8 @@ public class SettingsDialogManager {
             showArithmeticDifficultyDialog(onApplied);
         } else if (selectedType == ChallengeType.REASONING) {
             showReasoningDifficultyDialog(onApplied);
+        } else if (selectedType == ChallengeType.LISTENING) {
+            showListeningSettingsDialog(onApplied);
         } else if (selectedType == ChallengeType.ENGLISH_READING) {
             showEnglishReadingLengthDialog();
         } else {
@@ -1431,6 +1433,19 @@ public class SettingsDialogManager {
 
     private String[] reasoningDifficultyLabels() {
         return new String[]{"基础", "进阶", "挑战"};
+    }
+
+    private String[] listeningDifficultyLabels() {
+        return new String[]{"基础", "进阶"};
+    }
+
+    /** 听力题行内摘要：难度 + 场景，取自听力题设置弹窗的当前值。 */
+    public String formatListeningSummary() {
+        int level = challengeSettingsManager.getListeningDifficultyLevel();
+        String difficulty = listeningDifficultyLabels()[
+                level - ChallengeSettingsManager.LISTENING_LEVEL_STANDARD];
+        String scenario = challengeSettingsManager.getListeningScenario();
+        return "难度" + difficulty + " · 场景" + (scenario.isEmpty() ? "不限" : scenario);
     }
 
     /**
@@ -1673,6 +1688,170 @@ public class SettingsDialogManager {
                 })
                 .setNegativeButton("关闭", null)
                 .show();
+    }
+
+    /**
+     * 听力题设置弹窗：一次保存难度档位与场景。
+     * 场景为卡片选择（不限 / 预定义 / 自定义），与「警示语风格」弹窗一致：
+     * 自定义场景可新增多个并持久化，长按卡片可删除；选中态仅在点「保存」时写入。
+     *
+     * @param onSaved 保存成功后回调（刷新答题类型页面内的摘要与选中态）
+     */
+    public void showListeningSettingsDialog(Runnable onSaved) {
+        View dialogView = LayoutInflater.from(context)
+                .inflate(R.layout.dialog_listening_settings, null);
+        android.widget.RadioGroup difficultyGroup =
+                dialogView.findViewById(R.id.rg_listening_difficulty);
+        android.widget.FrameLayout scenarioContainer =
+                dialogView.findViewById(R.id.container_listening_scenario);
+
+        int currentLevel = challengeSettingsManager.getListeningDifficultyLevel();
+        difficultyGroup.check(currentLevel == ChallengeSettingsManager.LISTENING_LEVEL_HARD
+                ? R.id.rb_listening_difficulty_hard
+                : R.id.rb_listening_difficulty_standard);
+
+        TagFlowLayout scenarioFlow = new TagFlowLayout(context, dpToPx(8), dpToPx(10));
+        scenarioFlow.setClipChildren(false);
+        scenarioFlow.setClipToPadding(false);
+        scenarioContainer.addView(scenarioFlow, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
+
+        // 场景选中态先暂存在本地，点「保存」才连同难度一起写入。
+        final String[] selectedScenario = {challengeSettingsManager.getListeningScenario()};
+        renderListeningScenarioCards(scenarioFlow, selectedScenario);
+
+        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("听力题设置")
+                .setView(dialogView)
+                .setPositiveButton("保存", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    int level = difficultyGroup.getCheckedRadioButtonId()
+                            == R.id.rb_listening_difficulty_hard
+                            ? ChallengeSettingsManager.LISTENING_LEVEL_HARD
+                            : ChallengeSettingsManager.LISTENING_LEVEL_STANDARD;
+                    challengeSettingsManager.setListeningDifficultyLevel(level);
+                    challengeSettingsManager.setListeningScenario(selectedScenario[0]);
+                    challengeSettingsManager.setChallengeType(ChallengeType.LISTENING);
+                    dialog.dismiss();
+                    UiFeedback.show(context, "已设置听力题");
+                    if (onSaved != null) {
+                        onSaved.run();
+                    }
+                }));
+        dialog.show();
+    }
+
+    /** 渲染场景卡片：不限 + 预定义场景 + 已保存的自定义场景（可长按删除） + 添加。 */
+    private void renderListeningScenarioCards(TagFlowLayout scenarioFlow, String[] selectedScenario) {
+        scenarioFlow.removeAllViews();
+
+        TextView noLimitCard = createStyleCard("不限", selectedScenario[0].isEmpty());
+        noLimitCard.setOnClickListener(v -> {
+            selectedScenario[0] = "";
+            renderListeningScenarioCards(scenarioFlow, selectedScenario);
+        });
+        scenarioFlow.addView(noLimitCard, new TagFlowLayout.LayoutParams(
+                TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
+
+        for (String scenario : QuestionConst.LISTENING_SCENARIOS) {
+            TextView card = createStyleCard(scenario, scenario.equals(selectedScenario[0]));
+            card.setOnClickListener(v -> {
+                selectedScenario[0] = scenario;
+                renderListeningScenarioCards(scenarioFlow, selectedScenario);
+            });
+            scenarioFlow.addView(card, new TagFlowLayout.LayoutParams(
+                    TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
+        }
+
+        for (String scenario : challengeSettingsManager.getCustomListeningScenarios()) {
+            android.widget.FrameLayout card = createCustomScenarioCard(
+                    scenario, scenario.equals(selectedScenario[0]), scenarioFlow, selectedScenario);
+            scenarioFlow.addView(card, new TagFlowLayout.LayoutParams(
+                    TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
+        }
+
+        TextView addCard = createAddTargetCard();
+        addCard.setContentDescription("添加自定义场景");
+        addCard.setOnClickListener(v -> showCustomListeningScenarioInputDialog(scenario -> {
+            challengeSettingsManager.addCustomListeningScenario(scenario);
+            selectedScenario[0] = scenario;
+            renderListeningScenarioCards(scenarioFlow, selectedScenario);
+        }));
+        scenarioFlow.addView(addCard, new TagFlowLayout.LayoutParams(
+                TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
+    }
+
+    /** 自定义场景卡片：点击选中，长按露出删除按钮；删除立即持久化，不等「保存」。 */
+    private android.widget.FrameLayout createCustomScenarioCard(
+            String scenario,
+            boolean selected,
+            TagFlowLayout scenarioFlow,
+            String[] selectedScenario) {
+        android.widget.FrameLayout container = new android.widget.FrameLayout(context);
+        TextView card = createStyleCard(scenario, selected);
+        card.setOnClickListener(v -> {
+            selectedScenario[0] = scenario;
+            renderListeningScenarioCards(scenarioFlow, selectedScenario);
+        });
+        container.addView(card, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
+
+        TextView deleteButton = new TextView(context);
+        deleteButton.setBackground(createCircularDrawable(0xFFE84B4B));
+        deleteButton.setGravity(Gravity.CENTER);
+        deleteButton.setText("×");
+        deleteButton.setTextSize(15);
+        deleteButton.setTextColor(0xFFFFFFFF);
+        deleteButton.setContentDescription("删除" + scenario);
+        deleteButton.setVisibility(View.GONE);
+        deleteButton.setOnClickListener(v -> {
+            challengeSettingsManager.removeCustomListeningScenario(scenario);
+            if (scenario.equals(selectedScenario[0])) {
+                selectedScenario[0] = "";
+            }
+            renderListeningScenarioCards(scenarioFlow, selectedScenario);
+        });
+        android.widget.FrameLayout.LayoutParams deleteParams =
+                new android.widget.FrameLayout.LayoutParams(dpToPx(18), dpToPx(18), Gravity.TOP | Gravity.END);
+        deleteParams.topMargin = -dpToPx(5);
+        deleteParams.rightMargin = -dpToPx(5);
+        container.addView(deleteButton, deleteParams);
+        card.setOnLongClickListener(v -> {
+            deleteButton.setVisibility(View.VISIBLE);
+            return true;
+        });
+        return container;
+    }
+
+    private void showCustomListeningScenarioInputDialog(
+            java.util.function.Consumer<String> onScenarioSaved) {
+        EditText input = new EditText(context);
+        input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(20)});
+        input.setHint("不超过 20 个字");
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+                .setTitle("自定义场景")
+                .setView(createInputContainer(input))
+                .setPositiveButton("确定", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    input.setError(null);
+                    String scenario = input.getText().toString().trim();
+                    if (scenario.isEmpty()) {
+                        showInputError(input, "请输入场景");
+                        return;
+                    }
+                    dialog.dismiss();
+                    onScenarioSaved.accept(scenario);
+                }));
+        dialog.show();
     }
 
     private CharSequence formatReasoningDefaultOption(String[] difficultyLabels) {

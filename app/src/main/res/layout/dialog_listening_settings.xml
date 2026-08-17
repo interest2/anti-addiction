@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="难度"
+        android:textSize="14sp"
+        android:textColor="#666666" />
+
+    <RadioGroup
+        android:id="@+id/rg_listening_difficulty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:orientation="horizontal">
+
+        <RadioButton
+            android:id="@+id/rb_listening_difficulty_standard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="24dp"
+            android:text="基础"
+            android:textSize="16sp" />
+
+        <RadioButton
+            android:id="@+id/rb_listening_difficulty_hard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="进阶"
+            android:textSize="16sp" />
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="场景"
+        android:textSize="14sp"
+        android:textColor="#666666" />
+
+    <FrameLayout
+        android:id="@+id/container_listening_scenario"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>

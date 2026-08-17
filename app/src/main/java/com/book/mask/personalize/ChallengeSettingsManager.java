@@ -6,6 +6,7 @@ import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.network.AppConfigManager;
 import com.book.mask.util.ArithmeticUtils.MultiplicationTier;
+import com.google.gson.Gson;
 import com.tencent.mmkv.MMKV;
 
 /**
@@ -26,6 +27,9 @@ public class ChallengeSettingsManager {
             "math_multiplication_multiplicand_tier";
     static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
     static final String KEY_REASONING_DIFFICULTY_LEVEL = "reasoning_difficulty_level";
+    static final String KEY_LISTENING_DIFFICULTY_LEVEL = "listening_difficulty_level";
+    static final String KEY_LISTENING_SCENARIO = "listening_scenario";
+    static final String KEY_LISTENING_CUSTOM_SCENARIOS = "listening_custom_scenarios";
     static final String KEY_CHALLENGE_TIMER_MODE = "challenge_timer_mode";
     static final String KEY_ENGLISH_READING_LENGTH = "english_reading_length";
     static final String KEY_RETELLING_STORY_LENGTH = "retelling_story_length";
@@ -36,6 +40,11 @@ public class ChallengeSettingsManager {
     public static final int REASONING_LEVEL_DEFAULT = -1;
     public static final int REASONING_LEVEL_MIN = 0;
     public static final int REASONING_LEVEL_MAX = 2;
+
+    /** 听力题难度：2=基础（默认），3=进阶（对标高考听力）。 */
+    public static final int LISTENING_LEVEL_STANDARD = 2;
+    public static final int LISTENING_LEVEL_HARD = 3;
+    public static final int LISTENING_LEVEL_DEFAULT = LISTENING_LEVEL_STANDARD;
 
     /** 答题计时显示模式：不显示 / 仅显示分钟（mm）/ 显示分钟和秒（mm:s）。 */
     public static final int TIMER_MODE_NONE = 0;
@@ -165,6 +174,78 @@ public class ChallengeSettingsManager {
                 ? level
                 : REASONING_LEVEL_DEFAULT;
         mmkv.putInt(KEY_REASONING_DIFFICULTY_LEVEL, validLevel).commit();
+    }
+
+    public int getListeningDifficultyLevel() {
+        return clamp(
+                mmkv.getInt(KEY_LISTENING_DIFFICULTY_LEVEL, LISTENING_LEVEL_DEFAULT),
+                LISTENING_LEVEL_STANDARD,
+                LISTENING_LEVEL_HARD);
+    }
+
+    public void setListeningDifficultyLevel(int level) {
+        mmkv.putInt(
+                KEY_LISTENING_DIFFICULTY_LEVEL,
+                clamp(level, LISTENING_LEVEL_STANDARD, LISTENING_LEVEL_HARD)).commit();
+    }
+
+    /** 听力题场景（大模型出题时约束原文话题）；空串表示不限。 */
+    public String getListeningScenario() {
+        return mmkv.getString(KEY_LISTENING_SCENARIO, "");
+    }
+
+    public void setListeningScenario(String scenario) {
+        mmkv.putString(
+                KEY_LISTENING_SCENARIO, scenario == null ? "" : scenario.trim()).commit();
+    }
+
+    /** 已保存的自定义听力场景列表（供设置界面展示 + 删除；不含内置预设场景）。 */
+    public String[] getCustomListeningScenarios() {
+        java.util.List<String> scenarios = new java.util.ArrayList<>();
+        try {
+            String stored = mmkv.getString(KEY_LISTENING_CUSTOM_SCENARIOS, "[]");
+            String[] customScenarios = new Gson().fromJson(stored, String[].class);
+            if (customScenarios != null) {
+                for (String scenario : customScenarios) {
+                    if (scenario != null && !scenario.isEmpty() && !scenarios.contains(scenario)) {
+                        scenarios.add(scenario);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w("SettingsManager", "解析自定义听力场景列表失败", e);
+        }
+
+        String currentScenario = getListeningScenario();
+        if (!currentScenario.isEmpty()
+                && !java.util.Arrays.asList(QuestionConst.LISTENING_SCENARIOS).contains(currentScenario)
+                && !scenarios.contains(currentScenario)) {
+            scenarios.add(currentScenario);
+        }
+        return scenarios.toArray(new String[0]);
+    }
+
+    public void addCustomListeningScenario(String scenario) {
+        if (scenario == null || scenario.isEmpty()) {
+            return;
+        }
+        java.util.List<String> scenarios = new java.util.ArrayList<>(
+                java.util.Arrays.asList(getCustomListeningScenarios()));
+        if (!scenarios.contains(scenario)) {
+            scenarios.add(scenario);
+            mmkv.putString(KEY_LISTENING_CUSTOM_SCENARIOS, new Gson().toJson(scenarios)).commit();
+        }
+    }
+
+    public void removeCustomListeningScenario(String scenario) {
+        java.util.List<String> scenarios = new java.util.ArrayList<>(
+                java.util.Arrays.asList(getCustomListeningScenarios()));
+        if (scenarios.remove(scenario)) {
+            mmkv.putString(KEY_LISTENING_CUSTOM_SCENARIOS, new Gson().toJson(scenarios)).commit();
+        }
+        if (scenario.equals(getListeningScenario())) {
+            setListeningScenario("");
+        }
     }
 
     public int getChallengeTimerMode() {

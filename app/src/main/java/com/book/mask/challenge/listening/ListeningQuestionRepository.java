@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.book.mask.constant.QuestionConst;
+import com.book.mask.personalize.ChallengeSettingsManager;
 import com.book.mask.reminder.config.ProviderSecretStore;
 import com.book.mask.reminder.config.ReminderProviderConfig;
 import com.book.mask.reminder.config.ReminderProviderConfigStore;
@@ -32,7 +33,8 @@ public final class ListeningQuestionRepository {
     private static final int MAX_TOKENS = 1_024;
     private static final String QUESTION_ID_CUSTOM = "custom";
 
-    private static final String SYSTEM_PROMPT =
+    /** 进阶档：对标高考听力，信息密集、干扰项全部源自原文，考真正听懂。 */
+    private static final String SYSTEM_PROMPT_HARD =
             "你是出题助手。请创作一道有难度的中文听力选择题，难度对标高考听力题。\n"
                     + "要求：\n"
                     + "1. 给出一段约 60-80 字的中文听力原文，信息必须密集：至少包含 2-3 个相互关联的细节"
@@ -46,6 +48,37 @@ public final class ListeningQuestionRepository {
                     + "4. 不要使用 Markdown 或任何解释文字，严格按如下 JSON 格式输出：\n"
                     + "{\"transcript\":\"听力原文\",\"question\":\"问题\",\"options\":[\"选项A\",\"选项B\",\"选项C\",\"选项D\"],\"answer\":\"A\"}\n"
                     + "其中 answer 为正确选项的字母（A/B/C/D）。";
+
+    /** 基础档（默认）：最多 2 个明说事实、一层简单关系，免心算与多步推断。 */
+    private static final String SYSTEM_PROMPT_MEDIUM =
+            "你是出题助手。请创作一道中等难度的中文听力选择题，作为从简单到进阶的过渡。\n"
+                    + "要求：\n"
+                    + "1. 给出一段约 45-55 字的中文听力原文，用自然口语、贴近日常或工作生活的具体内容，"
+                    + "最多包含 2 个明确说出的关键事实，可含一层「谁做了什么 / 什么先什么后」的简单关系，但不绕弯、不埋伏笔；\n"
+                    + "   原文务必不超过 80 字（语音合成上限）；\n"
+                    + "2. 问题针对原文中明确说出的信息，最多把 2 个事实对应起来即可作答；"
+                    + "不考需要多步的推断，也不需要心算或比较多个数字；\n"
+                    + "3. 给出 4 个中文选项，简短、具体，只有一个正确；"
+                    + "错误选项贴着原文出现过的元素做区分（换一个人 / 时间 / 数字 / 先后），"
+                    + "认真听清者一次对照即可排除，不设需要反复推理的陷阱；\n"
+                    + "4. 不要使用 Markdown 或任何解释文字，严格按如下 JSON 格式输出：\n"
+                    + "{\"transcript\":\"听力原文\",\"question\":\"问题\",\"options\":[\"选项A\",\"选项B\",\"选项C\",\"选项D\"],\"answer\":\"A\"}\n"
+                    + "其中 answer 为正确选项的字母（A/B/C/D）。";
+
+    /** 按难度档位选择系统提示词：基础档（默认），进阶档。 */
+    private static String systemPrompt(int difficultyLevel) {
+        return difficultyLevel == ChallengeSettingsManager.LISTENING_LEVEL_HARD
+                ? SYSTEM_PROMPT_HARD
+                : SYSTEM_PROMPT_MEDIUM;
+    }
+
+    /** 拼接出题用户消息：指定场景时约束听力原文话题，空场景则不限。 */
+    private static String buildUserMessage(String scenario) {
+        if (scenario == null || scenario.isEmpty()) {
+            return "请按上述要求生成一道中文听力选择题。";
+        }
+        return "请按上述要求，围绕「" + scenario + "」这一场景，生成一道中文听力选择题。";
+    }
 
     public static final class Question {
         private final String questionId;
@@ -69,6 +102,7 @@ public final class ListeningQuestionRepository {
     private final ReminderProviderConfigStore configStore;
     private final ProviderSecretStore secretStore;
     private final OpenAiChatClient chatClient;
+    private final ChallengeSettingsManager challengeSettingsManager;
 
     private Question currentQuestion;
     private Question nextQuestion;
@@ -77,6 +111,7 @@ public final class ListeningQuestionRepository {
         this.configStore = new ReminderProviderConfigStore();
         this.secretStore = new ProviderSecretStore(context);
         this.chatClient = new OpenAiChatClient(new ProviderHttpClient());
+        this.challengeSettingsManager = new ChallengeSettingsManager(context);
     }
 
     /**
@@ -141,13 +176,15 @@ public final class ListeningQuestionRepository {
                 Log.w(TAG, "自定义 Provider 未配置 API Key，听力题接口不可用");
                 return null;
             }
+            int difficultyLevel = challengeSettingsManager.getListeningDifficultyLevel();
+            String scenario = challengeSettingsManager.getListeningScenario();
             JSONArray messages = new JSONArray();
             messages.put(new JSONObject()
                     .put("role", "system")
-                    .put("content", SYSTEM_PROMPT));
+                    .put("content", systemPrompt(difficultyLevel)));
             messages.put(new JSONObject()
                     .put("role", "user")
-                    .put("content", "请生成一道略有难度的中文听力选择题。"));
+                    .put("content", buildUserMessage(scenario)));
 
             String raw = chatClient.complete(config, apiKey, messages, MAX_TOKENS, 0.8);
             ListeningQuestion question = parseQuestion(raw);

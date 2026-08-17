@@ -135,6 +135,12 @@ public final class QuestionConst {
         }
     }
 
+    // 听力题：可选场景（大模型出题时约束听力原文的话题背景）；界面在此基础上再补「不限」与「自定义…」。
+    public static final String[] LISTENING_SCENARIOS = {
+            "公司", "工作", "晨会", "需求评审", "设计评审", "测试评审",
+            "上线", "大促", "跟客户沟通", "小区", "医院"
+    };
+
     // 听力题：内置题目池。高难度：干扰项均源自原文元素（张冠李戴 / 数字错位 / 顺序颠倒 / 方向反置 / 误解作饵），
     // 原文信息密集（顺序 / 数字对应 / 因果链 / 言外之意），听一遍需真正抓细节才能作答；原文均 ≤ 80 字（TTS 上限）。
     public static final ListeningBuiltinQuestion[] LISTENING_BUILTIN_QUESTIONS = {

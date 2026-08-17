@@ -140,10 +140,11 @@ final class ListeningChallengeViewController {
         hideResult();
         hintText.setText("正在生成听力音频…");
         hintText.setTextColor(Color.WHITE);
-        // 后台用豆包语音合成听力原文；确定真实音频或占位回退可用后，才允许播放
+        // 后台用豆包语音合成听力原文 + 提问句；确定真实音频或占位回退可用后，才允许播放
         audioPlayer.prepare(
                 context,
                 question == null ? "" : question.getTranscript(),
+                question == null ? "" : question.getQuestion(),
                 this::onAudioPrepared);
     }
 
@@ -182,6 +183,9 @@ final class ListeningChallengeViewController {
         }
         optionsEnabled = false;
         setOptionsEnabled(false);
+        // 答错后仍可重听听力音频：走神 / 没听清时再听一遍
+        replayButton.setEnabled(true);
+        replayButton.setVisibility(View.VISIBLE);
         submitButton.setVisibility(View.GONE);
         cancelButton.setText("取消");
         revealButton.setText("显示听力原文");
@@ -190,7 +194,7 @@ final class ListeningChallengeViewController {
         nextButton.setVisibility(View.VISIBLE);
         hintText.setText("答案错误");
         hintText.setTextColor(Color.WHITE);
-        showResult("❌ 答案错误，可查看原文或换一题", Color.rgb(255, 87, 34));
+        showResult("❌ 答案错误，可重听、查看原文或换一题", Color.rgb(255, 87, 34));
     }
 
     void showTranscript(String transcript) {
@@ -215,13 +219,16 @@ final class ListeningChallengeViewController {
         // 答对后仍可重听听力音频
         replayButton.setEnabled(true);
         submitButton.setVisibility(View.GONE);
-        cancelButton.setText("完成解禁");
+        cancelButton.setText("立即解锁");
+        cancelButton.setVisibility(View.VISIBLE);
         revealButton.setText("查看原文");
         revealButton.setVisibility(View.VISIBLE);
-        nextButton.setVisibility(View.GONE);
+        // 答对后除「立即解锁」外，也可换下一题继续练习
+        nextButton.setText("换下一题");
+        nextButton.setVisibility(View.VISIBLE);
         hintText.setText("答案正确");
         hintText.setTextColor(Color.rgb(76, 175, 80));
-        showResult("✅ 答案正确！", Color.rgb(76, 175, 80));
+        showResult("✅ 答案正确！可立即解锁，或换下一题继续", Color.rgb(76, 175, 80));
     }
 
     /**
@@ -234,8 +241,9 @@ final class ListeningChallengeViewController {
         transcriptText.setText(transcript == null ? "" : "【听力原文】\n" + transcript);
         transcriptScrollView.setVisibility(View.VISIBLE);
         revealButton.setVisibility(View.GONE);
-        cancelButton.setVisibility(View.GONE);
-        nextButton.setText("立即解锁");
+        cancelButton.setText("立即解锁");
+        cancelButton.setVisibility(View.VISIBLE);
+        nextButton.setText("换下一题");
         replayButton.setEnabled(true);
         nextButton.setVisibility(View.VISIBLE);
         hideResult();

@@ -54,19 +54,18 @@ final class ListeningAudioPlayer {
     private AudioState audioState = AudioState.IDLE;
     private long prepareGeneration;
     private long playbackGeneration;
-    /** 播放引导语所需的上下文（来自 prepare / play 入参）。 */
-    private Context appContext;
     /** 整段播放结束（或播放失败兜底）时的回调，用于揭示题干与选项。 */
     private Runnable onPlaybackCompleted;
 
     /**
-     * 后台合成听力原文，为「播放 / 重听」准备真实音频。
+     * 后台合成听力原文 + 提问句，为「播放 / 重听」准备真实音频。
+     * 原文合成成功后再合成一次提问句，两段音频文件按顺序拼接，播放时无缝衔接。
      */
-    synchronized void prepare(Context context, String transcript, Runnable onPrepared) {
-        this.appContext = context;
+    synchronized void prepare(Context context, String transcript, String question, Runnable onPrepared) {
         audioFiles = Collections.emptyList();
         audioState = AudioState.PREPARING;
         final long generation = ++prepareGeneration;
+        final String questionText = question == null ? "" : question.trim();
         synthesizerExecutor.execute(() -> {
             if (!isCurrentPreparation(generation)) {
                 return;
@@ -76,17 +75,8 @@ final class ListeningAudioPlayer {
                     new DoubaoSpeechSynthesizer.Callback() {
                         @Override
                         public void onAudioReady(List<File> files) {
-                            synchronized (ListeningAudioPlayer.this) {
-                                if (!isCurrentPreparation(generation)) {
-                                    return;
-                                }
-                                audioFiles = new ArrayList<>(files);
-                                audioState = audioFiles.isEmpty()
-                                        ? AudioState.PLACEHOLDER_READY
-                                        : AudioState.REAL_AUDIO_READY;
-                            }
-                            Log.d(TAG, "豆包合成音频已就绪，segments=" + files.size());
-                            notifyAudioPrepared(generation, onPrepared);
+                            Log.d(TAG, "豆包听力原文音频已就绪，segments=" + files.size());
+                            synthesizeQuestion(context, generation, files, questionText, onPrepared);
                         }
 
                         @Override
@@ -117,6 +107,67 @@ final class ListeningAudioPlayer {
     }
 
     /**
+     * 听力原文合成成功后，接着合成提问句音频（各自独立请求，避免拼接原文后单次文本超 80 字上限）；
+     * 提问句合成失败 / 不可用时仅播放原文，不影响主流程。
+     */
+    private void synthesizeQuestion(
+            Context context,
+            long generation,
+            List<File> transcriptFiles,
+            String question,
+            Runnable onPrepared) {
+        if (!isCurrentPreparation(generation)) {
+            return;
+        }
+        if (question.isEmpty()) {
+            completePreparation(generation, transcriptFiles, onPrepared);
+            return;
+        }
+        synthesizerExecutor.execute(() -> {
+            if (!isCurrentPreparation(generation)) {
+                return;
+            }
+            synthesizerHolder.get(context).synthesize(
+                    question,
+                    new DoubaoSpeechSynthesizer.Callback() {
+                        @Override
+                        public void onAudioReady(List<File> questionFiles) {
+                            List<File> combined = new ArrayList<>(transcriptFiles);
+                            combined.addAll(questionFiles);
+                            Log.d(TAG, "豆包提问句音频已就绪，segments=" + questionFiles.size());
+                            completePreparation(generation, combined, onPrepared);
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            Log.e(TAG, "提问句语音合成失败，仅播放听力原文: " + message);
+                            completePreparation(generation, transcriptFiles, onPrepared);
+                        }
+
+                        @Override
+                        public void onUnavailable(String reason) {
+                            Log.w(TAG, "提问句语音不可用，仅播放听力原文: " + reason);
+                            completePreparation(generation, transcriptFiles, onPrepared);
+                        }
+                    });
+        });
+    }
+
+    private void completePreparation(long generation, List<File> files, Runnable onPrepared) {
+        synchronized (this) {
+            if (!isCurrentPreparation(generation)) {
+                return;
+            }
+            audioFiles = new ArrayList<>(files);
+            audioState = audioFiles.isEmpty()
+                    ? AudioState.PLACEHOLDER_READY
+                    : AudioState.REAL_AUDIO_READY;
+        }
+        Log.d(TAG, "豆包合成音频全部就绪，segments=" + files.size());
+        notifyAudioPrepared(generation, onPrepared);
+    }
+
+    /**
      * 播放音频：等待合成结束后，播放真实合成音频或确定需要使用的占位音频。
      */
     synchronized void play(Context context) {
@@ -124,7 +175,6 @@ final class ListeningAudioPlayer {
             Log.d(TAG, "听力音频尚未就绪，忽略播放请求");
             return;
         }
-        this.appContext = context;
         releaseCurrentMediaPlayerAsync(true);
         playingSegmentIndex = 0;
         long generation = ++playbackGeneration;
@@ -212,11 +262,7 @@ final class ListeningAudioPlayer {
                     "android.resource://" + context.getPackageName() + "/raw/listening_placeholder");
             player.setDataSource(context, placeholderUri);
             player.setOnPreparedListener(mp -> mp.start());
-            player.setOnCompletionListener(mp -> {
-                // 占位正文播完后，末尾追加引导语
-                onSegmentFinished(mp, generation);
-                playGuide(generation);
-            });
+            player.setOnCompletionListener(mp -> finishPlayback(mp, generation, false));
             player.setOnErrorListener((mp, what, extra) -> {
                 finishPlayback(mp, generation, false);
                 return true;
@@ -306,58 +352,7 @@ final class ListeningAudioPlayer {
         if (hasMoreSegments) {
             playCurrentSegment(generation);
         } else {
-            // 最后一段正文播完后，末尾追加引导语
-            playGuide(generation);
-        }
-    }
-
-    /**
-     * 一段音频（非末段）正常播完后的收尾：仅释放，不触发整段完成回调。
-     */
-    private void onSegmentFinished(MediaPlayer completedPlayer, long generation) {
-        synchronized (this) {
-            if (mediaPlayer == completedPlayer) {
-                mediaPlayer = null;
-            }
-        }
-        releaseMediaPlayerAsync(completedPlayer, false);
-    }
-
-    /**
-     * 整段听力正文播完后，末尾追加一句引导语「请看提问，并做选择」；
-     * 引导语播完（或播放失败）才回调整段播放完成，由界面揭示题干与选项。
-     */
-    private void playGuide(long generation) {
-        Context context = appContext;
-        if (context == null) {
-            notifyPlaybackCompleted(generation);
-            return;
-        }
-        try {
-            MediaPlayer player = new MediaPlayer();
-            player.setAudioAttributes(new AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .build());
-            Uri guideUri = Uri.parse(
-                    "android.resource://" + context.getPackageName() + "/raw/listening_guide");
-            player.setDataSource(context, guideUri);
-            player.setOnPreparedListener(mp -> mp.start());
-            player.setOnCompletionListener(mp -> finishPlayback(mp, generation, false));
-            player.setOnErrorListener((mp, what, extra) -> {
-                finishPlayback(mp, generation, false);
-                return true;
-            });
-            synchronized (this) {
-                mediaPlayer = player;
-            }
-            player.prepareAsync();
-            Log.d(TAG, "播放听力引导语");
-        } catch (Exception e) {
-            Log.e(TAG, "播放听力引导语异常", e);
-            synchronized (this) {
-                releaseCurrentMediaPlayerAsync(true);
-            }
+            // 原文 + 提问句均已播完
             notifyPlaybackCompleted(generation);
         }
     }
