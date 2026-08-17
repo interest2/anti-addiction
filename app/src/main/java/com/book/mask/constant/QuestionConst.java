@@ -53,11 +53,12 @@ public final class QuestionConst {
     // 答题记录：各类题型「详情」最多保留的记录条数，新的在前，超过上限丢弃最旧
     public static final int CHALLENGE_RECORD_MAX = 2; // 文本类：算术 / 推理 / 混合 / 英文阅读
     public static final int LISTENING_RECORD_MAX = 2; // 听力题
-    public static final int RETELLING_RECORD_MAX = 2; // 复述题
+    // 复述题详情与概况同上限：答题记录弹窗中所有复述题行均可点击查看详情与录音，录音文件随记录裁剪
+    public static final int RETELLING_RECORD_MAX = 50; // 复述题
     // 答题记录：各类题型「概况」最多保留的记录条数，为详情量的 10 倍（仅存概要字段，内存占用低）
     public static final int CHALLENGE_OVERVIEW_MAX = CHALLENGE_RECORD_MAX * 10;
     public static final int LISTENING_OVERVIEW_MAX = LISTENING_RECORD_MAX * 10;
-    public static final int RETELLING_OVERVIEW_MAX = RETELLING_RECORD_MAX * 10;
+    public static final int RETELLING_OVERVIEW_MAX = RETELLING_RECORD_MAX;
 
     /**
      * 复述题录音上限随故事长度动态化：约 0.6 秒/字（按偏慢语速估算，余量充足），
@@ -141,8 +142,8 @@ public final class QuestionConst {
             "上线", "大促", "跟客户沟通", "小区", "医院"
     };
 
-    // 听力题：内置题目池。高难度：干扰项均源自原文元素（张冠李戴 / 数字错位 / 顺序颠倒 / 方向反置 / 误解作饵），
-    // 原文信息密集（顺序 / 数字对应 / 因果链 / 言外之意），听一遍需真正抓细节才能作答；原文均 ≤ 80 字（TTS 上限）。
+    // 听力题：内置兜底题目。原文信息密集，干扰项均源自原文元素，听一遍需真正抓细节才能作答；
+    // 原文 ≤ 80 字（TTS 上限）。
     public static final ListeningBuiltinQuestion[] LISTENING_BUILTIN_QUESTIONS = {
             new ListeningBuiltinQuestion(
                     "周一的晨会上，经理先宣布新的考勤制度，随后财务主管说明报销流程调整，最后人事主管公布年度体检安排。"
@@ -153,56 +154,6 @@ public final class QuestionConst {
                             "体检安排在下周三",
                             "人事主管在最后公布了年度体检安排",
                             "经理宣布的是报销流程调整"},
-                    "C"),
-            new ListeningBuiltinQuestion(
-                    "小区通知，快递柜包裹免费保管两天，超期每天收费一元，而菜鸟驿站可免费保管五天。"
-                            + "李女士上周二把包裹放进快递柜，周六才去取，被收取了三元保管费。",
-                    "根据材料，下列说法正确的是？",
-                    new String[]{
-                            "快递柜和菜鸟驿站的免费保管时长相同",
-                            "李女士超期两天，被收取两元",
-                            "李女士超期三天，共被收取三元保管费",
-                            "李女士的包裹存了四天，正好在免费期内"},
-                    "C"),
-            new ListeningBuiltinQuestion(
-                    "海龟性别取决于孵化温度：沙温偏低时孵出的大多是雄性，偏高时多为雌性，中间区间才雌雄平衡。"
-                            + "近年全球变暖使海滩沙温上升，环保组织担心某些种群会出现雄少雌多的失衡。",
-                    "根据材料，可以推断出？",
-                    new String[]{
-                            "沙温越高，孵出的海龟越可能是雄性",
-                            "全球变暖可能导致海龟种群雌多雄少",
-                            "中间区间的沙温最容易孵出雄性",
-                            "海龟性别由亲本遗传决定"},
-                    "B"),
-            new ListeningBuiltinQuestion(
-                    "甲：这批货质检报告我已经发你邮箱了，重点看第三项。乙：你又不是不知道，我这周一直在外面跑，"
-                            + "邮箱三天没开过了。甲：那这样，晚上我把关键数据直接发你手机。",
-                    "乙的言外之意最可能是？",
-                    new String[]{
-                            "他已经看过质检报告",
-                            "他这周无法及时查看邮箱，希望改发其他方式",
-                            "他对这批货的质量很有信心",
-                            "他要求甲重新做一次质检"},
-                    "B"),
-            new ListeningBuiltinQuestion(
-                    "旅行团报价按成人一人两千、儿童半价、三岁以下免费计。王先生带五岁女儿和两岁儿子报名，"
-                            + "又另付了二百元保险费。",
-                    "王先生一家此次出行共需支付多少？",
-                    new String[]{
-                            "三千二百元",
-                            "三千四百元",
-                            "四千二百元",
-                            "二千二百元"},
-                    "A"),
-            new ListeningBuiltinQuestion(
-                    "客服解释，本次促销的满减券与折扣价不能同时使用，且每单最多用一张。"
-                            + "张先生发现他选中的两件商品分别参加不同活动，加购后系统提示只能享受其中一件的优惠。",
-                    "根据材料，下列说法正确的是？",
-                    new String[]{
-                            "满减券可以和折扣价同时使用",
-                            "每单最多可使用三张满减券",
-                            "张先生的两件商品加购后只能享受其中一件的优惠",
-                            "满减券的使用没有数量限制"},
                     "C")
     };
 }

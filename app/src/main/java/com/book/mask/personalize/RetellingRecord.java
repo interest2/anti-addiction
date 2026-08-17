@@ -11,9 +11,7 @@ public final class RetellingRecord {
     public long timestamp;
     /** 原始故事 */
     public String story = "";
-    /** 评分使用的复述文本（腾讯在线转写，未配置时回退本地离线识别） */
-    public String recognizedText = "";
-    /** 本地离线语音识别（Sherpa）转写文本，仅用于与在线转写对比准确性，未跑离线识别为空串 */
+    /** 本地离线语音识别（Sherpa）转写文本；腾讯转写仅作评分依据，不存储，未跑离线识别为空串 */
     public String offlineRecognizedText = "";
     /** 总分（0-100） */
     public int score;
@@ -37,6 +35,8 @@ public final class RetellingRecord {
     public float pronunciationFluency = -1f;
     /** 腾讯口语评测建议得分（0-100），未评测为 -1 */
     public float suggestedScore = -1f;
+    /** 本次答题录音文件名（WAV，存于应用私有目录 {@link RetellingAudioStore}），无录音或保存失败为空串 */
+    public String audioPath = "";
 
     public RetellingRecord() {
     }

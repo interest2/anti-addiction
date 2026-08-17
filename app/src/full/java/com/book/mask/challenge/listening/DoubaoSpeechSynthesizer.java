@@ -15,10 +15,13 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 豆包语音合成（火山引擎 Speech SDK · 双向流式 TTS，BiTTS）封装。
@@ -60,6 +63,12 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     private ByteArrayOutputStream sentenceAudioBuffer;
     private final List<File> sentenceAudioFiles = new ArrayList<>();
     private boolean audioDelivered;
+    private boolean sessionActive;
+    private boolean sessionFinished;
+    private boolean dumpFinished;
+    private long synthesisSequence;
+    private String audioFilePrefix;
+    private Map<String, AudioFingerprint> audiosBeforeSynthesis = new HashMap<>();
 
     public DoubaoSpeechSynthesizer(Context context) {
         this.context = context.getApplicationContext();
@@ -72,7 +81,16 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     /**
      * 合成一段文本。结果（按句分段的音频文件 / 错误 / 不可用）通过回调在主线程返回。
      */
-    public synchronized void synthesize(String text, Callback cb) {
+    public synchronized void synthesizeNewSequence(String text, Callback cb) {
+        synthesize(text, cb, true);
+    }
+
+    /** 在当前已启动的引擎上直接创建下一次合成会话。 */
+    public synchronized void synthesizeNext(String text, Callback cb) {
+        synthesize(text, cb, false);
+    }
+
+    private void synthesize(String text, Callback cb, boolean newSequence) {
         if (!config.isConfigured()) {
             Log.w(TAG, "豆包语音凭据未配置，回退占位音频");
             postUnavailable(cb, "未配置豆包语音凭据");
@@ -82,10 +100,16 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
             postError(cb, "合成文本为空");
             return;
         }
+        if (sessionActive) {
+            postError(cb, "上一次豆包语音会话尚未结束");
+            return;
+        }
         this.callback = cb;
         this.sentenceAudioBuffer = new ByteArrayOutputStream();
         this.sentenceAudioFiles.clear();
         this.audioDelivered = false;
+        this.sessionFinished = false;
+        this.dumpFinished = false;
         try {
             if (!ensureEngine()) {
                 postUnavailable("豆包语音引擎初始化失败");
@@ -97,9 +121,17 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
                 Log.w(TAG, "合成文本超过 80 字，截断至 80 字");
                 ttsText = ttsText.substring(0, 80);
             }
-            clearOldAudios();
+            if (newSequence) {
+                clearOldAudios();
+            }
+            audioFilePrefix = "tts_" + System.currentTimeMillis() + "_" + (++synthesisSequence);
+            audiosBeforeSynthesis = snapshotAudios();
             pendingText = ttsText;
-            startEngine();
+            if (engineStarted) {
+                sendPendingTask();
+            } else {
+                startEngine();
+            }
         } catch (UnsatisfiedLinkError e) {
             Log.e(TAG, "当前设备 ABI 不支持豆包语音 SDK", e);
             postUnavailable("当前设备不支持豆包语音合成");
@@ -113,6 +145,10 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     public synchronized void stop() {
         pendingText = null;
         sentenceAudioBuffer = null;
+        callback = null;
+        audioDelivered = true;
+        sessionActive = false;
+        sessionFinished = false;
         engineStarted = false;
         if (engine != null && engineInited) {
             try {
@@ -128,6 +164,8 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
         callback = null;
         pendingText = null;
         sentenceAudioBuffer = null;
+        sessionActive = false;
+        sessionFinished = false;
         engineStarted = false;
         if (engine != null) {
             try {
@@ -192,12 +230,8 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
 
     /** 启动双向流式引擎；必须等待 ENGINE_START 回调后才能发送合成任务。 */
     private void startEngine() throws Exception {
-        int ret = engine.sendDirective(SpeechEngineDefines.DIRECTIVE_SYNC_STOP_ENGINE, "");
-        if (ret != SpeechEngineDefines.ERR_NO_ERROR) {
-            Log.w(TAG, "同步停止上一次合成返回 ret=" + ret);
-        }
-        engineStarted = false;
-        ret = engine.sendDirective(SpeechEngineDefines.DIRECTIVE_START_ENGINE, buildStartPayload());
+        int ret = engine.sendDirective(
+                SpeechEngineDefines.DIRECTIVE_START_ENGINE, buildStartPayload());
         if (ret != SpeechEngineDefines.ERR_NO_ERROR) {
             Log.e(TAG, "启动引擎失败 ret=" + ret);
             pendingText = null;
@@ -219,6 +253,7 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
                 postError("启动会话失败：" + ret);
                 return;
             }
+            sessionActive = true;
             ret = engine.sendDirective(SpeechEngineDefines.DIRECTIVE_EVENT_TASK_REQUEST,
                     buildTaskPayload(text));
             if (ret != SpeechEngineDefines.ERR_NO_ERROR) {
@@ -293,21 +328,35 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
                 break;
             case SpeechEngineDefines.MESSAGE_TYPE_EVENT_TTS_ENDED:
                 Log.d(TAG, "豆包语音流结束: " + message);
-                deliverSentenceAudios();
+                saveSentenceAudio();
                 break;
             case SpeechEngineDefines.MESSAGE_TYPE_EVENT_SESSION_FINISHED:
                 Log.d(TAG, "豆包语音会话结束");
+                synchronized (this) {
+                    sessionActive = false;
+                    sessionFinished = true;
+                }
                 deliverSentenceAudios();
+                if (dumpFinished) {
+                    deliverDumpedAudio(true);
+                }
                 break;
             case SpeechEngineDefines.MESSAGE_TYPE_TTS_FINISH_AUDIO_DUMP:
                 Log.d(TAG, "豆包语音音频落盘完成");
-                deliverDumpedAudio(true);
+                synchronized (this) {
+                    dumpFinished = true;
+                }
+                if (sessionFinished) {
+                    deliverDumpedAudio(true);
+                }
                 break;
             case SpeechEngineDefines.MESSAGE_TYPE_ENGINE_ERROR:
                 Log.e(TAG, "豆包语音引擎错误: " + (message.isEmpty() ? "engine error" : message));
                 synchronized (this) {
                     pendingText = null;
                     sentenceAudioBuffer = null;
+                    sessionActive = false;
+                    sessionFinished = false;
                     engineStarted = false;
                 }
                 postError(message.isEmpty() ? "engine error" : message);
@@ -335,7 +384,8 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
             return;
         }
         int segmentNumber = sentenceAudioFiles.size() + 1;
-        File file = new File(audioDir, "tts_segment_" + segmentNumber + ".ogg");
+        File file = new File(
+                audioDir, audioFilePrefix + "_segment_" + segmentNumber + ".ogg");
         try (FileOutputStream output = new FileOutputStream(file)) {
             sentenceAudioBuffer.writeTo(output);
             sentenceAudioFiles.add(file);
@@ -370,8 +420,13 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
         if (audioDelivered) {
             return;
         }
-        File file = findDumpedAudio();
-        if (file != null) {
+        File dumpedFile = findDumpedAudio();
+        if (dumpedFile != null) {
+            File file = copyDumpedAudio(dumpedFile);
+            if (file == null) {
+                postError("复制音频文件失败");
+                return;
+            }
             audioDelivered = true;
             sentenceAudioBuffer = null;
             Log.d(TAG, "豆包语音音频就绪: " + file.getName() + ", bytes=" + file.length());
@@ -397,22 +452,65 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     /** 查找本次合成落盘文件；优先兼容 SDK 的 wav dump，也支持本地汇总的 Ogg。 */
     private File findDumpedAudio() {
         File[] audioFiles = listDumpedAudios();
-        if (audioFiles.length == 0) {
-            return null;
-        }
-        File newest = audioFiles[0];
+        File newest = null;
         for (File file : audioFiles) {
-            if (file.lastModified() > newest.lastModified()) {
+            AudioFingerprint oldFingerprint = audiosBeforeSynthesis.get(file.getAbsolutePath());
+            if (oldFingerprint != null && oldFingerprint.matches(file)) {
+                continue;
+            }
+            if (newest == null || file.lastModified() > newest.lastModified()) {
                 newest = file;
             }
         }
-        return newest.exists() && newest.length() > 0 ? newest : null;
+        return newest != null && newest.exists() && newest.length() > 0 ? newest : null;
+    }
+
+    private Map<String, AudioFingerprint> snapshotAudios() {
+        Map<String, AudioFingerprint> snapshot = new HashMap<>();
+        for (File file : listDumpedAudios()) {
+            snapshot.put(file.getAbsolutePath(), new AudioFingerprint(file));
+        }
+        return snapshot;
+    }
+
+    private File copyDumpedAudio(File source) {
+        String extension = source.getName().endsWith(".wav") ? ".wav" : ".ogg";
+        File target = new File(audioDir, audioFilePrefix + "_dump" + extension);
+        if (source.equals(target)) {
+            return target;
+        }
+        byte[] buffer = new byte[8192];
+        try (FileInputStream input = new FileInputStream(source);
+             FileOutputStream output = new FileOutputStream(target)) {
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+            }
+            return target.length() > 0 ? target : null;
+        } catch (IOException e) {
+            Log.e(TAG, "复制豆包语音 dump 失败", e);
+            return null;
+        }
     }
 
     private File[] listDumpedAudios() {
         File[] audioFiles = audioDir.listFiles((dir, name) ->
                 name.endsWith(".wav") || name.endsWith(".ogg"));
         return audioFiles == null ? new File[0] : audioFiles;
+    }
+
+    private static final class AudioFingerprint {
+        private final long length;
+        private final long lastModified;
+
+        private AudioFingerprint(File file) {
+            length = file.length();
+            lastModified = file.lastModified();
+        }
+
+        private boolean matches(File file) {
+            return length == file.length() && lastModified == file.lastModified();
+        }
     }
 
     private String deviceId() {
@@ -426,21 +524,43 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     }
 
     private void postAudioReady(final List<File> files) {
-        mainHandler.post(() -> {
-            Callback cb = callback;
-            if (cb != null) {
-                cb.onAudioReady(files);
-            }
-        });
+        Callback cb;
+        synchronized (this) {
+            cb = callback;
+            callback = null;
+        }
+        if (cb != null) {
+            mainHandler.post(() -> cb.onAudioReady(files));
+        }
     }
 
     private void postError(final String message) {
-        mainHandler.post(() -> {
-            Callback cb = callback;
-            if (cb != null) {
-                cb.onError(message);
+        Callback cb;
+        boolean stopActiveSession;
+        synchronized (this) {
+            cb = callback;
+            if (cb == null) {
+                return;
             }
-        });
+            callback = null;
+            pendingText = null;
+            sentenceAudioBuffer = null;
+            audioDelivered = true;
+            stopActiveSession = sessionActive;
+            sessionActive = false;
+            sessionFinished = false;
+            if (stopActiveSession) {
+                engineStarted = false;
+            }
+        }
+        if (stopActiveSession && engine != null && engineInited) {
+            try {
+                engine.sendDirective(SpeechEngineDefines.DIRECTIVE_STOP_ENGINE, "");
+            } catch (Throwable ignored) {
+                // 失败会话已终止，上层仍需及时收到错误回调
+            }
+        }
+        mainHandler.post(() -> cb.onError(message));
     }
 
     private void postError(final Callback cb, final String message) {
@@ -450,12 +570,20 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     }
 
     private void postUnavailable(final String reason) {
-        mainHandler.post(() -> {
-            Callback cb = callback;
-            if (cb != null) {
-                cb.onUnavailable(reason);
+        Callback cb;
+        synchronized (this) {
+            cb = callback;
+            if (cb == null) {
+                return;
             }
-        });
+            callback = null;
+            pendingText = null;
+            sentenceAudioBuffer = null;
+            audioDelivered = true;
+            sessionActive = false;
+            sessionFinished = false;
+        }
+        mainHandler.post(() -> cb.onUnavailable(reason));
     }
 
     private void postUnavailable(final Callback cb, final String reason) {

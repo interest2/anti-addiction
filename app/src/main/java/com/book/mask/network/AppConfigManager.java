@@ -58,9 +58,12 @@ public final class AppConfigManager {
         return localImageCode > 0 && Share.appreciateImageCode == localImageCode;
     }
 
-    /** 是否已获得服务端下发的语音题功能授权。 */
+    /**
+     * 听力题 / 复述题是否可用：full 版内置语音 SDK，默认可用；
+     * lite 版仍需服务端逐设备下发授权（{@link Share#voiceChallengeAvailable}）。
+     */
     public static boolean isVoiceChallengeAvailable() {
-        return Share.voiceChallengeAvailable;
+        return VoiceChallengeDefaults.AVAILABLE_BY_DEFAULT || Share.voiceChallengeAvailable;
     }
 
     private static boolean isConfigFresh() {

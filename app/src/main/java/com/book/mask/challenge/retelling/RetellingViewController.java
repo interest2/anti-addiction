@@ -138,37 +138,16 @@ final class RetellingViewController {
     }
 
     /**
-     * 展示语音识别的文字结果；空文本时隐藏。{@code source} 为 null 时用默认前缀「识别文本：」，
-     * 否则原样作前缀（如「腾讯转写：」），用于区分在线 / 离线识别来源。
+     * 展示本地离线识别文本（腾讯转写内容不在悬浮窗展示）；离线识别为空时不做改动。
      */
-    void showRecognizedText(String source, String text) {
+    void showOfflineTranscript(String offlineText) {
         if (!initialized) {
             return;
         }
-        if (text == null || text.trim().isEmpty()) {
-            clearRecognizedText();
+        if (offlineText == null || offlineText.trim().isEmpty()) {
             return;
         }
-        String prefix = (source == null || source.isEmpty()) ? "识别文本：" : source;
-        recognizedText.setText(prefix + text.trim());
-        recognizedScrollView.setVisibility(View.VISIBLE);
-    }
-
-    /**
-     * 展示腾讯在线转写与本地离线识别两行对比，供核对识别准确性；在线转写为空时不做改动。
-     */
-    void showTranscriptComparison(String onlineText, String offlineText) {
-        if (!initialized) {
-            return;
-        }
-        if (onlineText == null || onlineText.trim().isEmpty()) {
-            return;
-        }
-        StringBuilder builder = new StringBuilder("腾讯转写：").append(onlineText.trim());
-        if (offlineText != null && !offlineText.trim().isEmpty()) {
-            builder.append("\n离线识别：").append(offlineText.trim());
-        }
-        recognizedText.setText(builder.toString());
+        recognizedText.setText("识别文本：" + offlineText.trim());
         recognizedScrollView.setVisibility(View.VISIBLE);
     }
 

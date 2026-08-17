@@ -24,7 +24,15 @@ public final class DoubaoSpeechSynthesizer {
     public DoubaoSpeechSynthesizer(Context context) {
     }
 
-    public void synthesize(String text, Callback callback) {
+    public void synthesizeNewSequence(String text, Callback callback) {
+        notifyUnavailable(callback);
+    }
+
+    public void synthesizeNext(String text, Callback callback) {
+        notifyUnavailable(callback);
+    }
+
+    private void notifyUnavailable(Callback callback) {
         if (callback != null) {
             callback.onUnavailable("lite 版未内置豆包语音服务");
         }

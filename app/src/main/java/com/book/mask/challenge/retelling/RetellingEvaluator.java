@@ -1,26 +1,21 @@
 package com.book.mask.challenge.retelling;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.pm.PackageInfo;
-import android.provider.Settings;
 import android.util.Log;
 
-import com.book.mask.constant.CloudConst;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.reminder.config.ProviderSecretStore;
 import com.book.mask.reminder.config.ReminderProviderConfig;
 import com.book.mask.reminder.config.ReminderProviderConfigStore;
 import com.book.mask.reminder.provider.OpenAiChatClient;
 import com.book.mask.reminder.provider.ProviderHttpClient;
-import com.book.mask.util.ContentUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.security.GeneralSecurityException;
-import java.util.Collections;
+import java.util.List;
 
 /**
  * 复述题大模型评分。
@@ -28,7 +23,8 @@ import java.util.Collections;
  * <p>只接收「故事原文 + 识别文本」，不上传录音；隐私上不保存原文与识别文本。评分前先做本地粗检：
  * 识别为空 → 请求重录；文本过短（&lt; 原文 15%）→ 直接低分，不再调用大模型。
  *
- * <p>评分网关分流：官方服务 → APP 后端评分接口；自定义服务 → OpenAI 兼容接口。
+ * <p>内容评分只走用户自定义的模型服务商（OpenAI 兼容接口）。当前激活的是官方服务时，
+ * 回退到用户自定义过的 Provider（曾配置过即可用，无需当前激活自定义）；完全没配置过则报错。
  */
 public final class RetellingEvaluator {
 
@@ -100,13 +96,11 @@ public final class RetellingEvaluator {
         }
     }
 
-    private final Context context;
     private final ReminderProviderConfigStore configStore;
     private final ProviderSecretStore secretStore;
     private final OpenAiChatClient chatClient;
 
     public RetellingEvaluator(Context context) {
-        this.context = context.getApplicationContext();
         this.configStore = new ReminderProviderConfigStore();
         this.secretStore = new ProviderSecretStore(context);
         this.chatClient = new OpenAiChatClient(new ProviderHttpClient());
@@ -127,47 +121,44 @@ public final class RetellingEvaluator {
 
         ReminderProviderConfig config = configStore.getActiveConfig();
         if (config.isOfficial()) {
-            return evaluateViaOfficialBackend(story, text);
+            // 当前激活官方服务时，回退到用户自定义过的 Provider（曾配置过即可用，无需当前激活自定义）
+            config = pickCustomConfig();
+            if (config == null) {
+                return EvaluationResult.error(configStore.getProfiles().isEmpty()
+                        ? "复述评分需要自定义模型服务商，请先在提醒设置中配置并激活"
+                        : "复述评分使用的自定义 Provider 未配置 API Key，请先在提醒设置中补充");
+            }
         }
         return evaluateViaOpenAi(config, story, text);
     }
 
-    private EvaluationResult evaluateViaOfficialBackend(String story, String text) {
-        try {
-            JSONObject request = new JSONObject();
-            request.put("devId", androidId());
-            request.put("version", versionName());
-            request.put("story", story);
-            request.put("text", text);
-
-            String response = ContentUtils.doHttpPost(
-                    CloudConst.DOMAIN_URL + CloudConst.RETELLING_SCORE,
-                    request.toString(),
-                    Collections.singletonMap("Accept", "application/json"));
-            if (response == null || response.trim().isEmpty()) {
-                return EvaluationResult.error("评分接口无响应");
+    /**
+     * 回退选择用户自定义过的 Provider：按保存时间倒序选第一个已配置 API Key 的
+     * （最近配置的优先，且保证可调用）；全部未配置密钥时返回 null。
+     */
+    private ReminderProviderConfig pickCustomConfig() {
+        List<ReminderProviderConfig> profiles = configStore.getProfiles();
+        for (int i = profiles.size() - 1; i >= 0; i--) {
+            ReminderProviderConfig config = profiles.get(i);
+            if (config.isOfficial()) {
+                continue;
             }
-            JSONObject json = new JSONObject(response);
-            JSONObject data;
-            if (json.has("status")) {
-                if (json.getInt("status") != 0) {
-                    return EvaluationResult.error("服务端评分失败 status=" + json.getInt("status"));
+            try {
+                if (secretStore.hasApiKey(config.getProfileId())) {
+                    return config;
                 }
-                data = json.optJSONObject("data");
-            } else {
-                data = json;
+            } catch (Exception e) {
+                Log.w(TAG, "检查 Provider 密钥失败: " + config.getProfileId(), e);
             }
-            if (data == null) {
-                return EvaluationResult.error("服务端评分结果缺失");
-            }
-            return EvaluationResult.scored(parseScore(data));
-        } catch (Exception e) {
-            Log.e(TAG, "官方评分接口异常", e);
-            return EvaluationResult.error("评分接口异常：" + e.getMessage());
         }
+        return null;
     }
 
     private EvaluationResult evaluateViaOpenAi(ReminderProviderConfig config, String story, String text) {
+        String endpoint = config.getEndpointUrl();
+        if (endpoint == null || endpoint.trim().isEmpty()) {
+            return EvaluationResult.error("自定义 Provider 未配置接口地址");
+        }
         try {
             String apiKey = secretStore.getApiKey(config.getProfileId());
             if (apiKey == null || apiKey.isEmpty()) {
@@ -213,21 +204,5 @@ public final class RetellingEvaluator {
             return new JSONObject(raw.substring(start, end + 1));
         }
         throw new JSONException("响应中未找到 JSON 对象");
-    }
-
-    @SuppressLint("HardwareIds")
-    private String androidId() {
-        return Settings.Secure.getString(
-                context.getContentResolver(), Settings.Secure.ANDROID_ID);
-    }
-
-    private String versionName() {
-        try {
-            PackageInfo packageInfo = context.getPackageManager()
-                    .getPackageInfo(context.getPackageName(), 0);
-            return packageInfo.versionName;
-        } catch (Exception e) {
-            return "";
-        }
     }
 }

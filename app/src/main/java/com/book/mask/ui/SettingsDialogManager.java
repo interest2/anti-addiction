@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
@@ -24,6 +25,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
@@ -44,6 +46,7 @@ import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.ChallengeSettingsManager;
 import com.book.mask.personalize.DoubaoTtsConfigManager;
 import com.book.mask.personalize.LeisureTimeManager;
+import com.book.mask.personalize.RetellingAudioStore;
 import com.book.mask.personalize.RetellingRecord;
 import com.book.mask.personalize.RetellingRecordStore;
 import com.book.mask.personalize.SoeConfigManager;
@@ -61,6 +64,7 @@ import com.book.mask.util.DateUtils;
 import com.book.mask.R;
 import com.google.android.material.slider.Slider;
 
+import java.io.File;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -2475,7 +2479,7 @@ public class SettingsDialogManager {
                         .setTitle("清空答题记录")
                         .setMessage("确定清空全部答题记录？此操作不可恢复。")
                         .setPositiveButton("清空", (d, w) -> {
-                            new RetellingRecordStore().clear();
+                            new RetellingRecordStore(context).clear();
                             new ChallengeRecordStore().clear();
                             new ListeningRecordStore().clear();
                             new AnswerOverviewStore().clear();
@@ -2566,7 +2570,7 @@ public class SettingsDialogManager {
             listenings.put(record.timestamp, record);
         }
         Map<Long, RetellingRecord> retellings = new HashMap<>();
-        for (RetellingRecord record : new RetellingRecordStore().getRecords()) {
+        for (RetellingRecord record : new RetellingRecordStore(context).getRecords()) {
             retellings.put(record.timestamp, record);
         }
 
@@ -2785,6 +2789,8 @@ public class SettingsDialogManager {
 
     /** 点击表格行弹出完整答题详情；仅对有完整详情的记录生效（题目列 "-" 的行不可点击）。 */
     private void showRecordDetailDialog(final AnswerRecordEntry entry) {
+        // 弹窗内播放复述录音的播放状态（播放器 + 进度条 + 时长）；弹窗关闭时释放
+        final RetellingPlayState playerState = new RetellingPlayState();
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(20), dp(12), dp(20), dp(8));
@@ -2820,9 +2826,10 @@ public class SettingsDialogManager {
             content.addView(buildRecordLine("【结果】" + (r.passed ? "通过" : "未通过")
                     + " · 得分 " + r.score, 13, 0xFF333333, 0));
             content.addView(buildRecordLine("【完整故事】 " + r.story, 13, 0xFF333333, 0));
-            content.addView(buildRecordLine("【完整回答】 " + r.recognizedText, 13, 0xFF333333, 0));
-            if (r.offlineRecognizedText != null && !r.offlineRecognizedText.isEmpty()) {
-                content.addView(buildRecordLine("【离线识别】 " + r.offlineRecognizedText, 13, 0xFF8A8A8A, 0));
+            // 腾讯转写仅作评分依据，不存储、不展示；详情只展示本地模型转写结果（未跑离线识别则为空）
+            String localText = r.offlineRecognizedText;
+            if (localText != null && !localText.isEmpty()) {
+                content.addView(buildRecordLine("【本地模型转写】 " + localText, 13, 0xFF8A8A8A, 0));
             }
             content.addView(buildRecordLine("维度：内容完整 " + r.coverage
                     + " · 逻辑连贯 " + r.order
@@ -2835,6 +2842,11 @@ public class SettingsDialogManager {
             if (r.feedback != null && !r.feedback.isEmpty()) {
                 content.addView(buildRecordLine("【建议】 " + r.feedback, 12, 0xFF8A8A8A, 0));
             }
+            File audioFile = (r.audioPath == null || r.audioPath.isEmpty())
+                    ? null : new RetellingAudioStore(context).resolve(r.audioPath);
+            if (audioFile != null) {
+                content.addView(buildRetellingPlayRow(playerState, audioFile));
+            }
         }
 
         ScrollView scrollView = new ScrollView(context);
@@ -2842,11 +2854,169 @@ public class SettingsDialogManager {
         scrollView.setLayoutParams(new android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT, dp(400)));
 
-        new android.app.AlertDialog.Builder(context)
+        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("答题详情")
                 .setView(scrollView)
                 .setNegativeButton("关闭", null)
-                .show();
+                .create();
+        // 弹窗关闭时释放播放器与进度轮询，避免持续占用音频焦点与资源
+        dialog.setOnDismissListener(d -> releaseRetellingPlayer(playerState));
+        dialog.show();
+    }
+
+    /** 复述题录音回放状态：播放器 + 进度条 + 时长文本 + 进度轮询。 */
+    private static final class RetellingPlayState {
+        MediaPlayer player;
+        Button playButton;
+        SeekBar seekBar;
+        TextView timeText;
+        boolean tracking;
+        Runnable ticker;
+    }
+
+    /** 复述题录音回放行：播放/停止按钮 + 可拖动进度条 + 当前/总时长。 */
+    private View buildRetellingPlayRow(final RetellingPlayState state, final File audioFile) {
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+
+        state.playButton = new Button(context);
+        state.playButton.setText("▶ 播放录音");
+        state.playButton.setAllCaps(false);
+        state.playButton.setTextColor(0xFF1565C0);
+        android.graphics.drawable.GradientDrawable bg =
+                new android.graphics.drawable.GradientDrawable();
+        bg.setColor(0xFFE3F2FD);
+        bg.setCornerRadius(dp(8));
+        state.playButton.setBackground(bg);
+        state.playButton.setPadding(dp(10), dp(4), dp(10), dp(4));
+
+        state.seekBar = new SeekBar(context);
+        state.seekBar.setMax(0);
+        state.seekBar.setProgress(0);
+
+        state.timeText = new TextView(context);
+        state.timeText.setText("00:00 / 00:00");
+        state.timeText.setTextSize(12);
+        state.timeText.setTextColor(0xFF666666);
+        state.timeText.setPadding(dp(8), 0, 0, 0);
+
+        row.addView(state.playButton);
+        row.addView(state.seekBar, new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        row.addView(state.timeText);
+
+        state.seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser && state.player != null) {
+                    state.player.seekTo(progress);
+                    updatePlayTime(state, progress);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                state.tracking = true;
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                state.tracking = false;
+            }
+        });
+
+        state.playButton.setOnClickListener(v -> {
+            MediaPlayer player = state.player;
+            if (player != null && player.isPlaying()) {
+                // 再次点击停止并复位
+                resetRetellingPlayer(state);
+                return;
+            }
+            if (player != null) {
+                // 正在准备：忽略重复点击
+                return;
+            }
+            try {
+                MediaPlayer mp = new MediaPlayer();
+                mp.setDataSource(audioFile.getAbsolutePath());
+                mp.setOnPreparedListener(m -> {
+                    state.seekBar.setMax(m.getDuration());
+                    updatePlayTime(state, 0);
+                    m.start();
+                    state.playButton.setText("⏹ 停止");
+                    startPlaybackTicker(state);
+                });
+                mp.setOnCompletionListener(m -> resetRetellingPlayer(state));
+                mp.setOnErrorListener((m, what, extra) -> {
+                    resetRetellingPlayer(state);
+                    return true;
+                });
+                mp.prepareAsync();
+                state.player = mp;
+            } catch (Exception e) {
+                android.util.Log.w("SettingsDialog", "播放复述录音失败", e);
+                resetRetellingPlayer(state);
+                state.playButton.setText("播放失败");
+            }
+        });
+        return row;
+    }
+
+    /** 播放中周期性刷新进度条与时长；拖动期间暂停自动刷新，避免与手指互跳。 */
+    private void startPlaybackTicker(final RetellingPlayState state) {
+        final Runnable ticker = new Runnable() {
+            @Override
+            public void run() {
+                MediaPlayer player = state.player;
+                if (player == null || !player.isPlaying()) {
+                    // 已停止 / 播完，由复位逻辑清理轮询
+                    return;
+                }
+                if (!state.tracking) {
+                    state.seekBar.setProgress(player.getCurrentPosition());
+                    updatePlayTime(state, player.getCurrentPosition());
+                }
+                state.seekBar.postDelayed(this, 500);
+            }
+        };
+        state.ticker = ticker;
+        state.seekBar.postDelayed(ticker, 500);
+    }
+
+    /** 停止播放并复位界面（按钮 / 进度 / 时长），总时长保留。 */
+    private void resetRetellingPlayer(RetellingPlayState state) {
+        releaseRetellingPlayer(state);
+        state.playButton.setText("▶ 播放录音");
+        state.seekBar.setProgress(0);
+        updatePlayTime(state, 0);
+    }
+
+    /** 释放弹窗内的复述录音播放器与进度轮询（弹窗关闭 / 播完 / 出错时调用）。 */
+    private void releaseRetellingPlayer(RetellingPlayState state) {
+        if (state.ticker != null) {
+            state.seekBar.removeCallbacks(state.ticker);
+            state.ticker = null;
+        }
+        MediaPlayer player = state.player;
+        if (player != null) {
+            try {
+                player.release();
+            } catch (Exception ignored) {
+                // 释放失败可忽略
+            }
+            state.player = null;
+        }
+    }
+
+    /** 更新时长文本：当前 / 总（毫秒）。 */
+    private static void updatePlayTime(RetellingPlayState state, int positionMillis) {
+        state.timeText.setText(formatPlayTime(positionMillis) + " / " + formatPlayTime(state.seekBar.getMax()));
+    }
+
+    private static String formatPlayTime(int millis) {
+        int totalSeconds = millis / 1000;
+        return String.format(Locale.US, "%02d:%02d", totalSeconds / 60, totalSeconds % 60);
     }
 
     private TextView buildRecordLine(String text, int sp, int color, int maxLines) {

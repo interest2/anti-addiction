@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 final class ListeningAudioPlayer {
 
     private static final String TAG = "ListeningAudio";
+    private static final long TTS_TIMEOUT_MS = 30_000L;
 
     private enum AudioState {
         IDLE,
@@ -54,6 +55,7 @@ final class ListeningAudioPlayer {
     private AudioState audioState = AudioState.IDLE;
     private long prepareGeneration;
     private long playbackGeneration;
+    private Runnable preparationTimeout;
     /** 整段播放结束（或播放失败兜底）时的回调，用于揭示题干与选项。 */
     private Runnable onPlaybackCompleted;
 
@@ -66,11 +68,13 @@ final class ListeningAudioPlayer {
         audioState = AudioState.PREPARING;
         final long generation = ++prepareGeneration;
         final String questionText = question == null ? "" : question.trim();
+        schedulePreparationTimeout(
+                generation, Collections.emptyList(), onPrepared, "听力原文");
         synthesizerExecutor.execute(() -> {
-            if (!isCurrentPreparation(generation)) {
+            if (!isPreparationPending(generation)) {
                 return;
             }
-            synthesizerHolder.get(context).synthesize(
+            synthesizerHolder.get(context).synthesizeNewSequence(
                     transcript,
                     new DoubaoSpeechSynthesizer.Callback() {
                         @Override
@@ -81,26 +85,16 @@ final class ListeningAudioPlayer {
 
                         @Override
                         public void onError(String message) {
-                            synchronized (ListeningAudioPlayer.this) {
-                                if (!isCurrentPreparation(generation)) {
-                                    return;
-                                }
-                                audioState = AudioState.PLACEHOLDER_READY;
-                            }
                             Log.e(TAG, "豆包语音合成失败: " + message);
-                            notifyAudioPrepared(generation, onPrepared);
+                            completePreparation(
+                                    generation, Collections.emptyList(), onPrepared);
                         }
 
                         @Override
                         public void onUnavailable(String reason) {
-                            synchronized (ListeningAudioPlayer.this) {
-                                if (!isCurrentPreparation(generation)) {
-                                    return;
-                                }
-                                audioState = AudioState.PLACEHOLDER_READY;
-                            }
                             Log.w(TAG, "豆包语音不可用: " + reason);
-                            notifyAudioPrepared(generation, onPrepared);
+                            completePreparation(
+                                    generation, Collections.emptyList(), onPrepared);
                         }
                     });
         });
@@ -116,18 +110,19 @@ final class ListeningAudioPlayer {
             List<File> transcriptFiles,
             String question,
             Runnable onPrepared) {
-        if (!isCurrentPreparation(generation)) {
+        if (!isPreparationPending(generation)) {
             return;
         }
         if (question.isEmpty()) {
             completePreparation(generation, transcriptFiles, onPrepared);
             return;
         }
+        schedulePreparationTimeout(generation, transcriptFiles, onPrepared, "提问句");
         synthesizerExecutor.execute(() -> {
-            if (!isCurrentPreparation(generation)) {
+            if (!isPreparationPending(generation)) {
                 return;
             }
-            synthesizerHolder.get(context).synthesize(
+            synthesizerHolder.get(context).synthesizeNext(
                     question,
                     new DoubaoSpeechSynthesizer.Callback() {
                         @Override
@@ -155,9 +150,10 @@ final class ListeningAudioPlayer {
 
     private void completePreparation(long generation, List<File> files, Runnable onPrepared) {
         synchronized (this) {
-            if (!isCurrentPreparation(generation)) {
+            if (!isPreparationPending(generation)) {
                 return;
             }
+            cancelPreparationTimeoutLocked();
             audioFiles = new ArrayList<>(files);
             audioState = audioFiles.isEmpty()
                     ? AudioState.PLACEHOLDER_READY
@@ -196,6 +192,7 @@ final class ListeningAudioPlayer {
     void stop() {
         synchronized (this) {
             prepareGeneration++;
+            cancelPreparationTimeoutLocked();
             playbackGeneration++;
             audioFiles = Collections.emptyList();
             audioState = AudioState.IDLE;
@@ -212,6 +209,7 @@ final class ListeningAudioPlayer {
     void release() {
         synchronized (this) {
             prepareGeneration++;
+            cancelPreparationTimeoutLocked();
             playbackGeneration++;
             audioFiles = Collections.emptyList();
             audioState = AudioState.IDLE;
@@ -231,6 +229,47 @@ final class ListeningAudioPlayer {
 
     private synchronized boolean isCurrentPreparation(long generation) {
         return generation == prepareGeneration;
+    }
+
+    private synchronized boolean isPreparationPending(long generation) {
+        return isCurrentPreparation(generation) && audioState == AudioState.PREPARING;
+    }
+
+    private void schedulePreparationTimeout(
+            long generation,
+            List<File> fallbackFiles,
+            Runnable onPrepared,
+            String stage) {
+        List<File> safeFallbackFiles = new ArrayList<>(fallbackFiles);
+        Runnable timeout = () -> {
+            if (!isPreparationPending(generation)) {
+                return;
+            }
+            Log.e(TAG, stage + "语音合成超时，使用已就绪音频继续");
+            completePreparation(generation, safeFallbackFiles, onPrepared);
+            synthesizerExecutor.execute(() -> {
+                DoubaoSpeechSynthesizer synthesizer = synthesizerHolder.getCurrent();
+                if (synthesizer != null) {
+                    synthesizer.stop();
+                }
+            });
+        };
+        synchronized (this) {
+            if (!isPreparationPending(generation)) {
+                return;
+            }
+            cancelPreparationTimeoutLocked();
+            preparationTimeout = timeout;
+            mainHandler.postDelayed(timeout, TTS_TIMEOUT_MS);
+        }
+    }
+
+    private void cancelPreparationTimeoutLocked() {
+        if (preparationTimeout == null) {
+            return;
+        }
+        mainHandler.removeCallbacks(preparationTimeout);
+        preparationTimeout = null;
     }
 
     private void notifyAudioPrepared(long generation, Runnable callback) {

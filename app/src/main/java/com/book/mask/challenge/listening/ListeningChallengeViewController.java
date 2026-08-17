@@ -22,7 +22,8 @@ import java.util.List;
 /**
  * 听力题答题界面（悬浮窗内）。负责听力题布局的懒加载、状态渲染与按钮回调。
  *
- * <p>默认只展示题干与选项，听力原文隐藏；答错后可揭示原文，揭示后本题进入「无法解禁」态，只能换一题；
+ * <p>提问句仅通过音频朗读，悬浮窗只展示选项，听力原文隐藏；答错后可揭示原文，
+ * 揭示后本题进入「无法解禁」态，只能换一题；
  * 答对后可回看原文，不影响解禁。
  */
 final class ListeningChallengeViewController {
@@ -46,7 +47,6 @@ final class ListeningChallengeViewController {
 
     private View listeningLayout;
     private TextView hintText;
-    private TextView questionText;
     private ScrollView transcriptScrollView;
     private TextView transcriptText;
     private LinearLayout optionsContainer;
@@ -62,8 +62,8 @@ final class ListeningChallengeViewController {
     private final List<TextView> optionViews = new ArrayList<>();
     private int selectedOptionIndex = -1;
     private boolean optionsEnabled = true;
-    /** 题干与选项是否已在播放结束后揭示。 */
-    private boolean questionRevealed;
+    /** 选项是否已在播放结束后揭示。 */
+    private boolean optionsRevealed;
 
     private boolean initialized;
     private boolean shown;
@@ -90,12 +90,11 @@ final class ListeningChallengeViewController {
         shown = true;
         resetSelection();
         optionsEnabled = true;
-        questionRevealed = false;
+        optionsRevealed = false;
         hideTopInfo();
         hideStrictReminder();
         listeningLayout.setVisibility(View.VISIBLE);
         listeningLayout.bringToFront();
-        questionText.setVisibility(View.GONE);
         transcriptScrollView.setVisibility(View.GONE);
         optionsContainer.setVisibility(View.GONE);
         replayButton.setVisibility(View.GONE);
@@ -119,12 +118,10 @@ final class ListeningChallengeViewController {
         }
         optionsEnabled = true;
         resetSelection();
-        questionRevealed = false;
+        optionsRevealed = false;
         audioPlayer.stop();
-        // 题干与选项待整段播放结束后才揭示，避免先读题再听音降低难度
+        // 提问句仅通过音频朗读；选项待整段播放结束后才揭示，避免先看选项降低难度
         audioPlayer.setOnPlaybackCompleted(this::onPlaybackCompleted);
-        questionText.setText(question == null ? "" : question.getQuestion());
-        questionText.setVisibility(View.GONE);
         buildOptions(question);
         optionsContainer.setVisibility(View.GONE);
         transcriptScrollView.setVisibility(View.GONE);
@@ -162,14 +159,13 @@ final class ListeningChallengeViewController {
     }
 
     /**
-     * 整段播放结束后揭示题干与选项并允许作答。
+     * 整段播放结束后揭示选项并允许作答，提问句不显示在悬浮窗中。
      */
     void onPlaybackCompleted() {
-        if (!initialized || !shown || questionRevealed) {
+        if (!initialized || !shown || optionsRevealed) {
             return;
         }
-        questionRevealed = true;
-        questionText.setVisibility(View.VISIBLE);
+        optionsRevealed = true;
         optionsContainer.setVisibility(View.VISIBLE);
         submitButton.setVisibility(View.VISIBLE);
         setOptionsEnabled(true);
@@ -380,7 +376,6 @@ final class ListeningChallengeViewController {
 
         listeningLayout = floatingView.findViewById(R.id.listening_challenge_layout);
         hintText = floatingView.findViewById(R.id.tv_listening_hint);
-        questionText = floatingView.findViewById(R.id.tv_listening_question);
         transcriptScrollView = floatingView.findViewById(R.id.sv_listening_transcript);
         transcriptText = floatingView.findViewById(R.id.tv_listening_transcript);
         optionsContainer = floatingView.findViewById(R.id.ll_listening_options);
@@ -395,7 +390,6 @@ final class ListeningChallengeViewController {
 
         if (listeningLayout == null
                 || hintText == null
-                || questionText == null
                 || transcriptScrollView == null
                 || transcriptText == null
                 || optionsContainer == null
@@ -409,10 +403,6 @@ final class ListeningChallengeViewController {
             Log.e(TAG, "听力题布局懒加载失败");
             return false;
         }
-
-        // 听力题不提供原文选择复制，避免长按选中干扰作答
-        questionText.setTextIsSelectable(false);
-        questionText.setLongClickable(false);
 
         replayButton.setOnClickListener(v -> audioPlayer.play(context));
         submitButton.setOnClickListener(v -> {
