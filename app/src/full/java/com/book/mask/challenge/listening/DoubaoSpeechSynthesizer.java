@@ -19,6 +19,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,12 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     private static final String TAG = "DoubaoTts";
     private static final String TTS_ADDRESS = "wss://openspeech.bytedance.com";
     private static final String TTS_URI = "/api/v3/tts/bidirection";
+    /** 单次 TASK_REQUEST 的文本上限（豆包 BiTTS 限制）。 */
+    private static final int MAX_TASK_TEXT_LENGTH = 80;
+    /** 句末标点：优先在此切分，保证每片听感自然。 */
+    private static final String SENTENCE_ENDINGS = "。！？；!?;\n";
+    /** 句中标点：整句仍超长时的次级切点。 */
+    private static final String CLAUSE_ENDINGS = "，、：,:";
 
     public interface Callback {
         void onAudioReady(List<File> audioFiles);
@@ -59,7 +66,7 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     private boolean engineInited;
     private boolean engineStarted;
     private Callback callback;
-    private String pendingText;
+    private List<String> pendingTexts = Collections.emptyList();
     private ByteArrayOutputStream sentenceAudioBuffer;
     private final List<File> sentenceAudioFiles = new ArrayList<>();
     private boolean audioDelivered;
@@ -115,18 +122,19 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
                 postUnavailable("豆包语音引擎初始化失败");
                 return;
             }
-            // 双向流式 TTS 单次合成文本也受 80 字限制；超长时截断保证合成可用，原文仍完整展示
-            String ttsText = text.trim();
-            if (ttsText.length() > 80) {
-                Log.w(TAG, "合成文本超过 80 字，截断至 80 字");
-                ttsText = ttsText.substring(0, 80);
+            // 单次 TASK_REQUEST 受 80 字限制，但同一会话可续送多次：
+            // 长文本按标点分片逐段送出，不再截断丢字
+            List<String> ttsTexts = splitForSynthesis(text.trim());
+            if (ttsTexts.isEmpty()) {
+                postError("合成文本为空");
+                return;
             }
             if (newSequence) {
                 clearOldAudios();
             }
             audioFilePrefix = "tts_" + System.currentTimeMillis() + "_" + (++synthesisSequence);
             audiosBeforeSynthesis = snapshotAudios();
-            pendingText = ttsText;
+            pendingTexts = ttsTexts;
             if (engineStarted) {
                 sendPendingTask();
             } else {
@@ -143,7 +151,7 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
 
     /** 停止当前合成。 */
     public synchronized void stop() {
-        pendingText = null;
+        pendingTexts = Collections.emptyList();
         sentenceAudioBuffer = null;
         callback = null;
         audioDelivered = true;
@@ -162,7 +170,7 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     /** 释放引擎资源。 */
     public synchronized void destroy() {
         callback = null;
-        pendingText = null;
+        pendingTexts = Collections.emptyList();
         sentenceAudioBuffer = null;
         sessionActive = false;
         sessionFinished = false;
@@ -234,18 +242,18 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
                 SpeechEngineDefines.DIRECTIVE_START_ENGINE, buildStartPayload());
         if (ret != SpeechEngineDefines.ERR_NO_ERROR) {
             Log.e(TAG, "启动引擎失败 ret=" + ret);
-            pendingText = null;
+            pendingTexts = Collections.emptyList();
             postError("启动引擎失败：" + ret);
         }
     }
 
-    /** 引擎启动成功后发送本次合成任务。 */
+    /** 引擎启动成功后发送本次合成任务；长文本在同一会话内分多片续送。 */
     private synchronized void sendPendingTask() {
-        String text = pendingText;
-        if (!engineStarted || text == null) {
+        List<String> texts = pendingTexts;
+        if (!engineStarted || texts.isEmpty()) {
             return;
         }
-        pendingText = null;
+        pendingTexts = Collections.emptyList();
         try {
             int ret = engine.sendDirective(SpeechEngineDefines.DIRECTIVE_EVENT_START_SESSION, "");
             if (ret != SpeechEngineDefines.ERR_NO_ERROR) {
@@ -254,13 +262,17 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
                 return;
             }
             sessionActive = true;
-            ret = engine.sendDirective(SpeechEngineDefines.DIRECTIVE_EVENT_TASK_REQUEST,
-                    buildTaskPayload(text));
-            if (ret != SpeechEngineDefines.ERR_NO_ERROR) {
-                Log.e(TAG, "发送合成文本失败 ret=" + ret);
-                postError("发送合成文本失败：" + ret);
-                return;
+            for (int i = 0; i < texts.size(); i++) {
+                ret = engine.sendDirective(SpeechEngineDefines.DIRECTIVE_EVENT_TASK_REQUEST,
+                        buildTaskPayload(texts.get(i)));
+                if (ret != SpeechEngineDefines.ERR_NO_ERROR) {
+                    Log.e(TAG, "发送合成文本失败 ret=" + ret
+                            + ", 分片=" + (i + 1) + "/" + texts.size());
+                    postError("发送合成文本失败：" + ret);
+                    return;
+                }
             }
+            Log.d(TAG, "合成文本已全部送出，分片=" + texts.size());
             ret = engine.sendDirective(SpeechEngineDefines.DIRECTIVE_EVENT_FINISH_SESSION, "");
             if (ret != SpeechEngineDefines.ERR_NO_ERROR) {
                 Log.e(TAG, "结束会话失败 ret=" + ret);
@@ -269,6 +281,74 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
         } catch (Throwable t) {
             Log.e(TAG, "发送豆包语音合成任务异常", t);
             postError("发送合成任务异常：" + t.getMessage());
+        }
+    }
+
+    /**
+     * 把待合成文本切成不超过 {@link #MAX_TASK_TEXT_LENGTH} 字的分片，在同一会话内分多次
+     * TASK_REQUEST 送出（BiTTS 双向流式本就支持续送文本），避免长原文被截断丢字。
+     *
+     * <p>切点优先取句末标点，整句仍超长时退到句中标点，再不行才按长度硬切；相邻短片会
+     * 贪心合并到上限以内，减少分片数量。
+     */
+    private static List<String> splitForSynthesis(String text) {
+        List<String> pieces = new ArrayList<>();
+        for (String sentence : splitAt(text, SENTENCE_ENDINGS)) {
+            if (sentence.length() <= MAX_TASK_TEXT_LENGTH) {
+                pieces.add(sentence);
+                continue;
+            }
+            for (String clause : splitAt(sentence, CLAUSE_ENDINGS)) {
+                addWithHardWrap(pieces, clause);
+            }
+        }
+        return mergeAdjacent(pieces);
+    }
+
+    /** 按给定标点集切分，标点保留在前一片末尾；空白片丢弃。 */
+    private static List<String> splitAt(String text, String delimiters) {
+        List<String> parts = new ArrayList<>();
+        int start = 0;
+        for (int i = 0; i < text.length(); i++) {
+            if (delimiters.indexOf(text.charAt(i)) < 0) {
+                continue;
+            }
+            addIfNotBlank(parts, text.substring(start, i + 1));
+            start = i + 1;
+        }
+        addIfNotBlank(parts, text.substring(start));
+        return parts;
+    }
+
+    /** 无标点可切的超长片：按上限硬切，保证不丢字。 */
+    private static void addWithHardWrap(List<String> pieces, String clause) {
+        for (int start = 0; start < clause.length(); start += MAX_TASK_TEXT_LENGTH) {
+            int end = Math.min(start + MAX_TASK_TEXT_LENGTH, clause.length());
+            addIfNotBlank(pieces, clause.substring(start, end));
+        }
+    }
+
+    /** 贪心合并相邻分片到上限以内，减少 TASK_REQUEST 次数。 */
+    private static List<String> mergeAdjacent(List<String> pieces) {
+        List<String> merged = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (String piece : pieces) {
+            if (current.length() > 0
+                    && current.length() + piece.length() > MAX_TASK_TEXT_LENGTH) {
+                merged.add(current.toString());
+                current.setLength(0);
+            }
+            current.append(piece);
+        }
+        if (current.length() > 0) {
+            merged.add(current.toString());
+        }
+        return merged;
+    }
+
+    private static void addIfNotBlank(List<String> parts, String part) {
+        if (!part.trim().isEmpty()) {
+            parts.add(part);
         }
     }
 
@@ -353,7 +433,7 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
             case SpeechEngineDefines.MESSAGE_TYPE_ENGINE_ERROR:
                 Log.e(TAG, "豆包语音引擎错误: " + (message.isEmpty() ? "engine error" : message));
                 synchronized (this) {
-                    pendingText = null;
+                    pendingTexts = Collections.emptyList();
                     sentenceAudioBuffer = null;
                     sessionActive = false;
                     sessionFinished = false;
@@ -430,7 +510,7 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
             audioDelivered = true;
             sentenceAudioBuffer = null;
             Log.d(TAG, "豆包语音音频就绪: " + file.getName() + ", bytes=" + file.length());
-            postAudioReady(java.util.Collections.singletonList(file));
+            postAudioReady(Collections.singletonList(file));
         } else if (dumpFinished) {
             deliverSentenceAudios();
             if (!audioDelivered) {
@@ -543,7 +623,7 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
                 return;
             }
             callback = null;
-            pendingText = null;
+            pendingTexts = Collections.emptyList();
             sentenceAudioBuffer = null;
             audioDelivered = true;
             stopActiveSession = sessionActive;
@@ -577,7 +657,7 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
                 return;
             }
             callback = null;
-            pendingText = null;
+            pendingTexts = Collections.emptyList();
             sentenceAudioBuffer = null;
             audioDelivered = true;
             sessionActive = false;

@@ -26,11 +26,12 @@ import java.util.concurrent.Executors;
  * 复述题答题会话：状态机与流程编排。
  *
  * <p>流程：加载故事 → 限时阅读 → 清空原文 → 录音（透明 Activity，PCM 实时推给腾讯口语评测）→
- * 腾讯转写 + 发音分 → 自定义模型服务商内容评分 → 合并达标关闭。
+ * 腾讯口语评测确认有效语音 + 发音分 → 本地模型转写 → 自定义模型服务商内容评分 → 合并达标关闭。
+ * 内容评分只使用本地转写文本，腾讯转写不参与评分，仅用于判断本次录音是否有效语音。
  * sessionId 贯穿一次答题，异步识别 / 评分返回时先判断是否仍是当前会话，防止取消后旧请求继续改界面。
  *
- * <p>评分依赖两处，任一不可用即评分失败、不写记录：腾讯口语评测（转写 + 发音分）与
- * 用户自定义模型服务商（内容四维评分）。
+ * <p>评分依赖三处，任一不可用即评分失败、不写记录：腾讯口语评测（有效语音判断 + 发音分）、
+ * 本地语音识别（内容评分文本）与用户自定义模型服务商（内容四维评分）。
  */
 public final class RetellingChallengeSession implements ChallengeSession {
 
@@ -55,7 +56,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private final SpeechTranscriber transcriber;
     private final Handler handler;
     private final ExecutorService executor;
-    /** 离线对比识别专用线程池：SOE 在线转写成功时额外跑一次本地识别，不阻塞主流程评分 / 取故事。 */
+    /** 本地识别专用线程池：SOE 确认有效语音后在此线程做本地转写，结果即内容评分实际使用的文本。 */
     private final ExecutorService offlineExecutor;
     private final Callbacks callbacks;
 
@@ -70,18 +71,16 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private int countdownTicks;
     private String lastRecognizedText;
     private int scoreRetryCount;
-    /** 腾讯口语评测：评分唯一依赖，未配置 / 失败时直接评分失败。 */
+    /** 腾讯口语评测：仅用于发音分与有效语音判断，未配置 / 失败时直接评分失败；内容评分文本改用本地识别（见 offlineTranscript）。 */
     private SoeSpeechEvaluator soeEvaluator;
     private float soeAccuracy = -1f;
     private float soeFluency = -1f;
     private float soeSuggestedScore = -1f;
     private boolean soeEvaluated;
     private boolean soeResultReceived;
-    /** SOE 本次录音采样，转写成功后供离线识别对比；SOE 失败时作废。 */
+    /** SOE 本次录音采样，转写成功后交给本地模型识别；SOE 失败时作废。 */
     private float[] pendingFallbackSamples;
-    /** 腾讯在线（SOE）转写文本，非 null 表示本次评分/展示使用的是在线转写，用于与离线识别对比。 */
-    private String onlineTranscript;
-    /** 本地离线（Sherpa）识别文本，仅用于与在线转写对比准确性展示。 */
+    /** 本地离线（Sherpa）识别文本，复述内容评分实际使用的文本，同时供悬浮窗展示。 */
     private String offlineTranscript;
     /** 本次录音的原始采样，评分出结果后随记录落盘为 WAV；会话结束 / 重录时置空。 */
     private float[] recordedSamples;
@@ -270,12 +269,10 @@ public final class RetellingChallengeSession implements ChallengeSession {
             soeFailed("未识别到语音，请重录");
             return;
         }
-        onlineTranscript = transcript;
-        // 先取走样本再 settle（settle 会把 pendingFallbackSamples 置空），供离线识别对比
-        float[] comparisonSamples = pendingFallbackSamples;
+        // 先取走样本再 settle（settle 会把 pendingFallbackSamples 置空），供本地识别使用
+        float[] samples = pendingFallbackSamples;
         settleSoeResult();
-        onTranscribed(transcript);
-        runOfflineComparison(comparisonSamples);
+        runLocalTranscription(samples);
     }
 
     private void handleSoeError(String message) {
@@ -301,12 +298,15 @@ public final class RetellingChallengeSession implements ChallengeSession {
     }
 
     /**
-     * 腾讯在线转写已到手时，额外用本地离线模型识别同一段录音，供对比在线 / 离线准确性。
-     * 结果异步返回后更新识别文本区为本地识别文本（腾讯转写不在悬浮窗展示）；
-     * 离线识别失败不影响已进行的在线评分。
+     * 腾讯口语评测确认本次录音是有效语音后，改用本地离线模型重新识别同一段录音；内容评分
+     * 使用的是这里的识别结果，不使用腾讯转写（腾讯转写只做了前面的有效性判断）。
+     * 识别失败或结果为空则请求重录，不再调用大模型评分。
      */
-    private void runOfflineComparison(float[] samples) {
+    private void runLocalTranscription(float[] samples) {
         if (samples == null || samples.length == 0) {
+            recordedSamples = null;
+            setState(RetellingState.READY_TO_RECORD);
+            view.showReadyToRecord("没有录到有效语音，请重录");
             return;
         }
         final long sid = sessionId;
@@ -318,6 +318,17 @@ public final class RetellingChallengeSession implements ChallengeSession {
                 }
                 offlineTranscript = result.isSuccess() ? result.getText() : null;
                 showOfflineTranscript();
+                if (offlineTranscript == null || offlineTranscript.trim().isEmpty()) {
+                    Log.w(TAG, "本地识别失败或为空"
+                            + (result.isSuccess() ? "" : "：" + result.getErrorMessage()));
+                    recordedSamples = null;
+                    setState(RetellingState.READY_TO_RECORD);
+                    view.showReadyToRecord(result.isSuccess()
+                            ? "没有识别到有效语音，请重录"
+                            : "本地语音识别失败：" + result.getErrorMessage());
+                    return;
+                }
+                onTranscribed(offlineTranscript);
             });
         });
     }
@@ -473,7 +484,6 @@ public final class RetellingChallengeSession implements ChallengeSession {
         soeSuggestedScore = -1f;
         soeEvaluated = false;
         soeResultReceived = false;
-        onlineTranscript = null;
         offlineTranscript = null;
         handler.removeCallbacks(soeTimeoutRunnable);
         pendingFallbackSamples = null;
@@ -502,10 +512,8 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
     private void onTranscribed(String recognizedText) {
         lastRecognizedText = recognizedText;
-        Log.d(TAG, "腾讯转写文本：" + (recognizedText == null ? "" : recognizedText));
+        Log.d(TAG, "本地识别文本：" + (recognizedText == null ? "" : recognizedText));
         setState(RetellingState.SCORING);
-        // 腾讯转写文本仅用于评分，不在悬浮窗展示（用户只关心评分结果）；
-        // 本地识别文本在离线对比成功后展示
         view.showScoring();
         runEvaluation();
     }
@@ -601,7 +609,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
             long now = System.currentTimeMillis();
             record.timestamp = now;
             record.story = story == null ? "" : story.getStory();
-            // 腾讯转写仅作评分依据，不写入答题记录
+            // 本地识别文本即评分依据，写入答题记录供回看；腾讯转写不参与评分，不存储
             record.offlineRecognizedText = offlineTranscript == null ? "" : offlineTranscript;
             record.score = score.getScore();
             record.coverage = score.getCoverage();

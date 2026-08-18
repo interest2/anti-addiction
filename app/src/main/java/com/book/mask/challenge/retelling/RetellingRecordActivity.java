@@ -23,8 +23,10 @@ import java.util.Locale;
 /**
  * 复述题录音 Activity。
  *
- * <p>透明主题，启动后本应用处于前台，可稳定取得麦克风「使用期间」权限。目标 APP 仍在背景可见，
- * 视觉上接近悬浮窗。录音数据保存在内存，结束即交回 {@link RetellingChallengeSession}，不保存录音文件；
+ * <p>窗口主题透明（{@code windowIsTranslucent}），只是为了让本应用处于前台、稳定取得麦克风
+ * 「使用期间」权限；布局自身用与悬浮窗同色的不透明背景整屏覆盖，录音期间目标 APP 不会透出来
+ * （悬浮窗本体在录音期间会暂停隐藏，避免遮罩盖住这里的录音按钮）。录音数据保存在内存，
+ * 结束即交回 {@link RetellingChallengeSession}，不保存录音文件；
  * 若会话已配置腾讯口语评测，则采集到的 PCM 分块会实时上传进行发音评测。
  */
 public class RetellingRecordActivity extends AppCompatActivity {

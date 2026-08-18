@@ -7,7 +7,7 @@ public final class ListeningRecord {
 
     /** 答题完成时间（毫秒时间戳） */
     public long timestamp;
-    /** 题干 */
+    /** 提问：针对听力原文的设问，不含原文本身 */
     public String question = "";
     /** 听力原文 */
     public String transcript = "";

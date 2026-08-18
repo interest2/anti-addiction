@@ -11,7 +11,7 @@ public final class RetellingRecord {
     public long timestamp;
     /** 原始故事 */
     public String story = "";
-    /** 本地离线语音识别（Sherpa）转写文本；腾讯转写仅作评分依据，不存储，未跑离线识别为空串 */
+    /** 本地离线语音识别（Sherpa）转写文本，即复述内容评分实际使用的文本；腾讯转写不参与评分，不存储 */
     public String offlineRecognizedText = "";
     /** 总分（0-100） */
     public int score;

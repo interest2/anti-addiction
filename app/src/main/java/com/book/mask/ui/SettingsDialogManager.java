@@ -2813,8 +2813,8 @@ public class SettingsDialogManager {
             content.addView(buildRecordLine("【题型】听力题", 13, 0xFF333333, 0));
             content.addView(buildRecordLine("【结果】" + (r.passed ? "√" : "×"), 13,
                     r.passed ? 0xFF2E7D32 : 0xFFD32F2F, 0));
-            content.addView(buildRecordLine("【完整题干】 " + r.question, 13, 0xFF333333, 0));
             content.addView(buildRecordLine("【听力原文】 " + r.transcript, 13, 0xFF333333, 0));
+            content.addView(buildRecordLine("【提问】 " + r.question, 13, 0xFF333333, 0));
             if (!r.passed) {
                 content.addView(buildRecordLine("【我的答案】 "
                         + normalizeAnswerCase(r.userAnswer), 13, 0xFF333333, 0));
@@ -2874,11 +2874,14 @@ public class SettingsDialogManager {
         Runnable ticker;
     }
 
-    /** 复述题录音回放行：播放/停止按钮 + 可拖动进度条 + 当前/总时长。 */
+    /** 复述题录音回放行：第一行播放/停止按钮 + 当前/总时长，第二行可拖动进度条独占一行。 */
     private View buildRetellingPlayRow(final RetellingPlayState state, final File audioFile) {
-        LinearLayout row = new LinearLayout(context);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout controlRow = new LinearLayout(context);
+        controlRow.setOrientation(LinearLayout.HORIZONTAL);
+        controlRow.setGravity(Gravity.CENTER_VERTICAL);
 
         state.playButton = new Button(context);
         state.playButton.setText("▶ 播放录音");
@@ -2891,20 +2894,24 @@ public class SettingsDialogManager {
         state.playButton.setBackground(bg);
         state.playButton.setPadding(dp(10), dp(4), dp(10), dp(4));
 
-        state.seekBar = new SeekBar(context);
-        state.seekBar.setMax(0);
-        state.seekBar.setProgress(0);
-
         state.timeText = new TextView(context);
         state.timeText.setText("00:00 / 00:00");
         state.timeText.setTextSize(12);
         state.timeText.setTextColor(0xFF666666);
         state.timeText.setPadding(dp(8), 0, 0, 0);
 
-        row.addView(state.playButton);
-        row.addView(state.seekBar, new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        row.addView(state.timeText);
+        controlRow.addView(state.playButton);
+        controlRow.addView(state.timeText);
+
+        state.seekBar = new SeekBar(context);
+        state.seekBar.setMax(0);
+        state.seekBar.setProgress(0);
+        LinearLayout.LayoutParams seekBarParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        seekBarParams.topMargin = dp(6);
+
+        container.addView(controlRow);
+        container.addView(state.seekBar, seekBarParams);
 
         state.seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -2960,7 +2967,7 @@ public class SettingsDialogManager {
                 state.playButton.setText("播放失败");
             }
         });
-        return row;
+        return container;
     }
 
     /** 播放中周期性刷新进度条与时长；拖动期间暂停自动刷新，避免与手指互跳。 */
