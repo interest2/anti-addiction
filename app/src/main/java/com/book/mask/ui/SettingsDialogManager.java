@@ -35,7 +35,7 @@ import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-import com.book.mask.challenge.retelling.SherpaOnnxTranscriber;
+import com.book.mask.challenge.retelling.RetellingPreflight;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
@@ -56,16 +56,12 @@ import com.book.mask.personalize.ListeningRecord;
 import com.book.mask.personalize.ListeningRecordStore;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
-import com.book.mask.reminder.config.ProviderSecretStore;
-import com.book.mask.reminder.config.ReminderProviderConfig;
-import com.book.mask.reminder.config.ReminderProviderConfigStore;
 import com.book.mask.util.ArithmeticUtils.MultiplicationTier;
 import com.book.mask.util.DateUtils;
 import com.book.mask.R;
 import com.google.android.material.slider.Slider;
 
 import java.io.File;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -113,8 +109,6 @@ public class SettingsDialogManager {
     private final AppSettingsManager appSettingsManager;
     private final ChallengeSettingsManager challengeSettingsManager;
     private final LeisureTimeManager leisureTimeManager;
-    private final ReminderProviderConfigStore providerConfigStore;
-    private final ProviderSecretStore providerSecretStore;
 
     private static String[] appOptions;
     private static CustomApp[] apps; // 改为CustomApp类型
@@ -125,8 +119,6 @@ public class SettingsDialogManager {
         this.appSettingsManager = new AppSettingsManager(context);
         this.challengeSettingsManager = new ChallengeSettingsManager(context);
         this.leisureTimeManager = new LeisureTimeManager(context);
-        this.providerConfigStore = new ReminderProviderConfigStore();
-        this.providerSecretStore = new ProviderSecretStore(context);
         updateAppOptions(); // 动态更新APP选项
     }
 
@@ -1347,7 +1339,7 @@ public class SettingsDialogManager {
      */
     public String applyChallengeTypeSelection(ChallengeType selectedType, Runnable onApplied) {
         if (selectedType == ChallengeType.RETELLING) {
-            String preflightError = checkRetellingPreflight();
+            String preflightError = RetellingPreflight.check(context);
             if (preflightError != null) {
                 return preflightError;
             }
@@ -1494,7 +1486,7 @@ public class SettingsDialogManager {
     private void performRetellingSave(RetellingSettings values,
                                       android.app.AlertDialog dialog,
                                       Runnable onSaved) {
-        String preflightError = checkRetellingPreflight();
+        String preflightError = RetellingPreflight.check(context);
         if (preflightError != null) {
             UiFeedback.showError(context, preflightError);
             return;
@@ -1588,28 +1580,6 @@ public class SettingsDialogManager {
                     settingsDialog.dismiss();
                 })
                 .show();
-    }
-
-    /**
-     * 保存前检查：大模型配置（自定义 Provider 必须有 API Key）+ ASR 模型状态。
-     * 返回非空表示前置检查未通过，复述题不保存。
-     */
-    private String checkRetellingPreflight() {
-        ReminderProviderConfig config = providerConfigStore.getActiveConfig();
-        if (!config.isOfficial()) {
-            try {
-                String apiKey = providerSecretStore.getApiKey(config.getProfileId());
-                if (apiKey == null || apiKey.isEmpty()) {
-                    return "自定义大模型未配置 API Key，请先到提醒设置中配置";
-                }
-            } catch (GeneralSecurityException e) {
-                return "读取大模型配置失败，请重新配置";
-            }
-        }
-        if (!SherpaOnnxTranscriber.getInstance(context).isReady()) {
-            return "语音识别模型未就绪（ASR 模型缺失），请先放入模型文件";
-        }
-        return null;
     }
 
     private static class RetellingSettings {

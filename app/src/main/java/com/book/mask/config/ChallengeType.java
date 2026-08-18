@@ -1,5 +1,8 @@
 package com.book.mask.config;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 关闭悬浮窗时的答题类型。
  * 声明顺序即设置弹窗中的展示顺序。
@@ -48,5 +51,24 @@ public enum ChallengeType {
             return values();
         }
         return new ChallengeType[]{ARITHMETIC, REASONING, RETELLING, LISTENING, MIXED};
+    }
+
+    /**
+     * 当前实际可选的题型：在 {@link #settingsOptions} 基础上，语音题（听力 / 复述）
+     * 未启用时一并排除。设置页题型列表与悬浮窗内快捷切题型共用这份筛选规则。
+     */
+    public static ChallengeType[] availableOptions(
+            boolean includeEnglishReading, boolean includeVoiceChallenge) {
+        ChallengeType[] base = settingsOptions(includeEnglishReading);
+        if (includeVoiceChallenge) {
+            return base;
+        }
+        List<ChallengeType> filtered = new ArrayList<>();
+        for (ChallengeType type : base) {
+            if (type != LISTENING && type != RETELLING) {
+                filtered.add(type);
+            }
+        }
+        return filtered.toArray(new ChallengeType[0]);
     }
 }

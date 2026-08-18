@@ -160,6 +160,11 @@ public class FloatingWindowManager {
                 }
             });
             
+            View topInfoLayout = floatingView.findViewById(R.id.top_info_layout);
+            if (topInfoLayout != null) {
+                ChallengeTypeQuickSwitchDialog.attach(context, topInfoLayout);
+            }
+
             Button closeButton = floatingView.findViewById(R.id.btn_close);
             closeButton.setOnClickListener(v -> {
                 Log.d(TAG, "用户点击关闭按钮");
@@ -226,7 +231,8 @@ public class FloatingWindowManager {
     public void hideFloatingWindow() {
         if (isFloatingWindowVisible) {
             Log.d(TAG, "开始隐藏悬浮窗");
-            
+            ChallengeTypeQuickSwitchDialog.dismissIfShowing();
+
             // 永久移除窗口，同时释放答题会话持有的线程、播放器和语音引擎资源。
             if (challengeManager != null) {
                 challengeManager.destroy();
@@ -391,6 +397,7 @@ public class FloatingWindowManager {
     }
 
     private boolean suspendAttachedWindow(WindowSuspensionState.Reason reason) {
+        ChallengeTypeQuickSwitchDialog.dismissIfShowing();
         boolean shouldApplyPhysicalHide = windowSuspensionState.suspend(reason);
         if (!shouldApplyPhysicalHide) {
             return true;

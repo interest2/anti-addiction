@@ -61,8 +61,9 @@ public class ChallengeTypeSettingsNav extends Fragment {
     }
 
     private void buildChallengeTypeRows() {
-        ChallengeType[] challengeTypes =
-                ChallengeType.settingsOptions(QuestionConst.ENGLISH_READING_ENABLED);
+        ChallengeType[] challengeTypes = ChallengeType.availableOptions(
+                QuestionConst.ENGLISH_READING_ENABLED,
+                settingsDialogManager.isVoiceChallengeEnabled());
         ChallengeType currentType = settingsDialogManager.getChallengeType();
 
         typeList.removeAllViews();
@@ -70,10 +71,6 @@ public class ChallengeTypeSettingsNav extends Fragment {
         rowTypes.clear();
 
         for (final ChallengeType type : challengeTypes) {
-            if (!settingsDialogManager.isVoiceChallengeEnabled()
-                    && (type == ChallengeType.LISTENING || type == ChallengeType.RETELLING)) {
-                continue;
-            }
             View row = LayoutInflater.from(requireContext())
                     .inflate(R.layout.dialog_challenge_type_item, typeList, false);
             TextView title = row.findViewById(R.id.tv_title);
