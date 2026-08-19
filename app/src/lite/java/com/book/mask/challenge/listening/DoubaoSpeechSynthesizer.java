@@ -14,6 +14,8 @@ import java.util.List;
 public final class DoubaoSpeechSynthesizer {
 
     public interface Callback {
+        void onSegmentReady(File segment);
+
         void onAudioReady(List<File> audioFiles);
 
         void onError(String message);

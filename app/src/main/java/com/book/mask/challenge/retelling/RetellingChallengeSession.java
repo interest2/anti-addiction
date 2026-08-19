@@ -432,12 +432,16 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private void startRecording() {
         if (!active
                 || (state != RetellingState.READY_TO_RECORD
-                && state != RetellingState.READING)) {
+                && state != RetellingState.READING
+                && state != RetellingState.FAILED)) {
             return;
         }
         // 阅读阶段可提前开始复述：停止倒计时并清空原文，避免边看边念。
-        if (state == RetellingState.READING) {
+        // 未达标重录本题：同样清空原文与上一轮识别文本、重置评分重试计数，重新进入录音流程。
+        if (state == RetellingState.READING || state == RetellingState.FAILED) {
             handler.removeCallbacks(countdownRunnable);
+            lastRecognizedText = null;
+            scoreRetryCount = 0;
             view.showReadyToRecord();
         }
         // 评分唯一依赖腾讯口语评测，未配置时直接提示，不进入录音

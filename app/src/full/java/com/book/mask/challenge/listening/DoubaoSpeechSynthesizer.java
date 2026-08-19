@@ -50,6 +50,12 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
     private static final String CLAUSE_ENDINGS = "，、：,:";
 
     public interface Callback {
+        /**
+         * 每合成好一句就回调一次（分段音频文件已落盘、可直接播放），供上层「边合成边播」。
+         * 同一分段只回调一次；最终 {@link #onAudioReady} 汇总的列表与此处分段一致，上层需按路径去重。
+         */
+        void onSegmentReady(File segment);
+
         void onAudioReady(List<File> audioFiles);
 
         void onError(String message);
@@ -471,6 +477,8 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
             sentenceAudioFiles.add(file);
             sentenceAudioBuffer = new ByteArrayOutputStream();
             Log.d(TAG, "豆包语音分段就绪: " + segmentNumber + ", bytes=" + file.length());
+            // 分段落盘即回调，供上层边合成边播；不清空 callback，会话结束再由 onAudioReady 收尾
+            postSegmentReady(file);
         } catch (IOException e) {
             Log.e(TAG, "保存豆包语音分段失败", e);
             postError("保存音频失败：" + e.getMessage());
@@ -600,6 +608,17 @@ public final class DoubaoSpeechSynthesizer implements SpeechEngine.SpeechListene
             return androidId == null ? "" : androidId;
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    /** 单个分段就绪回调（会话进行中多次触发，不清空 callback）。 */
+    private void postSegmentReady(final File segment) {
+        Callback cb;
+        synchronized (this) {
+            cb = callback;
+        }
+        if (cb != null && segment != null) {
+            mainHandler.post(() -> cb.onSegmentReady(segment));
         }
     }
 

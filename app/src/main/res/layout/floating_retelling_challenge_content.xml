@@ -57,17 +57,24 @@
             android:lineSpacingMultiplier="1.2" />
     </ScrollView>
 
-    <!-- 录音按钮：阅读阶段置灰，原文清空后启用 -->
-    <Button
-        android:id="@+id/btn_retelling_record"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_marginBottom="8dp"
-        android:backgroundTint="#4CAF50"
-        android:text="开始录音"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
-        android:enabled="false" />
+    <!-- 录音按钮：阅读阶段置灰，原文清空后启用；评分完成后整体移入结果区与「答题通过」并列 -->
+    <LinearLayout
+        android:id="@+id/layout_retelling_record_holder"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/btn_retelling_record"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginBottom="8dp"
+            android:backgroundTint="#4CAF50"
+            android:text="开始录音"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:enabled="false" />
+    </LinearLayout>
 
     <!-- 录音识别文本：本地识别完成后展示 -->
     <ScrollView
@@ -116,6 +123,50 @@
             android:textColor="#FFD54F"
             android:textSize="14sp"
             android:visibility="gone" />
+
+        <!-- 内容评分四维明细：内容完整度 / 逻辑连贯性 / 事实准确度 / 表达完整性 -->
+        <TextView
+            android:id="@+id/tv_retelling_dimensions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.3"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <!-- 故事原文：评分后对照复盘 -->
+        <TextView
+            android:id="@+id/tv_retelling_original_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="原文"
+            android:textColor="#FFFFC107"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <ScrollView
+            android:id="@+id/sv_retelling_original"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:maxHeight="150dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tv_retelling_original"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingMultiplier="1.2"
+                android:text=""
+                android:textColor="#FFFFFF"
+                android:textIsSelectable="false"
+                android:textSize="13sp" />
+        </ScrollView>
 
         <TextView
             android:id="@+id/tv_retelling_feedback"
@@ -185,15 +236,24 @@
                 android:lineSpacingMultiplier="1.2" />
         </LinearLayout>
 
-        <Button
-            android:id="@+id/btn_retelling_done"
+        <!-- 底部操作行：答题通过 + 开始录音（评分完成后从顶部移入，未达标可重录本题） -->
+        <LinearLayout
+            android:id="@+id/layout_retelling_button_row"
             android:layout_width="wrap_content"
-            android:layout_height="48dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:backgroundTint="#FF9800"
-            android:text="答题通过"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp" />
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_retelling_done"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:backgroundTint="#FF9800"
+                android:text="答题通过"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <Button
