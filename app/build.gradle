@@ -2,6 +2,15 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+def signingPropertiesFile = rootProject.file("signing.local.properties")
+def signingProperties = new Properties()
+
+if (signingPropertiesFile.exists()) {
+    signingPropertiesFile.withInputStream {
+        signingProperties.load(it)
+    }
+}
+
 android {
     namespace 'com.book.mask'
     compileSdk 35
@@ -21,8 +30,28 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            if (signingPropertiesFile.exists()) {
+                storeFile rootProject.file(signingProperties["storeFile"])
+                storePassword signingProperties["storePassword"]
+                keyAlias signingProperties["keyAlias"]
+                keyPassword signingProperties["keyPassword"]
+
+                // 与 Android Studio 生成的现有 APK 保持一致：仅启用 V2 签名。
+                enableV1Signing false
+                enableV2Signing true
+                enableV3Signing false
+                enableV4Signing false
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (signingPropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

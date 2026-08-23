@@ -79,6 +79,8 @@ import java.util.Map;
 public class SettingsDialogManager {
     private static final long LEISURE_STATE_REFRESH_INTERVAL_MS = 200;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 2001;
+    private static final int OPTION_CARD_BACKGROUND_COLOR = 0xFFFBFBFB;
+    private static final int CUSTOM_OPTION_CARD_BACKGROUND_COLOR = 0xFFE8F5E9;
     /** 答题记录弹窗打开期间的自动刷新间隔：答新题后返回弹窗，最新记录能及时出现。 */
     private static final long ANSWER_RECORDS_REFRESH_INTERVAL_MS = 800;
 
@@ -674,14 +676,9 @@ public class SettingsDialogManager {
             android.app.AlertDialog dialog,
             Runnable onSettingChanged) {
         android.widget.FrameLayout container = new android.widget.FrameLayout(context);
-        TextView card = new TextView(context);
-        card.setBackground(createTargetCardBackground(selected));
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dpToPx(12), 0, dpToPx(12), 0);
-        card.setTextSize(14);
-        card.setTextColor(0xFF111111);
-        card.setText(label);
-        card.setContentDescription(label);
+        TextView card = isCustomTag
+                ? createCustomOptionCard(label, selected)
+                : createOptionCard(label, selected);
         card.setOnClickListener(v -> {
             appSettingsManager.setMotivationTag(label);
             if (onSettingChanged != null) {
@@ -724,7 +721,7 @@ public class SettingsDialogManager {
 
     private TextView createAddTargetCard() {
         TextView card = new TextView(context);
-        card.setBackground(createTargetCardBackground(false));
+        card.setBackground(createOptionCardBackground(false, OPTION_CARD_BACKGROUND_COLOR));
         card.setGravity(Gravity.CENTER);
         card.setPadding(dpToPx(14), 0, dpToPx(14), 0);
         card.setText("+");
@@ -734,9 +731,10 @@ public class SettingsDialogManager {
         return card;
     }
 
-    private android.graphics.drawable.GradientDrawable createTargetCardBackground(boolean selected) {
+    private android.graphics.drawable.GradientDrawable createOptionCardBackground(
+            boolean selected, int backgroundColor) {
         android.graphics.drawable.GradientDrawable background = new android.graphics.drawable.GradientDrawable();
-        background.setColor(0xFFFBFBFB);
+        background.setColor(backgroundColor);
         background.setCornerRadius(dpToPx(17));
         background.setStroke(dpToPx(selected ? 2 : 1), selected ? 0xFFFF9800 : 0xFFEBD6CF);
         return background;
@@ -933,7 +931,7 @@ public class SettingsDialogManager {
         String currentCustomStyle = appSettingsManager.getReminderCustomStyle();
         styleFlow.removeAllViews();
         for (String style : styles) {
-            TextView styleCard = createStyleCard(style, style.equals(currentStyle));
+            TextView styleCard = createOptionCard(style, style.equals(currentStyle));
             styleCard.setOnClickListener(v -> {
                 appSettingsManager.setReminderStyle(style);
                 if (onSettingChanged != null) {
@@ -971,15 +969,23 @@ public class SettingsDialogManager {
                 TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
     }
 
-    private TextView createStyleCard(String style, boolean selected) {
+    private TextView createOptionCard(String label, boolean selected) {
+        return createOptionCard(label, selected, OPTION_CARD_BACKGROUND_COLOR);
+    }
+
+    private TextView createCustomOptionCard(String label, boolean selected) {
+        return createOptionCard(label, selected, CUSTOM_OPTION_CARD_BACKGROUND_COLOR);
+    }
+
+    private TextView createOptionCard(String label, boolean selected, int backgroundColor) {
         TextView card = new TextView(context);
-        card.setBackground(createTargetCardBackground(selected));
+        card.setBackground(createOptionCardBackground(selected, backgroundColor));
         card.setGravity(Gravity.CENTER_VERTICAL);
         card.setPadding(dpToPx(12), 0, dpToPx(12), 0);
-        card.setText(style);
+        card.setText(label);
         card.setTextSize(14);
         card.setTextColor(0xFF111111);
-        card.setContentDescription(style);
+        card.setContentDescription(label);
         return card;
     }
 
@@ -991,7 +997,7 @@ public class SettingsDialogManager {
             String[] styles,
             Runnable onSettingChanged) {
         android.widget.FrameLayout container = new android.widget.FrameLayout(context);
-        TextView card = createStyleCard(style, selected);
+        TextView card = createCustomOptionCard(style, selected);
         card.setOnClickListener(v -> {
             appSettingsManager.setReminderCustomStyle(style);
             appSettingsManager.setReminderStyle("自定义");
@@ -1750,7 +1756,7 @@ public class SettingsDialogManager {
     private void renderListeningScenarioCards(TagFlowLayout scenarioFlow, String[] selectedScenario) {
         scenarioFlow.removeAllViews();
 
-        TextView noLimitCard = createStyleCard("不限", selectedScenario[0].isEmpty());
+        TextView noLimitCard = createOptionCard("不限", selectedScenario[0].isEmpty());
         noLimitCard.setOnClickListener(v -> {
             selectedScenario[0] = "";
             renderListeningScenarioCards(scenarioFlow, selectedScenario);
@@ -1759,7 +1765,7 @@ public class SettingsDialogManager {
                 TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
 
         for (String scenario : QuestionConst.LISTENING_SCENARIOS) {
-            TextView card = createStyleCard(scenario, scenario.equals(selectedScenario[0]));
+            TextView card = createOptionCard(scenario, scenario.equals(selectedScenario[0]));
             card.setOnClickListener(v -> {
                 selectedScenario[0] = scenario;
                 renderListeningScenarioCards(scenarioFlow, selectedScenario);
@@ -1793,7 +1799,7 @@ public class SettingsDialogManager {
             TagFlowLayout scenarioFlow,
             String[] selectedScenario) {
         android.widget.FrameLayout container = new android.widget.FrameLayout(context);
-        TextView card = createStyleCard(scenario, selected);
+        TextView card = createCustomOptionCard(scenario, selected);
         card.setOnClickListener(v -> {
             selectedScenario[0] = scenario;
             renderListeningScenarioCards(scenarioFlow, selectedScenario);

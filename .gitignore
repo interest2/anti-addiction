@@ -16,3 +16,4 @@ __pycache__/
 .externalNativeBuild
 .cxx
 local.properties
+/signing.local.properties
