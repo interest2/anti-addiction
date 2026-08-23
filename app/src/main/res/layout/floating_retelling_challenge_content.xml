@@ -17,7 +17,7 @@
         android:textSize="24sp"
         android:textStyle="bold" />
 
-    <!-- 阶段提示：请记住下面的故事 / 请开始复述 / 正在识别语音…… / 正在评估复述…… / 评分完成 -->
+    <!-- 阶段提示：请记住下面的故事 / 请开始复述 / 正在识别语音…… / 正在评估复述……；评分完成后隐藏 -->
     <TextView
         android:id="@+id/tv_retelling_hint"
         android:layout_width="wrap_content"
@@ -95,6 +95,38 @@
             android:lineSpacingMultiplier="1.2" />
     </ScrollView>
 
+    <!-- 故事原文：紧随识别文本，评分后对照复盘 -->
+    <TextView
+        android:id="@+id/tv_retelling_original_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="原文"
+        android:textColor="#FFFFC107"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <ScrollView
+        android:id="@+id/sv_retelling_original"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="8dp"
+        android:maxHeight="150dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_retelling_original"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:lineSpacingMultiplier="1.2"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textIsSelectable="false"
+            android:textSize="13sp" />
+    </ScrollView>
+
     <!-- 评分结果：得分 + 反馈 + 动作按钮 -->
     <LinearLayout
         android:id="@+id/layout_retelling_result"
@@ -136,37 +168,6 @@
             android:textColor="#FFFFFF"
             android:textSize="12sp"
             android:visibility="gone" />
-
-        <!-- 故事原文：评分后对照复盘 -->
-        <TextView
-            android:id="@+id/tv_retelling_original_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="原文"
-            android:textColor="#FFFFC107"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
-
-        <ScrollView
-            android:id="@+id/sv_retelling_original"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:maxHeight="150dp"
-            android:visibility="gone">
-
-            <TextView
-                android:id="@+id/tv_retelling_original"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:lineSpacingMultiplier="1.2"
-                android:text=""
-                android:textColor="#FFFFFF"
-                android:textIsSelectable="false"
-                android:textSize="13sp" />
-        </ScrollView>
 
         <TextView
             android:id="@+id/tv_retelling_feedback"

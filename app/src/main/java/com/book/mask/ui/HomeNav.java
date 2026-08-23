@@ -829,7 +829,7 @@ public class HomeNav extends Fragment implements
         bindGlobalBlockToggle(globalBlockToggle, app);
         String globalBlockHelpMessage = wechat
                 ? ""
-                : "开启后该 APP 所有页面都会被遮挡，也无法搜索，如需保留搜索功能可留言反馈";
+                : "全局屏蔽：该 APP 的所有页面都会被遮挡，也无法搜索";
         globalBlockHelp.setOnClickListener(v -> new android.app.AlertDialog.Builder(requireContext())
                 .setMessage(globalBlockHelpMessage)
                 .setPositiveButton("知道了", null)

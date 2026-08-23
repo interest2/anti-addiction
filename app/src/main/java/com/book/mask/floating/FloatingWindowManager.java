@@ -580,8 +580,11 @@ public class FloatingWindowManager {
         if (contentText != null) {
             // 获取缓存的动态文字内容
             String dynamicText = "";
-    
-            if (currentActiveApp != null) {
+
+            if (leisureTimeManager.isLeisureTimeArmed()) {
+                // 待触发期间，所有受监测 APP 统一展示休闲提示，覆盖大模型与自定义警示语
+                dynamicText = Const.LEISURE_TIME_ARMED_REMINDER;
+            } else if (currentActiveApp != null) {
                 String packageName = currentActiveApp.getPackageName();
                 String source = appSettingsManager.getAppHintSource(packageName);
     
@@ -692,7 +695,8 @@ public class FloatingWindowManager {
      * 请求完成后仅更新缓存，不替换当前已经展示的文案；新文案在下次创建窗口时读取。
      */
     private void prefetchReminderText(CustomApp app) {
-        if (textFetcher == null || app == null) {
+        // 待触发期间展示固定休闲提示，无需为这次悬浮窗继续请求下一条大模型警示语
+        if (textFetcher == null || app == null || leisureTimeManager.isLeisureTimeArmed()) {
             return;
         }
         String packageName = app.getPackageName();

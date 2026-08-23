@@ -63,6 +63,8 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private RetellingState state = RetellingState.ERROR;
     private long sessionId;
     private boolean active;
+    /** 本次答题会话是否已通过（本次或此前一次）。一旦通过即置真并保持，后续练习答错也不丢失解禁资格。 */
+    private boolean sessionEverPassed;
     private RetellingStoryRepository.Story currentStory;
     private int storyLength;
     private int displaySeconds;
@@ -140,6 +142,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         sessionId++;
         active = true;
         scoreRetryCount = 0;
+        sessionEverPassed = false;
         ChallengeSettingsManager settings = new ChallengeSettingsManager(context);
         storyLength = settings.getRetellingStoryLength();
         displaySeconds = settings.getRetellingDisplaySeconds();
@@ -150,6 +153,8 @@ public final class RetellingChallengeSession implements ChallengeSession {
                 + ", 通过分=" + passScore
                 + ", 录音上限=" + recordMaxSeconds + "s");
         setState(RetellingState.LOADING_STORY);
+        // 后台出题（自定义服务商走大模型网络请求，可能数秒）期间先亮出「出题中」，避免界面卡住无反馈
+        view.showLoading();
         loadStory(false);
         return true;
     }
@@ -433,12 +438,15 @@ public final class RetellingChallengeSession implements ChallengeSession {
         if (!active
                 || (state != RetellingState.READY_TO_RECORD
                 && state != RetellingState.READING
-                && state != RetellingState.FAILED)) {
+                && state != RetellingState.FAILED
+                && state != RetellingState.PASSED)) {
             return;
         }
         // 阅读阶段可提前开始复述：停止倒计时并清空原文，避免边看边念。
-        // 未达标重录本题：同样清空原文与上一轮识别文本、重置评分重试计数，重新进入录音流程。
-        if (state == RetellingState.READING || state == RetellingState.FAILED) {
+        // 重答本题（未达标 / 已通过后再练同题）：同样清空原文与上一轮识别文本、重置评分重试计数，重新进入录音流程。
+        if (state == RetellingState.READING
+                || state == RetellingState.FAILED
+                || state == RetellingState.PASSED) {
             handler.removeCallbacks(countdownRunnable);
             lastRecognizedText = null;
             scoreRetryCount = 0;
@@ -601,8 +609,12 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
     private void showResult(RetellingScore score, boolean passed) {
         saveRecord(score, passed);
+        if (passed) {
+            sessionEverPassed = true;
+        }
         setState(passed ? RetellingState.PASSED : RetellingState.FAILED);
-        view.showResult(score, passed);
+        // 一旦通过过（本次或此前），主按钮恒为「答题通过」解禁；从未通过且答错时为「下一题」换新故事
+        view.showResult(score, sessionEverPassed);
     }
 
     /** 落地一条答题记录：原故事 + 识别文本 + 评分信息 + 录音文件，供「答题记录」展示与回放。 */
@@ -642,11 +654,13 @@ public final class RetellingChallengeSession implements ChallengeSession {
     }
 
     private void handleDone() {
-        if (state == RetellingState.PASSED) {
+        if (sessionEverPassed) {
+            // 已通过（本次或此前）：主按钮为「答题通过」，解禁关闭
             if (callbacks != null) {
                 callbacks.onPassed();
             }
         } else if (state == RetellingState.FAILED) {
+            // 从未通过：主按钮为「下一题」，换新故事重来
             startNewRound();
         }
     }
@@ -655,6 +669,8 @@ public final class RetellingChallengeSession implements ChallengeSession {
         sessionId++;
         scoreRetryCount = 0;
         setState(RetellingState.LOADING_STORY);
+        // 换新故事同样可能走网络出题，先提示「出题中」
+        view.showLoading();
         loadStory(true);
     }
 

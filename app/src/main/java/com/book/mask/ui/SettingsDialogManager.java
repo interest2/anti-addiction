@@ -23,6 +23,7 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
@@ -31,6 +32,7 @@ import android.widget.ToggleButton;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.appcompat.widget.AppCompatButton;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
@@ -1647,21 +1649,43 @@ public class SettingsDialogManager {
                 ? 0
                 : currentLevel + 1;
 
-        new android.app.AlertDialog.Builder(context)
+        // 自定义内容：单选列表 + 底部灰色备注（说明难度按心算评定）
+        LinearLayout content = new LinearLayout(context);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(16), 0, dp(16), 0);
+
+        ListView optionList = new ListView(context);
+        optionList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+        optionList.setAdapter(new ArrayAdapter<>(context,
+                android.R.layout.simple_list_item_single_choice, difficultyOptions));
+        optionList.setItemChecked(checkedItem, true);
+
+        TextView note = new TextView(context);
+        note.setText("注：难度是以心算的角度来评定（不借助草稿纸）");
+        note.setTextSize(12);
+        note.setTextColor(0xFF757575);
+        note.setPadding(0, dp(4), 0, dp(4));
+
+        content.addView(optionList);
+        content.addView(note);
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("推理题难度设置")
-                .setSingleChoiceItems(difficultyOptions, checkedItem, (dialog, which) -> {
-                    int level = which == 0
-                            ? ChallengeSettingsManager.REASONING_LEVEL_DEFAULT
-                            : which - 1;
-                    challengeSettingsManager.setReasoningDifficultyLevel(level);
-                    dialog.dismiss();
-                    UiFeedback.show(context, "已设置推理题难度为" + difficultyOptions[which]);
-                    if (onDifficultyChanged != null) {
-                        onDifficultyChanged.run();
-                    }
-                })
+                .setView(content)
                 .setNegativeButton("关闭", null)
-                .show();
+                .create();
+        optionList.setOnItemClickListener((parent, view, position, id) -> {
+            int level = position == 0
+                    ? ChallengeSettingsManager.REASONING_LEVEL_DEFAULT
+                    : position - 1;
+            challengeSettingsManager.setReasoningDifficultyLevel(level);
+            dialog.dismiss();
+            UiFeedback.show(context, "已设置推理题难度为" + difficultyOptions[position]);
+            if (onDifficultyChanged != null) {
+                onDifficultyChanged.run();
+            }
+        });
+        dialog.show();
     }
 
     /**
@@ -2853,7 +2877,9 @@ public class SettingsDialogManager {
         controlRow.setOrientation(LinearLayout.HORIZONTAL);
         controlRow.setGravity(Gravity.CENTER_VERTICAL);
 
-        state.playButton = new Button(context);
+        // Material 主题下 new Button 会 inflate 成 MaterialButton，其 contentPadding/minWidth/inset
+        // 默认偏大且 setPadding 不生效；改 AppCompatButton 构造，内 padding 直接收紧、按钮贴合文字
+        state.playButton = new AppCompatButton(context);
         state.playButton.setText("▶ 播放录音");
         state.playButton.setAllCaps(false);
         state.playButton.setTextColor(0xFF1565C0);
@@ -2862,7 +2888,9 @@ public class SettingsDialogManager {
         bg.setColor(0xFFE3F2FD);
         bg.setCornerRadius(dp(8));
         state.playButton.setBackground(bg);
-        state.playButton.setPadding(dp(10), dp(4), dp(10), dp(4));
+        state.playButton.setMinWidth(0);
+        state.playButton.setMinHeight(0);
+        state.playButton.setPadding(dp(6), dp(2), dp(6), dp(2));
 
         state.timeText = new TextView(context);
         state.timeText.setText("00:00 / 00:00");

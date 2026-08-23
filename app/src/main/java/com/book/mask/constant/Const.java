@@ -49,6 +49,9 @@ public class Const {
     // 用户改目标后，新提醒文字预取未完成时悬浮窗展示的占位文案
     public static final String REMINDER_LOADING_PLACEHOLDER = "加载中，请稍等";
 
+    // 休闲时刻已开启但尚未通过关闭悬浮窗正式触发时，临时替代常规警示语
+    public static final String LEISURE_TIME_ARMED_REMINDER = "即将开启休闲时刻";
+
     // 广播Action常量
     public static final String ACTION_UPDATE_RELAXED_COUNT = "com.book.mask.ACTION_UPDATE_RELAXED_COUNT";
 

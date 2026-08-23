@@ -80,6 +80,33 @@ final class RetellingViewController {
         this.callbacks = callbacks;
     }
 
+    /**
+     * 出题加载态：后台拉取 / 生成故事期间先展示面板并提示「出题中」，避免点击关闭后界面卡住无反馈。
+     * 隐藏其余内容、置灰并隐藏录音按钮，仅保留取消入口；故事就绪后由 {@link #showStory} 接管。
+     */
+    void showLoading() {
+        if (!ensureInitialized()) {
+            return;
+        }
+        shown = true;
+        hideTopInfo();
+        hideStrictReminder();
+        retellingLayout.setVisibility(View.VISIBLE);
+        retellingLayout.bringToFront();
+        resultLayout.setVisibility(View.GONE);
+        storyScrollView.setVisibility(View.GONE);
+        storyText.setText("");
+        countdownText.setVisibility(View.GONE);
+        clearRecognizedText();
+        hideBreakdown();
+        hideOriginal();
+        restoreRecordButton();
+        recordButton.setEnabled(false);
+        recordButton.setVisibility(View.GONE);
+        setHintText("出题中…");
+        cancelButton.setVisibility(View.VISIBLE);
+    }
+
     boolean showStory(RetellingStoryRepository.Story story, int displaySeconds) {
         if (!ensureInitialized()) {
             return false;
@@ -98,9 +125,10 @@ final class RetellingViewController {
         hideBreakdown();
         hideOriginal();
         restoreRecordButton();
-        hintText.setText("请记住下面的故事，可随时开始复述");
+        setHintText("请记住下面的故事，可随时开始复述");
         countdownText.setText("剩余 " + displaySeconds + " 秒");
         countdownText.setVisibility(View.VISIBLE);
+        recordButton.setVisibility(View.VISIBLE);
         recordButton.setEnabled(true);
         recordButton.setText("开始录音");
         cancelButton.setVisibility(View.VISIBLE);
@@ -129,10 +157,11 @@ final class RetellingViewController {
         storyScrollView.setVisibility(View.GONE);
         countdownText.setVisibility(View.GONE);
         clearRecognizedText();
-        hintText.setText(hint);
+        setHintText(hint);
         resultLayout.setVisibility(View.GONE);
         hideOriginal();
         restoreRecordButton();
+        recordButton.setVisibility(View.VISIBLE);
         recordButton.setEnabled(true);
         recordButton.setText("开始录音");
     }
@@ -144,14 +173,14 @@ final class RetellingViewController {
         recordButton.setEnabled(false);
         resultLayout.setVisibility(View.GONE);
         clearRecognizedText();
-        hintText.setText("正在识别语音……");
+        setHintText("正在识别语音……");
     }
 
     void showScoring() {
         if (!initialized) {
             return;
         }
-        hintText.setText("正在评估复述……");
+        setHintText("正在评估复述……");
     }
 
     /**
@@ -166,6 +195,12 @@ final class RetellingViewController {
         }
         recognizedText.setText(highlightLabel("识别文本：", offlineText.trim()));
         recognizedScrollView.setVisibility(View.VISIBLE);
+    }
+
+    /** 阶段提示统一走这里：设置文本并恢复可见（评分完成后由 showResult 隐藏）。 */
+    private void setHintText(String text) {
+        hintText.setText(text);
+        hintText.setVisibility(View.VISIBLE);
     }
 
     /** 引导词用高亮色（与「原文」一致），正文保持原色。 */
@@ -184,12 +219,14 @@ final class RetellingViewController {
         recognizedScrollView.setVisibility(View.GONE);
     }
 
-    void showResult(RetellingScore score, boolean passed) {
+    void showResult(RetellingScore score, boolean canUnlock) {
         if (!initialized) {
             return;
         }
         cancelButton.setVisibility(View.GONE);
-        hintText.setText("");
+        // 评分完成后不再需要阶段提示，隐藏占位，避免识别文本与标题之间留白
+        hintText.setVisibility(View.GONE);
+        storyScrollView.setVisibility(View.GONE);
         scoreText.setText("复述得分：" + score.getScore() + "分");
         if (speechScoreText != null) {
             if (score.hasPronunciationScore()) {
@@ -200,16 +237,19 @@ final class RetellingViewController {
             }
         }
         feedbackText.setText(score.getFeedback());
-        doneButton.setText(passed ? "答题通过" : "下一题");
+        // 已通过（本次或此前通过）时主按钮解禁，否则为「下一题」换新故事
+        doneButton.setText(canUnlock ? "答题通过" : "下一题");
         doneButton.setBackgroundTintList(
                 android.content.res.ColorStateList.valueOf(
-                        passed ? 0xFF4CAF50 : 0xFFFF9800));
+                        canUnlock ? 0xFF4CAF50 : 0xFFFF9800));
         showBreakdown();
         showOriginal();
         showDimensions(score);
-        // 录音按钮挪到底部与「答题通过」并列：通过后无需再录，未达标可重录本题
+        // 录音按钮挪到底部与主按钮并列，始终可重答本题（通过后亦可反复练习同一故事）
         moveRecordButtonToResultRow();
-        recordButton.setEnabled(!passed);
+        recordButton.setVisibility(View.VISIBLE);
+        recordButton.setEnabled(true);
+        recordButton.setText("重答本题");
         resultLayout.setVisibility(View.VISIBLE);
     }
 
@@ -239,7 +279,8 @@ final class RetellingViewController {
     }
 
     /**
-     * 内容评分四维明细：内容完整度 / 逻辑连贯性 / 事实准确度 / 表达完整性。
+     * 内容评分四维明细与加权总分：内容完整度 40 / 逻辑连贯性 25 / 事实准确度 20 / 表达完整性 15。
+     * 总分按权重重算（区别于含语音评测的最终得分）。
      * 异常场景（直接低分 / 评分失败，四维全 0）无参考价值，保持隐藏。
      */
     private void showDimensions(RetellingScore score) {
@@ -251,8 +292,13 @@ final class RetellingViewController {
             dimensionText.setVisibility(View.GONE);
             return;
         }
+        int contentTotal = Math.round(score.getCoverage() * 0.4f
+                + score.getOrder() * 0.25f
+                + score.getAccuracy() * 0.2f
+                + score.getExpression() * 0.15f);
         dimensionText.setText(String.format(Locale.CHINA,
-                "内容完整度 %d · 逻辑连贯性 %d\n事实准确度 %d · 表达完整性 %d",
+                "内容总分 %d\n内容完整度 %d · 逻辑连贯性 %d\n事实准确度 %d · 表达完整性 %d",
+                contentTotal,
                 score.getCoverage(), score.getOrder(), score.getAccuracy(), score.getExpression()));
         dimensionText.setVisibility(View.VISIBLE);
     }
@@ -320,7 +366,7 @@ final class RetellingViewController {
         restoreRecordButton();
         recordButton.setEnabled(false);
         cancelButton.setVisibility(View.VISIBLE);
-        hintText.setText(message == null || message.isEmpty() ? "出错了" : message);
+        setHintText(message == null || message.isEmpty() ? "出错了" : message);
         clearRecognizedText();
         hideOriginal();
         resultLayout.setVisibility(View.GONE);
