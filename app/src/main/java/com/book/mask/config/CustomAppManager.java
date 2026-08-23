@@ -59,35 +59,28 @@ public class CustomAppManager {
     }
 
     private CustomAppManager(Context context) {
-        if (context != null) {
-            this.context = context.getApplicationContext();
-            this.mmkv = MMKV.mmkvWithID(PREF_NAME);
-            this.gson = new Gson();
-            loadCustomApps();
-            loadPredefinedAppModifications();
-        } else {
-            // 只读模式，用于静态上下文
-            this.context = null;
-            this.mmkv = null;
-            this.gson = new Gson();
-            this.customApps = new ArrayList<>();
-            this.predefinedAppModifications = new ArrayList<>();
-        }
+        this.context = context.getApplicationContext();
+        this.mmkv = MMKV.mmkvWithID(PREF_NAME);
+        this.gson = new Gson();
+        loadCustomApps();
+        loadPredefinedAppModifications();
     }
 
     public static synchronized CustomAppManager getInstance() {
         if (instance == null) {
-            // 如果没有初始化，返回一个只读的实例，不进行持久化操作
-            // 这样可以避免在静态上下文中需要Context的问题
-            instance = new CustomAppManager(null);
+            throw new IllegalStateException(
+                    "CustomAppManager must be initialized from Application before use");
         }
         return instance;
     }
     
     /**
-     * 初始化CustomAppManager（需要在Application或Activity中调用）
+     * 初始化 CustomAppManager。应由 Application.onCreate() 在任何组件启动前调用。
      */
     public static synchronized void initialize(Context context) {
+        if (context == null) {
+            throw new IllegalArgumentException("context must not be null");
+        }
         if (instance == null) {
             instance = new CustomAppManager(context);
         }
@@ -286,7 +279,7 @@ public class CustomAppManager {
      */
     private void loadCustomApps() {
         if (mmkv == null) {
-            // 只读模式，使用空列表
+            // MMKV 不可用时保留空列表，避免后续读取触发空指针。
             customApps = new ArrayList<>();
             return;
         }
@@ -339,19 +332,12 @@ public class CustomAppManager {
      */
     private void saveCustomApps() {
         if (mmkv == null) {
-            // 尝试重新初始化（如果有context的话）
-            if (context != null) {
-                Log.w("CustomAppManager", "MMKV is null, attempting to reinitialize...");
-                try {
-                    mmkv = MMKV.mmkvWithID(PREF_NAME);
-                    Log.i("CustomAppManager", "Successfully reinitialized MMKV");
-                } catch (Exception e) {
-                    Log.e("CustomAppManager", "Failed to reinitialize MMKV", e);
-                    return;
-                }
-            } else {
-                // 只读模式，不保存
-                Log.w("CustomAppManager", "Cannot save in read-only mode - no context available");
+            Log.w("CustomAppManager", "MMKV is null, attempting to reinitialize...");
+            try {
+                mmkv = MMKV.mmkvWithID(PREF_NAME);
+                Log.i("CustomAppManager", "Successfully reinitialized MMKV");
+            } catch (Exception e) {
+                Log.e("CustomAppManager", "Failed to reinitialize MMKV", e);
                 return;
             }
         }
@@ -483,7 +469,7 @@ public class CustomAppManager {
      */
     private void savePredefinedAppModifications() {
         if (mmkv == null) {
-            Log.w("CustomAppManager", "Cannot save predefined app modifications in read-only mode");
+            Log.w("CustomAppManager", "Cannot save predefined app modifications: MMKV unavailable");
             return;
         }
         

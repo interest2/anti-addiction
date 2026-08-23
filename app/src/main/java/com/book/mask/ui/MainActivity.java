@@ -73,9 +73,6 @@ public class MainActivity extends AppCompatActivity {
             autoAccessibilityGuided =
                     savedInstanceState.getBoolean(STATE_AUTO_ACCESSIBILITY_GUIDED, false);
         }
-        // 初始化 MMKV
-        String rootDir = MMKV.initialize(this);
-        android.util.Log.d("MainActivity", "MMKV initialized, root: " + rootDir);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -87,9 +84,6 @@ public class MainActivity extends AppCompatActivity {
             // 将来若有子 View 需要 inset，应在此处按需分发，不要恢复成原样返回。
             return WindowInsetsCompat.CONSUMED;
         });
-
-        // 初始化自定义应用管理器 - 提前到这里，为其他组件提供基础数据
-        CustomAppManager.initialize(this);
 
         relaxManager = new RelaxManager(this);
         settingsDialogManager = new SettingsDialogManager(this, relaxManager);
