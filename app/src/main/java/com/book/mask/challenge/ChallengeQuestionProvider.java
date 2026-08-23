@@ -17,19 +17,19 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * 负责题型选择、题目生成、远程题目请求与缓存。
  */
-final class ChallengeQuestionProvider {
+public final class ChallengeQuestionProvider {
 
     private static final String TAG = "ChallengeProvider";
     private static final String FIRST_Q_REASON = "甲、乙、丙、丁四人参加比赛，名次各不相同。已知：\n" +
@@ -61,33 +61,35 @@ final class ChallengeQuestionProvider {
     /** 选项总字数（不含 A. 等标识）超过该值，则从 C 选项开始换到下一行；否则全部同行。 */
     private static final int OPTION_WRAP_THRESHOLD = 12;
 
-    private static final ConcurrentMap<String, Question> REMOTE_CACHE =
-            new ConcurrentHashMap<>();
+    /**
+     * 内置预置题：仅在缓存里还没有该题型的远程题时兜底（全新安装、或该档从未拉取成功）。
+     * MIXED 与 REASONING 同为远程推理 / 应用题，共用同一道兜底题：
+     * 否则远程题未就绪时会 fallback 成本地算术题，却仍按 MIXED 的小字号渲染。
+     */
+    private static final Map<ChallengeType, Question> PRESET_QUESTIONS;
 
     static {
-        for (int level = ChallengeSettingsManager.REASONING_LEVEL_DEFAULT;
-             level <= ChallengeSettingsManager.REASONING_LEVEL_MAX;
-             level++) {
-            REMOTE_CACHE.put(
-                    cacheKey(ChallengeType.REASONING, level),
-                    new Question(FIRST_Q_REASON, FIRST_A_REASON));
-        }
-        REMOTE_CACHE.put(
-                cacheKey(
-                        ChallengeType.ENGLISH_READING,
-                        ChallengeSettingsManager.REASONING_LEVEL_DEFAULT),
-                new Question(FIRST_Q_READING, FIRST_A_READING));
-        // MIXED 与 REASONING 同为远程推理 / 应用题，兜底题共用：
-        // 否则远程题未就绪时会 fallback 成本地算术题，却仍按 MIXED 的小字号渲染。
-        REMOTE_CACHE.put(
-                cacheKey(
-                        ChallengeType.MIXED,
-                        ChallengeSettingsManager.REASONING_LEVEL_DEFAULT),
-                new Question(FIRST_Q_REASON, FIRST_A_REASON));
+        Map<ChallengeType, Question> presets = new EnumMap<>(ChallengeType.class);
+        Question reasoningPreset = new Question(FIRST_Q_REASON, FIRST_A_REASON);
+        presets.put(ChallengeType.REASONING, reasoningPreset);
+        presets.put(ChallengeType.MIXED, reasoningPreset);
+        presets.put(
+                ChallengeType.ENGLISH_READING, new Question(FIRST_Q_READING, FIRST_A_READING));
+        PRESET_QUESTIONS = Collections.unmodifiableMap(presets);
+    }
+
+    /**
+     * 用户切换推理题难度后立即预取该档题目。
+     * 缓存按「题型 + 难度档」分别存放，新档位若从未拉取过，下次答题只能拿预置题。
+     */
+    public static void prefetchReasoning(Context context, int reasoningLevel) {
+        new ChallengeQuestionProvider(context)
+                .fetchLatestChallenge(ChallengeType.REASONING, reasoningLevel);
     }
 
     private final Context context;
     private final ChallengeSettingsManager challengeSettingsManager;
+    private final ChallengeQuestionCache questionCache = new ChallengeQuestionCache();
     private final Random random = new Random();
 
     ChallengeQuestionProvider(Context context) {
@@ -116,28 +118,40 @@ final class ChallengeQuestionProvider {
             return generateArithmeticQuestion();
         }
 
-        int reasoningLevel = type == ChallengeType.REASONING
+        int reasoningLevel = reasoningLevelOf(type);
+        Question question = questionCache.get(type, reasoningLevel);
+        Log.d(TAG, (question == null ? "缓存中没有" : "使用缓存的") + type.getDisplayName());
+        // 当次出题用已缓存的题，本次请求拉到的新题留给下次出题
+        fetchLatest(type, reasoningLevel);
+
+        if (question == null) {
+            question = PRESET_QUESTIONS.get(type);
+        }
+        if (question == null) {
+            Log.w(TAG, "无可用的" + type.getDisplayName() + "，使用本地算术题作为备选");
+            return generateArithmeticQuestion();
+        }
+        // 推理 / 混合题每次出题重新打乱选项并同步更正答案，防止记住选项位置；
+        // 缓存里保留原始题，供下次重新随机。
+        if (type == ChallengeType.REASONING || type == ChallengeType.MIXED) {
+            return randomizeOptions(question);
+        }
+        return question;
+    }
+
+    /** 仅推理题按用户设置分档，其余远程题型统一走默认档。 */
+    private int reasoningLevelOf(ChallengeType type) {
+        return type == ChallengeType.REASONING
                 ? challengeSettingsManager.getReasoningDifficultyLevel()
                 : ChallengeSettingsManager.REASONING_LEVEL_DEFAULT;
-        Question cachedQuestion = REMOTE_CACHE.get(cacheKey(type, reasoningLevel));
+    }
+
+    private void fetchLatest(ChallengeType type, int reasoningLevel) {
         if (type == ChallengeType.ENGLISH_READING) {
             fetchLatestEnglishReading();
         } else {
             fetchLatestChallenge(type, reasoningLevel);
         }
-
-        if (cachedQuestion != null) {
-            Log.d(TAG, "使用缓存的" + type.getDisplayName());
-            // 推理 / 混合题每次出题重新打乱选项并同步更正答案，防止记住选项位置；
-            // 缓存里保留原始题，供下次重新随机。
-            if (type == ChallengeType.REASONING || type == ChallengeType.MIXED) {
-                return randomizeOptions(cachedQuestion);
-            }
-            return cachedQuestion;
-        }
-
-        Log.w(TAG, "缓存中没有" + type.getDisplayName() + "，使用本地算术题作为备选");
-        return generateArithmeticQuestion();
     }
 
     /**
@@ -293,7 +307,7 @@ final class ChallengeQuestionProvider {
         Question question = new Question(
                 jsonResponse.getString("question"),
                 jsonResponse.getString("answer"));
-        REMOTE_CACHE.put(cacheKey(type, reasoningLevel), question);
+        questionCache.put(type, reasoningLevel, question);
         Log.d(TAG, type.getDisplayName() + "获取成功并已缓存");
     }
 
@@ -335,10 +349,6 @@ final class ChallengeQuestionProvider {
             Log.e(TAG, "HTTP请求英文阅读题异常", e);
             return null;
         }
-    }
-
-    private static String cacheKey(ChallengeType type, int reasoningLevel) {
-        return type.name() + ':' + reasoningLevel;
     }
 
     private JSONObject createBaseRequest() throws Exception {

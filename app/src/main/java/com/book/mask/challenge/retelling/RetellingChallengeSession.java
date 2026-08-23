@@ -155,7 +155,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
         setState(RetellingState.LOADING_STORY);
         // 后台出题（自定义服务商走大模型网络请求，可能数秒）期间先亮出「出题中」，避免界面卡住无反馈
         view.showLoading();
-        loadStory(false);
+        // 每次点击关闭发起答题都换一篇新故事（advance 消费预取的下一篇，无预取则同步取新），
+        // 不复用单例仓库里残留的上一次会话故事
+        loadStory(true);
         return true;
     }
 

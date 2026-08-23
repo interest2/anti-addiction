@@ -37,6 +37,7 @@ import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
 
+import com.book.mask.challenge.ChallengeQuestionProvider;
 import com.book.mask.challenge.retelling.RetellingPreflight;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
@@ -1679,6 +1680,8 @@ public class SettingsDialogManager {
                     ? ChallengeSettingsManager.REASONING_LEVEL_DEFAULT
                     : position - 1;
             challengeSettingsManager.setReasoningDifficultyLevel(level);
+            // 立即预取新档位题目：题目缓存按难度档分开存，新档位未拉取过时只能出预置题
+            ChallengeQuestionProvider.prefetchReasoning(context, level);
             dialog.dismiss();
             UiFeedback.show(context, "已设置推理题难度为" + difficultyOptions[position]);
             if (onDifficultyChanged != null) {

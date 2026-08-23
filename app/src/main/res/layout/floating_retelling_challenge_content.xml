@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="16dp">
 
     <TextView
         android:id="@+id/tv_retelling_title"
@@ -82,7 +86,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-        android:maxHeight="120dp"
         android:visibility="gone">
 
         <TextView
@@ -113,7 +116,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:layout_marginBottom="8dp"
-        android:maxHeight="150dp"
         android:visibility="gone">
 
         <TextView
@@ -142,7 +144,7 @@
             android:layout_height="wrap_content"
             android:text="复述得分：82分"
             android:textColor="#FFFFFF"
-            android:textSize="22sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
         <!-- 语音评测发音分：仅接入腾讯口语评测并成功评分后显示 -->
@@ -265,4 +267,5 @@
         android:textColor="#FFFFFF"
         android:textSize="12sp" />
 
-</LinearLayout>
+    </LinearLayout>
+</ScrollView>
