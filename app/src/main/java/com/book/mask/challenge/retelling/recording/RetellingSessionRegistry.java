@@ -1,4 +1,6 @@
-package com.book.mask.challenge.retelling;
+package com.book.mask.challenge.retelling.recording;
+
+import com.book.mask.challenge.retelling.RetellingChallengeSession;
 
 /**
  * 复述题会话的进程内桥接：透明录音 Activity 与悬浮窗内会话不在同一界面层级，

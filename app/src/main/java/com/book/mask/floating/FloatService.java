@@ -10,7 +10,7 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.book.mask.constant.Const;
-import com.book.mask.challenge.retelling.SherpaOnnxTranscriber;
+import com.book.mask.challenge.retelling.transcription.SherpaOnnxTranscriber;
 import com.book.mask.config.Share;
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
 import com.book.mask.personalize.RelaxManager;

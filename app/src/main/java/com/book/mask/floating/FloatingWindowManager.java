@@ -13,7 +13,7 @@ import android.os.SystemClock;
 import android.text.TextUtils;
 
 import com.book.mask.R;
-import com.book.mask.challenge.ChallengeManager;
+import com.book.mask.challenge.common.ChallengeManager;
 import com.book.mask.constant.Const;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;

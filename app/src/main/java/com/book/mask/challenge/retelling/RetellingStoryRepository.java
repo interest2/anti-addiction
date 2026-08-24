@@ -66,6 +66,11 @@ public final class RetellingStoryRepository {
             this.moral = moral;
         }
 
+        /** 听述题把听力题 transcript 适配为共用材料值对象，不附加故事三幕元数据。 */
+        public static Story fromListeningTranscript(String questionId, String transcript) {
+            return new Story(questionId, transcript);
+        }
+
         public String getStoryId() {
             return storyId;
         }

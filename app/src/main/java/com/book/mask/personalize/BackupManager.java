@@ -57,6 +57,8 @@ public class BackupManager {
             AppSettingsManager.KEY_FLOATING_STRICT_REMINDER,   // 座右铭内容
             ChallengeSettingsManager.KEY_MATH_QUESTION_TYPE,   // 题目类型
             ChallengeSettingsManager.KEY_MATH_DIFFICULTY_MODE, // 算术题难度模式（default / custom）
+            ChallengeSettingsManager.KEY_LISTENING_SCENARIO,   // 听力题 / 听述题共用场景
+            ChallengeSettingsManager.KEY_LISTENING_CUSTOM_SCENARIOS, // 共用自定义场景
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_TIER,
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER,
             LeisureTimeManager.KEY_LEISURE_RELAXED_TIER,                     // 休闲时刻·宽松模式：当前档位
@@ -71,6 +73,8 @@ public class BackupManager {
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS,   // 算术题难度：乘数位数
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, // 算术题难度：被乘数位数
             ChallengeSettingsManager.KEY_REASONING_DIFFICULTY_LEVEL,              // 推理题难度：默认 / 0档 / 1档 / 2档
+            ChallengeSettingsManager.KEY_LISTENING_DIFFICULTY_LEVEL,              // 听力题难度
+            ChallengeSettingsManager.KEY_LISTENING_RETELLING_DIFFICULTY_LEVEL,    // 听述题难度
             ChallengeSettingsManager.KEY_CHALLENGE_TIMER_MODE,                    // 答题计时显示模式
             ChallengeSettingsManager.KEY_ENGLISH_READING_LENGTH,                  // 英文阅读题长度
             ChallengeSettingsManager.KEY_RETELLING_STORY_LENGTH,                  // 复述题：故事字数

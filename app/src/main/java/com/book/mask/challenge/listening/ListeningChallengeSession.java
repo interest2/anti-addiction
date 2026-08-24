@@ -6,7 +6,7 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 
-import com.book.mask.challenge.ChallengeSession;
+import com.book.mask.challenge.common.ChallengeSession;
 import com.book.mask.personalize.AnswerOverviewRecord;
 import com.book.mask.personalize.AnswerOverviewStore;
 import com.book.mask.personalize.ListeningRecord;
@@ -217,6 +217,7 @@ public final class ListeningChallengeSession implements ChallengeSession {
             overview.type = AnswerOverviewRecord.TYPE_LISTENING;
             overview.timestamp = now;
             overview.passed = passed;
+            overview.score = passed ? 100 : 0;
             new AnswerOverviewStore().addRecord(overview);
             Log.d(TAG, "已保存听力答题记录，答对=" + passed);
         } catch (Exception e) {

@@ -14,6 +14,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.book.mask.R;
+import com.book.mask.challenge.retelling.evaluation.RetellingScore;
+import com.book.mask.challenge.retelling.recording.RetellingRecordActivity;
 
 import java.util.Locale;
 
@@ -60,6 +62,7 @@ final class RetellingViewController {
     private TextView feedbackText;
     private Button doneButton;
     private LinearLayout recordHolder;
+    private LinearLayout replayHolder;
     private LinearLayout buttonRow;
     private View topInfoLayout;
     private View strictReminderLayout;
@@ -109,6 +112,7 @@ final class RetellingViewController {
         hideBreakdown();
         hideOriginal();
         restoreRecordButton();
+        restoreReplayButton();
         recordButton.setEnabled(false);
         recordButton.setVisibility(View.GONE);
         replayButton.setVisibility(View.GONE);
@@ -138,6 +142,7 @@ final class RetellingViewController {
         hideBreakdown();
         hideOriginal();
         restoreRecordButton();
+        restoreReplayButton();
         setHintText("请记住下面的故事，可随时开始复述");
         countdownText.setText("剩余 " + displaySeconds + " 秒");
         countdownText.setVisibility(View.VISIBLE);
@@ -170,6 +175,7 @@ final class RetellingViewController {
         hideBreakdown();
         hideOriginal();
         restoreRecordButton();
+        restoreReplayButton();
         recordButton.setEnabled(false);
         recordButton.setVisibility(View.GONE);
         replayButton.setVisibility(View.GONE);
@@ -189,6 +195,7 @@ final class RetellingViewController {
         hideBreakdown();
         hideOriginal();
         restoreRecordButton();
+        restoreReplayButton();
         recordButton.setEnabled(false);
         recordButton.setVisibility(View.GONE);
         replayButton.setVisibility(View.GONE);
@@ -205,6 +212,7 @@ final class RetellingViewController {
             return;
         }
         restoreRecordButton();
+        restoreReplayButton();
         recordButton.setVisibility(View.VISIBLE);
         recordButton.setEnabled(true);
         recordButton.setText("重新合成");
@@ -246,6 +254,7 @@ final class RetellingViewController {
         hideBreakdown();
         hideOriginal();
         restoreRecordButton();
+        restoreReplayButton();
         recordButton.setVisibility(View.VISIBLE);
         recordButton.setEnabled(true);
         recordButton.setText("开始录音");
@@ -339,13 +348,20 @@ final class RetellingViewController {
         showBreakdown();
         showOriginal();
         showDimensions(score);
-        // 录音按钮挪到底部与主按钮并列，始终可重答本题（通过后亦可反复练习同一故事）
+        // 听述题成绩页把重听与直接重答拆开，用户可选择是否在新一轮前再次播放材料。
+        if (stimulusMode == RetellingStimulusMode.AUDIO) {
+            moveReplayButtonToResultRow();
+            replayButton.setVisibility(View.VISIBLE);
+            replayButton.setEnabled(true);
+        } else {
+            restoreReplayButton();
+            replayButton.setVisibility(View.GONE);
+        }
         moveRecordButtonToResultRow();
-        replayButton.setVisibility(View.GONE);
         recordButton.setVisibility(View.VISIBLE);
         recordButton.setEnabled(true);
         recordButton.setText(stimulusMode == RetellingStimulusMode.AUDIO
-                ? "重听并重答"
+                ? "直接重答"
                 : "重答本题");
         resultLayout.setVisibility(View.VISIBLE);
     }
@@ -401,33 +417,45 @@ final class RetellingViewController {
     }
 
     private void moveRecordButtonToResultRow() {
-        moveRecordButton(buttonRow, 16, 0);
+        moveActionButton(recordButton, buttonRow, 8, 0);
+    }
+
+    private void moveReplayButtonToResultRow() {
+        moveActionButton(replayButton, buttonRow, 8, 0);
     }
 
     private void restoreRecordButton() {
         if (recordHolder == null || recordButton == null) {
             return;
         }
-        moveRecordButton(recordHolder, 0, 8);
+        moveActionButton(recordButton, recordHolder, 0, 8);
     }
 
-    /** 把录音按钮整体从当前父容器移到目标容器（同一 View 不能有两个父节点，须先摘除）。 */
-    private void moveRecordButton(ViewGroup target, int marginLeftDp, int marginBottomDp) {
-        if (target == null || recordButton == null) {
+    private void restoreReplayButton() {
+        if (replayHolder == null || replayButton == null) {
             return;
         }
-        ViewGroup parent = (ViewGroup) recordButton.getParent();
+        moveActionButton(replayButton, replayHolder, 0, 8);
+    }
+
+    /** 把操作按钮整体从当前父容器移到目标容器（同一 View 不能有两个父节点，须先摘除）。 */
+    private void moveActionButton(
+            Button button, ViewGroup target, int marginLeftDp, int marginBottomDp) {
+        if (target == null || button == null) {
+            return;
+        }
+        ViewGroup parent = (ViewGroup) button.getParent();
         if (parent == target) {
             return;
         }
         if (parent != null) {
-            parent.removeView(recordButton);
+            parent.removeView(button);
         }
         int density = (int) (context.getResources().getDisplayMetrics().density + 0.5f);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.setMargins(marginLeftDp * density, 0, 0, marginBottomDp * density);
-        target.addView(recordButton, lp);
+        target.addView(button, lp);
     }
 
     /** 展示三幕法拆解 + 寓意；故事未携带元数据时保持隐藏。 */
@@ -461,6 +489,7 @@ final class RetellingViewController {
             return;
         }
         restoreRecordButton();
+        restoreReplayButton();
         recordButton.setEnabled(false);
         recordButton.setVisibility(View.GONE);
         replayButton.setVisibility(View.GONE);
@@ -481,6 +510,7 @@ final class RetellingViewController {
         hideOriginal();
         replayButton.setVisibility(View.GONE);
         restoreRecordButton();
+        restoreReplayButton();
         restoreTopInfo();
         restoreStrictReminder();
     }
@@ -523,6 +553,7 @@ final class RetellingViewController {
         feedbackText = floatingView.findViewById(R.id.tv_retelling_feedback);
         doneButton = floatingView.findViewById(R.id.btn_retelling_done);
         recordHolder = floatingView.findViewById(R.id.layout_retelling_record_holder);
+        replayHolder = floatingView.findViewById(R.id.layout_retelling_replay_holder);
         buttonRow = floatingView.findViewById(R.id.layout_retelling_button_row);
         topInfoLayout = floatingView.findViewById(R.id.top_info_layout);
         strictReminderLayout = floatingView.findViewById(R.id.strict_reminder_layout);
@@ -551,6 +582,7 @@ final class RetellingViewController {
                 || feedbackText == null
                 || doneButton == null
                 || recordHolder == null
+                || replayHolder == null
                 || buttonRow == null
                 || topInfoLayout == null) {
             Log.e(TAG, "复述题布局懒加载失败");

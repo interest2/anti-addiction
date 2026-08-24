@@ -1,4 +1,4 @@
-package com.book.mask.challenge.retelling;
+package com.book.mask.challenge.retelling.recording;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -16,6 +16,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.book.mask.R;
+import com.book.mask.challenge.retelling.RetellingChallengeSession;
 import com.book.mask.constant.QuestionConst;
 
 import java.util.Locale;

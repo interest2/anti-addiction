@@ -28,6 +28,8 @@ public class ChallengeSettingsManager {
     static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
     static final String KEY_REASONING_DIFFICULTY_LEVEL = "reasoning_difficulty_level";
     static final String KEY_LISTENING_DIFFICULTY_LEVEL = "listening_difficulty_level";
+    static final String KEY_LISTENING_RETELLING_DIFFICULTY_LEVEL =
+            "listening_retelling_difficulty_level";
     static final String KEY_LISTENING_SCENARIO = "listening_scenario";
     static final String KEY_LISTENING_CUSTOM_SCENARIOS = "listening_custom_scenarios";
     static final String KEY_CHALLENGE_TIMER_MODE = "challenge_timer_mode";
@@ -194,6 +196,22 @@ public class ChallengeSettingsManager {
     public void setListeningDifficultyLevel(int level) {
         mmkv.putInt(
                 KEY_LISTENING_DIFFICULTY_LEVEL,
+                clamp(level, LISTENING_LEVEL_STANDARD, LISTENING_LEVEL_HARD)).commit();
+    }
+
+    /** 听述题难度独立于听力题；两者仍共用听力题的题源、场景和生成机制。 */
+    public int getListeningRetellingDifficultyLevel() {
+        return clamp(
+                mmkv.getInt(
+                        KEY_LISTENING_RETELLING_DIFFICULTY_LEVEL,
+                        LISTENING_LEVEL_DEFAULT),
+                LISTENING_LEVEL_STANDARD,
+                LISTENING_LEVEL_HARD);
+    }
+
+    public void setListeningRetellingDifficultyLevel(int level) {
+        mmkv.putInt(
+                KEY_LISTENING_RETELLING_DIFFICULTY_LEVEL,
                 clamp(level, LISTENING_LEVEL_STANDARD, LISTENING_LEVEL_HARD)).commit();
     }
 

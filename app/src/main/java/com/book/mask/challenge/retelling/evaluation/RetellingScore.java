@@ -1,4 +1,4 @@
-package com.book.mask.challenge.retelling;
+package com.book.mask.challenge.retelling.evaluation;
 
 import java.util.Locale;
 

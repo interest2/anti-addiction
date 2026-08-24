@@ -1,4 +1,4 @@
-package com.book.mask.challenge;
+package com.book.mask.challenge.common;
 
 import android.content.Context;
 import android.os.Handler;
@@ -178,7 +178,7 @@ final class TextChallengeSession implements ChallengeSession {
 
     /**
      * 落地一条文本类答题记录（算术 / 推理 / 混合 / 英文阅读），供「答题记录」展示；
-     * 详情统一存 {@link ChallengeRecordStore}，概况按题型区分标签（算术 / 推理）。
+     * 详情统一存 {@link ChallengeRecordStore}，概况保留实际题型供记录页分组。
      */
     private void recordAnswer(String userAnswer, boolean passed) {
         try {
@@ -192,17 +192,30 @@ final class TextChallengeSession implements ChallengeSession {
             record.elapsedSeconds = (int) computeElapsedSeconds();
             new ChallengeRecordStore().addRecord(record);
             AnswerOverviewRecord overview = new AnswerOverviewRecord();
-            overview.type = currentType == ChallengeType.ARITHMETIC
-                    ? AnswerOverviewRecord.TYPE_ARITHMETIC
-                    : AnswerOverviewRecord.TYPE_CHALLENGE;
+            overview.type = overviewTypeOf(currentType);
             overview.timestamp = now;
             overview.elapsedSeconds = record.elapsedSeconds;
             overview.passed = passed;
+            overview.score = passed ? 100 : 0;
             new AnswerOverviewStore().addRecord(overview);
             Log.d(TAG, "已保存文本类答题记录, 答对=" + passed + ", 耗时=" + record.elapsedSeconds);
         } catch (Exception e) {
             Log.e(TAG, "保存文本类答题记录失败", e);
         }
+    }
+
+    /** 新记录保留实际文本题型；旧的 challenge 值仍由记录页按推理题兼容。 */
+    private static String overviewTypeOf(ChallengeType type) {
+        if (type == ChallengeType.ARITHMETIC) {
+            return AnswerOverviewRecord.TYPE_ARITHMETIC;
+        }
+        if (type == ChallengeType.MIXED) {
+            return AnswerOverviewRecord.TYPE_MIXED;
+        }
+        if (type == ChallengeType.ENGLISH_READING) {
+            return AnswerOverviewRecord.TYPE_ENGLISH_READING;
+        }
+        return AnswerOverviewRecord.TYPE_REASONING;
     }
 
     /** 算术 / 推理 / 混合题均支持计时，显示模式由「答题计时」选项控制；听力 / 复述除外。 */

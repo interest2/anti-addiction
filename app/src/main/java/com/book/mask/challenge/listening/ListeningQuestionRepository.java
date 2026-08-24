@@ -98,6 +98,23 @@ public final class ListeningQuestionRepository {
         }
     }
 
+    /** 一次听力材料请求的缓存契约：难度可由调用方指定，场景始终读取共用听力设置。 */
+    private static final class QuestionRequest {
+        final int difficultyLevel;
+        final String scenario;
+
+        QuestionRequest(int difficultyLevel, String scenario) {
+            this.difficultyLevel = difficultyLevel;
+            this.scenario = scenario == null ? "" : scenario;
+        }
+
+        boolean matches(QuestionRequest other) {
+            return other != null
+                    && difficultyLevel == other.difficultyLevel
+                    && scenario.equals(other.scenario);
+        }
+    }
+
     private final Random random = new Random();
     private final ReminderProviderConfigStore configStore;
     private final ProviderSecretStore secretStore;
@@ -106,6 +123,8 @@ public final class ListeningQuestionRepository {
 
     private Question currentQuestion;
     private Question nextQuestion;
+    private QuestionRequest currentRequest;
+    private QuestionRequest nextRequest;
 
     public ListeningQuestionRepository(Context context) {
         this.configStore = new ReminderProviderConfigStore();
@@ -118,10 +137,19 @@ public final class ListeningQuestionRepository {
      * 获取当前要作答的题目；当前无题目时先同步取一题，再后台预取下一题。
      */
     public synchronized Question obtainQuestion() {
-        if (currentQuestion == null) {
-            currentQuestion = fetchQuestion();
+        return obtainQuestion(challengeSettingsManager.getListeningDifficultyLevel());
+    }
+
+    /**
+     * 按调用方指定的难度获取材料；听述题用此入口保留独立难度，同时完整复用听力题题源。
+     */
+    public synchronized Question obtainQuestion(int difficultyLevel) {
+        QuestionRequest request = createRequest(difficultyLevel);
+        if (currentQuestion == null || !request.matches(currentRequest)) {
+            currentQuestion = fetchQuestion(request);
+            currentRequest = request;
         }
-        prefetchNext();
+        prefetchNext(request);
         return currentQuestion;
     }
 
@@ -129,28 +157,48 @@ public final class ListeningQuestionRepository {
      * 当前题已作废（答错换题 / 查看原文），前进到下一题。
      */
     public synchronized Question advance() {
-        currentQuestion = nextQuestion != null ? nextQuestion : fetchQuestion();
+        return advance(challengeSettingsManager.getListeningDifficultyLevel());
+    }
+
+    /** 作废当前材料并按指定难度前进；不同难度或场景的预取缓存绝不会交叉复用。 */
+    public synchronized Question advance(int difficultyLevel) {
+        QuestionRequest request = createRequest(difficultyLevel);
+        currentQuestion = nextQuestion != null && request.matches(nextRequest)
+                ? nextQuestion
+                : fetchQuestion(request);
+        currentRequest = request;
         nextQuestion = null;
-        prefetchNext();
+        nextRequest = null;
+        prefetchNext(request);
         return currentQuestion;
     }
 
-    private void prefetchNext() {
-        if (nextQuestion != null) {
+    private QuestionRequest createRequest(int difficultyLevel) {
+        int normalizedLevel = difficultyLevel == ChallengeSettingsManager.LISTENING_LEVEL_HARD
+                ? ChallengeSettingsManager.LISTENING_LEVEL_HARD
+                : ChallengeSettingsManager.LISTENING_LEVEL_STANDARD;
+        return new QuestionRequest(normalizedLevel, challengeSettingsManager.getListeningScenario());
+    }
+
+    private void prefetchNext(QuestionRequest request) {
+        if (nextQuestion != null && request.matches(nextRequest)) {
             return;
         }
+        nextQuestion = null;
+        nextRequest = null;
         new Thread(() -> {
-            Question question = fetchQuestion();
+            Question question = fetchQuestion(request);
             synchronized (ListeningQuestionRepository.this) {
-                if (question != null) {
+                if (question != null && request.matches(currentRequest)) {
                     nextQuestion = question;
+                    nextRequest = request;
                 }
             }
         }, "listening-question-prefetch").start();
     }
 
-    private Question fetchQuestion() {
-        Question remote = fetchFromProvider();
+    private Question fetchQuestion(QuestionRequest request) {
+        Question remote = fetchFromProvider(request);
         if (remote != null) {
             return remote;
         }
@@ -164,7 +212,7 @@ public final class ListeningQuestionRepository {
      * <p>仅当用户配置了非默认（自定义）的模型服务商时可用：官方默认服务商无出题接口，直接返回 null 走内置题目池；
      * 自定义服务商则调用其大模型按 JSON 生成听力选择题。
      */
-    private Question fetchFromProvider() {
+    private Question fetchFromProvider(QuestionRequest request) {
         ReminderProviderConfig config = configStore.getActiveConfig();
         if (config.isOfficial()) {
             Log.d(TAG, "官方默认服务商下听力题接口不可用，跳过网络获取");
@@ -176,15 +224,13 @@ public final class ListeningQuestionRepository {
                 Log.w(TAG, "自定义 Provider 未配置 API Key，听力题接口不可用");
                 return null;
             }
-            int difficultyLevel = challengeSettingsManager.getListeningDifficultyLevel();
-            String scenario = challengeSettingsManager.getListeningScenario();
             JSONArray messages = new JSONArray();
             messages.put(new JSONObject()
                     .put("role", "system")
-                    .put("content", systemPrompt(difficultyLevel)));
+                    .put("content", systemPrompt(request.difficultyLevel)));
             messages.put(new JSONObject()
                     .put("role", "user")
-                    .put("content", buildUserMessage(scenario)));
+                    .put("content", buildUserMessage(request.scenario)));
 
             String raw = chatClient.complete(config, apiKey, messages, MAX_TOKENS, 0.8);
             ListeningQuestion question = parseQuestion(raw);

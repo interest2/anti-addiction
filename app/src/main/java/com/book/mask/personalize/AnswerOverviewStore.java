@@ -58,6 +58,9 @@ public final class AnswerOverviewStore {
         switch (type) {
             case AnswerOverviewRecord.TYPE_ARITHMETIC:
             case AnswerOverviewRecord.TYPE_CHALLENGE:
+            case AnswerOverviewRecord.TYPE_REASONING:
+            case AnswerOverviewRecord.TYPE_MIXED:
+            case AnswerOverviewRecord.TYPE_ENGLISH_READING:
                 return QuestionConst.CHALLENGE_OVERVIEW_MAX;
             case AnswerOverviewRecord.TYPE_LISTENING:
                 return QuestionConst.LISTENING_OVERVIEW_MAX;

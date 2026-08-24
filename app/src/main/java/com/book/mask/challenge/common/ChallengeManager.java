@@ -1,4 +1,4 @@
-package com.book.mask.challenge;
+package com.book.mask.challenge.common;
 
 import android.content.Context;
 import android.os.Handler;

@@ -1,4 +1,4 @@
-package com.book.mask.challenge.retelling;
+package com.book.mask.challenge.retelling.transcription;
 
 /**
  * 本地语音转文字抽象。当前实现为 Sherpa-ONNX 离线识别，识别过程无需联网。

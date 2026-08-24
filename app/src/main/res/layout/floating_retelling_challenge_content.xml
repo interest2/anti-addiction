@@ -80,17 +80,24 @@
             android:enabled="false" />
     </LinearLayout>
 
-    <!-- 听述题：播放完成后允许再次播放材料；普通复述题始终隐藏 -->
-    <Button
-        android:id="@+id/btn_retelling_replay"
-        android:layout_width="wrap_content"
-        android:layout_height="44dp"
-        android:layout_marginBottom="8dp"
-        android:backgroundTint="#FF9800"
-        android:text="重听"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
-        android:visibility="gone" />
+    <!-- 听述题重听按钮的默认容器；成绩页会把按钮整体移到结果操作行 -->
+    <LinearLayout
+        android:id="@+id/layout_retelling_replay_holder"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/btn_retelling_replay"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:layout_marginBottom="8dp"
+            android:backgroundTint="#FF9800"
+            android:text="重听"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <!-- 录音识别文本：本地识别完成后展示 -->
     <ScrollView
@@ -251,7 +258,7 @@
                 android:lineSpacingMultiplier="1.2" />
         </LinearLayout>
 
-        <!-- 底部操作行：答题通过 + 开始录音（评分完成后从顶部移入，未达标可重录本题） -->
+        <!-- 底部操作行：主操作；听述题另提供「重听」「直接重答」两个独立按钮 -->
         <LinearLayout
             android:id="@+id/layout_retelling_button_row"
             android:layout_width="wrap_content"

@@ -1,4 +1,4 @@
-package com.book.mask.challenge.retelling;
+package com.book.mask.challenge.retelling.preflight;
 
 import android.Manifest;
 import android.content.Context;
@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 
 import androidx.core.content.ContextCompat;
 
+import com.book.mask.challenge.retelling.transcription.SherpaOnnxTranscriber;
 import com.book.mask.personalize.SoeConfigManager;
 import com.book.mask.reminder.config.ProviderSecretStore;
 import com.book.mask.reminder.config.ReminderProviderConfig;

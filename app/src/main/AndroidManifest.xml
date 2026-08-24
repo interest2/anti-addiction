@@ -63,7 +63,7 @@
 
         <!-- 复述题录音 Activity：透明主题，录音时本应用处于前台以稳定取得麦克风"使用期间"权限 -->
         <activity
-            android:name=".challenge.retelling.RetellingRecordActivity"
+            android:name=".challenge.retelling.recording.RetellingRecordActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:theme="@style/Theme.Retelling.Transparent"

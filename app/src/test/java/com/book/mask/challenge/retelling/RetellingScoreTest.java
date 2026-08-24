@@ -1,5 +1,7 @@
 package com.book.mask.challenge.retelling;
 
+import com.book.mask.challenge.retelling.evaluation.RetellingScore;
+
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

@@ -8,12 +8,16 @@ package com.book.mask.personalize;
 public final class AnswerOverviewRecord {
 
     public static final String TYPE_ARITHMETIC = "arithmetic";
+    /** 旧版本把推理、混合、英文阅读都写为 challenge；读取时按推理题兼容。 */
     public static final String TYPE_CHALLENGE = "challenge";
+    public static final String TYPE_REASONING = "reasoning";
+    public static final String TYPE_MIXED = "mixed";
+    public static final String TYPE_ENGLISH_READING = "english_reading";
     public static final String TYPE_LISTENING = "listening";
     public static final String TYPE_RETELLING = "retelling";
     public static final String TYPE_LISTENING_RETELLING = "listening_retelling";
 
-    /** 题型：算术 / 推理 / 听力 / 复述 / 听述 */
+    /** 题型：算术 / 推理 / 混合 / 英文阅读 / 听力 / 复述 / 听述 */
     public String type = "";
     /** 答题完成时间（毫秒时间戳），与对应详情记录保持一致 */
     public long timestamp;
@@ -21,6 +25,8 @@ public final class AnswerOverviewRecord {
     public int elapsedSeconds;
     /** 是否通过 */
     public boolean passed;
+    /** 得分（0-100）；旧概况记录未保存分数时为 -1，由详情或通过状态兼容回填。 */
+    public int score = -1;
 
     public AnswerOverviewRecord() {
     }

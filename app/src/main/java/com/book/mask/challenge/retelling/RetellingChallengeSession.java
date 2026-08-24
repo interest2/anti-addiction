@@ -7,11 +7,20 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 
-import com.book.mask.challenge.ChallengeSession;
+import com.book.mask.challenge.common.ChallengeSession;
 import com.book.mask.challenge.listening.ListeningAudioPlayer;
 import com.book.mask.challenge.listening.ListeningQuestion;
 import com.book.mask.challenge.listening.ListeningQuestionRepository;
-import com.book.mask.challenge.retelling.soe.SoeSpeechEvaluator;
+import com.book.mask.challenge.retelling.evaluation.RetellingEvaluator;
+import com.book.mask.challenge.retelling.evaluation.RetellingScore;
+import com.book.mask.challenge.retelling.evaluation.SoeSpeechEvaluator;
+import com.book.mask.challenge.retelling.recording.AudioCaptureManager;
+import com.book.mask.challenge.retelling.recording.RetellingRecordActivity;
+import com.book.mask.challenge.retelling.recording.RetellingSessionRegistry;
+import com.book.mask.challenge.retelling.transcription.RetellingChunkedTranscriber;
+import com.book.mask.challenge.retelling.transcription.SherpaOnnxTranscriber;
+import com.book.mask.challenge.retelling.transcription.SpeechTranscriber;
+import com.book.mask.challenge.retelling.transcription.TranscriptionResult;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.floating.FloatService;
 import com.book.mask.personalize.AnswerOverviewRecord;
@@ -77,6 +86,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private int displaySeconds;
     private int passScore;
     private int recordMaxSeconds;
+    private int listeningDifficultyLevel;
     private int countdownTicks;
     private String lastRecognizedText;
     private int scoreRetryCount;
@@ -173,8 +183,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
             displaySeconds = 0;
             passScore = QuestionConst.RETELLING_PASS_SCORE_DEFAULT;
             recordMaxSeconds = QuestionConst.retellingRecordSeconds(0);
+            listeningDifficultyLevel = settings.getListeningRetellingDifficultyLevel();
             String scenario = settings.getListeningScenario();
-            Log.d(TAG, "听述题参数与听力题共用: 难度=" + settings.getListeningDifficultyLevel()
+            Log.d(TAG, "听述题参数: 独立难度=" + listeningDifficultyLevel
                     + ", 场景=" + (scenario.isEmpty() ? "不限" : scenario)
                     + ", 内容通过分=" + passScore);
         } else {
@@ -260,7 +271,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
     // ===== 录音 Activity 回调（跨界面，经 RetellingSessionRegistry） =====
 
-    void onRecordingFinished(
+    public void onRecordingFinished(
             float[] samples, AudioCaptureManager.CaptureMetrics metrics) {
         if (!active || state != RetellingState.RECORDING) {
             return;
@@ -391,7 +402,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         pendingFallbackSamples = null;
     }
 
-    void onRecordingCancelled() {
+    public void onRecordingCancelled() {
         if (!active || state != RetellingState.RECORDING) {
             return;
         }
@@ -402,7 +413,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         view.showReadyToRecord("已取消录音，可重新开始");
     }
 
-    void onRecordingError(String message) {
+    public void onRecordingError(String message) {
         if (!active || state != RetellingState.RECORDING) {
             return;
         }
@@ -452,7 +463,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
     /**
      * 普通复述题读取故事仓库；听述题直接消费听力题仓库生成的同一道题结构，只取 transcript
-     * 作为待复述材料。难度、场景、自定义场景及 Provider 选择均由听力题仓库读取同一组设置。
+     * 作为待复述材料。听述题仅单独传入自己的难度；场景、自定义场景及 Provider 仍与听力题共用。
      */
     private RetellingStoryRepository.Story obtainMaterial(
             boolean advance,
@@ -464,13 +475,13 @@ public final class RetellingChallengeSession implements ChallengeSession {
                     : storyRepository.obtainStory(requestedStoryLength);
         }
         ListeningQuestionRepository.Question source = advance
-                ? listeningQuestionRepository.advance()
-                : listeningQuestionRepository.obtainQuestion();
+                ? listeningQuestionRepository.advance(listeningDifficultyLevel)
+                : listeningQuestionRepository.obtainQuestion(listeningDifficultyLevel);
         ListeningQuestion question = source == null ? null : source.getQuestion();
         if (question == null || question.getTranscript().trim().isEmpty()) {
             return null;
         }
-        return new RetellingStoryRepository.Story(
+        return RetellingStoryRepository.Story.fromListeningTranscript(
                 source.getQuestionId(), question.getTranscript());
     }
 
@@ -532,7 +543,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private void replayAudio() {
         if (!active
                 || stimulusMode != RetellingStimulusMode.AUDIO
-                || state != RetellingState.READY_TO_RECORD) {
+                || (state != RetellingState.READY_TO_RECORD
+                && state != RetellingState.FAILED
+                && state != RetellingState.PASSED)) {
             return;
         }
         playPreparedAudio();
@@ -570,16 +583,10 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private void startRecording() {
         if (active
                 && stimulusMode == RetellingStimulusMode.AUDIO
-                && (state == RetellingState.FAILED
-                || state == RetellingState.PASSED
-                || state == RetellingState.ERROR)) {
+                && state == RetellingState.ERROR) {
             lastRecognizedText = null;
             scoreRetryCount = 0;
-            if (state == RetellingState.ERROR) {
-                beginListening();
-            } else {
-                playPreparedAudio();
-            }
+            beginListening();
             return;
         }
         if (!active
@@ -628,7 +635,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
     }
 
     /** 由录音 Activity 在启动采集后调用，把 PCM 流实时导向腾讯口语评测。 */
-    void attachRecordingListener(AudioCaptureManager capture) {
+    public void attachRecordingListener(AudioCaptureManager capture) {
         capture.setPcmChunkListener((chunk, length) -> {
             SoeSpeechEvaluator evaluator = soeEvaluator;
             if (evaluator != null) {
@@ -682,9 +689,10 @@ public final class RetellingChallengeSession implements ChallengeSession {
         final long sid = sessionId;
         final String storyText = currentStory == null ? "" : currentStory.getStory();
         final String recognizedText = lastRecognizedText;
+        final RetellingStimulusMode evaluationMode = stimulusMode;
         executor.execute(() -> {
             RetellingEvaluator.EvaluationResult result =
-                    evaluator.evaluate(storyText, recognizedText);
+                    evaluator.evaluate(storyText, recognizedText, evaluationMode);
             handler.post(() -> {
                 if (sid != sessionId || !active) {
                     return;
@@ -803,6 +811,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
                     : AnswerOverviewRecord.TYPE_RETELLING;
             overview.timestamp = now;
             overview.passed = passed;
+            overview.score = record.score;
             new AnswerOverviewStore().addRecord(overview);
             Log.d(TAG, "已保存复述答题记录，得分=" + record.score + ", 通过=" + passed);
         } catch (Exception e) {

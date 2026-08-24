@@ -8,8 +8,8 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-import com.book.mask.challenge.retelling.RetellingPreflight;
-import com.book.mask.challenge.retelling.ListeningRetellingPreflight;
+import com.book.mask.challenge.retelling.preflight.ListeningRetellingPreflight;
+import com.book.mask.challenge.retelling.preflight.RetellingPreflight;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.personalize.ChallengeSettingsManager;

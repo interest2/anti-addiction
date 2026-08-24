@@ -1,4 +1,4 @@
-package com.book.mask.challenge;
+package com.book.mask.challenge.common;
 
 import com.book.mask.config.ChallengeType;
 import com.tencent.mmkv.MMKV;

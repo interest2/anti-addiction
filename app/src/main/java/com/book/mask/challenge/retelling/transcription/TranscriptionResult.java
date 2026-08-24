@@ -1,4 +1,4 @@
-package com.book.mask.challenge.retelling;
+package com.book.mask.challenge.retelling.transcription;
 
 import java.util.ArrayList;
 import java.util.Collections;

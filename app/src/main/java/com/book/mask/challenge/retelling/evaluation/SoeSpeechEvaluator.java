@@ -1,4 +1,4 @@
-package com.book.mask.challenge.retelling.soe;
+package com.book.mask.challenge.retelling.evaluation;
 
 import android.util.Base64;
 import android.util.Log;

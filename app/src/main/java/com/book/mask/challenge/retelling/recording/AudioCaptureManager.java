@@ -1,4 +1,4 @@
-package com.book.mask.challenge.retelling;
+package com.book.mask.challenge.retelling.recording;
 
 import android.media.AudioFormat;
 import android.media.AudioRecord;
@@ -69,7 +69,7 @@ public final class AudioCaptureManager {
             return nonSilentPercent;
         }
 
-        String toLogMessage() {
+        public String toLogMessage() {
             return String.format(
                     Locale.US,
                     "时长=%.3fs，采样数=%d，峰值=%.4f，RMS=%.4f，非静音=%.1f%%",
