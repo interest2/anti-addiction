@@ -80,6 +80,18 @@
             android:enabled="false" />
     </LinearLayout>
 
+    <!-- 听述题：播放完成后允许再次播放材料；普通复述题始终隐藏 -->
+    <Button
+        android:id="@+id/btn_retelling_replay"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_marginBottom="8dp"
+        android:backgroundTint="#FF9800"
+        android:text="重听"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
     <!-- 录音识别文本：本地识别完成后展示 -->
     <ScrollView
         android:id="@+id/sv_retelling_recognized"

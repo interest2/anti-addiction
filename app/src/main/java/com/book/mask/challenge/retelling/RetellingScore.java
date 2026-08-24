@@ -108,6 +108,29 @@ public final class RetellingScore {
         return pronunciationAccuracy >= 0 && pronunciationFluency >= 0;
     }
 
+    /** 四个内容维度按 40/25/20/15 重算，听述题以此作为唯一通过分。 */
+    public int calculateWeightedContentScore() {
+        int weighted = Math.round(coverage * 0.4f
+                + order * 0.25f
+                + accuracy * 0.2f
+                + expression * 0.15f);
+        return Math.max(0, Math.min(weighted, 100));
+    }
+
+    /** 保留维度、反馈与发音信息，仅替换最终总分。 */
+    public RetellingScore withScore(int newScore) {
+        return new RetellingScore(
+                Math.max(0, Math.min(newScore, 100)),
+                coverage,
+                accuracy,
+                order,
+                expression,
+                feedback,
+                pronunciationAccuracy,
+                pronunciationFluency,
+                suggestedScore);
+    }
+
     /**
      * 口语评测三字段展示文本：建议分（1 位小数）/ 发音准确（1 位小数）/ 流利（1 位小数）。
      * 建议分未返回时以 {@code -} 占位。

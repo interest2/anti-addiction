@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * 听力音频播放器（边合成边播）。
+ * 语音题音频播放器（边合成边播）。
  *
  * <p>出题时调用 {@link #prepare} 用豆包语音（火山引擎 Speech SDK）后台合成听力原文 + 提问句。
  * 豆包 BiTTS 逐句流式返回音频，每合成好一句就落盘一个可独立播放的分段文件；本类拿到「第一段」
@@ -27,7 +27,12 @@ import java.util.concurrent.Executors;
  * <p>确定无法合成（未配置凭据 / 设备不支持 / 首段前出错或超时）时回退内置占位 mp3，保证听力题始终可用；
  * 已开始播放真实音频后遇到中途异常，则在最后一段完整播完后收尾揭示题干，不再回退占位。
  */
-final class ListeningAudioPlayer {
+public final class ListeningAudioPlayer {
+
+    /** 严格模式下合成或播放失败的回调；听述题不能用占位音频代替原文。 */
+    public interface ErrorCallback {
+        void onError(String message);
+    }
 
     private static final String TAG = "ListeningAudio";
     /** 合成停滞看护：首段迟迟不来、或句间迟迟等不到下一段时的兜底时长。 */
@@ -79,6 +84,10 @@ final class ListeningAudioPlayer {
     private Runnable stallTimeout;
     /** 首段就绪 / 占位确定后触发首播的回调（由 prepare 传入，供停滞兜底复用）。 */
     private Runnable pendingReadyCallback;
+    /** 是否允许首段前失败时播放占位音频；普通听力题允许，听述题禁止。 */
+    private boolean placeholderFallbackAllowed = true;
+    private ErrorCallback pendingErrorCallback;
+    private boolean errorNotified;
     /** 整段播放结束（或播放失败兜底）时的回调，用于揭示题干与选项。 */
     private Runnable onPlaybackCompleted;
 
@@ -86,7 +95,29 @@ final class ListeningAudioPlayer {
      * 后台合成听力原文 + 提问句，边合成边播：第一段就绪（或确定回退占位）后回调 {@code onReadyToPlay}，
      * 上层随即 {@link #play} 开始播放，后续分段到达时自动续播。
      */
-    synchronized void prepare(Context context, String transcript, String question, Runnable onReadyToPlay) {
+    public synchronized void prepare(
+            Context context, String transcript, String question, Runnable onReadyToPlay) {
+        prepareInternal(context, transcript, question, onReadyToPlay, true, null);
+    }
+
+    /**
+     * 合成一段必须完整播放的复述材料。任何合成停滞、分段缺失或播放错误均回调失败，绝不回退占位音频。
+     */
+    public synchronized void prepareStrictPassage(
+            Context context,
+            String passage,
+            Runnable onReadyToPlay,
+            ErrorCallback onError) {
+        prepareInternal(context, passage, "", onReadyToPlay, false, onError);
+    }
+
+    private void prepareInternal(
+            Context context,
+            String transcript,
+            String question,
+            Runnable onReadyToPlay,
+            boolean allowPlaceholderFallback,
+            ErrorCallback onError) {
         cancelStallTimeoutLocked();
         releaseCurrentMediaPlayerAsync(true);
         audioFiles.clear();
@@ -98,6 +129,9 @@ final class ListeningAudioPlayer {
         playingSegmentIndex = 0;
         playbackGeneration++;
         pendingReadyCallback = onReadyToPlay;
+        placeholderFallbackAllowed = allowPlaceholderFallback;
+        pendingErrorCallback = onError;
+        errorNotified = false;
         audioState = AudioState.PREPARING;
         final long seqGen = ++prepareGeneration;
         final String questionText = question == null ? "" : question.trim();
@@ -116,7 +150,7 @@ final class ListeningAudioPlayer {
      * 播放音频：真实合成音频按分段顺序流式播放（追上合成则句边界等待续段），
      * 或播放确定需要使用的占位音频。首播由 prepare 就绪后触发，重听由按钮触发。
      */
-    synchronized void play(Context context) {
+    public synchronized void play(Context context) {
         if (audioState == AudioState.PREPARING || audioState == AudioState.IDLE) {
             Log.d(TAG, "听力音频尚未就绪，忽略播放请求");
             return;
@@ -131,6 +165,8 @@ final class ListeningAudioPlayer {
                 && (!streamComplete || allAudioFilesExist());
         if (canPlayReal) {
             playCurrentSegment(generation);
+        } else if (!placeholderFallbackAllowed) {
+            notifyStrictError(prepareGeneration, "听述音频文件不可用，请重新合成");
         } else {
             audioState = AudioState.PLACEHOLDER_READY;
             playPlaceholder(context, generation);
@@ -140,11 +176,11 @@ final class ListeningAudioPlayer {
     /**
      * 注册整段播放完成回调（播放失败时也会回调，避免题干 / 选项永久不揭示）。
      */
-    synchronized void setOnPlaybackCompleted(Runnable listener) {
+    public synchronized void setOnPlaybackCompleted(Runnable listener) {
         this.onPlaybackCompleted = listener;
     }
 
-    void stop() {
+    public void stop() {
         synchronized (this) {
             prepareGeneration++;
             playbackGeneration++;
@@ -155,7 +191,7 @@ final class ListeningAudioPlayer {
         stopSynthesizerAsync();
     }
 
-    void release() {
+    public void release() {
         synchronized (this) {
             prepareGeneration++;
             playbackGeneration++;
@@ -163,6 +199,7 @@ final class ListeningAudioPlayer {
             resetSequenceStateLocked();
             onPlaybackCompleted = null;
             pendingReadyCallback = null;
+            pendingErrorCallback = null;
             releaseCurrentMediaPlayerAsync(true);
         }
         synthesizerExecutor.execute(() -> {
@@ -193,20 +230,20 @@ final class ListeningAudioPlayer {
                     synthesizeQuestion(context, seqGen, questionText);
                 } else {
                     Log.w(TAG, "听力原文无有效分段，回退占位音频");
-                    fallbackToPlaceholder(seqGen);
+                    fallbackToPlaceholder(seqGen, "听力原文未生成有效音频");
                 }
             }
 
             @Override
             public void onError(String message) {
                 Log.e(TAG, "豆包语音合成失败: " + message);
-                terminateSequence(seqGen);
+                terminateSequence(seqGen, message);
             }
 
             @Override
             public void onUnavailable(String reason) {
                 Log.w(TAG, "豆包语音不可用: " + reason);
-                terminateSequence(seqGen);
+                terminateSequence(seqGen, reason);
             }
         };
     }
@@ -294,11 +331,13 @@ final class ListeningAudioPlayer {
     }
 
     /** 合成中途失败 / 不可用：无任何分段则回退占位，已产出分段则播完收尾。 */
-    private void terminateSequence(long seqGen) {
-        if (hasAudio(seqGen)) {
+    private void terminateSequence(long seqGen, String reason) {
+        if (!isPlaceholderFallbackAllowed(seqGen)) {
+            notifyStrictError(seqGen, reason);
+        } else if (hasAudio(seqGen)) {
             markStreamComplete(seqGen);
         } else {
-            fallbackToPlaceholder(seqGen);
+            fallbackToPlaceholder(seqGen, reason);
         }
     }
 
@@ -307,6 +346,7 @@ final class ListeningAudioPlayer {
         boolean resumeToFinish = false;
         long playGen = 0;
         boolean fireReady = false;
+        boolean strictEmpty = false;
         synchronized (this) {
             if (seqGen != prepareGeneration || streamComplete) {
                 return;
@@ -314,13 +354,21 @@ final class ListeningAudioPlayer {
             streamComplete = true;
             cancelStallTimeoutLocked();
             if (audioFiles.isEmpty()) {
-                audioState = AudioState.PLACEHOLDER_READY;
-                fireReady = !playbackStarted;
+                if (placeholderFallbackAllowed) {
+                    audioState = AudioState.PLACEHOLDER_READY;
+                    fireReady = !playbackStarted;
+                } else {
+                    strictEmpty = true;
+                }
             } else if (waitingForSegment && waitingPlaybackGeneration == playbackGeneration) {
                 waitingForSegment = false;
                 resumeToFinish = true;
                 playGen = playbackGeneration;
             }
+        }
+        if (strictEmpty) {
+            notifyStrictError(seqGen, "听述材料未生成有效音频");
+            return;
         }
         if (fireReady) {
             notifyReadyToPlay(seqGen);
@@ -331,7 +379,11 @@ final class ListeningAudioPlayer {
     }
 
     /** 首段前彻底失败：清空真实音频、转占位，并触发首播（若尚未开始播放）。 */
-    private void fallbackToPlaceholder(long seqGen) {
+    private void fallbackToPlaceholder(long seqGen, String reason) {
+        if (!isPlaceholderFallbackAllowed(seqGen)) {
+            notifyStrictError(seqGen, reason);
+            return;
+        }
         boolean fireReady;
         synchronized (this) {
             if (seqGen != prepareGeneration) {
@@ -371,17 +423,23 @@ final class ListeningAudioPlayer {
 
     private void onStallTimeout(long seqGen) {
         boolean placeholder;
+        boolean strict;
         synchronized (this) {
             if (seqGen != prepareGeneration || streamComplete) {
                 return;
             }
             stallTimeout = null;
             placeholder = audioFiles.isEmpty();
+            strict = !placeholderFallbackAllowed;
         }
         Log.e(TAG, "听力合成停滞超时，占位=" + placeholder);
         stopSynthesizerAsync();
-        if (placeholder) {
-            fallbackToPlaceholder(seqGen);
+        if (strict) {
+            // 听述材料必须完整。即使已经合成并播放了若干分段，也不能把超时截断的内容
+            // 当作完整题面进入录音阶段。
+            notifyStrictError(seqGen, "听述音频合成超时，请重新合成");
+        } else if (placeholder) {
+            fallbackToPlaceholder(seqGen, "语音合成超时");
         } else {
             markStreamComplete(seqGen);
         }
@@ -429,7 +487,11 @@ final class ListeningAudioPlayer {
             player.setOnCompletionListener(mp -> playNextSegment(mp, generation));
             player.setOnErrorListener((mp, what, extra) -> {
                 Log.w(TAG, "播放合成音频出错 what=" + what + ", extra=" + extra);
-                finishPlayback(mp, generation, false);
+                if (isStrictPlayback(generation)) {
+                    failStrictPlayback(mp, generation, "听述音频播放失败，请重新合成");
+                } else {
+                    finishPlayback(mp, generation, false);
+                }
                 return true;
             });
             synchronized (this) {
@@ -443,7 +505,11 @@ final class ListeningAudioPlayer {
             synchronized (this) {
                 releaseCurrentMediaPlayerAsync(true);
             }
-            notifyPlaybackCompleted(generation);
+            if (isStrictPlayback(generation)) {
+                notifyStrictError(prepareGeneration, "听述音频播放失败，请重新合成");
+            } else {
+                notifyPlaybackCompleted(generation);
+            }
         }
     }
 
@@ -531,6 +597,21 @@ final class ListeningAudioPlayer {
         releaseMediaPlayerAsync(completedPlayer, stopFirst);
     }
 
+    private void failStrictPlayback(
+            MediaPlayer failedPlayer, long generation, String message) {
+        boolean current;
+        synchronized (this) {
+            current = mediaPlayer == failedPlayer && generation == playbackGeneration;
+            if (mediaPlayer == failedPlayer) {
+                mediaPlayer = null;
+            }
+        }
+        releaseMediaPlayerAsync(failedPlayer, false);
+        if (current) {
+            notifyStrictError(prepareGeneration, message);
+        }
+    }
+
     private void releaseCurrentMediaPlayerAsync(boolean stopFirst) {
         MediaPlayer player = mediaPlayer;
         mediaPlayer = null;
@@ -567,6 +648,14 @@ final class ListeningAudioPlayer {
         return seqGen == prepareGeneration && !audioFiles.isEmpty();
     }
 
+    private synchronized boolean isPlaceholderFallbackAllowed(long seqGen) {
+        return seqGen == prepareGeneration && placeholderFallbackAllowed;
+    }
+
+    private synchronized boolean isStrictPlayback(long generation) {
+        return generation == playbackGeneration && !placeholderFallbackAllowed;
+    }
+
     private void resetSequenceStateLocked() {
         audioFiles.clear();
         appendedPaths.clear();
@@ -576,6 +665,9 @@ final class ListeningAudioPlayer {
         readyNotified = false;
         playingSegmentIndex = 0;
         pendingReadyCallback = null;
+        placeholderFallbackAllowed = true;
+        pendingErrorCallback = null;
+        errorNotified = false;
         audioState = AudioState.IDLE;
     }
 
@@ -591,7 +683,7 @@ final class ListeningAudioPlayer {
     private void notifyReadyToPlay(long seqGen) {
         Runnable callback;
         synchronized (this) {
-            if (seqGen != prepareGeneration || readyNotified) {
+            if (seqGen != prepareGeneration || readyNotified || errorNotified) {
                 return;
             }
             readyNotified = true;
@@ -631,6 +723,44 @@ final class ListeningAudioPlayer {
             callback.run();
         } else {
             mainHandler.post(callback);
+        }
+    }
+
+    /** 严格模式失败：终止当前合成与播放，并在主线程只回调一次。 */
+    private void notifyStrictError(long seqGen, String message) {
+        ErrorCallback callback;
+        synchronized (this) {
+            if (seqGen != prepareGeneration || placeholderFallbackAllowed || errorNotified) {
+                return;
+            }
+            errorNotified = true;
+            streamComplete = true;
+            waitingForSegment = false;
+            cancelStallTimeoutLocked();
+            audioFiles.clear();
+            appendedPaths.clear();
+            audioState = AudioState.IDLE;
+            playbackGeneration++;
+            releaseCurrentMediaPlayerAsync(true);
+            callback = pendingErrorCallback;
+        }
+        stopSynthesizerAsync();
+        Runnable notification = () -> {
+            synchronized (ListeningAudioPlayer.this) {
+                if (seqGen != prepareGeneration || !errorNotified) {
+                    return;
+                }
+            }
+            if (callback != null) {
+                callback.onError(message == null || message.trim().isEmpty()
+                        ? "听述音频不可用，请重新合成"
+                        : message);
+            }
+        };
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            notification.run();
+        } else {
+            mainHandler.post(notification);
         }
     }
 

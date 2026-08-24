@@ -9,6 +9,7 @@ import android.view.WindowManager;
 import android.widget.Toast;
 
 import com.book.mask.challenge.retelling.RetellingPreflight;
+import com.book.mask.challenge.retelling.ListeningRetellingPreflight;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.personalize.ChallengeSettingsManager;
@@ -70,7 +71,9 @@ final class ChallengeTypeQuickSwitchDialog {
 
         ChallengeSettingsManager settings = new ChallengeSettingsManager(context);
         ChallengeType[] options = ChallengeType.availableOptions(
-                QuestionConst.ENGLISH_READING_ENABLED, settings.isVoiceChallengeEnabled());
+                QuestionConst.ENGLISH_READING_ENABLED,
+                settings.isVoiceChallengeEnabled(),
+                settings.isListeningRetellingEnabled());
         ChallengeType currentType = settings.getChallengeType();
 
         String[] labels = new String[options.length];
@@ -100,11 +103,17 @@ final class ChallengeTypeQuickSwitchDialog {
         dialog.show();
     }
 
-    /** 仅持久化题型；复述题额外跑一次前置检查，避免切到一个当下无法工作的题型。 */
+    /** 仅持久化题型；复述类题目先跑前置检查，避免切到一个当下无法工作的题型。 */
     private static void applySelection(
             Context context, ChallengeSettingsManager settings, ChallengeType selected) {
         if (selected == ChallengeType.RETELLING) {
             String preflightError = RetellingPreflight.check(context);
+            if (preflightError != null) {
+                Toast.makeText(context, preflightError, Toast.LENGTH_SHORT).show();
+                return;
+            }
+        } else if (selected == ChallengeType.LISTENING_RETELLING) {
+            String preflightError = ListeningRetellingPreflight.check(context);
             if (preflightError != null) {
                 Toast.makeText(context, preflightError, Toast.LENGTH_SHORT).show();
                 return;

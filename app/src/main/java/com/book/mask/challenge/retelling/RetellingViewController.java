@@ -28,6 +28,8 @@ final class RetellingViewController {
     interface Callbacks {
         void onStartRecord();
 
+        void onReplayAudio();
+
         void onDone();
 
         void onCancel();
@@ -38,11 +40,13 @@ final class RetellingViewController {
     private final Callbacks callbacks;
 
     private View retellingLayout;
+    private TextView titleText;
     private TextView hintText;
     private TextView countdownText;
     private TextView storyText;
     private ScrollView storyScrollView;
     private Button recordButton;
+    private Button replayButton;
     private Button cancelButton;
     private ScrollView recognizedScrollView;
     private TextView recognizedText;
@@ -69,6 +73,7 @@ final class RetellingViewController {
 
     private boolean initialized;
     private boolean shown;
+    private RetellingStimulusMode stimulusMode = RetellingStimulusMode.TEXT;
     private boolean topInfoVisibilityCaptured;
     private int topInfoVisibilityBeforeChallenge;
     private boolean strictReminderVisibilityCaptured;
@@ -84,10 +89,13 @@ final class RetellingViewController {
      * 出题加载态：后台拉取 / 生成故事期间先展示面板并提示「出题中」，避免点击关闭后界面卡住无反馈。
      * 隐藏其余内容、置灰并隐藏录音按钮，仅保留取消入口；故事就绪后由 {@link #showStory} 接管。
      */
-    void showLoading() {
+    void showLoading(RetellingStimulusMode mode) {
         if (!ensureInitialized()) {
             return;
         }
+        stimulusMode = mode == null ? RetellingStimulusMode.TEXT : mode;
+        currentStory = null;
+        updateTitle();
         shown = true;
         hideTopInfo();
         hideStrictReminder();
@@ -103,7 +111,10 @@ final class RetellingViewController {
         restoreRecordButton();
         recordButton.setEnabled(false);
         recordButton.setVisibility(View.GONE);
-        setHintText("出题中…");
+        replayButton.setVisibility(View.GONE);
+        setHintText(stimulusMode == RetellingStimulusMode.AUDIO
+                ? "正在生成听述材料…"
+                : "出题中…");
         cancelButton.setVisibility(View.VISIBLE);
     }
 
@@ -112,6 +123,8 @@ final class RetellingViewController {
             return false;
         }
         currentStory = story;
+        stimulusMode = RetellingStimulusMode.TEXT;
+        updateTitle();
         shown = true;
         hideTopInfo();
         hideStrictReminder();
@@ -131,8 +144,79 @@ final class RetellingViewController {
         recordButton.setVisibility(View.VISIBLE);
         recordButton.setEnabled(true);
         recordButton.setText("开始录音");
+        replayButton.setVisibility(View.GONE);
         cancelButton.setVisibility(View.VISIBLE);
         return true;
+    }
+
+    /** 听述材料已取得，进入严格 TTS 合成阶段；原文只保存在内存中，不在答题前显示。 */
+    void showAudioPreparing(RetellingStoryRepository.Story story) {
+        if (!ensureInitialized()) {
+            return;
+        }
+        stimulusMode = RetellingStimulusMode.AUDIO;
+        currentStory = story;
+        updateTitle();
+        shown = true;
+        hideTopInfo();
+        hideStrictReminder();
+        retellingLayout.setVisibility(View.VISIBLE);
+        retellingLayout.bringToFront();
+        resultLayout.setVisibility(View.GONE);
+        storyText.setText("");
+        storyScrollView.setVisibility(View.GONE);
+        countdownText.setVisibility(View.GONE);
+        clearRecognizedText();
+        hideBreakdown();
+        hideOriginal();
+        restoreRecordButton();
+        recordButton.setEnabled(false);
+        recordButton.setVisibility(View.GONE);
+        replayButton.setVisibility(View.GONE);
+        cancelButton.setVisibility(View.VISIBLE);
+        setHintText("正在生成听述音频……");
+    }
+
+    void showAudioPlaying() {
+        if (!initialized) {
+            return;
+        }
+        resultLayout.setVisibility(View.GONE);
+        storyText.setText("");
+        storyScrollView.setVisibility(View.GONE);
+        countdownText.setVisibility(View.GONE);
+        clearRecognizedText();
+        hideBreakdown();
+        hideOriginal();
+        restoreRecordButton();
+        recordButton.setEnabled(false);
+        recordButton.setVisibility(View.GONE);
+        replayButton.setVisibility(View.GONE);
+        cancelButton.setVisibility(View.VISIBLE);
+        setHintText("正在播放听述音频，请认真听……");
+    }
+
+    void showAudioReadyToRecord() {
+        showReadyToRecord("播放完成，请开始复述");
+    }
+
+    void showAudioError(String message) {
+        if (!initialized) {
+            return;
+        }
+        restoreRecordButton();
+        recordButton.setVisibility(View.VISIBLE);
+        recordButton.setEnabled(true);
+        recordButton.setText("重新合成");
+        replayButton.setVisibility(View.GONE);
+        cancelButton.setVisibility(View.VISIBLE);
+        clearRecognizedText();
+        hideBreakdown();
+        hideOriginal();
+        resultLayout.setVisibility(View.GONE);
+        setHintText(message == null || message.trim().isEmpty()
+                ? "听述音频不可用，请重新合成"
+                : message);
     }
 
     void updateCountdown(int remainingSeconds) {
@@ -159,11 +243,17 @@ final class RetellingViewController {
         clearRecognizedText();
         setHintText(hint);
         resultLayout.setVisibility(View.GONE);
+        hideBreakdown();
         hideOriginal();
         restoreRecordButton();
         recordButton.setVisibility(View.VISIBLE);
         recordButton.setEnabled(true);
         recordButton.setText("开始录音");
+        replayButton.setVisibility(stimulusMode == RetellingStimulusMode.AUDIO
+                ? View.VISIBLE
+                : View.GONE);
+        replayButton.setEnabled(true);
+        cancelButton.setVisibility(View.VISIBLE);
     }
 
     void showTranscribing() {
@@ -171,6 +261,7 @@ final class RetellingViewController {
             return;
         }
         recordButton.setEnabled(false);
+        replayButton.setVisibility(View.GONE);
         resultLayout.setVisibility(View.GONE);
         clearRecognizedText();
         setHintText("正在识别语音……");
@@ -181,6 +272,7 @@ final class RetellingViewController {
             return;
         }
         setHintText("正在评估复述……");
+        replayButton.setVisibility(View.GONE);
     }
 
     /**
@@ -227,7 +319,9 @@ final class RetellingViewController {
         // 评分完成后不再需要阶段提示，隐藏占位，避免识别文本与标题之间留白
         hintText.setVisibility(View.GONE);
         storyScrollView.setVisibility(View.GONE);
-        scoreText.setText("复述得分：" + score.getScore() + "分");
+        scoreText.setText((stimulusMode == RetellingStimulusMode.AUDIO
+                ? "听述得分："
+                : "复述得分：") + score.getScore() + "分");
         if (speechScoreText != null) {
             if (score.hasPronunciationScore()) {
                 speechScoreText.setText(score.formatPronunciationSummary());
@@ -247,9 +341,12 @@ final class RetellingViewController {
         showDimensions(score);
         // 录音按钮挪到底部与主按钮并列，始终可重答本题（通过后亦可反复练习同一故事）
         moveRecordButtonToResultRow();
+        replayButton.setVisibility(View.GONE);
         recordButton.setVisibility(View.VISIBLE);
         recordButton.setEnabled(true);
-        recordButton.setText("重答本题");
+        recordButton.setText(stimulusMode == RetellingStimulusMode.AUDIO
+                ? "重听并重答"
+                : "重答本题");
         resultLayout.setVisibility(View.VISIBLE);
     }
 
@@ -365,6 +462,8 @@ final class RetellingViewController {
         }
         restoreRecordButton();
         recordButton.setEnabled(false);
+        recordButton.setVisibility(View.GONE);
+        replayButton.setVisibility(View.GONE);
         cancelButton.setVisibility(View.VISIBLE);
         setHintText(message == null || message.isEmpty() ? "出错了" : message);
         clearRecognizedText();
@@ -380,6 +479,7 @@ final class RetellingViewController {
         retellingLayout.setVisibility(View.GONE);
         resultLayout.setVisibility(View.GONE);
         hideOriginal();
+        replayButton.setVisibility(View.GONE);
         restoreRecordButton();
         restoreTopInfo();
         restoreStrictReminder();
@@ -403,11 +503,13 @@ final class RetellingViewController {
         }
 
         retellingLayout = floatingView.findViewById(R.id.retelling_challenge_layout);
+        titleText = floatingView.findViewById(R.id.tv_retelling_title);
         hintText = floatingView.findViewById(R.id.tv_retelling_hint);
         countdownText = floatingView.findViewById(R.id.tv_retelling_countdown);
         storyText = floatingView.findViewById(R.id.tv_retelling_story);
         storyScrollView = floatingView.findViewById(R.id.sv_retelling_story);
         recordButton = floatingView.findViewById(R.id.btn_retelling_record);
+        replayButton = floatingView.findViewById(R.id.btn_retelling_replay);
         cancelButton = floatingView.findViewById(R.id.btn_retelling_cancel);
         recognizedScrollView = floatingView.findViewById(R.id.sv_retelling_recognized);
         recognizedText = floatingView.findViewById(R.id.tv_retelling_recognized);
@@ -432,9 +534,11 @@ final class RetellingViewController {
 
         if (retellingLayout == null
                 || hintText == null
+                || titleText == null
                 || storyText == null
                 || storyScrollView == null
                 || recordButton == null
+                || replayButton == null
                 || cancelButton == null
                 || recognizedScrollView == null
                 || recognizedText == null
@@ -463,6 +567,11 @@ final class RetellingViewController {
                 callbacks.onStartRecord();
             }
         });
+        replayButton.setOnClickListener(v -> {
+            if (callbacks != null) {
+                callbacks.onReplayAudio();
+            }
+        });
         cancelButton.setOnClickListener(v -> {
             if (callbacks != null) {
                 callbacks.onCancel();
@@ -475,7 +584,14 @@ final class RetellingViewController {
         });
 
         initialized = true;
+        updateTitle();
         return true;
+    }
+
+    private void updateTitle() {
+        if (titleText != null) {
+            titleText.setText(stimulusMode == RetellingStimulusMode.AUDIO ? "听述题" : "复述题");
+        }
     }
 
     private void hideTopInfo() {

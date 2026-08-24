@@ -79,7 +79,9 @@ public class SpecialDetailsNav extends Fragment {
             challengeSettingsManager.setVoiceChallengeEnabled(isChecked);
             UiFeedback.show(
                     requireContext(),
-                    isChecked ? "已启用听力题和复述题" : "已关闭听力题和复述题");
+                    isChecked
+                            ? "已启用听力题、复述题和听述题"
+                            : "已关闭听力题、复述题和听述题");
         });
         row.setOnClickListener(v -> toggle.toggle());
     }

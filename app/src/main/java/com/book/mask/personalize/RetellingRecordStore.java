@@ -9,10 +9,13 @@ import com.tencent.mmkv.MMKV;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 复述题答题记录持久化：以 Gson JSON 数组存于 MMKV，新的在前，超过上限丢弃最旧。
+ * 复述/听述答题记录持久化：以 Gson JSON 数组存于 MMKV，新的在前，按材料模式分别裁剪。
  * 记录与其录音文件（{@link RetellingAudioStore}）同生命周期：裁剪丢弃最旧记录时删除对应录音文件，
  * 清空记录时删除全部录音文件。
  */
@@ -45,21 +48,31 @@ public final class RetellingRecordStore {
         }
     }
 
-    /** 新增一条记录，插入到最前，裁剪到上限后持久化；被裁剪记录的录音文件一并删除。 */
+    /** 新增一条记录，按复述/听述各自上限裁剪；被裁剪记录的录音文件一并删除。 */
     public synchronized void addRecord(RetellingRecord record) {
         if (record == null) {
             return;
         }
         List<RetellingRecord> records = getRecords();
         records.add(0, record);
-        if (records.size() > QuestionConst.RETELLING_RECORD_MAX) {
-            List<RetellingRecord> dropped = new ArrayList<>(
-                    records.subList(QuestionConst.RETELLING_RECORD_MAX, records.size()));
-            records = new ArrayList<>(records.subList(0, QuestionConst.RETELLING_RECORD_MAX));
-            for (RetellingRecord r : dropped) {
-                if (r.audioPath != null && !r.audioPath.isEmpty()) {
-                    audioStore.delete(r.audioPath);
+        Map<String, Integer> seen = new HashMap<>();
+        for (Iterator<RetellingRecord> iterator = records.iterator(); iterator.hasNext(); ) {
+            RetellingRecord current = iterator.next();
+            String mode = current != null && current.isListeningRetelling()
+                    ? RetellingRecord.STIMULUS_AUDIO
+                    : RetellingRecord.STIMULUS_TEXT;
+            int count = seen.getOrDefault(mode, 0) + 1;
+            seen.put(mode, count);
+            int limit = RetellingRecord.STIMULUS_AUDIO.equals(mode)
+                    ? QuestionConst.LISTENING_RETELLING_RECORD_MAX
+                    : QuestionConst.RETELLING_RECORD_MAX;
+            if (count > limit) {
+                if (current != null
+                        && current.audioPath != null
+                        && !current.audioPath.isEmpty()) {
+                    audioStore.delete(current.audioPath);
                 }
+                iterator.remove();
             }
         }
         mmkv.putString(KEY, gson.toJson(records)).commit();

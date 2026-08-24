@@ -9,6 +9,10 @@ enum RetellingState {
     LOADING_STORY,
     /** 限时阅读原文 */
     READING,
+    /** 正在合成听述材料 */
+    PREPARING_AUDIO,
+    /** 正在播放听述材料 */
+    PLAYING_AUDIO,
     /** 原文已清空，可开始录音 */
     READY_TO_RECORD,
     /** 录音中（透明 Activity 前台） */

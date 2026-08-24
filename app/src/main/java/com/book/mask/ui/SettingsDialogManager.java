@@ -39,6 +39,7 @@ import androidx.lifecycle.LifecycleOwner;
 
 import com.book.mask.challenge.ChallengeQuestionProvider;
 import com.book.mask.challenge.retelling.RetellingPreflight;
+import com.book.mask.challenge.retelling.ListeningRetellingPreflight;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
@@ -1333,9 +1334,13 @@ public class SettingsDialogManager {
         return challengeSettingsManager.getChallengeType();
     }
 
-    /** 当前设备是否可使用听力题与复述题。 */
+    /** 当前设备是否可使用语音题。 */
     public boolean isVoiceChallengeEnabled() {
         return challengeSettingsManager.isVoiceChallengeEnabled();
+    }
+
+    public boolean isListeningRetellingEnabled() {
+        return challengeSettingsManager.isListeningRetellingEnabled();
     }
 
     /**
@@ -1360,6 +1365,13 @@ public class SettingsDialogManager {
             }
             return null;
         }
+        if (selectedType == ChallengeType.LISTENING
+                || selectedType == ChallengeType.LISTENING_RETELLING) {
+            // 两种题型共用同一个设置弹窗和同一组听力难度/场景持久化键；
+            // 只有保存后的题型枚举不同。
+            showListeningSettingsDialog(selectedType, onApplied);
+            return null;
+        }
 
         challengeSettingsManager.setChallengeType(selectedType);
         android.util.Log.d("SettingsDialog", "答题类型设置: 已设置题型=" + selectedType.getDisplayName()
@@ -1368,8 +1380,6 @@ public class SettingsDialogManager {
             showArithmeticDifficultyDialog(onApplied);
         } else if (selectedType == ChallengeType.REASONING) {
             showReasoningDifficultyDialog(onApplied);
-        } else if (selectedType == ChallengeType.LISTENING) {
-            showListeningSettingsDialog(onApplied);
         } else if (selectedType == ChallengeType.ENGLISH_READING) {
             showEnglishReadingLengthDialog();
         } else {
@@ -1697,14 +1707,24 @@ public class SettingsDialogManager {
         dialog.show();
     }
 
+    /** 默认用于听力题；听述题通过带目标题型的重载复用完全相同的界面和数据。 */
+    public void showListeningSettingsDialog(Runnable onSaved) {
+        showListeningSettingsDialog(ChallengeType.LISTENING, onSaved);
+    }
+
     /**
-     * 听力题设置弹窗：一次保存难度档位与场景。
+     * 听力类题目设置弹窗：一次保存难度档位与场景。
      * 场景为卡片选择（不限 / 预定义 / 自定义），与「警示语风格」弹窗一致：
      * 自定义场景可新增多个并持久化，长按卡片可删除；选中态仅在点「保存」时写入。
+     * 听力题与听述题始终调用同一组听力难度、场景、自定义场景读写方法，不维护副本。
      *
+     * @param targetType LISTENING 或 LISTENING_RETELLING，仅决定保存后的题型
      * @param onSaved 保存成功后回调（刷新答题类型页面内的摘要与选中态）
      */
-    public void showListeningSettingsDialog(Runnable onSaved) {
+    public void showListeningSettingsDialog(ChallengeType targetType, Runnable onSaved) {
+        final ChallengeType savedType = targetType == ChallengeType.LISTENING_RETELLING
+                ? ChallengeType.LISTENING_RETELLING
+                : ChallengeType.LISTENING;
         View dialogView = LayoutInflater.from(context)
                 .inflate(R.layout.dialog_listening_settings, null);
         android.widget.RadioGroup difficultyGroup =
@@ -1729,7 +1749,7 @@ public class SettingsDialogManager {
         renderListeningScenarioCards(scenarioFlow, selectedScenario);
 
         final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("听力题设置")
+                .setTitle(savedType.getDisplayName() + "设置")
                 .setView(dialogView)
                 .setPositiveButton("保存", null)
                 .setNegativeButton("取消", null)
@@ -1740,16 +1760,86 @@ public class SettingsDialogManager {
                             == R.id.rb_listening_difficulty_hard
                             ? ChallengeSettingsManager.LISTENING_LEVEL_HARD
                             : ChallengeSettingsManager.LISTENING_LEVEL_STANDARD;
-                    challengeSettingsManager.setListeningDifficultyLevel(level);
-                    challengeSettingsManager.setListeningScenario(selectedScenario[0]);
-                    challengeSettingsManager.setChallengeType(ChallengeType.LISTENING);
-                    dialog.dismiss();
-                    UiFeedback.show(context, "已设置听力题");
-                    if (onSaved != null) {
-                        onSaved.run();
-                    }
+                    saveListeningSettings(
+                            savedType, level, selectedScenario[0], dialog, onSaved);
                 }));
         dialog.show();
+    }
+
+    private void saveListeningSettings(
+            ChallengeType targetType,
+            int level,
+            String scenario,
+            android.app.AlertDialog settingsDialog,
+            Runnable onSaved) {
+        if (targetType == ChallengeType.LISTENING_RETELLING && !hasMicPermission()) {
+            requestMicPermissionForListeningSettings(
+                    level, scenario, settingsDialog, onSaved);
+            return;
+        }
+        performListeningSettingsSave(targetType, level, scenario, settingsDialog, onSaved);
+    }
+
+    private void performListeningSettingsSave(
+            ChallengeType targetType,
+            int level,
+            String scenario,
+            android.app.AlertDialog settingsDialog,
+            Runnable onSaved) {
+        if (targetType == ChallengeType.LISTENING_RETELLING) {
+            String preflightError = ListeningRetellingPreflight.check(context);
+            if (preflightError != null) {
+                UiFeedback.showError(context, preflightError);
+                return;
+            }
+        }
+        // 关键契约：听述题和听力题写入的是同一组设置键，不复制、不迁移。
+        challengeSettingsManager.setListeningDifficultyLevel(level);
+        challengeSettingsManager.setListeningScenario(scenario);
+        challengeSettingsManager.setChallengeType(targetType);
+        settingsDialog.dismiss();
+        UiFeedback.show(context, "已设置" + targetType.getDisplayName());
+        if (onSaved != null) {
+            onSaved.run();
+        }
+    }
+
+    private void requestMicPermissionForListeningSettings(
+            int level,
+            String scenario,
+            android.app.AlertDialog settingsDialog,
+            Runnable onSaved) {
+        new android.app.AlertDialog.Builder(context)
+                .setTitle("需要麦克风权限")
+                .setMessage("听述题需要录音权限，用于本地语音识别。是否授予？")
+                .setPositiveButton("去授权", (dialog, which) -> {
+                    if (!(context instanceof Activity)) {
+                        UiFeedback.showError(context, "无法申请权限");
+                        return;
+                    }
+                    pendingRetellingAction = granted -> {
+                        if (granted) {
+                            performListeningSettingsSave(
+                                    ChallengeType.LISTENING_RETELLING,
+                                    level,
+                                    scenario,
+                                    settingsDialog,
+                                    onSaved);
+                        } else {
+                            UiFeedback.showError(context, "未授予麦克风权限，听述题未保存");
+                            settingsDialog.dismiss();
+                        }
+                    };
+                    ActivityCompat.requestPermissions(
+                            (Activity) context,
+                            new String[]{Manifest.permission.RECORD_AUDIO},
+                            REQUEST_RECORD_AUDIO_PERMISSION);
+                })
+                .setNegativeButton("取消", (dialog, which) -> {
+                    UiFeedback.showError(context, "未授予麦克风权限，听述题未保存");
+                    settingsDialog.dismiss();
+                })
+                .show();
     }
 
     /** 渲染场景卡片：不限 + 预定义场景 + 已保存的自定义场景（可长按删除） + 添加。 */
@@ -2149,8 +2239,8 @@ public class SettingsDialogManager {
     }
 
     /**
-     * 豆包语音（听力题）凭据设置弹窗：API Key / ResourceID / Speaker（双向流式 TTS）。
-     * 留空任一字段即视为未配置，听力题回退占位音频。
+     * 豆包语音凭据设置弹窗：API Key / ResourceID / Speaker（双向流式 TTS）。
+     * 留空任一字段时听力题使用占位音频，听述题不可启用。
      */
     public void showDoubaoTtsSettingsDialog() {
         View dialogView = LayoutInflater.from(context)
@@ -2165,7 +2255,7 @@ public class SettingsDialogManager {
         speakerInput.setText(config.getSpeaker());
 
         final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("豆包语音（听力题）")
+                .setTitle("豆包语音（听力题 / 听述题）")
                 .setView(dialogView)
                 .setPositiveButton("保存", null)
                 .setNegativeButton("取消", null)
@@ -2179,14 +2269,14 @@ public class SettingsDialogManager {
                     UiFeedback.show(context,
                             config.isConfigured()
                                     ? "已保存豆包语音配置"
-                                    : "已保存（未完整配置，听力题使用占位音频）");
+                                    : "已保存（听力题使用占位音频，听述题不可用）");
                 }));
         dialog.show();
     }
 
     /**
-     * 腾讯口语评测（复述题）凭据设置弹窗：AppID / SecretId / SecretKey / ScoreCoeff。
-     * 留空关键凭据即视为未配置，复述题回退本地识别 + 纯文本评分。
+     * 腾讯口语评测凭据设置弹窗：AppID / SecretId / SecretKey / ScoreCoeff。
+     * 留空关键凭据时复述题与听述题均不可启用。
      */
     public void showSoeSettingsDialog() {
         View dialogView = LayoutInflater.from(context)
@@ -2203,7 +2293,7 @@ public class SettingsDialogManager {
         scoreCoeffInput.setText(String.valueOf(config.getScoreCoeff()));
 
         final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("腾讯口语评测（复述题）")
+                .setTitle("腾讯口语评测（复述题 / 听述题）")
                 .setView(dialogView)
                 .setPositiveButton("保存", null)
                 .setNegativeButton("取消", null)
@@ -2218,7 +2308,7 @@ public class SettingsDialogManager {
                     UiFeedback.show(context,
                             config.isConfigured()
                                     ? "已保存腾讯口语评测配置"
-                                    : "已保存（未完整配置，复述题使用本地识别）");
+                                    : "已保存（未完整配置，复述题和听述题不可用）");
                 }));
         dialog.show();
     }
@@ -2700,6 +2790,8 @@ public class SettingsDialogManager {
                 return "听力";
             case AnswerOverviewRecord.TYPE_RETELLING:
                 return "复述";
+            case AnswerOverviewRecord.TYPE_LISTENING_RETELLING:
+                return "听述";
             default:
                 return "推理";
         }
@@ -2825,10 +2917,16 @@ public class SettingsDialogManager {
             content.addView(buildRecordLine("【正确答案】 " + r.correctAnswer, 13, 0xFF333333, 0));
         } else {
             RetellingRecord r = entry.retelling;
-            content.addView(buildRecordLine("【题型】复述题", 13, 0xFF333333, 0));
+            boolean listeningRetelling = AnswerOverviewRecord.TYPE_LISTENING_RETELLING
+                    .equals(entry.type) || r.isListeningRetelling();
+            content.addView(buildRecordLine(
+                    listeningRetelling ? "【题型】听述题" : "【题型】复述题",
+                    13, 0xFF333333, 0));
             content.addView(buildRecordLine("【结果】" + (r.passed ? "通过" : "未通过")
                     + " · 得分 " + r.score, 13, 0xFF333333, 0));
-            content.addView(buildRecordLine("【完整故事】 " + r.story, 13, 0xFF333333, 0));
+            content.addView(buildRecordLine(
+                    (listeningRetelling ? "【听力原文】 " : "【完整故事】 ") + r.story,
+                    13, 0xFF333333, 0));
             // 腾讯转写仅作评分依据，不存储、不展示；详情只展示本地模型转写结果（未跑离线识别则为空）
             String localText = r.offlineRecognizedText;
             if (localText != null && !localText.isEmpty()) {

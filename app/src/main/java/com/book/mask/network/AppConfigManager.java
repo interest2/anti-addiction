@@ -59,11 +59,17 @@ public final class AppConfigManager {
     }
 
     /**
-     * 听力题 / 复述题是否可用：full 版内置语音 SDK，默认可用；
+     * 语音题是否可用：full 版内置语音 SDK，默认可用；
      * lite 版仍需服务端逐设备下发授权（{@link Share#voiceChallengeAvailable}）。
      */
     public static boolean isVoiceChallengeAvailable() {
         return VoiceChallengeDefaults.AVAILABLE_BY_DEFAULT || Share.voiceChallengeAvailable;
+    }
+
+    /** 听述题必须同时具备真实 TTS 与本地 ASR；lite 版即使收到语音题授权也不展示。 */
+    public static boolean isListeningRetellingAvailable() {
+        return isVoiceChallengeAvailable()
+                && VoiceChallengeDefaults.HAS_LISTENING_RETELLING_RUNTIME;
     }
 
     private static boolean isConfigFresh() {

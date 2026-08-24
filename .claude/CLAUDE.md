@@ -7,7 +7,12 @@
 ## 技术栈与构建
 
 - 源码兼容 Java 11；Android minSdk 24（7.0）、target/compileSdk 35；依赖经 Gradle Version Catalog（`gradle/libs.versions.toml`）管理。
-- 构建需 JDK 17、Android SDK 35，Android Studio 直接打开即可。
+- 构建需 JDK 17、Android SDK 35，Android Studio 直接打开即可。注意这里的 JDK 17 是“运行 Gradle/AGP 的 JVM”，源码兼容级别仍为 Java 11，不要混为一谈。
+- 构建版本坑（本机实测，Gradle Wrapper 8.11.1 + AGP 8.9.0）：
+  - 系统 `PATH` 默认的 Java 8（`1.8.0_211`）太旧，AGP 无法启动。
+  - Android Studio 当前自带 JBR 25（`25.0.2`）又太新，执行单元测试任务时会在配置/反射阶段报 `Type T not present`；CLI 验证不要使用该 JBR。
+  - 已确认稳定的是 `C:\Program Files\Java\jdk-17`（`17.0.10`）。PowerShell 中先显式设置：`$env:JAVA_HOME='C:\Program Files\Java\jdk-17'`，再执行 `$env:Path="$env:JAVA_HOME\bin;$env:Path"`。
+  - 为避免 `UP-TO-DATE` 造成假验证，推荐：`.\gradlew.bat :app:testFullDebugUnitTest :app:testLiteDebugUnitTest --rerun-tasks`；构建 APK 用 `.\gradlew.bat :app:assembleFullDebug :app:assembleLiteDebug --rerun-tasks`，并确认输出包含实际 `executed` 任务及 `BUILD SUCCESSFUL`。
 - 核心依赖：AndroidX / Material、RecyclerView、CardView、Gson、Tencent MMKV（本地配置存储）。
 - Maven 走阿里云镜像（`settings.gradle`）；release 不混淆（`minifyEnabled false`），刻意保持可审计。
 - 版本号在 `app/build.gradle`（`versionCode` / `versionName`），每次发版手动递增。

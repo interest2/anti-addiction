@@ -11,12 +11,13 @@ public final class AnswerOverviewRecord {
     public static final String TYPE_CHALLENGE = "challenge";
     public static final String TYPE_LISTENING = "listening";
     public static final String TYPE_RETELLING = "retelling";
+    public static final String TYPE_LISTENING_RETELLING = "listening_retelling";
 
-    /** 题型：TYPE_ARITHMETIC / TYPE_CHALLENGE / TYPE_LISTENING / TYPE_RETELLING */
+    /** 题型：算术 / 推理 / 听力 / 复述 / 听述 */
     public String type = "";
     /** 答题完成时间（毫秒时间戳），与对应详情记录保持一致 */
     public long timestamp;
-    /** 答题耗时（秒）：仅文本类（算术 / 推理 / 混合）计时，听力 / 复述为 0 */
+    /** 答题耗时（秒）：仅文本类（算术 / 推理 / 混合）计时，语音题为 0 */
     public int elapsedSeconds;
     /** 是否通过 */
     public boolean passed;

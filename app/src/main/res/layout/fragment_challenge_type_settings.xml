@@ -195,7 +195,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="18dp"
                         android:layout_weight="1"
-                        android:text="豆包语音（听力题）"
+                        android:text="豆包语音（听力题 / 听述题）"
                         android:textColor="#252525"
                         android:textSize="18sp" />
 
@@ -236,7 +236,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginStart="18dp"
                         android:layout_weight="1"
-                        android:text="腾讯口语评测（复述题）"
+                        android:text="腾讯口语评测（复述题 / 听述题）"
                         android:textColor="#252525"
                         android:textSize="18sp" />
 

@@ -14,6 +14,7 @@ public class ChallengeTypeTest {
                         ChallengeType.ARITHMETIC,
                         ChallengeType.REASONING,
                         ChallengeType.RETELLING,
+                        ChallengeType.LISTENING_RETELLING,
                         ChallengeType.LISTENING,
                         ChallengeType.MIXED
                 },
@@ -32,5 +33,26 @@ public class ChallengeTypeTest {
         assertEquals(1, ChallengeType.MIXED.getRequestType());
         assertEquals(2, ChallengeType.REASONING.getRequestType());
         assertEquals(3, ChallengeType.ENGLISH_READING.getRequestType());
+        assertEquals(-1, ChallengeType.LISTENING_RETELLING.getRequestType());
+    }
+
+    @Test
+    public void voiceAndRuntimeFiltersHandleListeningRetellingIndependently() {
+        assertArrayEquals(
+                new ChallengeType[]{
+                        ChallengeType.ARITHMETIC,
+                        ChallengeType.REASONING,
+                        ChallengeType.RETELLING,
+                        ChallengeType.LISTENING,
+                        ChallengeType.MIXED
+                },
+                ChallengeType.availableOptions(false, true, false));
+        assertArrayEquals(
+                new ChallengeType[]{
+                        ChallengeType.ARITHMETIC,
+                        ChallengeType.REASONING,
+                        ChallengeType.MIXED
+                },
+                ChallengeType.availableOptions(false, false, false));
     }
 }

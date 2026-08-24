@@ -117,6 +117,12 @@ public final class ChallengeQuestionProvider {
         if (type == ChallengeType.ARITHMETIC) {
             return generateArithmeticQuestion();
         }
+        if (type.isVoiceChallenge()) {
+            // 语音题都有各自的专用出题链路，不应把仅用于本地路由的 requestType
+            // 发送给通用 /challenge 接口。
+            Log.w(TAG, type.getDisplayName() + "误入通用出题流程，回退本地算术题");
+            return generateArithmeticQuestion();
+        }
 
         int reasoningLevel = reasoningLevelOf(type);
         Question question = questionCache.get(type, reasoningLevel);
@@ -320,10 +326,7 @@ public final class ChallengeQuestionProvider {
                         ? reasoningLevel
                         : ChallengeSettingsManager.REASONING_LEVEL_DEFAULT);
             }
-            // 听力题 / 复述题走各自的专用接口，不打印 challenge 接口请求参数。
-            if (type != ChallengeType.LISTENING && type != ChallengeType.RETELLING) {
-                Log.d(TAG, "调用challenge接口, 请求参数: " + request);
-            }
+            Log.d(TAG, "调用challenge接口, 请求参数: " + request);
             String response = ContentUtils.doHttpPost(
                     CloudConst.DOMAIN_URL + CloudConst.CHALLENGE,
                     request.toString(),

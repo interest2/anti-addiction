@@ -141,8 +141,11 @@ public class ChallengeSettingsManager {
             return ChallengeType.MIXED;
         }
         if (!isVoiceChallengeEnabled()
-                && (challengeType == ChallengeType.LISTENING
-                || challengeType == ChallengeType.RETELLING)) {
+                && challengeType.isVoiceChallenge()) {
+            return ChallengeType.MIXED;
+        }
+        if (!isListeningRetellingEnabled()
+                && challengeType == ChallengeType.LISTENING_RETELLING) {
             return ChallengeType.MIXED;
         }
         return challengeType;
@@ -160,6 +163,11 @@ public class ChallengeSettingsManager {
 
     public void setVoiceChallengeEnabled(boolean enabled) {
         mmkv.putBoolean(KEY_VOICE_CHALLENGE_ENABLED, enabled).commit();
+    }
+
+    /** 听述题还要求当前构建同时内置真实 TTS 与 ASR 运行时。 */
+    public boolean isListeningRetellingEnabled() {
+        return isVoiceChallengeEnabled() && AppConfigManager.isListeningRetellingAvailable();
     }
 
     public int getReasoningDifficultyLevel() {

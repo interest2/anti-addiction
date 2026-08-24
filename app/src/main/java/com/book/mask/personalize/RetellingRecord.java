@@ -7,6 +7,9 @@ import java.util.Locale;
  */
 public final class RetellingRecord {
 
+    public static final String STIMULUS_TEXT = "text";
+    public static final String STIMULUS_AUDIO = "audio";
+
     /** 答题完成时间（毫秒时间戳） */
     public long timestamp;
     /** 原始故事 */
@@ -29,6 +32,8 @@ public final class RetellingRecord {
     public boolean passed;
     /** 故事来源标识（builtin / custom） */
     public String storyId = "";
+    /** 材料呈现方式：text=复述题，audio=听述题；旧记录缺失时按 text 兼容。 */
+    public String stimulusMode = STIMULUS_TEXT;
     /** 腾讯口语评测发音准确度（0-100），未评测为 -1 */
     public float pronunciationAccuracy = -1f;
     /** 腾讯口语评测发音流利度（0-100，原始 0-1 已 ×100），未评测为 -1 */
@@ -39,6 +44,10 @@ public final class RetellingRecord {
     public String audioPath = "";
 
     public RetellingRecord() {
+    }
+
+    public boolean isListeningRetelling() {
+        return STIMULUS_AUDIO.equals(stimulusMode);
     }
 
     /** 是否包含腾讯口语评测数据。 */

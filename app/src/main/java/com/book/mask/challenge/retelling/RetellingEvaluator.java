@@ -185,10 +185,10 @@ public final class RetellingEvaluator {
 
     private RetellingScore parseScore(JSONObject json) {
         int score = clampScore(json.optInt("score", 0));
-        int coverage = json.optInt("coverage", 0);
-        int accuracy = json.optInt("accuracy", 0);
-        int order = json.optInt("order", 0);
-        int expression = json.optInt("expression", 0);
+        int coverage = clampScore(json.optInt("coverage", 0));
+        int accuracy = clampScore(json.optInt("accuracy", 0));
+        int order = clampScore(json.optInt("order", 0));
+        int expression = clampScore(json.optInt("expression", 0));
         String feedback = json.optString("feedback", "");
         return new RetellingScore(score, coverage, accuracy, order, expression, feedback);
     }

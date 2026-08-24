@@ -63,7 +63,8 @@ public class ChallengeTypeSettingsNav extends Fragment {
     private void buildChallengeTypeRows() {
         ChallengeType[] challengeTypes = ChallengeType.availableOptions(
                 QuestionConst.ENGLISH_READING_ENABLED,
-                settingsDialogManager.isVoiceChallengeEnabled());
+                settingsDialogManager.isVoiceChallengeEnabled(),
+                settingsDialogManager.isListeningRetellingEnabled());
         ChallengeType currentType = settingsDialogManager.getChallengeType();
 
         typeList.removeAllViews();
@@ -91,12 +92,13 @@ public class ChallengeTypeSettingsNav extends Fragment {
                             subtitle.setText(settingsDialogManager.formatRetellingSummary());
                             refreshCheckedRows();
                         }));
-            } else if (type == ChallengeType.LISTENING) {
+            } else if (type == ChallengeType.LISTENING
+                    || type == ChallengeType.LISTENING_RETELLING) {
                 subtitle.setVisibility(View.VISIBLE);
                 subtitle.setText(settingsDialogManager.formatListeningSummary());
                 edit.setVisibility(View.VISIBLE);
                 edit.setOnClickListener(v ->
-                        settingsDialogManager.showListeningSettingsDialog(() -> {
+                        settingsDialogManager.showListeningSettingsDialog(type, () -> {
                             subtitle.setText(settingsDialogManager.formatListeningSummary());
                             refreshCheckedRows();
                         }));
@@ -132,7 +134,8 @@ public class ChallengeTypeSettingsNav extends Fragment {
                 updateArithmeticHint(rows.get(i));
             } else if (rowTypes.get(i) == ChallengeType.REASONING) {
                 updateReasoningHint(rows.get(i));
-            } else if (rowTypes.get(i) == ChallengeType.LISTENING) {
+            } else if (rowTypes.get(i) == ChallengeType.LISTENING
+                    || rowTypes.get(i) == ChallengeType.LISTENING_RETELLING) {
                 TextView subtitle = rows.get(i).findViewById(R.id.tv_subtitle);
                 subtitle.setText(settingsDialogManager.formatListeningSummary());
             }

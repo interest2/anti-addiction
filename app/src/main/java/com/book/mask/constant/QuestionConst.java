@@ -55,10 +55,12 @@ public final class QuestionConst {
     public static final int LISTENING_RECORD_MAX = 2; // 听力题
     // 复述题详情与概况同上限：答题记录弹窗中所有复述题行均可点击查看详情与录音，录音文件随记录裁剪
     public static final int RETELLING_RECORD_MAX = 50; // 复述题
+    public static final int LISTENING_RETELLING_RECORD_MAX = 50; // 听述题
     // 答题记录：各类题型「概况」最多保留的记录条数，为详情量的 10 倍（仅存概要字段，内存占用低）
     public static final int CHALLENGE_OVERVIEW_MAX = CHALLENGE_RECORD_MAX * 10;
     public static final int LISTENING_OVERVIEW_MAX = LISTENING_RECORD_MAX * 10;
     public static final int RETELLING_OVERVIEW_MAX = RETELLING_RECORD_MAX;
+    public static final int LISTENING_RETELLING_OVERVIEW_MAX = LISTENING_RETELLING_RECORD_MAX;
 
     /**
      * 复述题录音上限随故事长度动态化：约 0.6 秒/字（按偏慢语速估算，余量充足），
@@ -138,8 +140,8 @@ public final class QuestionConst {
 
     // 听力题：可选场景（大模型出题时约束听力原文的话题背景）；界面在此基础上再补「不限」与「自定义…」。
     public static final String[] LISTENING_SCENARIOS = {
-            "公司", "工作", "晨会", "需求评审", "设计评审", "测试评审",
-            "上线", "大促", "跟客户沟通", "小区", "医院"
+            "晨会", "需求评审", "设计评审", "测试评审", "面试",
+            "上线", "跟DBA沟通", "跟客户沟通", "跟小区物业沟通", "跟医生沟通"
     };
 
     // 听力题：内置兜底题目。原文信息密集，干扰项均源自原文元素，听一遍需真正抓细节才能作答；

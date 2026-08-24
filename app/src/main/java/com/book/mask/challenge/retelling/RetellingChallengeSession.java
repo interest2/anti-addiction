@@ -8,6 +8,9 @@ import android.util.Log;
 import android.view.View;
 
 import com.book.mask.challenge.ChallengeSession;
+import com.book.mask.challenge.listening.ListeningAudioPlayer;
+import com.book.mask.challenge.listening.ListeningQuestion;
+import com.book.mask.challenge.listening.ListeningQuestionRepository;
 import com.book.mask.challenge.retelling.soe.SoeSpeechEvaluator;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.floating.FloatService;
@@ -25,7 +28,8 @@ import java.util.concurrent.Executors;
 /**
  * 复述题答题会话：状态机与流程编排。
  *
- * <p>流程：加载故事 → 限时阅读 → 清空原文 → 录音（透明 Activity，PCM 实时推给腾讯口语评测）→
+ * <p>普通复述题流程：加载故事 → 限时阅读 → 清空原文；听述题直接加载听力题原文并严格合成、播放，
+ * 播放完成前不展示原文。之后两种模式共用：录音（透明 Activity，PCM 实时推给腾讯口语评测）→
  * 腾讯口语评测确认有效语音 + 发音分 → 本地模型转写 → 自定义模型服务商内容评分 → 合并达标关闭。
  * 内容评分只使用本地转写文本，腾讯转写不参与评分，仅用于判断本次录音是否有效语音。
  * sessionId 贯穿一次答题，异步识别 / 评分返回时先判断是否仍是当前会话，防止取消后旧请求继续改界面。
@@ -52,7 +56,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private final FloatService service;
     private final RetellingViewController view;
     private final RetellingStoryRepository storyRepository;
+    private final ListeningQuestionRepository listeningQuestionRepository;
     private final RetellingEvaluator evaluator;
+    private final ListeningAudioPlayer audioPlayer;
     private final SpeechTranscriber transcriber;
     private final Handler handler;
     private final ExecutorService executor;
@@ -61,6 +67,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private final Callbacks callbacks;
 
     private RetellingState state = RetellingState.ERROR;
+    private RetellingStimulusMode stimulusMode = RetellingStimulusMode.TEXT;
     private long sessionId;
     private boolean active;
     /** 本次答题会话是否已通过（本次或此前一次）。一旦通过即置真并保持，后续练习答错也不丢失解禁资格。 */
@@ -119,6 +126,11 @@ public final class RetellingChallengeSession implements ChallengeSession {
                     }
 
                     @Override
+                    public void onReplayAudio() {
+                        replayAudio();
+                    }
+
+                    @Override
                     public void onDone() {
                         handleDone();
                     }
@@ -129,7 +141,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
                     }
                 });
         this.storyRepository = new RetellingStoryRepository(context);
+        this.listeningQuestionRepository = new ListeningQuestionRepository(context);
         this.evaluator = new RetellingEvaluator(context);
+        this.audioPlayer = new ListeningAudioPlayer();
         // 长录音按句子间隙切成 20-30 秒单元逐段识别，避免整段一次识别质量下降
         this.transcriber = new RetellingChunkedTranscriber(
                 SherpaOnnxTranscriber.getInstance(context));
@@ -139,25 +153,45 @@ public final class RetellingChallengeSession implements ChallengeSession {
     }
 
     public boolean start() {
+        return start(RetellingStimulusMode.TEXT);
+    }
+
+    public boolean start(RetellingStimulusMode stimulusMode) {
         sessionId++;
         active = true;
+        this.stimulusMode = stimulusMode == null
+                ? RetellingStimulusMode.TEXT
+                : stimulusMode;
+        audioPlayer.stop();
         scoreRetryCount = 0;
         sessionEverPassed = false;
         ChallengeSettingsManager settings = new ChallengeSettingsManager(context);
-        storyLength = settings.getRetellingStoryLength();
-        displaySeconds = settings.getRetellingDisplaySeconds();
-        passScore = settings.getRetellingPassScore();
-        recordMaxSeconds = QuestionConst.retellingRecordSeconds(storyLength);
-        Log.d(TAG, "复述题参数: 故事字数=" + storyLength
-                + ", 展示秒=" + displaySeconds
-                + ", 通过分=" + passScore
-                + ", 录音上限=" + recordMaxSeconds + "s");
+        boolean audioMode = this.stimulusMode == RetellingStimulusMode.AUDIO;
+        if (audioMode) {
+            // 听述材料长度完全由听力题仓库决定，不读取复述题的故事字数或展示时长。
+            storyLength = 0;
+            displaySeconds = 0;
+            passScore = QuestionConst.RETELLING_PASS_SCORE_DEFAULT;
+            recordMaxSeconds = QuestionConst.retellingRecordSeconds(0);
+            String scenario = settings.getListeningScenario();
+            Log.d(TAG, "听述题参数与听力题共用: 难度=" + settings.getListeningDifficultyLevel()
+                    + ", 场景=" + (scenario.isEmpty() ? "不限" : scenario)
+                    + ", 内容通过分=" + passScore);
+        } else {
+            storyLength = settings.getRetellingStoryLength();
+            displaySeconds = settings.getRetellingDisplaySeconds();
+            passScore = settings.getRetellingPassScore();
+            recordMaxSeconds = QuestionConst.retellingRecordSeconds(storyLength);
+            Log.d(TAG, "复述题参数: 故事字数=" + storyLength
+                    + ", 展示秒=" + displaySeconds
+                    + ", 通过分=" + passScore
+                    + ", 录音上限=" + recordMaxSeconds + "s");
+        }
         setState(RetellingState.LOADING_STORY);
         // 后台出题（自定义服务商走大模型网络请求，可能数秒）期间先亮出「出题中」，避免界面卡住无反馈
-        view.showLoading();
-        // 每次点击关闭发起答题都换一篇新故事（advance 消费预取的下一篇，无预取则同步取新），
-        // 不复用单例仓库里残留的上一次会话故事
-        loadStory(true);
+        view.showLoading(this.stimulusMode);
+        // 每次点击关闭发起答题都换一份新材料（advance 消费预取的下一份，无预取则同步取新）。
+        loadMaterial(true);
         return true;
     }
 
@@ -175,6 +209,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         sessionId++;
         handler.removeCallbacks(countdownRunnable);
         handler.removeCallbacks(soeTimeoutRunnable);
+        audioPlayer.stop();
         RetellingSessionRegistry.clear();
         closeSoe();
         recordedSamples = null;
@@ -193,6 +228,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         sessionId++;
         handler.removeCallbacks(countdownRunnable);
         handler.removeCallbacks(soeTimeoutRunnable);
+        audioPlayer.release();
         RetellingSessionRegistry.clear();
         closeSoe();
         recordedSamples = null;
@@ -212,6 +248,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         sessionId++;
         handler.removeCallbacks(countdownRunnable);
         handler.removeCallbacks(soeTimeoutRunnable);
+        audioPlayer.stop();
         RetellingSessionRegistry.clear();
         closeSoe();
         recordedSamples = null;
@@ -387,12 +424,13 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
     // ===== 状态流转 =====
 
-    private void loadStory(final boolean advance) {
+    private void loadMaterial(final boolean advance) {
         final long sid = sessionId;
+        final RetellingStimulusMode requestedMode = stimulusMode;
+        final int requestedStoryLength = storyLength;
         executor.execute(() -> {
-            RetellingStoryRepository.Story story = advance
-                    ? storyRepository.advance(storyLength)
-                    : storyRepository.obtainStory(storyLength);
+            RetellingStoryRepository.Story story = obtainMaterial(
+                    advance, requestedMode, requestedStoryLength);
             handler.post(() -> {
                 if (sid != sessionId || !active) {
                     return;
@@ -402,9 +440,102 @@ public final class RetellingChallengeSession implements ChallengeSession {
                     return;
                 }
                 currentStory = story;
-                beginReading();
+                recordMaxSeconds = QuestionConst.retellingRecordSeconds(story.getStory().length());
+                Log.d(TAG, (requestedMode == RetellingStimulusMode.AUDIO ? "听述" : "复述")
+                        + "材料就绪: sourceId=" + story.getStoryId()
+                        + ", 字数=" + story.getStory().length()
+                        + ", 录音上限=" + recordMaxSeconds + "s");
+                beginPresentation();
             });
         });
+    }
+
+    /**
+     * 普通复述题读取故事仓库；听述题直接消费听力题仓库生成的同一道题结构，只取 transcript
+     * 作为待复述材料。难度、场景、自定义场景及 Provider 选择均由听力题仓库读取同一组设置。
+     */
+    private RetellingStoryRepository.Story obtainMaterial(
+            boolean advance,
+            RetellingStimulusMode requestedMode,
+            int requestedStoryLength) {
+        if (requestedMode != RetellingStimulusMode.AUDIO) {
+            return advance
+                    ? storyRepository.advance(requestedStoryLength)
+                    : storyRepository.obtainStory(requestedStoryLength);
+        }
+        ListeningQuestionRepository.Question source = advance
+                ? listeningQuestionRepository.advance()
+                : listeningQuestionRepository.obtainQuestion();
+        ListeningQuestion question = source == null ? null : source.getQuestion();
+        if (question == null || question.getTranscript().trim().isEmpty()) {
+            return null;
+        }
+        return new RetellingStoryRepository.Story(
+                source.getQuestionId(), question.getTranscript());
+    }
+
+    private void beginPresentation() {
+        if (stimulusMode == RetellingStimulusMode.AUDIO) {
+            beginListening();
+        } else {
+            beginReading();
+        }
+    }
+
+    private void beginListening() {
+        RetellingStoryRepository.Story story = currentStory;
+        if (story == null || story.getStory() == null || story.getStory().trim().isEmpty()) {
+            handleLoadError();
+            return;
+        }
+        setState(RetellingState.PREPARING_AUDIO);
+        view.showAudioPreparing(story);
+        audioPlayer.setOnPlaybackCompleted(this::onAudioPlaybackCompleted);
+        audioPlayer.prepareStrictPassage(
+                context,
+                story.getStory(),
+                this::onAudioPrepared,
+                this::onAudioError);
+    }
+
+    private void onAudioPrepared() {
+        if (!active || state != RetellingState.PREPARING_AUDIO) {
+            return;
+        }
+        playPreparedAudio();
+    }
+
+    private void playPreparedAudio() {
+        setState(RetellingState.PLAYING_AUDIO);
+        view.showAudioPlaying();
+        audioPlayer.play(context);
+    }
+
+    private void onAudioPlaybackCompleted() {
+        if (!active || state != RetellingState.PLAYING_AUDIO) {
+            return;
+        }
+        setState(RetellingState.READY_TO_RECORD);
+        view.showAudioReadyToRecord();
+    }
+
+    private void onAudioError(String message) {
+        if (!active
+                || (state != RetellingState.PREPARING_AUDIO
+                && state != RetellingState.PLAYING_AUDIO)) {
+            return;
+        }
+        setState(RetellingState.ERROR);
+        view.showAudioError(message);
+    }
+
+    private void replayAudio() {
+        if (!active
+                || stimulusMode != RetellingStimulusMode.AUDIO
+                || state != RetellingState.READY_TO_RECORD) {
+            return;
+        }
+        playPreparedAudio();
     }
 
     private void beginReading() {
@@ -437,9 +568,24 @@ public final class RetellingChallengeSession implements ChallengeSession {
     }
 
     private void startRecording() {
+        if (active
+                && stimulusMode == RetellingStimulusMode.AUDIO
+                && (state == RetellingState.FAILED
+                || state == RetellingState.PASSED
+                || state == RetellingState.ERROR)) {
+            lastRecognizedText = null;
+            scoreRetryCount = 0;
+            if (state == RetellingState.ERROR) {
+                beginListening();
+            } else {
+                playPreparedAudio();
+            }
+            return;
+        }
         if (!active
                 || (state != RetellingState.READY_TO_RECORD
-                && state != RetellingState.READING
+                && (stimulusMode != RetellingStimulusMode.TEXT
+                || state != RetellingState.READING)
                 && state != RetellingState.FAILED
                 && state != RetellingState.PASSED)) {
             return;
@@ -559,7 +705,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
                         0, 0, 0, 0, 0, "复述内容过短，请记住更多关键信息"), false);
                 break;
             case SCORED:
-                RetellingScore finalScore = mergeSpeechScore(result.getScore());
+                RetellingScore finalScore = applySpeechScore(result.getScore());
                 boolean passed = finalScore.getScore() >= passScore;
                 showResult(finalScore, passed);
                 break;
@@ -588,15 +734,19 @@ public final class RetellingChallengeSession implements ChallengeSession {
         }
     }
 
-    /** 内容分与 SOE 语音分合并：总分 = 0.7×内容 + 0.3×语音。语音分不可用时仅内容分。 */
-    private RetellingScore mergeSpeechScore(RetellingScore contentScore) {
+    /** 普通复述题合并内容与语音分；听述题只以四维内容分通过，发音信息仅随结果展示。 */
+    private RetellingScore applySpeechScore(RetellingScore contentScore) {
         if (!soeEvaluated || soeAccuracy < 0f || soeFluency < 0f) {
-            return contentScore;
+            return stimulusMode == RetellingStimulusMode.AUDIO
+                    ? contentScore.withScore(contentScore.calculateWeightedContentScore())
+                    : contentScore;
         }
         // PronAccuracy 与 PronFluency 均已统一为 0-100 分制，直接取平均
         int speech = Math.round((soeAccuracy + soeFluency) / 2f);
         int content = contentScore.getScore();
-        int merged = Math.round(content * 0.7f + speech * 0.3f);
+        int merged = stimulusMode == RetellingStimulusMode.AUDIO
+                ? contentScore.calculateWeightedContentScore()
+                : Math.round(content * 0.7f + speech * 0.3f);
         return new RetellingScore(
                 merged,
                 contentScore.getCoverage(),
@@ -637,6 +787,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
             record.feedback = score.getFeedback();
             record.passed = passed;
             record.storyId = story == null ? "" : story.getStoryId();
+            record.stimulusMode = stimulusMode == RetellingStimulusMode.AUDIO
+                    ? RetellingRecord.STIMULUS_AUDIO
+                    : RetellingRecord.STIMULUS_TEXT;
             record.pronunciationAccuracy = score.getPronunciationAccuracy();
             record.pronunciationFluency = score.getPronunciationFluency();
             record.suggestedScore = score.getSuggestedScore();
@@ -645,7 +798,9 @@ public final class RetellingChallengeSession implements ChallengeSession {
             recordedSamples = null;
             new RetellingRecordStore(context).addRecord(record);
             AnswerOverviewRecord overview = new AnswerOverviewRecord();
-            overview.type = AnswerOverviewRecord.TYPE_RETELLING;
+            overview.type = stimulusMode == RetellingStimulusMode.AUDIO
+                    ? AnswerOverviewRecord.TYPE_LISTENING_RETELLING
+                    : AnswerOverviewRecord.TYPE_RETELLING;
             overview.timestamp = now;
             overview.passed = passed;
             new AnswerOverviewStore().addRecord(overview);
@@ -669,16 +824,19 @@ public final class RetellingChallengeSession implements ChallengeSession {
 
     private void startNewRound() {
         sessionId++;
+        audioPlayer.stop();
         scoreRetryCount = 0;
         setState(RetellingState.LOADING_STORY);
-        // 换新故事同样可能走网络出题，先提示「出题中」
-        view.showLoading();
-        loadStory(true);
+        // 换新材料同样可能走网络出题，先提示「出题中」
+        view.showLoading(stimulusMode);
+        loadMaterial(true);
     }
 
     private void handleLoadError() {
         setState(RetellingState.ERROR);
-        view.showError("获取故事失败，请重试");
+        view.showError(stimulusMode == RetellingStimulusMode.AUDIO
+                ? "获取听力材料失败，请重试"
+                : "获取故事失败，请重试");
     }
 
     private void setState(RetellingState newState) {

@@ -99,6 +99,9 @@ public final class RetellingStoryRepository {
 
     private Story currentStory;
     private Story nextStory;
+    private int currentStoryLength = -1;
+    private int nextStoryLength = -1;
+    private long prefetchGeneration;
 
     public RetellingStoryRepository(Context context) {
         this.context = context.getApplicationContext();
@@ -111,8 +114,9 @@ public final class RetellingStoryRepository {
      * 获取当前要阅读的故事；当前无故事时先同步取一篇，再后台预取下一篇。
      */
     public synchronized Story obtainStory(int length) {
-        if (currentStory == null) {
+        if (currentStory == null || currentStoryLength != length) {
             currentStory = fetchStory(length);
+            currentStoryLength = length;
         }
         prefetchNext(length);
         return currentStory;
@@ -122,21 +126,29 @@ public final class RetellingStoryRepository {
      * 当前故事已作答完毕（失败换题），前进到下一篇。
      */
     public synchronized Story advance(int length) {
-        currentStory = nextStory != null ? nextStory : fetchStory(length);
+        currentStory = nextStory != null && nextStoryLength == length
+                ? nextStory
+                : fetchStory(length);
+        currentStoryLength = length;
         nextStory = null;
+        nextStoryLength = -1;
         prefetchNext(length);
         return currentStory;
     }
 
     private void prefetchNext(final int length) {
-        if (nextStory != null) {
+        if (nextStory != null && nextStoryLength == length) {
             return;
         }
+        nextStory = null;
+        nextStoryLength = -1;
+        final long generation = ++prefetchGeneration;
         new Thread(() -> {
             Story story = fetchStory(length);
             synchronized (RetellingStoryRepository.this) {
-                if (story != null) {
+                if (generation == prefetchGeneration && story != null) {
                     nextStory = story;
+                    nextStoryLength = length;
                 }
             }
         }, "retelling-story-prefetch").start();

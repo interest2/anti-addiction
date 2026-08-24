@@ -63,6 +63,8 @@ public final class AnswerOverviewStore {
                 return QuestionConst.LISTENING_OVERVIEW_MAX;
             case AnswerOverviewRecord.TYPE_RETELLING:
                 return QuestionConst.RETELLING_OVERVIEW_MAX;
+            case AnswerOverviewRecord.TYPE_LISTENING_RETELLING:
+                return QuestionConst.LISTENING_RETELLING_OVERVIEW_MAX;
             default:
                 return 0;
         }

@@ -8,6 +8,7 @@ import android.view.WindowManager;
 
 import com.book.mask.challenge.listening.ListeningChallengeSession;
 import com.book.mask.challenge.retelling.RetellingChallengeSession;
+import com.book.mask.challenge.retelling.RetellingStimulusMode;
 import com.book.mask.config.ChallengeType;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
@@ -117,7 +118,9 @@ public class ChallengeManager {
         if (selectedType == ChallengeType.LISTENING) {
             showListeningChallenge();
         } else if (selectedType == ChallengeType.RETELLING) {
-            showRetellingChallenge();
+            showRetellingChallenge(RetellingStimulusMode.TEXT);
+        } else if (selectedType == ChallengeType.LISTENING_RETELLING) {
+            showRetellingChallenge(RetellingStimulusMode.AUDIO);
         } else {
             showTextChallenge(selectedType);
         }
@@ -148,9 +151,10 @@ public class ChallengeManager {
         Log.d(TAG, "显示听力题验证界面");
     }
 
-    private void showRetellingChallenge() {
-        if (!retellingSession.start()) {
-            Log.w(TAG, "复述题启动失败，回退本地算术题");
+    private void showRetellingChallenge(RetellingStimulusMode stimulusMode) {
+        if (!retellingSession.start(stimulusMode)) {
+            Log.w(TAG, (stimulusMode == RetellingStimulusMode.AUDIO ? "听述题" : "复述题")
+                    + "启动失败，回退本地算术题");
             showTextChallenge(ChallengeType.ARITHMETIC);
             return;
         }
@@ -158,7 +162,9 @@ public class ChallengeManager {
         if (accessibilityService != null) {
             accessibilityService.onChallengeStart();
         }
-        Log.d(TAG, "显示复述题验证界面");
+        Log.d(TAG, "显示"
+                + (stimulusMode == RetellingStimulusMode.AUDIO ? "听述题" : "复述题")
+                + "验证界面");
     }
 
     public void hideChallenge() {
