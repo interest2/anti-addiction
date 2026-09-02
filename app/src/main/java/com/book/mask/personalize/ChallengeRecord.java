@@ -5,6 +5,11 @@ package com.book.mask.personalize;
  */
 public final class ChallengeRecord {
 
+    /**
+     * 实际文本题型，用于按题型分别裁剪详情记录。
+     * 旧版本未保存此字段，读取时按 legacy challenge 类型兼容。
+     */
+    public String type = AnswerOverviewRecord.TYPE_CHALLENGE;
     /** 答题完成时间（毫秒时间戳） */
     public long timestamp;
     /** 题干 */

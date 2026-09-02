@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
@@ -32,7 +33,7 @@ import android.widget.ToggleButton;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.appcompat.widget.AppCompatButton;
+import androidx.appcompat.widget.AppCompatTextView;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
@@ -41,6 +42,7 @@ import com.book.mask.challenge.common.ChallengeQuestionProvider;
 import com.book.mask.challenge.retelling.preflight.ListeningRetellingPreflight;
 import com.book.mask.challenge.retelling.preflight.RetellingPreflight;
 import com.book.mask.config.ChallengeType;
+import com.book.mask.config.Share;
 import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.personalize.AnswerOverviewRecord;
@@ -2601,7 +2603,7 @@ public class SettingsDialogManager {
         // 弹窗打开期间持有的最近一次渲染的概况列表，用于检测数据变化后局部重绘
         final java.util.concurrent.atomic.AtomicReference<List<AnswerOverviewRecord>> lastRendered =
                 new java.util.concurrent.atomic.AtomicReference<>(new AnswerOverviewStore().getRecords());
-        final boolean[] showOther = {false};
+        final boolean[] showOther = {Share.answerRecordsShowOtherTab};
         applyAnswerRecordTabSelection(reasoningTab, otherTab, showOther[0]);
         renderAnswerRecords(container, lastRendered.get(), showOther[0]);
 
@@ -2610,6 +2612,7 @@ public class SettingsDialogManager {
                 return;
             }
             showOther[0] = false;
+            Share.answerRecordsShowOtherTab = false;
             applyAnswerRecordTabSelection(reasoningTab, otherTab, false);
             renderAnswerRecords(container, lastRendered.get(), false);
             scrollView.post(() -> scrollView.scrollTo(0, 0));
@@ -2619,6 +2622,7 @@ public class SettingsDialogManager {
                 return;
             }
             showOther[0] = true;
+            Share.answerRecordsShowOtherTab = true;
             applyAnswerRecordTabSelection(reasoningTab, otherTab, true);
             renderAnswerRecords(container, lastRendered.get(), true);
             scrollView.post(() -> scrollView.scrollTo(0, 0));
@@ -2813,7 +2817,7 @@ public class SettingsDialogManager {
         rowParams.bottomMargin = dp(2);
         row.setLayoutParams(rowParams);
 
-        row.addView(buildTableCell(formatRecordType(entry), 1));
+        row.addView(buildRecordTypeCell(entry));
         row.addView(buildTableCell(formatRecordTime(entry.timestamp), 2));
         TextView elapsedCell = buildTableCell(formatRecordElapsed(entry), 1);
         elapsedCell.setTextColor(0xFFEF6C00);
@@ -2864,6 +2868,35 @@ public class SettingsDialogManager {
         return cell;
     }
 
+    /** 题型列按内容使用稳定的深色文字，便于在记录列表中快速区分。 */
+    private TextView buildRecordTypeCell(AnswerRecordEntry entry) {
+        TextView cell = buildTableCell(formatRecordType(entry), 1);
+        cell.setTextColor(recordTypeTextColor(entry.type));
+        return cell;
+    }
+
+    private static int recordTypeTextColor(String type) {
+        switch (type) {
+            case AnswerOverviewRecord.TYPE_ARITHMETIC:
+                return 0xFF5D4037;
+            case AnswerOverviewRecord.TYPE_REASONING:
+            case AnswerOverviewRecord.TYPE_CHALLENGE:
+                return 0xFF283593;
+            case AnswerOverviewRecord.TYPE_MIXED:
+                return 0xFF4A148C;
+            case AnswerOverviewRecord.TYPE_ENGLISH_READING:
+                return 0xFF00695C;
+            case AnswerOverviewRecord.TYPE_LISTENING:
+                return 0xFF1565C0;
+            case AnswerOverviewRecord.TYPE_RETELLING:
+                return 0xFFBF360C;
+            case AnswerOverviewRecord.TYPE_LISTENING_RETELLING:
+                return 0xFF880E4F;
+            default:
+                return 0xFF424242;
+        }
+    }
+
     private String formatRecordType(AnswerRecordEntry entry) {
         switch (entry.type) {
             case AnswerOverviewRecord.TYPE_ARITHMETIC:
@@ -2903,15 +2936,18 @@ public class SettingsDialogManager {
         return entry.passed;
     }
 
-    /** 算术/推理显示 √×；其他题型显示 0-100 分数。 */
+    /** 算术/推理/听力显示 √×；其余题型显示 0-100 分数。 */
     private View buildResultCell(AnswerRecordEntry entry) {
         boolean passed = isPassed(entry);
-        boolean scoreUnavailable = isOtherRecordType(entry.type) && entry.score < 0;
+        boolean otherRecord = isOtherRecordType(entry.type);
+        boolean displayScore = otherRecord
+                && !AnswerOverviewRecord.TYPE_LISTENING.equals(entry.type);
+        boolean scoreUnavailable = displayScore && entry.score < 0;
         TextView symbol = new TextView(context);
-        symbol.setText(isOtherRecordType(entry.type)
+        symbol.setText(displayScore
                 ? (scoreUnavailable ? "-" : String.valueOf(entry.score))
                 : (passed ? "√" : "×"));
-        symbol.setTextSize(15);
+        symbol.setTextSize(otherRecord ? 14 : 15);
         symbol.setTypeface(symbol.getTypeface(), android.graphics.Typeface.BOLD);
         symbol.setTextColor(scoreUnavailable
                 ? 0xFF757575
@@ -2986,7 +3022,10 @@ public class SettingsDialogManager {
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(20), dp(12), dp(20), dp(8));
 
-        content.addView(buildRecordLine("【答题时间】" + DateUtils.formatTime(entry.timestamp), 14, 0xFF252525, 0));
+        if (!isOtherRecordType(entry.type)) {
+            content.addView(buildRecordLine("【答题时间】" + DateUtils.formatTime(entry.timestamp),
+                    14, 0xFF252525, 0));
+        }
         if (entry.challenge != null) {
             ChallengeRecord r = entry.challenge;
             content.addView(buildRecordLine("【耗时】"
@@ -3001,7 +3040,6 @@ public class SettingsDialogManager {
             content.addView(buildRecordLine("【正确答案】 " + r.correctAnswer, 13, 0xFF333333, 0));
         } else if (entry.listening != null) {
             ListeningRecord r = entry.listening;
-            content.addView(buildRecordLine("【题型】听力题", 13, 0xFF333333, 0));
             content.addView(buildRecordLine("【结果】" + (r.passed ? "√" : "×"), 13,
                     r.passed ? 0xFF2E7D32 : 0xFFD32F2F, 0));
             content.addView(buildRecordLine("【听力原文】 " + r.transcript, 13, 0xFF333333, 0));
@@ -3015,29 +3053,28 @@ public class SettingsDialogManager {
             RetellingRecord r = entry.retelling;
             boolean listeningRetelling = AnswerOverviewRecord.TYPE_LISTENING_RETELLING
                     .equals(entry.type) || r.isListeningRetelling();
-            content.addView(buildRecordLine(
-                    listeningRetelling ? "【题型】听述题" : "【题型】复述题",
-                    13, 0xFF333333, 0));
-            content.addView(buildRecordLine("【结果】" + (r.passed ? "通过" : "未通过")
-                    + " · 得分 " + r.score, 13, 0xFF333333, 0));
-            content.addView(buildRecordLine(
-                    (listeningRetelling ? "【听力原文】 " : "【完整故事】 ") + r.story,
-                    13, 0xFF333333, 0));
+            String resultText = listeningRetelling
+                    ? "【结果】答题" + r.getAttemptCount() + "次，分数"
+                    + r.formatAttemptScores()
+                    : "【结果】" + (r.passed ? "通过" : "未通过") + " · 得分 " + r.score;
+            content.addView(buildRecordLine(resultText, 13, 0xFF333333, 0));
+            content.addView(buildRecordLine("【原文】 " + r.story, 13, 0xFF333333, 0));
             // 腾讯转写仅作评分依据，不存储、不展示；详情只展示本地模型转写结果（未跑离线识别则为空）
             String localText = r.offlineRecognizedText;
             if (localText != null && !localText.isEmpty()) {
                 content.addView(buildRecordLine("【本地模型转写】 " + localText, 13, 0xFF8A8A8A, 0));
             }
+            content.addView(buildRecordSectionTitle("点评"));
             content.addView(buildRecordLine("维度：内容完整 " + r.coverage
                     + " · 逻辑连贯 " + r.order
                     + " · 事实准确 " + r.accuracy
-                    + " · 表达完整 " + r.expression, 12, 0xFF8A8A8A, 0));
+                    + " · 表达完整 " + r.expression, 12, 0xFF000000, 0));
             String pronunciation = r.formatPronunciationSummary();
             if (pronunciation != null) {
-                content.addView(buildRecordLine("【口语评测】" + pronunciation, 12, 0xFF8A8A8A, 0));
+                content.addView(buildRecordLine("【口语评测】" + pronunciation, 12, 0xFF000000, 0));
             }
             if (r.feedback != null && !r.feedback.isEmpty()) {
-                content.addView(buildRecordLine("【建议】 " + r.feedback, 12, 0xFF8A8A8A, 0));
+                content.addView(buildRecordLine("【建议】 " + r.feedback, 12, 0xFF000000, 0));
             }
             File audioFile = (r.audioPath == null || r.audioPath.isEmpty())
                     ? null : new RetellingAudioStore(context).resolve(r.audioPath);
@@ -3064,7 +3101,7 @@ public class SettingsDialogManager {
     /** 复述题录音回放状态：播放器 + 进度条 + 时长文本 + 进度轮询。 */
     private static final class RetellingPlayState {
         MediaPlayer player;
-        Button playButton;
+        TextView playButton;
         SeekBar seekBar;
         TextView timeText;
         boolean tracking;
@@ -3080,21 +3117,21 @@ public class SettingsDialogManager {
         controlRow.setOrientation(LinearLayout.HORIZONTAL);
         controlRow.setGravity(Gravity.CENTER_VERTICAL);
 
-        // Material 主题下 new Button 会 inflate 成 MaterialButton，其 contentPadding/minWidth/inset
-        // 默认偏大且 setPadding 不生效；改 AppCompatButton 构造，内 padding 直接收紧、按钮贴合文字
-        state.playButton = new AppCompatButton(context);
+        // Button 会被主题的最小高度再次撑大；使用可点击 TextView，确保上下 padding 真正生效。
+        state.playButton = new AppCompatTextView(context);
         state.playButton.setText("▶ 播放录音");
-        state.playButton.setAllCaps(false);
+        state.playButton.setTextSize(14);
         state.playButton.setTextColor(0xFF1565C0);
+        state.playButton.setGravity(Gravity.CENTER);
+        state.playButton.setClickable(true);
+        state.playButton.setFocusable(true);
         android.graphics.drawable.GradientDrawable bg =
                 new android.graphics.drawable.GradientDrawable();
         bg.setColor(0xFFE3F2FD);
         bg.setCornerRadius(dp(8));
         state.playButton.setBackground(bg);
-        state.playButton.setMinWidth(0);
-        state.playButton.setMinHeight(0);
         state.playButton.setIncludeFontPadding(false);
-        state.playButton.setPadding(dp(6), 0, dp(6), 0);
+        state.playButton.setPadding(dp(8), dp(3), dp(8), dp(3));
 
         state.timeText = new TextView(context);
         state.timeText.setText("00:00 / 00:00");
@@ -3106,13 +3143,17 @@ public class SettingsDialogManager {
         controlRow.addView(state.timeText);
 
         state.seekBar = new SeekBar(context);
-        state.seekBar.setMax(0);
+        state.seekBar.setMax(readAudioDurationMillis(audioFile));
         state.seekBar.setProgress(0);
+        updatePlayTime(state, 0);
         LinearLayout.LayoutParams seekBarParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         seekBarParams.topMargin = dp(6);
 
-        container.addView(controlRow);
+        LinearLayout.LayoutParams controlRowParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        controlRowParams.topMargin = dp(8);
+        container.addView(controlRow, controlRowParams);
         container.addView(state.seekBar, seekBarParams);
 
         state.seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -3228,6 +3269,26 @@ public class SettingsDialogManager {
         return String.format(Locale.US, "%02d:%02d", totalSeconds / 60, totalSeconds % 60);
     }
 
+    /** 弹窗初次展示时读取录音总时长，避免播放前分母固定显示 00:00。 */
+    private static int readAudioDurationMillis(File audioFile) {
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        try {
+            retriever.setDataSource(audioFile.getAbsolutePath());
+            String duration = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_DURATION);
+            long durationMillis = duration == null ? 0L : Long.parseLong(duration);
+            return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, durationMillis));
+        } catch (Exception ignored) {
+            return 0;
+        } finally {
+            try {
+                retriever.release();
+            } catch (Exception ignored) {
+                // 元数据读取器释放失败不影响详情弹窗展示
+            }
+        }
+    }
+
     private TextView buildRecordLine(String text, int sp, int color, int maxLines) {
         TextView tv = new TextView(context);
         tv.setText(text == null ? "" : text);
@@ -3239,6 +3300,14 @@ public class SettingsDialogManager {
             tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
         }
         return tv;
+    }
+
+    /** 详情分区标题在纵向容器中独占一行，并与上下正文留出间距。 */
+    private TextView buildRecordSectionTitle(String text) {
+        TextView title = buildRecordLine(text, 14, 0xFF000000, 1);
+        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
+        title.setPadding(0, dp(8), 0, dp(2));
+        return title;
     }
 
     private int dp(int value) {

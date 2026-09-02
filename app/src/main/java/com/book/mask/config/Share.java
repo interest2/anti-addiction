@@ -23,6 +23,8 @@ public class Share {
     public static volatile int appreciateImageCode = 0;
     /** 服务端仅对 testDevId 对应设备下发的语音题功能授权。 */
     public static volatile boolean voiceChallengeAvailable = false;
+    /** 答题记录弹窗最后选中的选项卡；仅在当前进程内保留。 */
+    public static volatile boolean answerRecordsShowOtherTab = false;
     public static CustomApp currentApp = null; // 当前活跃的APP（统一使用CustomApp）
     public static boolean isFloatingWindowVisible = false; // 悬浮窗是否显示
     public static Map<String, Boolean> appManuallyHidden = new HashMap<>(); // 每个APP的手动隐藏状态（使用包名作为键）

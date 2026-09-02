@@ -66,6 +66,7 @@
         android:id="@+id/layout_retelling_record_holder"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
         android:orientation="vertical">
 
         <Button
@@ -85,6 +86,7 @@
         android:id="@+id/layout_retelling_replay_holder"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
         android:orientation="vertical">
 
         <Button
@@ -117,7 +119,18 @@
             android:lineSpacingMultiplier="1.2" />
     </ScrollView>
 
-    <!-- 故事原文：紧随识别文本，评分后对照复盘 -->
+    <!-- 听述题评分后默认隐藏原文，由用户主动展开；普通复述题仍直接展示 -->
+    <Button
+        android:id="@+id/btn_retelling_show_original"
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_marginBottom="8dp"
+        android:backgroundTint="#9C27B0"
+        android:text="显示原文"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/tv_retelling_original_label"
         android:layout_width="wrap_content"

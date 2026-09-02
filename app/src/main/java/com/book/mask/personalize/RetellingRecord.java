@@ -1,5 +1,7 @@
 package com.book.mask.personalize;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -18,6 +20,8 @@ public final class RetellingRecord {
     public String offlineRecognizedText = "";
     /** 总分（0-100） */
     public int score;
+    /** 同一材料历次作答分数，按作答先后排列；旧记录缺失时回退到 {@link #score}。 */
+    public List<Integer> attemptScores = new ArrayList<>();
     /** 内容完整度（权重 40） */
     public int coverage;
     /** 逻辑连贯性（权重 25） */
@@ -48,6 +52,24 @@ public final class RetellingRecord {
 
     public boolean isListeningRetelling() {
         return STIMULUS_AUDIO.equals(stimulusMode);
+    }
+
+    public int getAttemptCount() {
+        return attemptScores == null || attemptScores.isEmpty() ? 1 : attemptScores.size();
+    }
+
+    public String formatAttemptScores() {
+        if (attemptScores == null || attemptScores.isEmpty()) {
+            return String.valueOf(score);
+        }
+        StringBuilder result = new StringBuilder();
+        for (Integer attemptScore : attemptScores) {
+            if (result.length() > 0) {
+                result.append('、');
+            }
+            result.append(attemptScore == null ? 0 : attemptScore);
+        }
+        return result.toString();
     }
 
     /** 是否包含腾讯口语评测数据。 */

@@ -190,9 +190,11 @@ final class TextChallengeSession implements ChallengeSession {
             record.correctAnswer = currentAnswer == null ? "" : currentAnswer;
             record.passed = passed;
             record.elapsedSeconds = (int) computeElapsedSeconds();
+            String recordType = overviewTypeOf(currentType);
+            record.type = recordType;
             new ChallengeRecordStore().addRecord(record);
             AnswerOverviewRecord overview = new AnswerOverviewRecord();
-            overview.type = overviewTypeOf(currentType);
+            overview.type = recordType;
             overview.timestamp = now;
             overview.elapsedSeconds = record.elapsedSeconds;
             overview.passed = passed;

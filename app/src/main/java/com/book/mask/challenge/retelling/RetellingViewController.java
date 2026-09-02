@@ -56,6 +56,7 @@ final class RetellingViewController {
     private TextView scoreText;
     private TextView speechScoreText;
     private TextView dimensionText;
+    private Button showOriginalButton;
     private TextView originalLabelText;
     private ScrollView originalScrollView;
     private TextView originalText;
@@ -346,7 +347,7 @@ final class RetellingViewController {
                 android.content.res.ColorStateList.valueOf(
                         canUnlock ? 0xFF4CAF50 : 0xFFFF9800));
         showBreakdown();
-        showOriginal();
+        prepareOriginalForResult();
         showDimensions(score);
         // 听述题成绩页把重听与直接重答拆开，用户可选择是否在新一轮前再次播放材料。
         if (stimulusMode == RetellingStimulusMode.AUDIO) {
@@ -366,20 +367,43 @@ final class RetellingViewController {
         resultLayout.setVisibility(View.VISIBLE);
     }
 
-    /** 评分后展示故事原文，供结果对照；故事未携带原文时保持隐藏。 */
-    private void showOriginal() {
-        if (originalLabelText == null || originalScrollView == null || originalText == null) {
+    /** 听述题评分后只提供展开按钮；普通复述题继续直接展示原文。 */
+    private void prepareOriginalForResult() {
+        if (!hasOriginal()) {
+            hideOriginal();
             return;
         }
-        boolean visible = currentStory != null
-                && currentStory.getStory() != null
-                && !currentStory.getStory().trim().isEmpty();
+        if (stimulusMode == RetellingStimulusMode.AUDIO) {
+            hideOriginal();
+            showOriginalButton.setVisibility(View.VISIBLE);
+            return;
+        }
+        showOriginal();
+    }
+
+    /** 用户主动展开后展示故事原文，供结果对照。 */
+    private void showOriginal() {
+        if (showOriginalButton == null || originalLabelText == null
+                || originalScrollView == null || originalText == null) {
+            return;
+        }
+        boolean visible = hasOriginal();
+        showOriginalButton.setVisibility(View.GONE);
         originalText.setText(visible ? currentStory.getStory() : "");
         originalLabelText.setVisibility(visible ? View.VISIBLE : View.GONE);
         originalScrollView.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 
+    private boolean hasOriginal() {
+        return currentStory != null
+                && currentStory.getStory() != null
+                && !currentStory.getStory().trim().isEmpty();
+    }
+
     private void hideOriginal() {
+        if (showOriginalButton != null) {
+            showOriginalButton.setVisibility(View.GONE);
+        }
         if (originalText != null) {
             originalText.setText("");
         }
@@ -547,6 +571,7 @@ final class RetellingViewController {
         scoreText = floatingView.findViewById(R.id.tv_retelling_score);
         speechScoreText = floatingView.findViewById(R.id.tv_retelling_speech_score);
         dimensionText = floatingView.findViewById(R.id.tv_retelling_dimensions);
+        showOriginalButton = floatingView.findViewById(R.id.btn_retelling_show_original);
         originalLabelText = floatingView.findViewById(R.id.tv_retelling_original_label);
         originalScrollView = floatingView.findViewById(R.id.sv_retelling_original);
         originalText = floatingView.findViewById(R.id.tv_retelling_original);
@@ -576,6 +601,7 @@ final class RetellingViewController {
                 || resultLayout == null
                 || scoreText == null
                 || dimensionText == null
+                || showOriginalButton == null
                 || originalLabelText == null
                 || originalScrollView == null
                 || originalText == null
@@ -593,6 +619,8 @@ final class RetellingViewController {
         storyText.setTextIsSelectable(false);
         storyText.setLongClickable(false);
         originalText.setLongClickable(false);
+
+        showOriginalButton.setOnClickListener(v -> showOriginal());
 
         recordButton.setOnClickListener(v -> {
             if (callbacks != null) {

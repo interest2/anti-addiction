@@ -31,6 +31,8 @@ import com.book.mask.personalize.RetellingRecord;
 import com.book.mask.personalize.RetellingRecordStore;
 import com.book.mask.personalize.SoeConfigManager;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -88,6 +90,8 @@ public final class RetellingChallengeSession implements ChallengeSession {
     private int recordMaxSeconds;
     private int listeningDifficultyLevel;
     private int countdownTicks;
+    /** 当前材料历次评分；直接重答继续累计，换材料后清空。 */
+    private final List<Integer> answerAttemptScores = new ArrayList<>();
     private String lastRecognizedText;
     private int scoreRetryCount;
     /** 腾讯口语评测：仅用于发音分与有效语音判断，未配置 / 失败时直接评分失败；内容评分文本改用本地识别（见 offlineTranscript）。 */
@@ -174,6 +178,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
                 : stimulusMode;
         audioPlayer.stop();
         scoreRetryCount = 0;
+        answerAttemptScores.clear();
         sessionEverPassed = false;
         ChallengeSettingsManager settings = new ChallengeSettingsManager(context);
         boolean audioMode = this.stimulusMode == RetellingStimulusMode.AUDIO;
@@ -768,6 +773,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
     }
 
     private void showResult(RetellingScore score, boolean passed) {
+        answerAttemptScores.add(score.getScore());
         saveRecord(score, passed);
         if (passed) {
             sessionEverPassed = true;
@@ -788,6 +794,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
             // 本地识别文本即评分依据，写入答题记录供回看；腾讯转写不参与评分，不存储
             record.offlineRecognizedText = offlineTranscript == null ? "" : offlineTranscript;
             record.score = score.getScore();
+            record.attemptScores = new ArrayList<>(answerAttemptScores);
             record.coverage = score.getCoverage();
             record.order = score.getOrder();
             record.accuracy = score.getAccuracy();
@@ -835,6 +842,7 @@ public final class RetellingChallengeSession implements ChallengeSession {
         sessionId++;
         audioPlayer.stop();
         scoreRetryCount = 0;
+        answerAttemptScores.clear();
         setState(RetellingState.LOADING_STORY);
         // 换新材料同样可能走网络出题，先提示「出题中」
         view.showLoading(stimulusMode);

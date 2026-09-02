@@ -34,6 +34,10 @@ public class RetellingEvaluatorPromptTest {
     private static void assertCommonStructure(String prompt) {
         assertTrue(prompt.contains("[角色]"));
         assertTrue(prompt.contains("[安全边界]"));
+        assertTrue(prompt.contains("[语音转写容错]"));
+        assertTrue(prompt.contains("原文“李工”被转写成“理工”"));
+        assertTrue(prompt.contains("不扣任何评分维度"));
+        assertTrue(prompt.contains("不要在 feedback 中指出"));
         assertTrue(prompt.contains("[评分维度]"));
         assertTrue(prompt.contains("[通用判分规则]"));
         assertTrue(prompt.contains("[反馈要求]"));
