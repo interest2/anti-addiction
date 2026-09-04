@@ -18,6 +18,7 @@ import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.network.DeviceInfoReporter;
+import com.book.mask.network.ComputerFocusManager;
 import com.book.mask.network.TextFetcher;
 import com.book.mask.util.DateUtils;
 
@@ -45,6 +46,8 @@ public class FloatService extends AccessibilityService
     
     // 设备信息上报器
     private DeviceInfoReporter deviceInfoReporter;
+    private ComputerFocusManager computerFocusManager;
+    private AutoScreenshotManager autoScreenshotManager;
     
     // 悬浮窗文字获取器
     private TextFetcher textFetcher;
@@ -78,6 +81,12 @@ public class FloatService extends AccessibilityService
         relaxManager = new RelaxManager(this);
         appSettingsManager = new AppSettingsManager(this);
         leisureTimeManager = new LeisureTimeManager(this);
+
+        computerFocusManager = new ComputerFocusManager();
+        computerFocusManager.start();
+
+        autoScreenshotManager = new AutoScreenshotManager(this);
+        autoScreenshotManager.refresh();
         
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
@@ -150,7 +159,12 @@ public class FloatService extends AccessibilityService
      */
     private void initManagers() {
         // 初始化应用状态管理器
-        appStateManager = new AppStateManager(this, relaxManager, leisureTimeManager);
+        appStateManager = new AppStateManager(
+                this,
+                relaxManager,
+                leisureTimeManager,
+                computerFocusManager
+        );
         appStateManager.setOnAppStateListener(new AppStateManager.OnAppStateListener() {
             @Override
             public void onAppStateChanged(CustomApp app, boolean isTargetInterface) {
@@ -173,6 +187,11 @@ public class FloatService extends AccessibilityService
             
             @Override
             public void onAppLeft(CustomApp app) {
+                floatingWindowManager.hideFloatingWindow();
+            }
+
+            @Override
+            public void onComputerFocusBlocked(CustomApp app) {
                 floatingWindowManager.hideFloatingWindow();
             }
 
@@ -408,6 +427,16 @@ public class FloatService extends AccessibilityService
             deviceInfoReporter.release();
             deviceInfoReporter = null;
         }
+
+        if (computerFocusManager != null) {
+            computerFocusManager.stop();
+            computerFocusManager = null;
+        }
+
+        if (autoScreenshotManager != null) {
+            autoScreenshotManager.stop();
+            autoScreenshotManager = null;
+        }
         
         // 清理悬浮窗文字获取器
         if (textFetcher != null) {
@@ -447,6 +476,18 @@ public class FloatService extends AccessibilityService
     public static void notifyLeisureTimeChanged() {
         if (instance != null && instance.floatingWindowManager != null) {
             instance.floatingWindowManager.updateFloatingWindowContent(Share.currentApp);
+        }
+    }
+
+    public static void notifyComputerFocusSettingsChanged() {
+        if (instance != null && instance.computerFocusManager != null) {
+            instance.computerFocusManager.refreshNow();
+        }
+    }
+
+    public static void notifyAutoScreenshotSettingsChanged() {
+        if (instance != null && instance.autoScreenshotManager != null) {
+            instance.autoScreenshotManager.refresh();
         }
     }
 

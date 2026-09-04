@@ -89,6 +89,9 @@ public class BackupManager {
             AppSettingsManager.KEY_FLOATING_TOP_OFFSET,
             AppSettingsManager.KEY_FLOATING_BOTTOM_OFFSET,
     };
+    private static final String[] MORE_STRING_KEYS = {
+            ComputerFocusSettings.KEY_SERVER_ADDRESS,
+    };
 
     // 首页各卡片：每 APP 独立的键前缀
     private static final String PREFIX_HINT_SOURCE = AppSettingsManager.KEY_APP_HINT_SOURCE;
@@ -361,6 +364,7 @@ public class BackupManager {
 
     private Map<String, Object> buildMore() {
         Map<String, Object> more = new LinkedHashMap<>();
+        putStringsIfSet(more, MORE_STRING_KEYS);
         putIntsIfSet(more, MORE_INT_KEYS);
         return more;
     }
@@ -423,6 +427,7 @@ public class BackupManager {
 
         JsonObject more = optObject(root, "more");
         if (more != null) {
+            importStrings(more, MORE_STRING_KEYS, result);
             importInts(more, MORE_INT_KEYS, result);
         }
 
