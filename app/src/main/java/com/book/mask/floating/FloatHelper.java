@@ -47,16 +47,20 @@ public class FloatHelper {
 //        "com.bbk.inputmethod"       // vivo输入法（旧版本）
     }
 
-    static boolean findTargetText(AccessibilityNodeInfo node, String targetText,
+    /**
+     * @param visibleOnly true=宽松匹配，仅可见节点的文字算命中；false=不可见节点的文字也算命中
+     */
+    static boolean findTargetText(AccessibilityNodeInfo node, String targetText, boolean visibleOnly,
                                   TextScanDiagnostics diagnostics) {
-        return findTargetTextInNode(node, targetText, 0, diagnostics);
+        return findTargetTextInNode(node, targetText, visibleOnly, 0, diagnostics);
     }
 
     private static boolean findTargetTextInNode(AccessibilityNodeInfo node, String targetText,
-                                                int depth, TextScanDiagnostics diagnostics) {
+                                                boolean visibleOnly, int depth,
+                                                TextScanDiagnostics diagnostics) {
         if (node == null) return false;
 
-        // 排查模式下逐节点判定可见性以统计诊断信息；正常模式跳过这次开销，只在命中节点再判可见性
+        // 排查模式下逐节点判定可见性以统计诊断信息；正常模式跳过这次开销，仅匹配可见时才在命中节点再判可见性
         boolean visible = diagnostics != null && node.isVisibleToUser();
         if (diagnostics != null) {
             diagnostics.onNodeVisited(depth, visible);
@@ -66,23 +70,22 @@ public class FloatHelper {
         text = !isEmpty(text) ? text : node.getContentDescription();
 
         if (!isEmpty(text) && targetText.contains(text.toString())) {
-            if (diagnostics == null) {
+            if (visibleOnly && diagnostics == null) {
                 visible = node.isVisibleToUser();
-            } else {
-                diagnostics.onTargetHit(depth, visible);
             }
-            return true;
-//            if (visible) {
-//                Log.d(TAG, "找到目标文本: " + targetText + " (可见)");
-//                return true;
-//            }
-//            Log.d(TAG, "找到目标文本: " + targetText + " (不可见，忽略)");
+            // 不可见节点命中且要求可见：忽略该节点，继续往下找
+            if (!visibleOnly || visible) {
+                if (diagnostics != null) {
+                    diagnostics.onTargetHit(depth, visible);
+                }
+                return true;
+            }
         }
 
         for (int i = 0; i < node.getChildCount(); i++) {
             AccessibilityNodeInfo child = node.getChild(i);
             if (child != null) {
-                if (findTargetTextInNode(child, targetText, depth + 1, diagnostics)) {
+                if (findTargetTextInNode(child, targetText, visibleOnly, depth + 1, diagnostics)) {
                     child.recycle();
                     return true;
                 }

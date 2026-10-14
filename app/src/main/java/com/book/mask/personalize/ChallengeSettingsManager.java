@@ -2,13 +2,12 @@ package com.book.mask.personalize;
 
 import android.content.Context;
 
-import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.util.ArithmeticUtils.MultiplicationTier;
 import com.tencent.mmkv.MMKV;
 
 /**
- * 管理答题类型和算术题难度配置。
+ * 管理算术题难度配置。
  */
 public class ChallengeSettingsManager {
 
@@ -23,7 +22,6 @@ public class ChallengeSettingsManager {
             "math_multiplication_multiplier_tier";
     static final String KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER =
             "math_multiplication_multiplicand_tier";
-    static final String KEY_MATH_QUESTION_TYPE = "math_question_type";
 
     private final MMKV mmkv;
 
@@ -104,14 +102,5 @@ public class ChallengeSettingsManager {
         return MultiplicationTier.fromPreferenceValue(mmkv.getString(
                 KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER,
                 MultiplicationTier.LOWER_HALF.getPreferenceValue()));
-    }
-
-    public ChallengeType getChallengeType() {
-        return ChallengeType.fromPreferenceValue(mmkv.getString(
-                KEY_MATH_QUESTION_TYPE, ChallengeType.ARITHMETIC.getPreferenceValue()));
-    }
-
-    public void setChallengeType(ChallengeType challengeType) {
-        mmkv.putString(KEY_MATH_QUESTION_TYPE, challengeType.getPreferenceValue()).commit();
     }
 }

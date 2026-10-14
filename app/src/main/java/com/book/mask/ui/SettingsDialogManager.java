@@ -24,7 +24,6 @@ import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.personalize.AnswerOverviewRecord;
@@ -1280,41 +1279,19 @@ public class SettingsDialogManager {
         }
     }
 
-    /**
-     * 返回当前答题类型。
-     */
-    public ChallengeType getChallengeType() {
-        return challengeSettingsManager.getChallengeType();
-    }
-
-    /**
-     * 切换答题类型。算术题切换后弹出难度设置的次级弹窗。
-     *
-     * @param onApplied 切换成功后回调（用于刷新页面选中态）
-     */
-    public void applyChallengeTypeSelection(ChallengeType selectedType, Runnable onApplied) {
-        challengeSettingsManager.setChallengeType(selectedType);
-        android.util.Log.d("SettingsDialog", "答题类型设置: 已设置题型=" + selectedType.getDisplayName()
-                + " (枚举=" + selectedType + ")");
-        if (selectedType == ChallengeType.ARITHMETIC) {
-            showArithmeticDifficultyDialog(onApplied);
-        }
-        if (onApplied != null) {
-            onApplied.run();
-        }
-    }
-
-    /** 算术题生效难度文案：default 显示「默认难度」，custom 显示「自定义难度」。 */
+    /** 算术题生效难度文案：default 显示「默认」，custom 显示「自定义」。 */
     public String getMathDifficultyModeLabel() {
         return "custom".equals(challengeSettingsManager.getMathDifficultyMode())
-                ? "自定义难度"
-                : "默认难度";
+                ? "自定义"
+                : "默认";
     }
 
     /**
-     * 显示纯算术题难度设置对话框（次级弹窗）
+     * 显示算术题难度设置对话框（个性化页「算术题难度」点击直达）。
+     *
+     * @param onDifficultyChanged 难度设置流程结束后的回调（用于刷新页面上显示的当前难度）
      */
-    private void showArithmeticDifficultyDialog(Runnable onDifficultyChanged) {
+    public void showArithmeticDifficultyDialog(Runnable onDifficultyChanged) {
         String[] difficultyOptions = {"默认", "自定义"};
         String currentMode = challengeSettingsManager.getMathDifficultyMode();
         int checkedItem = "custom".equals(currentMode) ? 1 : 0;
@@ -1396,10 +1373,13 @@ public class SettingsDialogManager {
                 }
                 dialog.dismiss();
                 UiFeedback.show(context, "已保存自定义难度设置");
-                if (onDifficultyChanged != null) {
-                    onDifficultyChanged.run();
-                }
             }));
+        // 难度模式在点选「自定义」时就已写入；无论保存还是直接关闭，都要刷新页面上显示的当前难度
+        dialog.setOnDismissListener(ignored -> {
+            if (onDifficultyChanged != null) {
+                onDifficultyChanged.run();
+            }
+        });
         dialog.show();
     }
 

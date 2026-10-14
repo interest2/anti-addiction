@@ -12,7 +12,7 @@ import java.io.File;
  * <ul>
  *   <li>听力 / 复述 / 听述题：豆包语音与腾讯口语评测的凭据、复述录音文件、答题记录与相关设置；</li>
  *   <li>推理 / 混合 / 英文阅读题：远程题目缓存与相关设置；</li>
- *   <li>答题计时、自动截图、电脑任务专注：相关设置项。</li>
+ *   <li>题目类型选择、答题计时、自动截图、电脑任务专注：相关设置项。</li>
  * </ul>
  * 清理成功后写入完成标记，之后每次启动只做一次布尔读取。
  */
@@ -30,6 +30,7 @@ public final class LegacyDataCleaner {
 
     /** 通用设置存储（app_settings）中已下线功能遗留的键。 */
     private static final String[] LEGACY_SETTING_KEYS = {
+            "math_question_type",
             "reasoning_difficulty_level",
             "listening_difficulty_level",
             "listening_retelling_difficulty_level",

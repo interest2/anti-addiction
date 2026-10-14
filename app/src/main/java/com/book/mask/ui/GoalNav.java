@@ -32,7 +32,7 @@ public class GoalNav extends Fragment {
     private TextView tvReminderProviderValue;
     private TextView tvGlobalHintSourceValue;
     private TextView tvFloatingStrictReminderValue;
-    private TextView tvChallengeTypeValue;
+    private TextView tvMathDifficultyValue;
     private Button btnTagSetting, btnTargetDateSetting;
 
     @Nullable
@@ -49,7 +49,7 @@ public class GoalNav extends Fragment {
         tvReminderProviderValue = view.findViewById(R.id.tv_reminder_provider_value);
         tvGlobalHintSourceValue = view.findViewById(R.id.tv_global_hint_source_value);
         tvFloatingStrictReminderValue = view.findViewById(R.id.tv_floating_strict_reminder_value);
-        tvChallengeTypeValue = view.findViewById(R.id.tv_challenge_type_value);
+        tvMathDifficultyValue = view.findViewById(R.id.tv_math_difficulty_value);
         btnTagSetting = view.findViewById(R.id.btn_tag_setting);
         btnTargetDateSetting = view.findViewById(R.id.btn_target_date_setting);
 
@@ -71,9 +71,9 @@ public class GoalNav extends Fragment {
             reminderProviderRow.setOnClickListener(v -> openReminderProviderSettings());
         }
 
-        // 设置答题类型入口：打开「题目类型」子页面
-        View challengeTypeRow = view.findViewById(R.id.btn_challenge_type);
-        challengeTypeRow.setOnClickListener(v -> openChallengeTypeSettings());
+        // 算术题难度：点击直接弹出难度设置弹窗，设置完成后刷新右侧显示的当前难度
+        view.findViewById(R.id.btn_math_difficulty).setOnClickListener(v ->
+                settingsDialogManager.showArithmeticDifficultyDialog(this::updateMathDifficultyValue));
 
         View reminderStyleRow = view.findViewById(R.id.btn_reminder_style);
         reminderStyleRow.setOnClickListener(v ->
@@ -124,20 +124,6 @@ public class GoalNav extends Fragment {
                 .commit();
     }
 
-    private void openChallengeTypeSettings() {
-        getParentFragmentManager().beginTransaction()
-                .setReorderingAllowed(true)
-                .setCustomAnimations(
-                        R.anim.slide_in_right,
-                        R.anim.slide_out_left,
-                        0,
-                        0
-                )
-                .replace(R.id.fragment_container, new ChallengeTypeSettingsNav())
-                .addToBackStack(ChallengeTypeSettingsNav.class.getSimpleName())
-                .commit();
-    }
-
     @Override
     public void onResume() {
         super.onResume();
@@ -159,7 +145,7 @@ public class GoalNav extends Fragment {
         int checkedItem = Const.CUSTOM_HINT_SOURCE.equals(appSettingsManager.getGlobalHintSource())
                 ? 0 : 1;
         new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("选择悬浮窗警示语来源")
+                .setTitle("将作用于所有目标APP的默认警示语")
                 .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
                     dialog.dismiss();
                     if (which == 0) {
@@ -237,8 +223,12 @@ public class GoalNav extends Fragment {
         btnTargetDateSetting.setText((date == null || date.isEmpty() || "待设置".equals(date)) ? "目标日期" : date);
         // 倒计时
         tvGoalCountdown.setText(DateUtils.countdownDate(date));
-        // 答题类型
-        tvChallengeTypeValue.setText(settingsDialogManager.getChallengeType().getDisplayName());
+        // 算术题难度
+        updateMathDifficultyValue();
         updateReminderValues();
+    }
+
+    private void updateMathDifficultyValue() {
+        tvMathDifficultyValue.setText(settingsDialogManager.getMathDifficultyModeLabel());
     }
 }

@@ -96,6 +96,14 @@ public class CustomAppManager {
 
     public boolean addCustomApp(String appName, String packageName, String targetWord,
                                 int relaxedLimitCount, boolean globalBlock) {
+        return addCustomApp(appName, packageName, targetWord, relaxedLimitCount, globalBlock, null);
+    }
+
+    /**
+     * @param looseMatch 宽松匹配；null 表示不显式设置，按包名取默认值
+     */
+    public boolean addCustomApp(String appName, String packageName, String targetWord,
+                                int relaxedLimitCount, boolean globalBlock, Boolean looseMatch) {
         // 入口清洗：去除零宽字符等不可见字符，并校验包名合法性
         String cleanedPkg = sanitizePackageName(packageName);
         if (!isValidPackageName(cleanedPkg)) {
@@ -116,7 +124,7 @@ public class CustomAppManager {
 
         // 创建新的自定义APP
         CustomApp newApp = new CustomApp(
-                appName, packageName, targetWord, relaxedLimitCount, globalBlock);
+                appName, packageName, targetWord, relaxedLimitCount, globalBlock, looseMatch);
         customApps.add(newApp);
 
         // 保存到MMKV
@@ -319,7 +327,7 @@ public class CustomAppManager {
                 // packageName 是 final，需要重建对象
                 CustomApp rebuilt = new CustomApp(
                         app.getAppName(), cleaned, app.getTargetWord(), app.getRelaxedLimitCount(),
-                        app.isGlobalBlock());
+                        app.isGlobalBlock(), app.getLooseMatchSetting());
                 apps.set(i, rebuilt);
                 dirty = true;
             }

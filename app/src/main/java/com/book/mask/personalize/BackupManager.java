@@ -57,7 +57,6 @@ public class BackupManager {
             AppSettingsManager.KEY_GLOBAL_HINT_SOURCE,
             AppSettingsManager.KEY_GLOBAL_HINT_CUSTOM,
             AppSettingsManager.KEY_FLOATING_STRICT_REMINDER,   // 座右铭内容
-            ChallengeSettingsManager.KEY_MATH_QUESTION_TYPE,   // 题目类型
             ChallengeSettingsManager.KEY_MATH_DIFFICULTY_MODE, // 算术题难度模式（default / custom）
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_TIER,
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER,
@@ -392,7 +391,8 @@ public class BackupManager {
                         o.get("packageName").getAsString(),
                         optString(o, "targetWord", ""),
                         CustomApp.clampRelaxedLimitCount(optInt(o, "relaxedLimitCount", 1)),
-                        optBoolean(o, "globalBlock", false));
+                        optBoolean(o, "globalBlock", false),
+                        optBooleanOrNull(o, "looseMatch"));
                 if (ok) {
                     result.imported++;
                 } else {
@@ -490,7 +490,8 @@ public class BackupManager {
                         o.get("packageName").getAsString(),
                         optString(o, "targetWord", ""),
                         CustomApp.clampRelaxedLimitCount(optInt(o, "relaxedLimitCount", 1)),
-                        optBoolean(o, "globalBlock", false));
+                        optBoolean(o, "globalBlock", false),
+                        optBooleanOrNull(o, "looseMatch"));
                 manager.updatePredefinedApp(app);
                 result.imported++;
             } catch (Exception e) {
@@ -598,6 +599,11 @@ public class BackupManager {
 
     private static boolean optBoolean(JsonObject obj, String name, boolean fallback) {
         return has(obj, name) ? obj.get(name).getAsBoolean() : fallback;
+    }
+
+    /** 缺失返回 null，用于「未显式设置、取默认」语义的开关。 */
+    private static Boolean optBooleanOrNull(JsonObject obj, String name) {
+        return has(obj, name) ? obj.get(name).getAsBoolean() : null;
     }
 
     private static JsonObject optObject(JsonObject parent, String name) {

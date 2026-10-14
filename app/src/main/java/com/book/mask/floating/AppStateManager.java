@@ -294,7 +294,8 @@ public class AppStateManager {
                     SystemClock.elapsedRealtimeNanos() - rootStartNanos);
             if (rootNode != null) {
                 long traversalStartNanos = SystemClock.elapsedRealtimeNanos();
-                hasTargetWord = FloatHelper.findTargetText(rootNode, targetWord, diagnostics);
+                hasTargetWord = FloatHelper.findTargetText(
+                        rootNode, targetWord, currentActiveApp.isLooseMatch(), diagnostics);
                 double traversalElapsedMs = DateUtils.nanosToMillis(
                         SystemClock.elapsedRealtimeNanos() - traversalStartNanos);
                 if(currentPackageName.equals(CustomAppManager.WECHAT_PACKAGE)){

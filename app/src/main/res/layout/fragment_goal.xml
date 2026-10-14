@@ -335,7 +335,7 @@
                 android:orientation="vertical">
 
                 <LinearLayout
-                    android:id="@+id/btn_challenge_type"
+                    android:id="@+id/btn_math_difficulty"
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:background="?attr/selectableItemBackground"
@@ -349,12 +349,12 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="题目类型"
+                        android:text="算术题难度"
                         android:textColor="#252525"
                         android:textSize="18sp" />
 
                     <TextView
-                        android:id="@+id/tv_challenge_type_value"
+                        android:id="@+id/tv_math_difficulty_value"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="12dp"

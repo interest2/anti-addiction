@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
@@ -20,6 +21,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -1070,9 +1072,25 @@ public class HomeNav extends Fragment implements
         input.setText(app.getTargetWord());
         input.setSelection(input.length());
 
+        // 链接样式（蓝色 + 下划线）提示可点击；上下留白撑大触摸区域
+        TextView inaccurateLink = new TextView(requireContext());
+        inaccurateLink.setText("效果不准确点这");
+        inaccurateLink.setTextSize(16);
+        inaccurateLink.setTextColor(Color.rgb(66, 133, 190));
+        inaccurateLink.setPaintFlags(inaccurateLink.getPaintFlags() | Paint.UNDERLINE_TEXT_FLAG);
+        inaccurateLink.setPadding(0, dp(12), dp(12), dp(12));
+        inaccurateLink.setOnClickListener(v -> showLooseMatchDialog(app));
+
+        LinearLayout content = new LinearLayout(requireContext());
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(24), dp(8), dp(24), 0);
+        content.addView(input);
+        content.addView(inaccurateLink, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
         android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
                 .setTitle("页面屏蔽关键词")
-                .setView(input)
+                .setView(content)
                 .setPositiveButton("确定", null)
                 .setNegativeButton("取消", null)
                 .create();
@@ -1091,6 +1109,39 @@ public class HomeNav extends Fragment implements
                     dialog.dismiss();
                 }));
         dialog.show();
+    }
+
+    /**
+     * 「效果不准确」说明弹窗：勾选「宽松匹配」后页面关键词只匹配可见节点，勾选即时保存。
+     */
+    private void showLooseMatchDialog(CustomApp app) {
+        TextView message = new TextView(requireContext());
+        message.setText("如果很多不含关键词页面也被屏蔽，可勾选启用下方按钮");
+        message.setTextSize(15);
+        message.setTextColor(0xFF333333);
+
+        CheckBox looseMatch = new CheckBox(requireContext());
+        looseMatch.setText("宽松匹配");
+        looseMatch.setTextSize(15);
+        looseMatch.setChecked(app.isLooseMatch());
+        looseMatch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            app.setLooseMatch(isChecked);
+            customAppManager.persistAppChange(app);
+        });
+
+        LinearLayout content = new LinearLayout(requireContext());
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(24), dp(16), dp(24), 0);
+        content.addView(message);
+        LinearLayout.LayoutParams checkParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        checkParams.topMargin = dp(12);
+        content.addView(looseMatch, checkParams);
+
+        new android.app.AlertDialog.Builder(requireContext())
+                .setView(content)
+                .setPositiveButton("关闭", null)
+                .show();
     }
 
     /**
