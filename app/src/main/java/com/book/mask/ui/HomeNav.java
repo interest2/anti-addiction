@@ -1285,6 +1285,7 @@ public class HomeNav extends Fragment implements
         if (customText != null && !customText.isEmpty()) {
             appSettingsManager.setAppHintCustomText(currentAppPackage, customText);
         }
+        FloatService.notifyHintSourceChanged();
         android.util.Log.d("HomeFragment", "APP " + currentAppPackage + " 悬浮窗警示语来源已保存: " + source + ", 自定义文字: " + customText);
     }
     

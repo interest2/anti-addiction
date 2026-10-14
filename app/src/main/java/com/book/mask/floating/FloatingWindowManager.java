@@ -706,6 +706,13 @@ public class FloatingWindowManager {
         textFetcher.prefetchLatestText();
     }
 
+    public void onHintSourceChanged() {
+        if (currentWindowApp != null) {
+            updateFloatingWindowContent(currentWindowApp);
+            prefetchReminderText(currentWindowApp);
+        }
+    }
+
     public void onReminderContentChanged() {
         if (textFetcher == null) {
             return;

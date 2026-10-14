@@ -495,6 +495,12 @@ public class FloatService extends AccessibilityService
         notifyReminderContentChanged();
     }
 
+    public static void notifyHintSourceChanged() {
+        if (instance != null && instance.floatingWindowManager != null) {
+            instance.floatingWindowManager.onHintSourceChanged();
+        }
+    }
+
     public static void notifyReminderContentChanged() {
         if (instance != null && instance.floatingWindowManager != null) {
             instance.floatingWindowManager.onReminderContentChanged();

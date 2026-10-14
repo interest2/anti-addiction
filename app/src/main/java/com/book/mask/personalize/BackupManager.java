@@ -54,6 +54,8 @@ public class BackupManager {
             AppSettingsManager.KEY_TARGET_COMPLETION_DATE,     // 目标日期
             AppSettingsManager.KEY_REMINDER_STYLE,             // 大模型提醒风格
             AppSettingsManager.KEY_REMINDER_CUSTOM_STYLE,      // 自定义提醒风格
+            AppSettingsManager.KEY_GLOBAL_HINT_SOURCE,
+            AppSettingsManager.KEY_GLOBAL_HINT_CUSTOM,
             AppSettingsManager.KEY_FLOATING_STRICT_REMINDER,   // 座右铭内容
             ChallengeSettingsManager.KEY_MATH_QUESTION_TYPE,   // 题目类型
             ChallengeSettingsManager.KEY_MATH_DIFFICULTY_MODE, // 算术题难度模式（default / custom）
@@ -66,6 +68,7 @@ public class BackupManager {
 
     // 个性化：整型配置键
     private static final String[] PERSONALIZE_INT_KEYS = {
+            AppSettingsManager.KEY_GLOBAL_HINT_GENERATION,
             AppSettingsManager.KEY_FLOATING_STRICT_REMINDER_FONT_SIZE,            // 座右铭字号
             AppSettingsManager.KEY_FLOATING_STRICT_REMINDER_FONT_COLOR,           // 座右铭字体颜色
             ChallengeSettingsManager.KEY_MATH_ADDITION_DIGITS,                    // 算术题难度：加法位数
@@ -96,6 +99,7 @@ public class BackupManager {
     // 首页各卡片：每 APP 独立的键前缀
     private static final String PREFIX_HINT_SOURCE = AppSettingsManager.KEY_APP_HINT_SOURCE;
     private static final String PREFIX_HINT_CUSTOM = AppSettingsManager.KEY_APP_HINT_CUSTOM;
+    private static final String PREFIX_HINT_GENERATION = AppSettingsManager.KEY_APP_HINT_GENERATION;
     private static final String PREFIX_FLOATING_TOP = AppSettingsManager.KEY_APP_FLOATING_TOP_OFFSET;
     private static final String PREFIX_FLOATING_BOTTOM =
             AppSettingsManager.KEY_APP_FLOATING_BOTTOM_OFFSET;
@@ -324,6 +328,9 @@ public class BackupManager {
             } else if (key.startsWith(PREFIX_HINT_CUSTOM)) {
                 perApp(byPackage, key.substring(PREFIX_HINT_CUSTOM.length()))
                         .put("hintCustomText", settings.getString(key, null));
+            } else if (key.startsWith(PREFIX_HINT_GENERATION)) {
+                perApp(byPackage, key.substring(PREFIX_HINT_GENERATION.length()))
+                        .put("hintGeneration", settings.getInt(key, 0));
             } else if (key.startsWith(PREFIX_FLOATING_TOP)) {
                 perApp(byPackage, key.substring(PREFIX_FLOATING_TOP.length()))
                         .put("floatingTopOffset", settings.getInt(key, 0));
@@ -653,6 +660,9 @@ public class BackupManager {
                 }
                 if (has(o, "hintCustomText")) {
                     settings.putString(PREFIX_HINT_CUSTOM + pkg, o.get("hintCustomText").getAsString());
+                }
+                if (has(o, "hintGeneration")) {
+                    settings.putInt(PREFIX_HINT_GENERATION + pkg, o.get("hintGeneration").getAsInt());
                 }
                 if (has(o, "floatingTopOffset")) {
                     settings.putInt(PREFIX_FLOATING_TOP + pkg, o.get("floatingTopOffset").getAsInt());

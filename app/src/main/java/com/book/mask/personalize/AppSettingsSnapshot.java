@@ -11,5 +11,6 @@ public class AppSettingsSnapshot {
     public Integer floatingBottomOffset;
     public String hintSource;
     public String hintCustom;
+    public Integer hintGeneration;
     public Boolean monitoringEnabled;
 }

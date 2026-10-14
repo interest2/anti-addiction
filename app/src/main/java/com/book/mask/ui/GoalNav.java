@@ -1,10 +1,12 @@
 package com.book.mask.ui;
 
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -28,6 +30,7 @@ public class GoalNav extends Fragment {
     private TextView tvGoalCountdown;
     private TextView tvReminderStyleValue;
     private TextView tvReminderProviderValue;
+    private TextView tvGlobalHintSourceValue;
     private TextView tvFloatingStrictReminderValue;
     private TextView tvChallengeTypeValue;
     private Button btnTagSetting, btnTargetDateSetting;
@@ -44,6 +47,7 @@ public class GoalNav extends Fragment {
         tvGoalCountdown = view.findViewById(R.id.tv_goal_countdown);
         tvReminderStyleValue = view.findViewById(R.id.tv_reminder_style_value);
         tvReminderProviderValue = view.findViewById(R.id.tv_reminder_provider_value);
+        tvGlobalHintSourceValue = view.findViewById(R.id.tv_global_hint_source_value);
         tvFloatingStrictReminderValue = view.findViewById(R.id.tv_floating_strict_reminder_value);
         tvChallengeTypeValue = view.findViewById(R.id.tv_challenge_type_value);
         btnTagSetting = view.findViewById(R.id.btn_tag_setting);
@@ -74,6 +78,9 @@ public class GoalNav extends Fragment {
         View reminderStyleRow = view.findViewById(R.id.btn_reminder_style);
         reminderStyleRow.setOnClickListener(v ->
                 settingsDialogManager.showReminderStyleDialog(this::onReminderStyleChanged));
+
+        view.findViewById(R.id.btn_global_hint_source)
+                .setOnClickListener(v -> showGlobalHintSourceDialog());
 
         // 设置悬浮窗额外显示日常提醒按钮
         View floatingStrictReminderRow = view.findViewById(
@@ -147,7 +154,64 @@ public class GoalNav extends Fragment {
         FloatService.notifyReminderContentChanged();
     }
 
+    private void showGlobalHintSourceDialog() {
+        String[] options = {Const.CUSTOM_HINT_SOURCE, Const.DEFAULT_HINT_SOURCE};
+        int checkedItem = Const.CUSTOM_HINT_SOURCE.equals(appSettingsManager.getGlobalHintSource())
+                ? 0 : 1;
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("选择悬浮窗警示语来源")
+                .setSingleChoiceItems(options, checkedItem, (dialog, which) -> {
+                    dialog.dismiss();
+                    if (which == 0) {
+                        showGlobalHintCustomTextDialog();
+                    } else {
+                        appSettingsManager.setGlobalHintSource(Const.DEFAULT_HINT_SOURCE, null);
+                        onGlobalHintSourceChanged();
+                        UiFeedback.show(requireContext(), "已选择大模型作为悬浮窗警示语来源");
+                    }
+                })
+                .setNegativeButton("关闭", null)
+                .show();
+    }
+
+    private void showGlobalHintCustomTextDialog() {
+        EditText input = new EditText(requireContext());
+        input.setHint("请输入自定义警示语（不超过100字）");
+        input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(100)});
+        String currentText = appSettingsManager.getGlobalHintCustomText();
+        input.setText(currentText);
+        input.setSelection(input.length());
+
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("输入自定义警示语")
+                .setMessage("此警示语将用于所有 APP")
+                .setView(input)
+                .setPositiveButton("确定", null)
+                .setNegativeButton("取消", null)
+                .create();
+        dialog.setOnShowListener(ignored ->
+                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                    input.setError(null);
+                    String customText = input.getText().toString().trim();
+                    if (customText.isEmpty()) {
+                        UiFeedback.showInputError(input, "请输入内容");
+                        return;
+                    }
+                    appSettingsManager.setGlobalHintSource(Const.CUSTOM_HINT_SOURCE, customText);
+                    onGlobalHintSourceChanged();
+                    dialog.dismiss();
+                    UiFeedback.show(requireContext(), "自定义警示语设置成功");
+                }));
+        dialog.show();
+    }
+
+    private void onGlobalHintSourceChanged() {
+        updateReminderValues();
+        FloatService.notifyHintSourceChanged();
+    }
+
     private void updateReminderValues() {
+        tvGlobalHintSourceValue.setText(appSettingsManager.getGlobalHintSource());
         String style = appSettingsManager.getReminderStyle();
         tvReminderStyleValue.setText("自定义".equals(style)
                 ? appSettingsManager.getReminderCustomStyle()

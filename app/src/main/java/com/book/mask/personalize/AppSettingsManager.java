@@ -16,6 +16,10 @@ public class AppSettingsManager {
     // 每个APP独立的悬浮窗警示语来源相关
     static final String KEY_APP_HINT_SOURCE = "app_hint_source_";
     static final String KEY_APP_HINT_CUSTOM = "app_hint_custom_";
+    static final String KEY_APP_HINT_GENERATION = "app_hint_generation_";
+    static final String KEY_GLOBAL_HINT_SOURCE = "global_hint_source";
+    static final String KEY_GLOBAL_HINT_CUSTOM = "global_hint_custom";
+    static final String KEY_GLOBAL_HINT_GENERATION = "global_hint_generation";
 
     // 悬浮窗额外显示日常提醒
     static final String KEY_FLOATING_STRICT_REMINDER = "floating_strict_reminder";
@@ -86,6 +90,7 @@ public class AppSettingsManager {
      */
     public void setAppHintSource(String packageName, String source) {
         mmkv.putString(KEY_APP_HINT_SOURCE + packageName, source).commit();
+        mmkv.putInt(KEY_APP_HINT_GENERATION + packageName, getGlobalHintGeneration()).commit();
         android.util.Log.d("SettingsManager", "设置APP " + packageName + " 悬浮窗警示语来源: " + source);
     }
 
@@ -93,7 +98,10 @@ public class AppSettingsManager {
      * 获取指定APP的悬浮窗警示语来源
      */
     public String getAppHintSource(String packageName) {
-        return mmkv.getString(KEY_APP_HINT_SOURCE + packageName, Const.DEFAULT_HINT_SOURCE);
+        String key = KEY_APP_HINT_SOURCE + packageName;
+        return isAppHintOverrideActive(packageName) && mmkv.contains(key)
+                ? mmkv.getString(key, Const.DEFAULT_HINT_SOURCE)
+                : getGlobalHintSource();
     }
 
     /**
@@ -108,7 +116,36 @@ public class AppSettingsManager {
      * 获取指定APP的自定义悬浮窗警示语
      */
     public String getAppHintCustomText(String packageName) {
-        return mmkv.getString(KEY_APP_HINT_CUSTOM + packageName, "");
+        String key = KEY_APP_HINT_CUSTOM + packageName;
+        return isAppHintOverrideActive(packageName) && mmkv.contains(key)
+                ? mmkv.getString(key, "")
+                : getGlobalHintCustomText();
+    }
+
+    /** 每次全局选择都会使之前的每 APP 选择失效；之后单独修改的 APP 可再次覆盖全局值。 */
+    public void setGlobalHintSource(String source, String customText) {
+        mmkv.putString(KEY_GLOBAL_HINT_SOURCE, source);
+        if (customText != null) {
+            mmkv.putString(KEY_GLOBAL_HINT_CUSTOM, customText);
+        }
+        mmkv.putInt(KEY_GLOBAL_HINT_GENERATION, getGlobalHintGeneration() + 1).commit();
+    }
+
+    public String getGlobalHintSource() {
+        return mmkv.getString(KEY_GLOBAL_HINT_SOURCE, Const.DEFAULT_HINT_SOURCE);
+    }
+
+    public String getGlobalHintCustomText() {
+        return mmkv.getString(KEY_GLOBAL_HINT_CUSTOM, "");
+    }
+
+    private int getGlobalHintGeneration() {
+        return mmkv.getInt(KEY_GLOBAL_HINT_GENERATION, 0);
+    }
+
+    private boolean isAppHintOverrideActive(String packageName) {
+        return mmkv.getInt(KEY_APP_HINT_GENERATION + packageName, 0)
+                == getGlobalHintGeneration();
     }
 
     /**
@@ -118,6 +155,7 @@ public class AppSettingsManager {
         if (packageName == null) return;
         mmkv.removeValueForKey(KEY_APP_HINT_SOURCE + packageName);
         mmkv.removeValueForKey(KEY_APP_HINT_CUSTOM + packageName);
+        mmkv.removeValueForKey(KEY_APP_HINT_GENERATION + packageName);
         mmkv.removeValueForKey(KEY_APP_FLOATING_TOP_OFFSET + packageName);
         mmkv.removeValueForKey(KEY_APP_FLOATING_BOTTOM_OFFSET + packageName);
         android.util.Log.d("SettingsManager", "清除APP在AppSettingsManager中的所有设置: " + packageName);
@@ -135,6 +173,10 @@ public class AppSettingsManager {
         String hintCustomKey = KEY_APP_HINT_CUSTOM + packageName;
         if (mmkv.contains(hintCustomKey)) {
             snapshot.hintCustom = mmkv.getString(hintCustomKey, "");
+        }
+        String hintGenerationKey = KEY_APP_HINT_GENERATION + packageName;
+        if (mmkv.contains(hintGenerationKey)) {
+            snapshot.hintGeneration = mmkv.getInt(hintGenerationKey, 0);
         }
         String topKey = KEY_APP_FLOATING_TOP_OFFSET + packageName;
         if (mmkv.contains(topKey)) {
@@ -156,6 +198,9 @@ public class AppSettingsManager {
         }
         if (snapshot.hintCustom != null) {
             setAppHintCustomText(packageName, snapshot.hintCustom);
+        }
+        if (snapshot.hintGeneration != null) {
+            mmkv.putInt(KEY_APP_HINT_GENERATION + packageName, snapshot.hintGeneration).commit();
         }
         if (snapshot.floatingTopOffset != null) {
             setAppFloatingTopOffset(packageName, snapshot.floatingTopOffset);
