@@ -2,57 +2,25 @@ package com.book.mask.config;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class ChallengeTypeTest {
 
     @Test
-    public void disabledEnglishOptionsKeepConfiguredOrder() {
-        assertArrayEquals(
-                new ChallengeType[]{
-                        ChallengeType.ARITHMETIC,
-                        ChallengeType.REASONING,
-                        ChallengeType.RETELLING,
-                        ChallengeType.LISTENING_RETELLING,
-                        ChallengeType.LISTENING,
-                        ChallengeType.MIXED
-                },
-                ChallengeType.settingsOptions(false));
+    public void arithmeticPreferenceValueRoundTrips() {
+        assertEquals(
+                ChallengeType.ARITHMETIC,
+                ChallengeType.fromPreferenceValue(ChallengeType.ARITHMETIC.getPreferenceValue()));
     }
 
     @Test
-    public void mixedIsDefaultAndUsesRequestTypeOne() {
-        assertEquals(ChallengeType.MIXED, ChallengeType.fromPreferenceValue("unknown"));
-        assertEquals(1, ChallengeType.MIXED.getRequestType());
-    }
-
-    @Test
-    public void requestTypesFollowCurrentProtocol() {
-        assertEquals(0, ChallengeType.ARITHMETIC.getRequestType());
-        assertEquals(1, ChallengeType.MIXED.getRequestType());
-        assertEquals(2, ChallengeType.REASONING.getRequestType());
-        assertEquals(3, ChallengeType.ENGLISH_READING.getRequestType());
-        assertEquals(-1, ChallengeType.LISTENING_RETELLING.getRequestType());
-    }
-
-    @Test
-    public void voiceAndRuntimeFiltersHandleListeningRetellingIndependently() {
-        assertArrayEquals(
-                new ChallengeType[]{
-                        ChallengeType.ARITHMETIC,
-                        ChallengeType.REASONING,
-                        ChallengeType.RETELLING,
-                        ChallengeType.LISTENING,
-                        ChallengeType.MIXED
-                },
-                ChallengeType.availableOptions(false, true, false));
-        assertArrayEquals(
-                new ChallengeType[]{
-                        ChallengeType.ARITHMETIC,
-                        ChallengeType.REASONING,
-                        ChallengeType.MIXED
-                },
-                ChallengeType.availableOptions(false, false, false));
+    public void removedOrUnknownPreferenceValuesFallBackToArithmetic() {
+        // 历史版本 / 备份文件里可能保存过已下线的题型
+        for (String legacy : new String[]{
+                "mixed", "reasoning", "english_reading",
+                "listening", "retelling", "listening_retelling", "unknown", ""}) {
+            assertEquals(legacy, ChallengeType.ARITHMETIC, ChallengeType.fromPreferenceValue(legacy));
+        }
+        assertEquals(ChallengeType.ARITHMETIC, ChallengeType.fromPreferenceValue(null));
     }
 }

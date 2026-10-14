@@ -6,16 +6,12 @@ import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 
-import com.book.mask.challenge.listening.ListeningChallengeSession;
-import com.book.mask.challenge.retelling.RetellingChallengeSession;
-import com.book.mask.challenge.retelling.RetellingStimulusMode;
-import com.book.mask.config.ChallengeType;
 import com.book.mask.config.CustomApp;
 import com.book.mask.config.CustomAppManager;
 import com.book.mask.floating.FloatService;
 
 /**
- * 编排答题会话：按当前题型选择文本类题目或复述题，转发结果。
+ * 编排答题会话：展示算术题并转发结果。
  */
 public class ChallengeManager {
 
@@ -29,10 +25,7 @@ public class ChallengeManager {
 
     private final Handler handler;
     private final FloatService accessibilityService;
-    private final ChallengeQuestionProvider questionProvider;
     private final TextChallengeSession textSession;
-    private final RetellingChallengeSession retellingSession;
-    private final ListeningChallengeSession listeningSession;
 
     private CustomApp currentApp;
     private OnChallengeListener listener;
@@ -47,14 +40,13 @@ public class ChallengeManager {
             FloatService accessibilityService) {
         this.handler = handler;
         this.accessibilityService = accessibilityService;
-        this.questionProvider = new ChallengeQuestionProvider(context);
         this.textSession = new TextChallengeSession(
                 context,
                 floatingView,
                 windowManager,
                 layoutParams,
                 handler,
-                questionProvider);
+                new ChallengeQuestionProvider(context));
         this.textSession.setCallbacks(new TextChallengeSession.Callbacks() {
             @Override
             public void onCorrect() {
@@ -66,35 +58,6 @@ public class ChallengeManager {
                 handleCancelInternal();
             }
         });
-        this.retellingSession = new RetellingChallengeSession(
-                context,
-                floatingView,
-                accessibilityService,
-                new RetellingChallengeSession.Callbacks() {
-                    @Override
-                    public void onPassed() {
-                        onAnswerCorrectInternal();
-                    }
-
-                    @Override
-                    public void onCancel() {
-                        handleCancelInternal();
-                    }
-                });
-        this.listeningSession = new ListeningChallengeSession(
-                context,
-                floatingView,
-                new ListeningChallengeSession.Callbacks() {
-                    @Override
-                    public void onCorrect() {
-                        onAnswerCorrectInternal();
-                    }
-
-                    @Override
-                    public void onCancel() {
-                        handleCancelInternal();
-                    }
-                });
     }
 
     public void setCurrentApp(CustomApp app) {
@@ -114,20 +77,7 @@ public class ChallengeManager {
     }
 
     public void showChallenge() {
-        ChallengeType selectedType = questionProvider.selectType();
-        if (selectedType == ChallengeType.LISTENING) {
-            showListeningChallenge();
-        } else if (selectedType == ChallengeType.RETELLING) {
-            showRetellingChallenge(RetellingStimulusMode.TEXT);
-        } else if (selectedType == ChallengeType.LISTENING_RETELLING) {
-            showRetellingChallenge(RetellingStimulusMode.AUDIO);
-        } else {
-            showTextChallenge(selectedType);
-        }
-    }
-
-    private void showTextChallenge(ChallengeType type) {
-        if (!textSession.show(type)) {
+        if (!textSession.show()) {
             Log.w(TAG, "文本答题界面展示失败");
             return;
         }
@@ -138,35 +88,6 @@ public class ChallengeManager {
         Log.d(TAG, "显示答题验证界面");
     }
 
-    private void showListeningChallenge() {
-        if (!listeningSession.show()) {
-            Log.w(TAG, "听力题启动失败，回退本地算术题");
-            showTextChallenge(ChallengeType.ARITHMETIC);
-            return;
-        }
-        challengeActive = true;
-        if (accessibilityService != null) {
-            accessibilityService.onChallengeStart();
-        }
-        Log.d(TAG, "显示听力题验证界面");
-    }
-
-    private void showRetellingChallenge(RetellingStimulusMode stimulusMode) {
-        if (!retellingSession.start(stimulusMode)) {
-            Log.w(TAG, (stimulusMode == RetellingStimulusMode.AUDIO ? "听述题" : "复述题")
-                    + "启动失败，回退本地算术题");
-            showTextChallenge(ChallengeType.ARITHMETIC);
-            return;
-        }
-        challengeActive = true;
-        if (accessibilityService != null) {
-            accessibilityService.onChallengeStart();
-        }
-        Log.d(TAG, "显示"
-                + (stimulusMode == RetellingStimulusMode.AUDIO ? "听述题" : "复述题")
-                + "验证界面");
-    }
-
     public void hideChallenge() {
         if (!challengeActive) {
             return;
@@ -174,22 +95,18 @@ public class ChallengeManager {
 
         challengeActive = false;
         textSession.destroy();
-        retellingSession.hideQuietly();
-        listeningSession.hideQuietly();
         if (accessibilityService != null) {
             accessibilityService.onChallengeEnd();
         }
         Log.d(TAG, "隐藏答题验证界面");
     }
 
-    /** 永久移除悬浮窗时释放各题型会话持有的线程与媒体资源。 */
+    /** 永久移除悬浮窗时释放答题会话持有的资源。 */
     public void destroy() {
         boolean wasActive = challengeActive;
         challengeActive = false;
         listener = null;
         textSession.destroy();
-        retellingSession.destroy();
-        listeningSession.destroy();
         if (wasActive && accessibilityService != null) {
             accessibilityService.onChallengeEnd();
         }

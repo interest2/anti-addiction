@@ -15,8 +15,8 @@ import java.util.Map;
 /**
  * 通用 OpenAI 兼容 Chat Completions 客户端。
  *
- * <p>从 {@link OpenAiCompatibleProvider} 中抽出的通用层，供「生成提醒语」与「复述题评分」等
- * 多个业务复用 Provider 配置、API Key 存储、HTTP 客户端、模型选择与推理模式关闭逻辑。
+ * <p>从 {@link OpenAiCompatibleProvider} 中抽出的通用层，封装 Provider 配置、API Key 存储、
+ * HTTP 客户端、模型选择与推理模式关闭逻辑，便于后续其他业务复用。
  */
 public final class OpenAiChatClient {
 

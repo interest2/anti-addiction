@@ -14,7 +14,6 @@ import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
 import com.book.mask.config.ChallengeType;
-import com.book.mask.constant.QuestionConst;
 import com.book.mask.personalize.RelaxManager;
 
 import java.util.ArrayList;
@@ -22,8 +21,7 @@ import java.util.List;
 
 /**
  * 「题目类型」设置子页面。
- * 直接展示答题类型单选列表与答题计时选项，并收纳听力题（豆包语音）、
- * 复述题（腾讯口语评测）两个相关服务的配置入口。
+ * 展示答题类型单选列表（目前仅算术题），点击后进入该题型的难度设置。
  */
 public class ChallengeTypeSettingsNav extends Fragment {
 
@@ -45,67 +43,30 @@ public class ChallengeTypeSettingsNav extends Fragment {
 
         view.findViewById(R.id.btn_challenge_type_settings_back)
                 .setOnClickListener(v -> getParentFragmentManager().popBackStack());
-        view.findViewById(R.id.btn_doubao_tts_settings)
-                .setOnClickListener(v -> settingsDialogManager.showDoubaoTtsSettingsDialog());
-        view.findViewById(R.id.btn_soe_settings)
-                .setOnClickListener(v -> settingsDialogManager.showSoeSettingsDialog());
 
-        if (!settingsDialogManager.isVoiceChallengeEnabled()) {
-            view.findViewById(R.id.tv_related_services_title).setVisibility(View.GONE);
-            view.findViewById(R.id.card_related_services).setVisibility(View.GONE);
-        }
-
-        settingsDialogManager.bindChallengeTimerOptions(view);
         buildChallengeTypeRows();
         return view;
     }
 
     private void buildChallengeTypeRows() {
-        ChallengeType[] challengeTypes = ChallengeType.availableOptions(
-                QuestionConst.ENGLISH_READING_ENABLED,
-                settingsDialogManager.isVoiceChallengeEnabled(),
-                settingsDialogManager.isListeningRetellingEnabled());
         ChallengeType currentType = settingsDialogManager.getChallengeType();
 
         typeList.removeAllViews();
         rows.clear();
         rowTypes.clear();
 
-        for (final ChallengeType type : challengeTypes) {
+        for (final ChallengeType type : ChallengeType.values()) {
             View row = LayoutInflater.from(requireContext())
                     .inflate(R.layout.dialog_challenge_type_item, typeList, false);
             TextView title = row.findViewById(R.id.tv_title);
-            TextView subtitle = row.findViewById(R.id.tv_subtitle);
             ImageView radio = row.findViewById(R.id.iv_radio);
-            ImageView edit = row.findViewById(R.id.iv_edit);
 
             title.setText(type.getDisplayName());
             radio.setImageResource(type == currentType
                     ? R.drawable.ic_radio_checked : R.drawable.ic_radio_unchecked);
 
-            if (type == ChallengeType.RETELLING) {
-                subtitle.setVisibility(View.VISIBLE);
-                subtitle.setText(settingsDialogManager.formatRetellingSummary());
-                edit.setVisibility(View.VISIBLE);
-                edit.setOnClickListener(v ->
-                        settingsDialogManager.showRetellingSettingsDialog(() -> {
-                            subtitle.setText(settingsDialogManager.formatRetellingSummary());
-                            refreshCheckedRows();
-                        }));
-            } else if (type == ChallengeType.LISTENING
-                    || type == ChallengeType.LISTENING_RETELLING) {
-                subtitle.setVisibility(View.VISIBLE);
-                subtitle.setText(settingsDialogManager.formatListeningSummary(type));
-                edit.setVisibility(View.VISIBLE);
-                edit.setOnClickListener(v ->
-                        settingsDialogManager.showListeningSettingsDialog(type, () -> {
-                            subtitle.setText(settingsDialogManager.formatListeningSummary(type));
-                            refreshCheckedRows();
-                        }));
-            } else if (type == ChallengeType.ARITHMETIC) {
+            if (type == ChallengeType.ARITHMETIC) {
                 updateArithmeticHint(row);
-            } else if (type == ChallengeType.REASONING) {
-                updateReasoningHint(row);
             }
 
             row.setOnClickListener(v -> onTypeSelected(type));
@@ -116,14 +77,10 @@ public class ChallengeTypeSettingsNav extends Fragment {
     }
 
     private void onTypeSelected(ChallengeType type) {
-        String preflightError =
-                settingsDialogManager.applyChallengeTypeSelection(type, this::refreshCheckedRows);
-        if (preflightError != null) {
-            UiFeedback.showError(requireContext(), preflightError);
-        }
+        settingsDialogManager.applyChallengeTypeSelection(type, this::refreshCheckedRows);
     }
 
-    /** 按下标同步选中态，并刷新算术题、推理题的生效难度提示。 */
+    /** 按下标同步选中态，并刷新算术题的生效难度提示。 */
     private void refreshCheckedRows() {
         ChallengeType currentType = settingsDialogManager.getChallengeType();
         for (int i = 0; i < rows.size(); i++) {
@@ -132,12 +89,6 @@ public class ChallengeTypeSettingsNav extends Fragment {
                     ? R.drawable.ic_radio_checked : R.drawable.ic_radio_unchecked);
             if (rowTypes.get(i) == ChallengeType.ARITHMETIC) {
                 updateArithmeticHint(rows.get(i));
-            } else if (rowTypes.get(i) == ChallengeType.REASONING) {
-                updateReasoningHint(rows.get(i));
-            } else if (rowTypes.get(i) == ChallengeType.LISTENING
-                    || rowTypes.get(i) == ChallengeType.LISTENING_RETELLING) {
-                TextView subtitle = rows.get(i).findViewById(R.id.tv_subtitle);
-                subtitle.setText(settingsDialogManager.formatListeningSummary(rowTypes.get(i)));
             }
         }
     }
@@ -146,12 +97,6 @@ public class ChallengeTypeSettingsNav extends Fragment {
     private void updateArithmeticHint(View row) {
         TextView hint = row.findViewById(R.id.tv_right_hint);
         hint.setText(settingsDialogManager.getMathDifficultyModeLabel());
-        hint.setVisibility(View.VISIBLE);
-    }
-
-    private void updateReasoningHint(View row) {
-        TextView hint = row.findViewById(R.id.tv_right_hint);
-        hint.setText(settingsDialogManager.getReasoningDifficultyLevelLabel());
         hint.setVisibility(View.VISIBLE);
     }
 }

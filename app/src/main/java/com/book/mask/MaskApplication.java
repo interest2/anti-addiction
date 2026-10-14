@@ -4,6 +4,7 @@ import android.app.Application;
 import android.util.Log;
 
 import com.book.mask.config.CustomAppManager;
+import com.book.mask.personalize.LegacyDataCleaner;
 import com.tencent.mmkv.MMKV;
 
 /**
@@ -19,5 +20,6 @@ public class MaskApplication extends Application {
         String rootDir = MMKV.initialize(this);
         Log.d(TAG, "MMKV initialized, root: " + rootDir);
         CustomAppManager.initialize(this);
+        LegacyDataCleaner.runOnce(this);
     }
 }

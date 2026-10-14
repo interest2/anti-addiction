@@ -20,12 +20,6 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
-    <!-- 复述题：本地语音识别所需的录音权限（运行时危险权限） -->
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- 复述题：若后续采用独立麦克风前台服务，面向 Android 14+ 时评估以下两项 -->
-    <!--
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-    -->
 
     <!-- 保活壁纸：无动态壁纸能力的设备仍可安装，只是该功能不可用 -->
     <uses-feature
@@ -50,7 +44,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Basic"
-        android:usesCleartextTraffic="true"
         tools:targetApi="31">
         <activity
             android:name=".ui.MainActivity"
@@ -61,14 +54,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- 复述题录音 Activity：透明主题，录音时本应用处于前台以稳定取得麦克风"使用期间"权限 -->
-        <activity
-            android:name=".challenge.retelling.recording.RetellingRecordActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:theme="@style/Theme.Retelling.Transparent"
-            android:taskAffinity="" />
 
         <!--
             保活壁纸：设为桌面壁纸后由 system_server 绑定，抬高进程优先级，

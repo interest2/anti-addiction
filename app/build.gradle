@@ -24,7 +24,7 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        // Sherpa-ONNX 只保留主流真机 ABI；调试模拟器时可临时加回 x86_64
+        // 只保留主流真机 ABI（arm64-v8a）与模拟器 ABI（x86_64），缩小安装包体积
         ndk {
             abiFilters "arm64-v8a", "x86_64"
         }
@@ -57,19 +57,6 @@ android {
         }
     }
 
-    // 两种分发形态：
-    //  full —— 内置 ASR 语音模型（app/src/full/assets/asr/paraformer-zh-small/），APK 体积大；
-    //  lite —— 不内置模型，体积小；无模型时复述题走"ASR 模型缺失"兜底，不会崩溃。
-    flavorDimensions "model"
-    productFlavors {
-        full {
-            dimension "model"
-        }
-        lite {
-            dimension "model"
-        }
-    }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
@@ -93,11 +80,6 @@ dependencies {
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'com.tencent:mmkv:2.4.0'
-    // 火山引擎 Speech SDK（豆包语音合成，听力题）：仅 full 打包；lite 用占位实现回退内置音频。
-    fullImplementation 'com.bytedance.speechengine:speechengine_tob:0.0.15.0'
-    implementation 'com.squareup.okhttp3:okhttp:4.9.1'
-    // Sherpa-ONNX 本地语音识别（复述题）：仅 full 打包，lite 用无该依赖的占位实现以缩小体积
-    fullImplementation files("libs/sherpa-onnx.aar")
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core

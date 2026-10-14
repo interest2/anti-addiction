@@ -11,8 +11,7 @@ import java.util.EnumSet;
 final class WindowSuspensionState {
     enum Reason {
         SYSTEM_UI,
-        PAGE_TRANSITION,
-        RECORDING
+        PAGE_TRANSITION
     }
 
     enum ResumeAction {

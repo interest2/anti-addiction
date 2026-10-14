@@ -27,7 +27,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.book.mask.R;
-import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
 
 import java.util.Locale;
@@ -44,7 +43,6 @@ final class ChallengeViewController {
     private static final int KEYBOARD_CHALLENGE_GAP_DP = 8;
     private static final int MIN_QUESTION_HEIGHT_DP = 72;
     private static final int MAX_QUESTION_HEIGHT_DP = 300;
-    private static final int ENGLISH_QUESTION_HEIGHT_DP = 500;
     private static final int CHALLENGE_TOP_MARGIN_DP = 16;
 
     interface Callbacks {
@@ -68,7 +66,6 @@ final class ChallengeViewController {
     private ScrollView questionScrollView;
     private View closeButton;
     private View topInfoLayout;
-    private TextView timerView;
 
     private boolean initialized;
     private boolean shown;
@@ -76,7 +73,6 @@ final class ChallengeViewController {
     private boolean keyboardLayoutListenerRegistered;
     private boolean topInfoVisibilityCaptured;
     private int topInfoVisibilityBeforeChallenge;
-    private ChallengeType currentType = ChallengeType.ARITHMETIC;
 
     private final Runnable focusKeeper = this::keepAnswerInputFocused;
     private final Runnable showKeyboardRunnable = this::showKeyboardAndStartFocusKeeper;
@@ -100,7 +96,7 @@ final class ChallengeViewController {
         this.callbacks = callbacks;
     }
 
-    boolean show(ChallengeType type, ChallengeQuestionProvider.Question question) {
+    boolean show(ChallengeQuestionProvider.Question question) {
         if (!ensureInitialized()) {
             return false;
         }
@@ -108,7 +104,7 @@ final class ChallengeViewController {
         stopFocusTasks();
         shown = true;
         hideTopInfo();
-        renderQuestion(type, question);
+        renderQuestion(question);
         answerEdit.setText("");
         hideResult();
         challengeLayout.setTranslationY(0);
@@ -128,32 +124,14 @@ final class ChallengeViewController {
         return true;
     }
 
-    void updateQuestion(ChallengeType type, ChallengeQuestionProvider.Question question) {
+    void updateQuestion(ChallengeQuestionProvider.Question question) {
         if (!initialized || !shown) {
             return;
         }
-        renderQuestion(type, question);
+        renderQuestion(question);
         answerEdit.setText("");
         answerEdit.requestFocus();
         hideResult();
-    }
-
-    /** 显示 / 隐藏左上角答题正计时，显示时置顶避免被答题卡片遮挡。 */
-    void showTimer(boolean visible) {
-        if (timerView == null) {
-            return;
-        }
-        timerView.setVisibility(visible ? View.VISIBLE : View.GONE);
-        if (visible) {
-            timerView.bringToFront();
-        }
-    }
-
-    /** 刷新左上角正计时文案（由调用方按 mm:s 格式给出）。 */
-    void setTimerText(String text) {
-        if (timerView != null) {
-            timerView.setText(text);
-        }
     }
 
     void showEmptyAnswer() {
@@ -202,13 +180,10 @@ final class ChallengeViewController {
         stopKeyboardAwarePositioning();
         hideKeyboard();
         answerEdit.clearFocus();
-        applyQuestionStyle(ChallengeType.ARITHMETIC);
+        applyQuestionStyle();
         challengeLayout.setTranslationY(0);
         challengeLayout.setVisibility(View.GONE);
         restoreTopInfo();
-        if (timerView != null) {
-            timerView.setVisibility(View.GONE);
-        }
 
         windowLayoutParams.flags =
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
@@ -238,7 +213,6 @@ final class ChallengeViewController {
         questionScrollView = floatingView.findViewById(R.id.sv_math_question);
         closeButton = floatingView.findViewById(R.id.btn_close);
         topInfoLayout = floatingView.findViewById(R.id.top_info_layout);
-        timerView = floatingView.findViewById(R.id.tv_challenge_timer);
         Button submitButton = floatingView.findViewById(R.id.btn_submit_answer);
         Button cancelButton = floatingView.findViewById(R.id.btn_cancel_close);
         if (challengeLayout == null
@@ -330,69 +304,43 @@ final class ChallengeViewController {
         });
     }
 
-    private void renderQuestion(
-            ChallengeType type,
-            ChallengeQuestionProvider.Question question) {
-        currentType = type;
-        applyQuestionStyle(type);
+    private void renderQuestion(ChallengeQuestionProvider.Question question) {
+        applyQuestionStyle();
         questionText.setText(question.getContent());
     }
 
-    private void applyQuestionStyle(ChallengeType type) {
+    private void applyQuestionStyle() {
         RelativeLayout.LayoutParams challengeParams =
                 (RelativeLayout.LayoutParams) challengeLayout.getLayoutParams();
         LinearLayout.LayoutParams scrollParams = questionScrollView == null
                 ? null
                 : (LinearLayout.LayoutParams) questionScrollView.getLayoutParams();
 
-        if (type == ChallengeType.ENGLISH_READING) {
-            challengeLayout.setBackgroundResource(R.drawable.floating_challenge_bg_light);
-            if (challengeTitle != null) {
-                challengeTitle.setTextColor(0xFF000000);
-            }
-            questionText.setTextColor(0xFF000000);
-            questionText.setTypeface(null, Typeface.NORMAL);
-            questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        challengeLayout.setBackgroundResource(R.drawable.floating_window_bg);
+        if (challengeTitle != null) {
+            challengeTitle.setTextColor(0xFFFFFFFF);
+        }
+        questionText.setTextColor(0xFFFFFFFF);
+        questionText.setTypeface(null, Typeface.NORMAL);
+        questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
 
+        if (shown) {
             challengeParams.removeRule(RelativeLayout.BELOW);
             challengeParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
             challengeParams.topMargin = dpToPx(CHALLENGE_TOP_MARGIN_DP);
-            challengeParams.leftMargin = 0;
-            challengeParams.rightMargin = 0;
-            if (scrollParams != null) {
-                scrollParams.height = dpToPx(500);
-            }
         } else {
-            challengeLayout.setBackgroundResource(R.drawable.floating_window_bg);
-            if (challengeTitle != null) {
-                challengeTitle.setTextColor(0xFFFFFFFF);
-            }
-            questionText.setTextColor(0xFFFFFFFF);
-            questionText.setTypeface(null, Typeface.NORMAL);
-            int fontSize = type == ChallengeType.MIXED || type == ChallengeType.REASONING
-                    ? 16
-                    : 20;
-            questionText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize);
-
-            if (shown) {
-                challengeParams.removeRule(RelativeLayout.BELOW);
-                challengeParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-                challengeParams.topMargin = dpToPx(CHALLENGE_TOP_MARGIN_DP);
-            } else {
-                challengeParams.removeRule(RelativeLayout.ALIGN_PARENT_TOP);
-                challengeParams.addRule(RelativeLayout.BELOW, R.id.top_info_layout);
-                challengeParams.topMargin = dpToPx(10);
-            }
-            challengeParams.leftMargin = 0;
-            challengeParams.rightMargin = 0;
-            if (scrollParams != null) {
-                scrollParams.height = LinearLayout.LayoutParams.WRAP_CONTENT;
-            }
+            challengeParams.removeRule(RelativeLayout.ALIGN_PARENT_TOP);
+            challengeParams.addRule(RelativeLayout.BELOW, R.id.top_info_layout);
+            challengeParams.topMargin = dpToPx(10);
+        }
+        challengeParams.leftMargin = 0;
+        challengeParams.rightMargin = 0;
+        if (scrollParams != null) {
+            scrollParams.height = LinearLayout.LayoutParams.WRAP_CONTENT;
         }
 
         challengeLayout.setLayoutParams(challengeParams);
-        questionText.setGravity(
-                type == ChallengeType.ARITHMETIC ? Gravity.CENTER_HORIZONTAL : Gravity.START);
+        questionText.setGravity(Gravity.CENTER_HORIZONTAL);
         if (questionScrollView != null) {
             questionScrollView.setLayoutParams(scrollParams);
         }
@@ -457,11 +405,9 @@ final class ChallengeViewController {
                         - challengeLayout.getTop()
                         - dpToPx(KEYBOARD_CHALLENGE_GAP_DP)
                         - fixedChallengeHeight);
-        int preferredQuestionHeight = currentType == ChallengeType.ENGLISH_READING
-                ? dpToPx(ENGLISH_QUESTION_HEIGHT_DP)
-                : Math.min(
-                        dpToPx(MAX_QUESTION_HEIGHT_DP),
-                        Math.max(questionScrollView.getHeight(), questionText.getMeasuredHeight()));
+        int preferredQuestionHeight = Math.min(
+                dpToPx(MAX_QUESTION_HEIGHT_DP),
+                Math.max(questionScrollView.getHeight(), questionText.getMeasuredHeight()));
         int minimumQuestionHeight = Math.min(
                 preferredQuestionHeight,
                 dpToPx(MIN_QUESTION_HEIGHT_DP));
@@ -484,13 +430,10 @@ final class ChallengeViewController {
         if (questionScrollView == null) {
             return;
         }
-        int height = currentType == ChallengeType.ENGLISH_READING
-                ? dpToPx(ENGLISH_QUESTION_HEIGHT_DP)
-                : LinearLayout.LayoutParams.WRAP_CONTENT;
         LinearLayout.LayoutParams params =
                 (LinearLayout.LayoutParams) questionScrollView.getLayoutParams();
-        if (params.height != height) {
-            params.height = height;
+        if (params.height != LinearLayout.LayoutParams.WRAP_CONTENT) {
+            params.height = LinearLayout.LayoutParams.WRAP_CONTENT;
             questionScrollView.setLayoutParams(params);
         }
     }

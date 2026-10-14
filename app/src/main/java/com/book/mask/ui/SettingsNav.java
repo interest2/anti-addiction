@@ -4,7 +4,6 @@ import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,31 +16,23 @@ import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.text.style.URLSpan;
-import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 
 import com.book.mask.R;
-import com.book.mask.floating.AutoScreenshotManager;
-import com.book.mask.personalize.AutoScreenshotSettings;
 import com.book.mask.personalize.BackupManager;
-import com.book.mask.personalize.ComputerFocusSettings;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.config.Share;
-import com.book.mask.floating.FloatService;
 import com.book.mask.network.AppConfigManager;
 import com.book.mask.network.LatestVersionManager;
 
@@ -56,13 +47,11 @@ import java.util.Locale;
 public class SettingsNav extends Fragment {
     private static final String TAG = "SettingsNav";
     private static final long VERSION_BADGE_REFRESH_DELAY_MS = 500L;
-    private static final long SCREENSHOT_STATUS_REFRESH_DELAY_MS = 1_000L;
     private static final int REQUEST_WRITE_EXTERNAL_STORAGE = 1001;
     private static final String APPRECIATE_IMAGE_FILE_NAME = "appreciate_1.jpg";
 
     private RelaxManager relaxManager;
     private SettingsDialogManager settingsDialogManager;
-    private AutoScreenshotSettings autoScreenshotSettings;
 
     // 待写入用户所选文件的备份 JSON，点击导出时生成、写入完成后清空
     private String pendingBackupJson;
@@ -89,17 +78,6 @@ public class SettingsNav extends Fragment {
             }
         }
     };
-    private final Runnable autoScreenshotStatusRefresh = new Runnable() {
-        @Override
-        public void run() {
-            View view = getView();
-            if (view == null) {
-                return;
-            }
-            updateAutoScreenshotStatus(view);
-            versionBadgeHandler.postDelayed(this, SCREENSHOT_STATUS_REFRESH_DELAY_MS);
-        }
-    };
 
     @Nullable
     @Override
@@ -109,13 +87,10 @@ public class SettingsNav extends Fragment {
         // 初始化设置管理器
         relaxManager = new RelaxManager(requireContext());
         settingsDialogManager = new SettingsDialogManager(requireContext(), relaxManager);
-        autoScreenshotSettings = new AutoScreenshotSettings();
 
         setupMenuEntries(view);
         updateVersionBadge(view);
         updateAppreciateVisibility(view);
-        updateAutoScreenshotStatus(view);
-        updateComputerFocusStatus(view);
         refreshAppreciateVisibility(view);
         return view;
     }
@@ -133,131 +108,6 @@ public class SettingsNav extends Fragment {
                 .setOnClickListener(v -> openSubPage(new WallpaperSettingsNav()));
         view.findViewById(R.id.row_special_details)
                 .setOnClickListener(v -> openSubPage(new SpecialDetailsNav()));
-        view.findViewById(R.id.row_auto_screenshot)
-                .setOnClickListener(v -> toggleAutoScreenshot(view));
-        view.findViewById(R.id.row_computer_focus)
-                .setOnClickListener(v -> showComputerFocusDialog());
-    }
-
-    private void toggleAutoScreenshot(View view) {
-        if (Build.VERSION.SDK_INT < AutoScreenshotManager.MIN_SUPPORTED_SDK) {
-            android.widget.Toast.makeText(
-                    requireContext(),
-                    R.string.auto_screenshot_unsupported,
-                    android.widget.Toast.LENGTH_SHORT
-            ).show();
-            updateAutoScreenshotStatus(view);
-            return;
-        }
-
-        boolean enabled = !autoScreenshotSettings.isEnabled();
-        autoScreenshotSettings.setEnabled(enabled);
-        FloatService.notifyAutoScreenshotSettingsChanged();
-        updateAutoScreenshotStatus(view);
-        android.widget.Toast.makeText(
-                requireContext(),
-                enabled
-                        ? R.string.auto_screenshot_enabled_toast
-                        : R.string.auto_screenshot_disabled_toast,
-                android.widget.Toast.LENGTH_SHORT
-        ).show();
-    }
-
-    private void updateAutoScreenshotStatus(View view) {
-        SwitchCompat screenshotSwitch = view.findViewById(R.id.switch_auto_screenshot);
-        TextView status = view.findViewById(R.id.tv_auto_screenshot_status);
-        boolean enabled = autoScreenshotSettings.isEnabled();
-        screenshotSwitch.setChecked(enabled);
-
-        if (Build.VERSION.SDK_INT < AutoScreenshotManager.MIN_SUPPORTED_SDK) {
-            status.setText(R.string.auto_screenshot_unsupported);
-            status.setTextColor(Color.parseColor("#D32F2F"));
-            return;
-        }
-        if (!enabled) {
-            status.setText(R.string.auto_screenshot_disabled);
-            status.setTextColor(Color.parseColor("#8A8A8A"));
-            return;
-        }
-        if (!FloatService.isServiceRunning()) {
-            status.setText(R.string.auto_screenshot_waiting_for_service);
-            status.setTextColor(Color.parseColor("#EF6C00"));
-            return;
-        }
-
-        int lastResult = autoScreenshotSettings.getLastResult();
-        if (lastResult == AutoScreenshotSettings.RESULT_NONE) {
-            status.setText(R.string.auto_screenshot_waiting);
-            status.setTextColor(Color.parseColor("#EF6C00"));
-            return;
-        }
-
-        String resultTime = new SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-                .format(new Date(autoScreenshotSettings.getLastResultAt()));
-        if (lastResult == AutoScreenshotSettings.RESULT_SUCCESS) {
-            status.setText(getString(R.string.auto_screenshot_success, resultTime));
-            status.setTextColor(Color.parseColor("#2E7D32"));
-        } else {
-            status.setText(getString(
-                    R.string.auto_screenshot_failure,
-                    resultTime,
-                    autoScreenshotSettings.getLastError()
-            ));
-            status.setTextColor(Color.parseColor("#D32F2F"));
-        }
-    }
-
-    private void showComputerFocusDialog() {
-        ComputerFocusSettings settings = new ComputerFocusSettings();
-        EditText addressInput = new EditText(requireContext());
-        addressInput.setSingleLine(true);
-        addressInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        addressInput.setHint(R.string.computer_focus_address_hint);
-        addressInput.setText(settings.getServerAddress());
-        addressInput.setSelection(addressInput.getText().length());
-
-        LinearLayout inputContainer = new LinearLayout(requireContext());
-        int horizontalPadding = Math.round(24 * getResources().getDisplayMetrics().density);
-        inputContainer.setPadding(horizontalPadding, 0, horizontalPadding, 0);
-        inputContainer.addView(addressInput, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
-
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(requireContext())
-                .setTitle(R.string.computer_focus_dialog_title)
-                .setMessage(R.string.computer_focus_dialog_message)
-                .setView(inputContainer)
-                .setNegativeButton("取消", null)
-                .setPositiveButton("保存", null)
-                .create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(v -> {
-                    try {
-                        settings.setServerAddress(addressInput.getText().toString());
-                        FloatService.notifyComputerFocusSettingsChanged();
-                        View root = getView();
-                        if (root != null) {
-                            updateComputerFocusStatus(root);
-                        }
-                        int message = settings.getServerAddress().isEmpty()
-                                ? R.string.computer_focus_disabled
-                                : R.string.computer_focus_saved;
-                        android.widget.Toast.makeText(requireContext(), message,
-                                android.widget.Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                    } catch (IllegalArgumentException e) {
-                        addressInput.setError(e.getMessage());
-                    }
-                }));
-        dialog.show();
-    }
-
-    private void updateComputerFocusStatus(View view) {
-        TextView status = view.findViewById(R.id.tv_computer_focus_status);
-        String address = new ComputerFocusSettings().getServerAddress();
-        status.setText(address.isEmpty()
-                ? getString(R.string.computer_focus_not_configured)
-                : address);
     }
 
     private void refreshAppreciateVisibility(View view) {
@@ -756,15 +606,12 @@ public class SettingsNav extends Fragment {
     public void onResume() {
         super.onResume();
         versionBadgeHandler.removeCallbacks(versionBadgeRefresh);
-        versionBadgeHandler.removeCallbacks(autoScreenshotStatusRefresh);
         versionBadgeHandler.post(versionBadgeRefresh);
-        versionBadgeHandler.post(autoScreenshotStatusRefresh);
     }
 
     @Override
     public void onPause() {
         versionBadgeHandler.removeCallbacks(versionBadgeRefresh);
-        versionBadgeHandler.removeCallbacks(autoScreenshotStatusRefresh);
         super.onPause();
     }
 } 

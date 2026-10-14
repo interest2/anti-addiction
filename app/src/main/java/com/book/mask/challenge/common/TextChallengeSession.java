@@ -7,25 +7,19 @@ import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 
-import com.book.mask.config.ChallengeType;
 import com.book.mask.constant.Const;
 import com.book.mask.personalize.AnswerOverviewRecord;
 import com.book.mask.personalize.AnswerOverviewStore;
 import com.book.mask.personalize.ChallengeRecord;
 import com.book.mask.personalize.ChallengeRecordStore;
-import com.book.mask.personalize.ChallengeSettingsManager;
-import com.book.mask.util.DateUtils;
-
-import java.util.Locale;
 
 
 /**
- * 文本类答题会话：算术题 / 推理题 / 英文阅读。负责出题、答案校验、答错换题与回调。
+ * 文本类答题会话（算术题）。负责出题、答案校验、答错换题与回调。
  */
 final class TextChallengeSession implements ChallengeSession {
 
     private static final String TAG = "TextChallenge";
-    private static final long TIMER_TICK_INTERVAL_MILLIS = 1000L;
 
     interface Callbacks {
         void onCorrect();
@@ -37,25 +31,12 @@ final class TextChallengeSession implements ChallengeSession {
     private final ChallengeQuestionProvider questionProvider;
     private final ChallengeViewController viewController;
     private Callbacks callbacks;
-    private ChallengeType currentType = ChallengeType.ARITHMETIC;
     private String currentAnswer = "";
     private String currentQuestion = "";
     private boolean shown;
 
-    /** 当前题目开始计时的时刻；0 表示未计时。 */
+    /** 当前题目开始作答的时刻；0 表示未开始。用于最短作答等待与答题记录的耗时统计。 */
     private long questionStartTime = 0;
-
-    /** 左上角正计时刷新任务：每秒刷新一次计时文案（mm 或 mm:s）。 */
-    private final Runnable timerTick = new Runnable() {
-        @Override
-        public void run() {
-            if (questionStartTime == 0 || !shown) {
-                return;
-            }
-            viewController.setTimerText(formatElapsed(computeElapsedSeconds()));
-            handler.postDelayed(this, TIMER_TICK_INTERVAL_MILLIS);
-        }
-    };
 
     TextChallengeSession(
             Context context,
@@ -90,18 +71,17 @@ final class TextChallengeSession implements ChallengeSession {
     }
 
     /**
-     * 展示指定题型的新题目。
+     * 展示新的算术题。
      *
      * @return 是否成功展示
      */
-    boolean show(ChallengeType type) {
-        ChallengeQuestionProvider.Question question = questionProvider.getQuestion(type);
-        currentType = type;
+    boolean show() {
+        ChallengeQuestionProvider.Question question = questionProvider.getQuestion();
         currentAnswer = question.getAnswer();
         currentQuestion = question.getContent();
-        shown = viewController.show(type, question);
+        shown = viewController.show(question);
         if (shown) {
-            startTimer(shouldShowTimer());
+            startQuestionClock();
         }
         return shown;
     }
@@ -119,7 +99,7 @@ final class TextChallengeSession implements ChallengeSession {
     @Override
     public void destroy() {
         shown = false;
-        stopTimer();
+        stopQuestionClock();
         viewController.hide();
     }
 
@@ -145,7 +125,7 @@ final class TextChallengeSession implements ChallengeSession {
         if (currentAnswer.equalsIgnoreCase(userAnswer)) {
             Log.d(TAG, "答题正确");
             recordAnswer(userAnswer, true);
-            stopTimer();
+            stopQuestionClock();
             viewController.showCorrectAnswer();
             handler.postDelayed(() -> {
                 if (!shown) {
@@ -166,19 +146,18 @@ final class TextChallengeSession implements ChallengeSession {
             if (!shown) {
                 return;
             }
-            ChallengeQuestionProvider.Question question =
-                    questionProvider.getQuestion(currentType);
+            ChallengeQuestionProvider.Question question = questionProvider.getQuestion();
             currentAnswer = question.getAnswer();
             currentQuestion = question.getContent();
-            viewController.updateQuestion(currentType, question);
-            startTimer(shouldShowTimer());
+            viewController.updateQuestion(question);
+            startQuestionClock();
             Log.d(TAG, "生成新题目，保持输入法显示");
         }, Const.TRANSIENT_FEEDBACK_DURATION_MS);
     }
 
     /**
-     * 落地一条文本类答题记录（算术 / 推理 / 混合 / 英文阅读），供「答题记录」展示；
-     * 详情统一存 {@link ChallengeRecordStore}，概况保留实际题型供记录页分组。
+     * 落地一条答题记录，供「答题记录」展示；
+     * 详情存 {@link ChallengeRecordStore}，概况存 {@link AnswerOverviewStore}。
      */
     private void recordAnswer(String userAnswer, boolean passed) {
         try {
@@ -190,42 +169,17 @@ final class TextChallengeSession implements ChallengeSession {
             record.correctAnswer = currentAnswer == null ? "" : currentAnswer;
             record.passed = passed;
             record.elapsedSeconds = (int) computeElapsedSeconds();
-            String recordType = overviewTypeOf(currentType);
-            record.type = recordType;
             new ChallengeRecordStore().addRecord(record);
             AnswerOverviewRecord overview = new AnswerOverviewRecord();
-            overview.type = recordType;
+            overview.type = AnswerOverviewRecord.TYPE_ARITHMETIC;
             overview.timestamp = now;
             overview.elapsedSeconds = record.elapsedSeconds;
             overview.passed = passed;
-            overview.score = passed ? 100 : 0;
             new AnswerOverviewStore().addRecord(overview);
-            Log.d(TAG, "已保存文本类答题记录, 答对=" + passed + ", 耗时=" + record.elapsedSeconds);
+            Log.d(TAG, "已保存答题记录, 答对=" + passed + ", 耗时=" + record.elapsedSeconds);
         } catch (Exception e) {
-            Log.e(TAG, "保存文本类答题记录失败", e);
+            Log.e(TAG, "保存答题记录失败", e);
         }
-    }
-
-    /** 新记录保留实际文本题型；旧的 challenge 值仍由记录页按推理题兼容。 */
-    private static String overviewTypeOf(ChallengeType type) {
-        if (type == ChallengeType.ARITHMETIC) {
-            return AnswerOverviewRecord.TYPE_ARITHMETIC;
-        }
-        if (type == ChallengeType.MIXED) {
-            return AnswerOverviewRecord.TYPE_MIXED;
-        }
-        if (type == ChallengeType.ENGLISH_READING) {
-            return AnswerOverviewRecord.TYPE_ENGLISH_READING;
-        }
-        return AnswerOverviewRecord.TYPE_REASONING;
-    }
-
-    /** 算术 / 推理 / 混合题均支持计时，显示模式由「答题计时」选项控制；听力 / 复述除外。 */
-    private boolean shouldShowTimer() {
-        return questionProvider.getChallengeTimerMode() != ChallengeSettingsManager.TIMER_MODE_NONE
-                && (currentType == ChallengeType.ARITHMETIC
-                        || currentType == ChallengeType.REASONING
-                        || currentType == ChallengeType.MIXED);
     }
 
     private long computeElapsedSeconds() {
@@ -235,27 +189,12 @@ final class TextChallengeSession implements ChallengeSession {
         return (System.currentTimeMillis() - questionStartTime) / 1000;
     }
 
-    /** 启动当前题目正计时：内部始终记录耗时（供答题记录统计），show 仅控制悬浮窗左上角是否展示计时。 */
-    private void startTimer(boolean show) {
-        handler.removeCallbacks(timerTick);
+    /** 记录当前题目的开始作答时刻，供最短作答等待与答题记录耗时使用（悬浮窗不展示计时）。 */
+    private void startQuestionClock() {
         questionStartTime = System.currentTimeMillis();
-        viewController.showTimer(show);
-        if (show) {
-            viewController.setTimerText(formatElapsed(0));
-            handler.postDelayed(timerTick, TIMER_TICK_INTERVAL_MILLIS);
-        }
     }
 
-    private void stopTimer() {
-        handler.removeCallbacks(timerTick);
+    private void stopQuestionClock() {
         questionStartTime = 0;
-    }
-
-    /** 按当前「答题计时」模式格式化：仅分钟（mm，两位）或分钟和秒（mm:s）。 */
-    private String formatElapsed(long elapsedSeconds) {
-        if (questionProvider.getChallengeTimerMode() == ChallengeSettingsManager.TIMER_MODE_MINUTES) {
-            return String.format(Locale.US, "%02d", elapsedSeconds / 60);
-        }
-        return DateUtils.formatChallengeDuration(elapsedSeconds);
     }
 }

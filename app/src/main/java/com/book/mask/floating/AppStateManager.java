@@ -1,7 +1,6 @@
 package com.book.mask.floating;
 
 import android.accessibilityservice.AccessibilityService;
-import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -16,7 +15,6 @@ import com.book.mask.config.Share;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.personalize.RelaxManager;
-import com.book.mask.network.ComputerFocusManager;
 import com.book.mask.util.DateUtils;
 
 import java.util.HashMap;
@@ -37,7 +35,6 @@ public class AppStateManager {
     private RelaxManager relaxManager;
     private LeisureTimeManager leisureTimeManager;
     private AppSettingsManager appSettingsManager;
-    private ComputerFocusManager computerFocusManager;
     private AccessibilityWindowInspector windowInspector;
 
     // 应用状态相关
@@ -55,8 +52,6 @@ public class AppStateManager {
     private Runnable pendingBackgroundWindowRecheck;
     private final Map<String, Boolean> lastDetectionNotTarget = new HashMap<>();
     private final Map<String, Boolean> detectBeforeShowOnNextEntry = new HashMap<>();
-    private String lastComputerFocusBlockedPackage = "";
-    private long lastComputerFocusBlockedAt = 0;
 
     private static final class PendingPackageTransition {
         private final CustomApp targetApp;
@@ -82,7 +77,6 @@ public class AppStateManager {
         void onAppStateChanged(CustomApp app, boolean isTargetInterface);
         void onTargetPackageEnteredBeforeContentCheck(CustomApp app);
         void onAppLeft(CustomApp app);
-        void onComputerFocusBlocked(CustomApp app);
         void onTargetPackageTransitionLeft(CustomApp app);
         void onSystemUiSuspensionChanged(boolean suspended);
         void onTimerTriggered(CustomApp app);
@@ -91,12 +85,10 @@ public class AppStateManager {
     
     public AppStateManager(AccessibilityService service,
                            RelaxManager relaxManager,
-                           LeisureTimeManager leisureTimeManager,
-                           ComputerFocusManager computerFocusManager) {
+                           LeisureTimeManager leisureTimeManager) {
         this.service = service;
         this.relaxManager = relaxManager;
         this.leisureTimeManager = leisureTimeManager;
-        this.computerFocusManager = computerFocusManager;
         this.appSettingsManager = new AppSettingsManager(service);
         this.windowInspector = new AccessibilityWindowInspector(service);
         this.handler = new Handler(Looper.getMainLooper());
@@ -542,9 +534,6 @@ public class AppStateManager {
         if (packageName == null || packageName.isEmpty()) {
             return;
         }
-        if (blockForComputerFocusIfNeeded(packageName, source)) {
-            return;
-        }
         if (isPackageDetectPaused()) {
             Log.v(TAG, source + "处于悬浮窗显示防抖阶段，忽略包名变化: " + packageName);
             return;
@@ -573,55 +562,6 @@ public class AppStateManager {
         cancelPendingPackageConfirmation();
         applyConfirmedPackage(packageName, source);
         setSuspendedForSystemUi(false);
-    }
-
-    private boolean blockForComputerFocusIfNeeded(String packageName, String source) {
-        if (computerFocusManager == null || !computerFocusManager.hasActiveTask()) {
-            return false;
-        }
-
-        CustomApp app = detectSupportedApp(packageName);
-        if (app == null) {
-            return false;
-        }
-
-        String activePackage = windowInspector.getActiveRootPackage();
-        if (!packageName.equals(activePackage)) {
-            Log.v(TAG, source + "观察到受监测 APP，但活动窗口不是它，跳过电脑任务拦截: "
-                    + packageName);
-            return false;
-        }
-
-        cancelPendingContentCheck();
-        cancelPendingPackageConfirmation();
-        cancelPackageTransition();
-        cancelBackgroundWindowEventRecheck();
-        if (currentActiveApp != null) {
-            Share.clearAppState(currentActiveApp);
-        }
-        currentActiveApp = null;
-        Share.currentApp = null;
-        suspendedForSystemUi = false;
-        if (listener != null) {
-            listener.onComputerFocusBlocked(app);
-        }
-
-        long now = SystemClock.elapsedRealtime();
-        boolean recentlyBlocked = packageName.equals(lastComputerFocusBlockedPackage)
-                && now - lastComputerFocusBlockedAt < 800;
-        if (!recentlyBlocked) {
-            lastComputerFocusBlockedPackage = packageName;
-            lastComputerFocusBlockedAt = now;
-            boolean returnedHome = service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME);
-            if (!returnedHome) {
-                Intent homeIntent = new Intent(Intent.ACTION_MAIN)
-                        .addCategory(Intent.CATEGORY_HOME)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                service.startActivity(homeIntent);
-            }
-            Log.i(TAG, "电脑存在进行中任务，已退出受监测 APP: " + app.getAppName());
-        }
-        return true;
     }
 
     private void startPackageTransitionConfirmation(String source) {
@@ -977,7 +917,6 @@ public class AppStateManager {
         }
         lastDetectionNotTarget.clear();
         detectBeforeShowOnNextEntry.clear();
-        computerFocusManager = null;
     }
 
     /**

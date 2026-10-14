@@ -7,7 +7,6 @@ import android.util.Log;
 
 import com.book.mask.config.Share;
 import com.book.mask.constant.CloudConst;
-import com.book.mask.constant.QuestionConst;
 import com.book.mask.util.ContentUtils;
 
 import org.json.JSONException;
@@ -47,29 +46,8 @@ public final class AppConfigManager {
                 : serverModel;
     }
 
-    public static double getMixedReasoningQuizRatio() {
-        double quizRatio = Share.mixedReasoningQuizRatio;
-        return isQuizRatioValid(quizRatio)
-                ? quizRatio
-                : QuestionConst.MIXED_REASONING_QUIZ_RATIO_DEFAULT;
-    }
-
     public static boolean isAppreciateEnabled(int localImageCode) {
         return localImageCode > 0 && Share.appreciateImageCode == localImageCode;
-    }
-
-    /**
-     * 语音题是否可用：full 版内置语音 SDK，默认可用；
-     * lite 版仍需服务端逐设备下发授权（{@link Share#voiceChallengeAvailable}）。
-     */
-    public static boolean isVoiceChallengeAvailable() {
-        return VoiceChallengeDefaults.AVAILABLE_BY_DEFAULT || Share.voiceChallengeAvailable;
-    }
-
-    /** 听述题必须同时具备真实 TTS 与本地 ASR；lite 版即使收到语音题授权也不展示。 */
-    public static boolean isListeningRetellingAvailable() {
-        return isVoiceChallengeAvailable()
-                && VoiceChallengeDefaults.HAS_LISTENING_RETELLING_RUNTIME;
     }
 
     private static boolean isConfigFresh() {
@@ -88,24 +66,17 @@ public final class AppConfigManager {
             JSONObject config = new JSONObject(response);
             String latestVersion = getRequiredString(config, "latestVersion");
             String serverModel = getRequiredString(config, "serverModel");
-            double quizRatio = getRequiredQuizRatio(config);
             int appreciateImageCode = getAppreciateImageCode(config);
-            boolean voiceChallengeAvailable = "1".equals(
-                    config.optString("showVoiceChallenge", ""));
 
             Share.latestVersion = latestVersion;
             Share.serverModel = serverModel;
-            Share.mixedReasoningQuizRatio = quizRatio;
             Share.appreciateImageCode = appreciateImageCode;
-            Share.voiceChallengeAvailable = voiceChallengeAvailable;
             Share.latestVersionTimestamp = System.currentTimeMillis();
         } catch (Exception e) {
             Share.latestVersionTimestamp = 0L;
             Share.latestVersion = "获取失败";
             Share.serverModel = Share.DEFAULT_SERVER_MODEL;
-            Share.mixedReasoningQuizRatio = QuestionConst.MIXED_REASONING_QUIZ_RATIO_DEFAULT;
             Share.appreciateImageCode = 0;
-            Share.voiceChallengeAvailable = false;
             Log.w(TAG, "获取远端配置失败，使用本地默认配置", e);
         }
     }
@@ -133,19 +104,6 @@ public final class AppConfigManager {
         return ((String) value).trim();
     }
 
-    private static double getRequiredQuizRatio(JSONObject config) throws JSONException {
-        String value = getRequiredString(config, "quizRatio");
-        try {
-            double quizRatio = Double.parseDouble(value);
-            if (!isQuizRatioValid(quizRatio)) {
-                throw new IllegalArgumentException("配置字段无效: quizRatio");
-            }
-            return quizRatio;
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("配置字段无效: quizRatio", e);
-        }
-    }
-
     private static int getAppreciateImageCode(JSONObject config) {
         Object value = config.opt("showAppreciate");
         if (!(value instanceof String) || !((String) value).matches("[0-9]+")) {
@@ -157,9 +115,5 @@ public final class AppConfigManager {
         } catch (NumberFormatException e) {
             return 0;
         }
-    }
-
-    private static boolean isQuizRatioValid(double quizRatio) {
-        return Double.isFinite(quizRatio) && quizRatio >= 0D && quizRatio <= 1D;
     }
 }

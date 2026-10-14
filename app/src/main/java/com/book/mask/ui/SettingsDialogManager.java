@@ -1,20 +1,11 @@
 package com.book.mask.ui;
 
-import android.Manifest;
-import android.app.Activity;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.media.MediaMetadataRetriever;
-import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.InputFilter;
-import android.text.SpannableString;
-import android.text.Spanned;
 import android.text.TextWatcher;
-import android.text.style.ForegroundColorSpan;
-import android.text.style.RelativeSizeSpan;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -24,25 +15,16 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.ScrollView;
-import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.appcompat.widget.AppCompatTextView;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleEventObserver;
 import androidx.lifecycle.LifecycleOwner;
 
-import com.book.mask.challenge.common.ChallengeQuestionProvider;
-import com.book.mask.challenge.retelling.preflight.ListeningRetellingPreflight;
-import com.book.mask.challenge.retelling.preflight.RetellingPreflight;
 import com.book.mask.config.ChallengeType;
-import com.book.mask.config.Share;
 import com.book.mask.constant.Const;
 import com.book.mask.constant.QuestionConst;
 import com.book.mask.personalize.AnswerOverviewRecord;
@@ -50,16 +32,9 @@ import com.book.mask.personalize.AnswerOverviewStore;
 import com.book.mask.personalize.RelaxManager;
 import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.ChallengeSettingsManager;
-import com.book.mask.personalize.DoubaoTtsConfigManager;
 import com.book.mask.personalize.LeisureTimeManager;
-import com.book.mask.personalize.RetellingAudioStore;
-import com.book.mask.personalize.RetellingRecord;
-import com.book.mask.personalize.RetellingRecordStore;
-import com.book.mask.personalize.SoeConfigManager;
 import com.book.mask.personalize.ChallengeRecord;
 import com.book.mask.personalize.ChallengeRecordStore;
-import com.book.mask.personalize.ListeningRecord;
-import com.book.mask.personalize.ListeningRecordStore;
 import com.book.mask.config.CustomApp;
 import com.book.mask.floating.FloatService;
 import com.book.mask.util.ArithmeticUtils.MultiplicationTier;
@@ -67,9 +42,7 @@ import com.book.mask.util.DateUtils;
 import com.book.mask.R;
 import com.google.android.material.slider.Slider;
 
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -81,7 +54,6 @@ import java.util.Map;
  */
 public class SettingsDialogManager {
     private static final long LEISURE_STATE_REFRESH_INTERVAL_MS = 200;
-    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 2001;
     private static final int OPTION_CARD_BACKGROUND_COLOR = 0xFFFBFBFB;
     private static final int CUSTOM_OPTION_CARD_BACKGROUND_COLOR = 0xFFE8F5E9;
     /** 答题记录弹窗打开期间的自动刷新间隔：答新题后返回弹窗，最新记录能及时出现。 */
@@ -90,27 +62,6 @@ public class SettingsDialogManager {
     /** 答题记录表格中使用的紧凑时间格式（月-日 时:分）。 */
     private static final java.text.SimpleDateFormat RECORD_TABLE_TIME_FORMAT =
             new java.text.SimpleDateFormat("MM-dd HH:mm", Locale.getDefault());
-
-    /** 复述题保存前申请麦克风权限：权限结果返回后继续保存流程。 */
-    public interface PendingRetellingAction {
-        void run(boolean granted);
-    }
-
-    private static PendingRetellingAction pendingRetellingAction;
-
-    /**
-     * 供 MainActivity 转发运行时权限结果：麦克风权限授权后继续复述题保存。
-     */
-    public static void handleMicPermissionResult(int requestCode, boolean granted) {
-        if (requestCode != REQUEST_RECORD_AUDIO_PERMISSION) {
-            return;
-        }
-        PendingRetellingAction action = pendingRetellingAction;
-        pendingRetellingAction = null;
-        if (action != null) {
-            action.run(granted);
-        }
-    }
 
     private final Context context;
     private final RelaxManager relaxManager;
@@ -1336,101 +1287,21 @@ public class SettingsDialogManager {
         return challengeSettingsManager.getChallengeType();
     }
 
-    /** 当前设备是否可使用语音题。 */
-    public boolean isVoiceChallengeEnabled() {
-        return challengeSettingsManager.isVoiceChallengeEnabled();
-    }
-
-    public boolean isListeningRetellingEnabled() {
-        return challengeSettingsManager.isListeningRetellingEnabled();
-    }
-
     /**
-     * 切换答题类型。
-     * 复述题需先通过前置检查（大模型 / ASR），任一不满足则返回错误信息且不切换；
-     * 算术题 / 英文阅读切换后弹出对应的次级设置弹窗。
+     * 切换答题类型。算术题切换后弹出难度设置的次级弹窗。
      *
      * @param onApplied 切换成功后回调（用于刷新页面选中态）
-     * @return 非 null 表示前置检查未通过，未切换
      */
-    public String applyChallengeTypeSelection(ChallengeType selectedType, Runnable onApplied) {
-        if (selectedType == ChallengeType.RETELLING) {
-            String preflightError = RetellingPreflight.check(context);
-            if (preflightError != null) {
-                return preflightError;
-            }
-            challengeSettingsManager.setChallengeType(ChallengeType.RETELLING);
-            UiFeedback.show(context, "已设置复述题");
-            android.util.Log.d("SettingsDialog", "答题类型设置: 已切换为复述题 (枚举=" + ChallengeType.RETELLING + ")");
-            if (onApplied != null) {
-                onApplied.run();
-            }
-            return null;
-        }
-        if (selectedType == ChallengeType.LISTENING
-                || selectedType == ChallengeType.LISTENING_RETELLING) {
-            // 两种题型复用同一个设置弹窗和同一份场景数据，仅难度分别持久化。
-            showListeningSettingsDialog(selectedType, onApplied);
-            return null;
-        }
-
+    public void applyChallengeTypeSelection(ChallengeType selectedType, Runnable onApplied) {
         challengeSettingsManager.setChallengeType(selectedType);
         android.util.Log.d("SettingsDialog", "答题类型设置: 已设置题型=" + selectedType.getDisplayName()
                 + " (枚举=" + selectedType + ")");
         if (selectedType == ChallengeType.ARITHMETIC) {
             showArithmeticDifficultyDialog(onApplied);
-        } else if (selectedType == ChallengeType.REASONING) {
-            showReasoningDifficultyDialog(onApplied);
-        } else if (selectedType == ChallengeType.ENGLISH_READING) {
-            showEnglishReadingLengthDialog();
-        } else {
-            UiFeedback.show(context, "已设置为" + selectedType.getDisplayName());
         }
         if (onApplied != null) {
             onApplied.run();
         }
-        return null;
-    }
-
-    /** 绑定答题计时三选项（不显示 / 分钟 mm / 分钟和秒 mm:s），点击即持久化。 */
-    public void bindChallengeTimerOptions(View containerView) {
-        TextView none = containerView.findViewById(R.id.tv_timer_none);
-        TextView minutes = containerView.findViewById(R.id.tv_timer_minutes);
-        TextView minutesSeconds = containerView.findViewById(R.id.tv_timer_minutes_seconds);
-        final TextView[] options = {none, minutes, minutesSeconds};
-
-        applyTimerOptionSelection(options, challengeSettingsManager.getChallengeTimerMode());
-
-        View.OnClickListener listener = v -> {
-            int selectedMode;
-            if (v == none) {
-                selectedMode = ChallengeSettingsManager.TIMER_MODE_NONE;
-            } else if (v == minutes) {
-                selectedMode = ChallengeSettingsManager.TIMER_MODE_MINUTES;
-            } else {
-                selectedMode = ChallengeSettingsManager.TIMER_MODE_MINUTES_SECONDS;
-            }
-            challengeSettingsManager.setChallengeTimerMode(selectedMode);
-            applyTimerOptionSelection(options, selectedMode);
-            android.util.Log.d("SettingsDialog", "答题类型弹窗: 答题计时模式=" + selectedMode);
-        };
-        none.setOnClickListener(listener);
-        minutes.setOnClickListener(listener);
-        minutesSeconds.setOnClickListener(listener);
-    }
-
-    /** 按下标同步选中态：0 不显示 / 1 分钟 / 2 分钟和秒。 */
-    private void applyTimerOptionSelection(TextView[] options, int mode) {
-        for (int i = 0; i < options.length; i++) {
-            options[i].setSelected(i == mode);
-        }
-    }
-
-    /** 复述题行内摘要：字数/时间/合格线，取自复述题设置弹窗的当前值。 */
-    public String formatRetellingSummary() {
-        return "字数" + challengeSettingsManager.getRetellingStoryLength()
-                + " · " + challengeSettingsManager.getRetellingDisplaySeconds() + "秒"
-                + " · 合格线" + challengeSettingsManager.getRetellingPassScore();
     }
 
     /** 算术题生效难度文案：default 显示「默认难度」，custom 显示「自定义难度」。 */
@@ -1438,550 +1309,6 @@ public class SettingsDialogManager {
         return "custom".equals(challengeSettingsManager.getMathDifficultyMode())
                 ? "自定义难度"
                 : "默认难度";
-    }
-
-    public String getReasoningDifficultyLevelLabel() {
-        int level = challengeSettingsManager.getReasoningDifficultyLevel();
-        return level == ChallengeSettingsManager.REASONING_LEVEL_DEFAULT
-                ? "默认"
-                : reasoningDifficultyLabels()[level];
-    }
-
-    private String[] reasoningDifficultyLabels() {
-        return new String[]{"基础", "进阶", "挑战"};
-    }
-
-    private String[] listeningDifficultyLabels() {
-        return new String[]{"基础", "进阶"};
-    }
-
-    /** 默认返回听力题摘要，兼容已有调用。 */
-    public String formatListeningSummary() {
-        return formatListeningSummary(ChallengeType.LISTENING);
-    }
-
-    /** 听力 / 听述题摘要：难度分别读取，场景读取同一份共用设置。 */
-    public String formatListeningSummary(ChallengeType targetType) {
-        int level = targetType == ChallengeType.LISTENING_RETELLING
-                ? challengeSettingsManager.getListeningRetellingDifficultyLevel()
-                : challengeSettingsManager.getListeningDifficultyLevel();
-        String difficulty = listeningDifficultyLabels()[
-                level - ChallengeSettingsManager.LISTENING_LEVEL_STANDARD];
-        String scenario = challengeSettingsManager.getListeningScenario();
-        return "难度" + difficulty + " · 场景" + (scenario.isEmpty() ? "不限" : scenario);
-    }
-
-    /**
-     * 复述题设置弹窗：一次保存故事字数、展示秒数、通过分数三个值。
-     * 保存前检查麦克风权限（未授予则回调 MainActivity 申请）、大模型配置、ASR 模型状态；
-     * 任一不满足则不保存复述题，保留原题型。
-     *
-     * @param onSaved 保存成功后回调（用于刷新答题类型页面内的摘要与选中态）
-     */
-    public void showRetellingSettingsDialog(Runnable onSaved) {
-        View dialogView = LayoutInflater.from(context)
-                .inflate(R.layout.dialog_retelling_settings, null);
-        EditText storyLengthInput = dialogView.findViewById(R.id.et_retelling_story_length);
-        EditText displaySecondsInput = dialogView.findViewById(R.id.et_retelling_display_seconds);
-        EditText passScoreInput = dialogView.findViewById(R.id.et_retelling_pass_score);
-        storyLengthInput.setText(String.valueOf(challengeSettingsManager.getRetellingStoryLength()));
-        displaySecondsInput.setText(String.valueOf(challengeSettingsManager.getRetellingDisplaySeconds()));
-        passScoreInput.setText(String.valueOf(challengeSettingsManager.getRetellingPassScore()));
-
-        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("复述题设置")
-                .setView(dialogView)
-                .setPositiveButton("保存", null)
-                .setNegativeButton("取消", null)
-                .create();
-        dialog.setOnShowListener(ignored ->
-                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    RetellingSettings values = parseAndValidateRetellingSettings(
-                            storyLengthInput, displaySecondsInput, passScoreInput);
-                    if (values == null) {
-                        return;
-                    }
-                    if (!hasMicPermission()) {
-                        requestMicPermissionForSave(values, dialog, onSaved);
-                        return;
-                    }
-                    performRetellingSave(values, dialog, onSaved);
-                }));
-        dialog.show();
-    }
-
-    private void performRetellingSave(RetellingSettings values,
-                                      android.app.AlertDialog dialog,
-                                      Runnable onSaved) {
-        String preflightError = RetellingPreflight.check(context);
-        if (preflightError != null) {
-            UiFeedback.showError(context, preflightError);
-            return;
-        }
-        challengeSettingsManager.setRetellingStoryLength(values.storyLength);
-        challengeSettingsManager.setRetellingDisplaySeconds(values.displaySeconds);
-        challengeSettingsManager.setRetellingPassScore(values.passScore);
-        challengeSettingsManager.setChallengeType(ChallengeType.RETELLING);
-        dialog.dismiss();
-        UiFeedback.show(context, "已设置复述题");
-        android.util.Log.d("SettingsDialog", "答题类型弹窗: 保存复述题设置 字数=" + values.storyLength
-                + " 秒数=" + values.displaySeconds + " 合格线=" + values.passScore
-                + " 题型设为复述题 (枚举=" + ChallengeType.RETELLING + ")");
-        if (onSaved != null) {
-            onSaved.run();
-        }
-    }
-
-    private RetellingSettings parseAndValidateRetellingSettings(
-            EditText storyLengthInput,
-            EditText displaySecondsInput,
-            EditText passScoreInput) {
-        storyLengthInput.setError(null);
-        displaySecondsInput.setError(null);
-        passScoreInput.setError(null);
-
-        Integer storyLength = parseInteger(storyLengthInput);
-        Integer displaySeconds = parseInteger(displaySecondsInput);
-        Integer passScore = parseInteger(passScoreInput);
-
-        boolean valid = true;
-        valid &= validateIntegerInput(
-                storyLengthInput,
-                storyLength,
-                QuestionConst.RETELLING_STORY_LENGTH_MIN,
-                QuestionConst.RETELLING_STORY_LENGTH_MAX,
-                "故事字数");
-        valid &= validateIntegerInput(
-                displaySecondsInput,
-                displaySeconds,
-                QuestionConst.RETELLING_DISPLAY_SECONDS_MIN,
-                QuestionConst.RETELLING_DISPLAY_SECONDS_MAX,
-                "展示秒数");
-        valid &= validateIntegerInput(
-                passScoreInput,
-                passScore,
-                QuestionConst.RETELLING_PASS_SCORE_MIN,
-                QuestionConst.RETELLING_PASS_SCORE_MAX,
-                "通过分数");
-        if (!valid) {
-            return null;
-        }
-        return new RetellingSettings(storyLength, displaySeconds, passScore);
-    }
-
-    private boolean hasMicPermission() {
-        return ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
-                == PackageManager.PERMISSION_GRANTED;
-    }
-
-    /**
-     * 未授予麦克风权限：弹出说明并回调 MainActivity 申请运行时权限；
-     * 授权成功后继续保存，拒绝则不保存复述题。
-     */
-    private void requestMicPermissionForSave(final RetellingSettings values,
-                                             final android.app.AlertDialog settingsDialog,
-                                             final Runnable onSaved) {
-        new android.app.AlertDialog.Builder(context)
-                .setTitle("需要麦克风权限")
-                .setMessage("复述题需要录音权限，用于本地语音识别。是否授予？")
-                .setPositiveButton("去授权", (dialog, which) -> {
-                    if (!(context instanceof Activity)) {
-                        UiFeedback.showError(context, "无法申请权限");
-                        return;
-                    }
-                    pendingRetellingAction = granted -> {
-                        if (granted) {
-                            performRetellingSave(values, settingsDialog, onSaved);
-                        } else {
-                            UiFeedback.showError(context, "未授予麦克风权限，复述题未保存");
-                            settingsDialog.dismiss();
-                        }
-                    };
-                    ActivityCompat.requestPermissions(
-                            (Activity) context,
-                            new String[]{Manifest.permission.RECORD_AUDIO},
-                            REQUEST_RECORD_AUDIO_PERMISSION);
-                })
-                .setNegativeButton("取消", (dialog, which) -> {
-                    UiFeedback.showError(context, "未授予麦克风权限，复述题未保存");
-                    settingsDialog.dismiss();
-                })
-                .show();
-    }
-
-    private static class RetellingSettings {
-        final int storyLength;
-        final int displaySeconds;
-        final int passScore;
-
-        RetellingSettings(int storyLength, int displaySeconds, int passScore) {
-            this.storyLength = storyLength;
-            this.displaySeconds = displaySeconds;
-            this.passScore = passScore;
-        }
-    }
-
-    /**
-     * 显示英文阅读字数设置对话框（次级弹窗）
-     */
-    private void showEnglishReadingLengthDialog() {
-        // 创建输入框
-        android.widget.EditText input = new android.widget.EditText(context);
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        input.setHint("请输入阅读字数");
-        int currentLength = challengeSettingsManager.getEnglishReadingLength();
-        input.setText(String.valueOf(currentLength));
-        input.setSelection(input.getText().length()); // 选中所有文本，方便修改
-
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-            .setTitle("设置阅读字数")
-            .setMessage("阅读字数范围：200-1000")
-            .setView(input)
-            .setPositiveButton("确定", null)
-            .setNegativeButton("取消", null)
-            .create();
-        dialog.setOnShowListener(ignored ->
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                input.setError(null);
-                Integer length = parseInteger(input);
-                if (length == null) {
-                    showInputError(input, "请输入有效数字");
-                    return;
-                }
-                if (length < QuestionConst.ENGLISH_READING_LENGTH_MIN
-                        || length > QuestionConst.ENGLISH_READING_LENGTH_MAX) {
-                    showInputError(
-                            input,
-                            "请输入 " + QuestionConst.ENGLISH_READING_LENGTH_MIN
-                                    + "-" + QuestionConst.ENGLISH_READING_LENGTH_MAX + " 之间的数字");
-                    return;
-                }
-
-                challengeSettingsManager.setEnglishReadingLength(length);
-                dialog.dismiss();
-                UiFeedback.show(context, "已设置阅读字数为：" + length);
-            }));
-        dialog.show();
-    }
-
-    private void showReasoningDifficultyDialog(Runnable onDifficultyChanged) {
-        String[] difficultyLabels = reasoningDifficultyLabels();
-        CharSequence[] difficultyOptions = new CharSequence[difficultyLabels.length + 1];
-        difficultyOptions[0] = formatReasoningDefaultOption(difficultyLabels);
-        System.arraycopy(difficultyLabels, 0, difficultyOptions, 1, difficultyLabels.length);
-        int currentLevel = challengeSettingsManager.getReasoningDifficultyLevel();
-        int checkedItem = currentLevel == ChallengeSettingsManager.REASONING_LEVEL_DEFAULT
-                ? 0
-                : currentLevel + 1;
-
-        // 自定义内容：单选列表 + 底部灰色备注（说明难度按心算评定）
-        LinearLayout content = new LinearLayout(context);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(16), 0, dp(16), 0);
-
-        ListView optionList = new ListView(context);
-        optionList.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
-        optionList.setAdapter(new ArrayAdapter<>(context,
-                android.R.layout.simple_list_item_single_choice, difficultyOptions));
-        optionList.setItemChecked(checkedItem, true);
-
-        TextView note = new TextView(context);
-        note.setText("注：难度是以心算的角度来评定（不借助草稿纸）");
-        note.setTextSize(12);
-        note.setTextColor(0xFF757575);
-        note.setPadding(0, dp(4), 0, dp(4));
-
-        content.addView(optionList);
-        content.addView(note);
-
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("推理题难度设置")
-                .setView(content)
-                .setNegativeButton("关闭", null)
-                .create();
-        optionList.setOnItemClickListener((parent, view, position, id) -> {
-            int level = position == 0
-                    ? ChallengeSettingsManager.REASONING_LEVEL_DEFAULT
-                    : position - 1;
-            challengeSettingsManager.setReasoningDifficultyLevel(level);
-            // 立即预取新档位题目：题目缓存按难度档分开存，新档位未拉取过时只能出预置题
-            ChallengeQuestionProvider.prefetchReasoning(context, level);
-            dialog.dismiss();
-            UiFeedback.show(context, "已设置推理题难度为" + difficultyOptions[position]);
-            if (onDifficultyChanged != null) {
-                onDifficultyChanged.run();
-            }
-        });
-        dialog.show();
-    }
-
-    /** 默认用于听力题；听述题通过带目标题型的重载复用完全相同的界面。 */
-    public void showListeningSettingsDialog(Runnable onSaved) {
-        showListeningSettingsDialog(ChallengeType.LISTENING, onSaved);
-    }
-
-    /**
-     * 听力类题目设置弹窗：一次保存难度档位与场景。
-     * 场景为卡片选择（不限 / 预定义 / 自定义），与「警示语风格」弹窗一致：
-     * 自定义场景可新增多个并持久化，长按卡片可删除；选中态仅在点「保存」时写入。
-     * 听力题与听述题的难度独立保存；场景与自定义场景仍读写同一份数据。
-     *
-     * @param targetType LISTENING 或 LISTENING_RETELLING，仅决定保存后的题型
-     * @param onSaved 保存成功后回调（刷新答题类型页面内的摘要与选中态）
-     */
-    public void showListeningSettingsDialog(ChallengeType targetType, Runnable onSaved) {
-        final ChallengeType savedType = targetType == ChallengeType.LISTENING_RETELLING
-                ? ChallengeType.LISTENING_RETELLING
-                : ChallengeType.LISTENING;
-        View dialogView = LayoutInflater.from(context)
-                .inflate(R.layout.dialog_listening_settings, null);
-        android.widget.RadioGroup difficultyGroup =
-                dialogView.findViewById(R.id.rg_listening_difficulty);
-        android.widget.FrameLayout scenarioContainer =
-                dialogView.findViewById(R.id.container_listening_scenario);
-
-        int currentLevel = savedType == ChallengeType.LISTENING_RETELLING
-                ? challengeSettingsManager.getListeningRetellingDifficultyLevel()
-                : challengeSettingsManager.getListeningDifficultyLevel();
-        difficultyGroup.check(currentLevel == ChallengeSettingsManager.LISTENING_LEVEL_HARD
-                ? R.id.rb_listening_difficulty_hard
-                : R.id.rb_listening_difficulty_standard);
-
-        TagFlowLayout scenarioFlow = new TagFlowLayout(context, dpToPx(8), dpToPx(10));
-        scenarioFlow.setClipChildren(false);
-        scenarioFlow.setClipToPadding(false);
-        scenarioContainer.addView(scenarioFlow, new android.widget.FrameLayout.LayoutParams(
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
-
-        // 场景选中态先暂存在本地，点「保存」才连同难度一起写入。
-        final String[] selectedScenario = {challengeSettingsManager.getListeningScenario()};
-        renderListeningScenarioCards(scenarioFlow, selectedScenario);
-
-        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle(savedType.getDisplayName() + "设置")
-                .setView(dialogView)
-                .setPositiveButton("保存", null)
-                .setNegativeButton("取消", null)
-                .create();
-        dialog.setOnShowListener(ignored ->
-                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    int level = difficultyGroup.getCheckedRadioButtonId()
-                            == R.id.rb_listening_difficulty_hard
-                            ? ChallengeSettingsManager.LISTENING_LEVEL_HARD
-                            : ChallengeSettingsManager.LISTENING_LEVEL_STANDARD;
-                    saveListeningSettings(
-                            savedType, level, selectedScenario[0], dialog, onSaved);
-                }));
-        dialog.show();
-    }
-
-    private void saveListeningSettings(
-            ChallengeType targetType,
-            int level,
-            String scenario,
-            android.app.AlertDialog settingsDialog,
-            Runnable onSaved) {
-        if (targetType == ChallengeType.LISTENING_RETELLING && !hasMicPermission()) {
-            requestMicPermissionForListeningSettings(
-                    level, scenario, settingsDialog, onSaved);
-            return;
-        }
-        performListeningSettingsSave(targetType, level, scenario, settingsDialog, onSaved);
-    }
-
-    private void performListeningSettingsSave(
-            ChallengeType targetType,
-            int level,
-            String scenario,
-            android.app.AlertDialog settingsDialog,
-            Runnable onSaved) {
-        if (targetType == ChallengeType.LISTENING_RETELLING) {
-            String preflightError = ListeningRetellingPreflight.check(context);
-            if (preflightError != null) {
-                UiFeedback.showError(context, preflightError);
-                return;
-            }
-        }
-        if (targetType == ChallengeType.LISTENING_RETELLING) {
-            challengeSettingsManager.setListeningRetellingDifficultyLevel(level);
-        } else {
-            challengeSettingsManager.setListeningDifficultyLevel(level);
-        }
-        // 题源场景仍为单一数据源，两种题型均直接读写这一份。
-        challengeSettingsManager.setListeningScenario(scenario);
-        challengeSettingsManager.setChallengeType(targetType);
-        settingsDialog.dismiss();
-        UiFeedback.show(context, "已设置" + targetType.getDisplayName());
-        if (onSaved != null) {
-            onSaved.run();
-        }
-    }
-
-    private void requestMicPermissionForListeningSettings(
-            int level,
-            String scenario,
-            android.app.AlertDialog settingsDialog,
-            Runnable onSaved) {
-        new android.app.AlertDialog.Builder(context)
-                .setTitle("需要麦克风权限")
-                .setMessage("听述题需要录音权限，用于本地语音识别。是否授予？")
-                .setPositiveButton("去授权", (dialog, which) -> {
-                    if (!(context instanceof Activity)) {
-                        UiFeedback.showError(context, "无法申请权限");
-                        return;
-                    }
-                    pendingRetellingAction = granted -> {
-                        if (granted) {
-                            performListeningSettingsSave(
-                                    ChallengeType.LISTENING_RETELLING,
-                                    level,
-                                    scenario,
-                                    settingsDialog,
-                                    onSaved);
-                        } else {
-                            UiFeedback.showError(context, "未授予麦克风权限，听述题未保存");
-                            settingsDialog.dismiss();
-                        }
-                    };
-                    ActivityCompat.requestPermissions(
-                            (Activity) context,
-                            new String[]{Manifest.permission.RECORD_AUDIO},
-                            REQUEST_RECORD_AUDIO_PERMISSION);
-                })
-                .setNegativeButton("取消", (dialog, which) -> {
-                    UiFeedback.showError(context, "未授予麦克风权限，听述题未保存");
-                    settingsDialog.dismiss();
-                })
-                .show();
-    }
-
-    /** 渲染场景卡片：不限 + 预定义场景 + 已保存的自定义场景（可长按删除） + 添加。 */
-    private void renderListeningScenarioCards(TagFlowLayout scenarioFlow, String[] selectedScenario) {
-        scenarioFlow.removeAllViews();
-
-        TextView noLimitCard = createOptionCard("不限", selectedScenario[0].isEmpty());
-        noLimitCard.setOnClickListener(v -> {
-            selectedScenario[0] = "";
-            renderListeningScenarioCards(scenarioFlow, selectedScenario);
-        });
-        scenarioFlow.addView(noLimitCard, new TagFlowLayout.LayoutParams(
-                TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
-
-        for (String scenario : QuestionConst.LISTENING_SCENARIOS) {
-            TextView card = createOptionCard(scenario, scenario.equals(selectedScenario[0]));
-            card.setOnClickListener(v -> {
-                selectedScenario[0] = scenario;
-                renderListeningScenarioCards(scenarioFlow, selectedScenario);
-            });
-            scenarioFlow.addView(card, new TagFlowLayout.LayoutParams(
-                    TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
-        }
-
-        for (String scenario : challengeSettingsManager.getCustomListeningScenarios()) {
-            android.widget.FrameLayout card = createCustomScenarioCard(
-                    scenario, scenario.equals(selectedScenario[0]), scenarioFlow, selectedScenario);
-            scenarioFlow.addView(card, new TagFlowLayout.LayoutParams(
-                    TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
-        }
-
-        TextView addCard = createAddTargetCard();
-        addCard.setContentDescription("添加自定义场景");
-        addCard.setOnClickListener(v -> showCustomListeningScenarioInputDialog(scenario -> {
-            challengeSettingsManager.addCustomListeningScenario(scenario);
-            selectedScenario[0] = scenario;
-            renderListeningScenarioCards(scenarioFlow, selectedScenario);
-        }));
-        scenarioFlow.addView(addCard, new TagFlowLayout.LayoutParams(
-                TagFlowLayout.LayoutParams.WRAP_CONTENT, dpToPx(34)));
-    }
-
-    /** 自定义场景卡片：点击选中，长按露出删除按钮；删除立即持久化，不等「保存」。 */
-    private android.widget.FrameLayout createCustomScenarioCard(
-            String scenario,
-            boolean selected,
-            TagFlowLayout scenarioFlow,
-            String[] selectedScenario) {
-        android.widget.FrameLayout container = new android.widget.FrameLayout(context);
-        TextView card = createCustomOptionCard(scenario, selected);
-        card.setOnClickListener(v -> {
-            selectedScenario[0] = scenario;
-            renderListeningScenarioCards(scenarioFlow, selectedScenario);
-        });
-        container.addView(card, new android.widget.FrameLayout.LayoutParams(
-                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT));
-
-        TextView deleteButton = new TextView(context);
-        deleteButton.setBackground(createCircularDrawable(0xFFE84B4B));
-        deleteButton.setGravity(Gravity.CENTER);
-        deleteButton.setText("×");
-        deleteButton.setTextSize(15);
-        deleteButton.setTextColor(0xFFFFFFFF);
-        deleteButton.setContentDescription("删除" + scenario);
-        deleteButton.setVisibility(View.GONE);
-        deleteButton.setOnClickListener(v -> {
-            challengeSettingsManager.removeCustomListeningScenario(scenario);
-            if (scenario.equals(selectedScenario[0])) {
-                selectedScenario[0] = "";
-            }
-            renderListeningScenarioCards(scenarioFlow, selectedScenario);
-        });
-        android.widget.FrameLayout.LayoutParams deleteParams =
-                new android.widget.FrameLayout.LayoutParams(dpToPx(18), dpToPx(18), Gravity.TOP | Gravity.END);
-        deleteParams.topMargin = -dpToPx(5);
-        deleteParams.rightMargin = -dpToPx(5);
-        container.addView(deleteButton, deleteParams);
-        card.setOnLongClickListener(v -> {
-            deleteButton.setVisibility(View.VISIBLE);
-            return true;
-        });
-        return container;
-    }
-
-    private void showCustomListeningScenarioInputDialog(
-            java.util.function.Consumer<String> onScenarioSaved) {
-        EditText input = new EditText(context);
-        input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(20)});
-        input.setHint("不超过 20 个字");
-
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("自定义场景")
-                .setView(createInputContainer(input))
-                .setPositiveButton("确定", null)
-                .setNegativeButton("取消", null)
-                .create();
-        dialog.setOnShowListener(ignored ->
-                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    input.setError(null);
-                    String scenario = input.getText().toString().trim();
-                    if (scenario.isEmpty()) {
-                        showInputError(input, "请输入场景");
-                        return;
-                    }
-                    dialog.dismiss();
-                    onScenarioSaved.accept(scenario);
-                }));
-        dialog.show();
-    }
-
-    private CharSequence formatReasoningDefaultOption(String[] difficultyLabels) {
-        String label = "默认";
-        String hint = "  " + String.join(
-                "、", Arrays.copyOf(difficultyLabels, 2)) + "的混合";
-        SpannableString option = new SpannableString(label + hint);
-        int hintStart = label.length();
-        option.setSpan(
-                new ForegroundColorSpan(0xFF999999),
-                hintStart,
-                option.length(),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        option.setSpan(
-                new RelativeSizeSpan(0.8f),
-                hintStart,
-                option.length(),
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        return option;
     }
 
     /**
@@ -2253,92 +1580,6 @@ public class SettingsDialogManager {
     }
 
     /**
-     * 豆包语音凭据设置弹窗：API Key / ResourceID / Speaker（双向流式 TTS）。
-     * 留空任一字段时听力题使用占位音频，听述题不可启用。
-     */
-    public void showDoubaoTtsSettingsDialog() {
-        View dialogView = LayoutInflater.from(context)
-                .inflate(R.layout.dialog_doubao_tts_settings, null);
-        EditText apiKeyInput = dialogView.findViewById(R.id.et_doubao_tts_api_key);
-        EditText resourceIdInput = dialogView.findViewById(R.id.et_doubao_tts_resource_id);
-        EditText speakerInput = dialogView.findViewById(R.id.et_doubao_tts_speaker);
-
-        DoubaoTtsConfigManager config = new DoubaoTtsConfigManager(context);
-        apiKeyInput.setText(config.getApiKey());
-        resourceIdInput.setText(config.getResourceId());
-        speakerInput.setText(config.getSpeaker());
-
-        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("豆包语音（听力题 / 听述题）")
-                .setView(dialogView)
-                .setPositiveButton("保存", null)
-                .setNegativeButton("取消", null)
-                .create();
-        dialog.setOnShowListener(ignored ->
-                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    config.setApiKey(apiKeyInput.getText().toString());
-                    config.setResourceId(resourceIdInput.getText().toString());
-                    config.setSpeaker(speakerInput.getText().toString());
-                    dialog.dismiss();
-                    UiFeedback.show(context,
-                            config.isConfigured()
-                                    ? "已保存豆包语音配置"
-                                    : "已保存（听力题使用占位音频，听述题不可用）");
-                }));
-        dialog.show();
-    }
-
-    /**
-     * 腾讯口语评测凭据设置弹窗：AppID / SecretId / SecretKey / ScoreCoeff。
-     * 留空关键凭据时复述题与听述题均不可启用。
-     */
-    public void showSoeSettingsDialog() {
-        View dialogView = LayoutInflater.from(context)
-                .inflate(R.layout.dialog_soe_settings, null);
-        EditText appIdInput = dialogView.findViewById(R.id.et_soe_app_id);
-        EditText secretIdInput = dialogView.findViewById(R.id.et_soe_secret_id);
-        EditText secretKeyInput = dialogView.findViewById(R.id.et_soe_secret_key);
-        EditText scoreCoeffInput = dialogView.findViewById(R.id.et_soe_score_coeff);
-
-        SoeConfigManager config = new SoeConfigManager(context);
-        appIdInput.setText(config.getAppId());
-        secretIdInput.setText(config.getSecretId());
-        secretKeyInput.setText(config.getSecretKey());
-        scoreCoeffInput.setText(String.valueOf(config.getScoreCoeff()));
-
-        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
-                .setTitle("腾讯口语评测（复述题 / 听述题）")
-                .setView(dialogView)
-                .setPositiveButton("保存", null)
-                .setNegativeButton("取消", null)
-                .create();
-        dialog.setOnShowListener(ignored ->
-                dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                    config.setAppId(appIdInput.getText().toString());
-                    config.setSecretId(secretIdInput.getText().toString());
-                    config.setSecretKey(secretKeyInput.getText().toString());
-                    config.setScoreCoeff(parseScoreCoeff(scoreCoeffInput.getText().toString()));
-                    dialog.dismiss();
-                    UiFeedback.show(context,
-                            config.isConfigured()
-                                    ? "已保存腾讯口语评测配置"
-                                    : "已保存（未完整配置，复述题和听述题不可用）");
-                }));
-        dialog.show();
-    }
-
-    private static float parseScoreCoeff(String text) {
-        if (text == null || text.trim().isEmpty()) {
-            return SoeConfigManager.DEFAULT_SCORE_COEFF;
-        }
-        try {
-            return Float.parseFloat(text.trim());
-        } catch (NumberFormatException e) {
-            return SoeConfigManager.DEFAULT_SCORE_COEFF;
-        }
-    }
-
-    /**
      * 显示悬浮窗额外显示日常提醒设置对话框
      */
     public void showFloatingStrictReminderDialog(Runnable onSettingChanged) {
@@ -2561,15 +1802,13 @@ public class SettingsDialogManager {
     }
 
     /**
-     * 展示答题记录弹窗：滚动列表按时间倒序展示算术 / 推理 / 听力 / 复述题记录，有详情的行可点击展开详情。
+     * 展示答题记录弹窗：滚动列表按时间倒序展示算术题记录，有详情的行可点击查看详情。
      */
     public void showAnswerRecordsDialog() {
         View dialogView = LayoutInflater.from(context)
                 .inflate(R.layout.dialog_answer_records, null);
         LinearLayout container = dialogView.findViewById(R.id.ll_answer_records);
         ScrollView scrollView = dialogView.findViewById(R.id.scroll_answer_records);
-        TextView reasoningTab = dialogView.findViewById(R.id.tab_answer_records_reasoning);
-        TextView otherTab = dialogView.findViewById(R.id.tab_answer_records_other);
 
         final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
                 .setTitle("答题记录")
@@ -2588,9 +1827,7 @@ public class SettingsDialogManager {
                         .setTitle("清空答题记录")
                         .setMessage("确定清空全部答题记录？此操作不可恢复。")
                         .setPositiveButton("清空", (d, w) -> {
-                            new RetellingRecordStore(context).clear();
                             new ChallengeRecordStore().clear();
-                            new ListeningRecordStore().clear();
                             new AnswerOverviewStore().clear();
                             dialog.dismiss();
                             showAnswerRecordsDialog();
@@ -2603,30 +1840,7 @@ public class SettingsDialogManager {
         // 弹窗打开期间持有的最近一次渲染的概况列表，用于检测数据变化后局部重绘
         final java.util.concurrent.atomic.AtomicReference<List<AnswerOverviewRecord>> lastRendered =
                 new java.util.concurrent.atomic.AtomicReference<>(new AnswerOverviewStore().getRecords());
-        final boolean[] showOther = {Share.answerRecordsShowOtherTab};
-        applyAnswerRecordTabSelection(reasoningTab, otherTab, showOther[0]);
-        renderAnswerRecords(container, lastRendered.get(), showOther[0]);
-
-        reasoningTab.setOnClickListener(v -> {
-            if (!showOther[0]) {
-                return;
-            }
-            showOther[0] = false;
-            Share.answerRecordsShowOtherTab = false;
-            applyAnswerRecordTabSelection(reasoningTab, otherTab, false);
-            renderAnswerRecords(container, lastRendered.get(), false);
-            scrollView.post(() -> scrollView.scrollTo(0, 0));
-        });
-        otherTab.setOnClickListener(v -> {
-            if (showOther[0]) {
-                return;
-            }
-            showOther[0] = true;
-            Share.answerRecordsShowOtherTab = true;
-            applyAnswerRecordTabSelection(reasoningTab, otherTab, true);
-            renderAnswerRecords(container, lastRendered.get(), true);
-            scrollView.post(() -> scrollView.scrollTo(0, 0));
-        });
+        renderAnswerRecords(container, lastRendered.get());
 
         // 定时检测新记录：答新题后返回弹窗，最新记录能及时出现，且保留滚动位置
         final Handler handler = new Handler(Looper.getMainLooper());
@@ -2640,7 +1854,7 @@ public class SettingsDialogManager {
                 if (!sameOverviewList(latest, lastRendered.get())) {
                     int scrollY = scrollView.getScrollY();
                     lastRendered.set(latest);
-                    renderAnswerRecords(container, latest, showOther[0]);
+                    renderAnswerRecords(container, latest);
                     scrollView.post(() -> scrollView.scrollTo(0, scrollY));
                 }
                 handler.postDelayed(this, ANSWER_RECORDS_REFRESH_INTERVAL_MS);
@@ -2652,50 +1866,26 @@ public class SettingsDialogManager {
         dialog.show();
     }
 
-    /** 按当前选项卡渲染记录列表：空态或表头 + 各行。 */
+    /** 渲染记录列表：空态或表头 + 各行。 */
     private void renderAnswerRecords(
             LinearLayout container,
-            List<AnswerOverviewRecord> overviews,
-            boolean showOther) {
+            List<AnswerOverviewRecord> overviews) {
         container.removeAllViews();
         List<AnswerRecordEntry> entries = collectAnswerRecordEntries(overviews);
-        entries.removeIf(entry -> isOtherRecordType(entry.type) != showOther);
         if (entries.isEmpty()) {
             TextView empty = new TextView(context);
-            empty.setText(showOther ? "暂无其他答题记录" : "暂无算术/推理答题记录");
+            empty.setText("暂无答题记录");
             empty.setTextColor(0xFF8A8A8A);
             empty.setTextSize(15);
             empty.setGravity(Gravity.CENTER);
             empty.setPadding(0, dp(36), 0, dp(36));
             container.addView(empty);
         } else {
-            container.addView(buildRecordTableHeader(showOther));
+            container.addView(buildRecordTableHeader());
             for (AnswerRecordEntry entry : entries) {
                 container.addView(buildRecordTableRow(entry));
             }
         }
-    }
-
-    /** 顶部双选项卡选中态：白底深色为当前页，透明灰字为另一页。 */
-    private void applyAnswerRecordTabSelection(
-            TextView reasoningTab, TextView otherTab, boolean showOther) {
-        styleAnswerRecordTab(reasoningTab, !showOther);
-        styleAnswerRecordTab(otherTab, showOther);
-    }
-
-    private void styleAnswerRecordTab(TextView tab, boolean selected) {
-        android.graphics.drawable.GradientDrawable background =
-                new android.graphics.drawable.GradientDrawable();
-        background.setColor(selected ? 0xFFFFFFFF : 0x00FFFFFF);
-        background.setCornerRadius(dp(8));
-        tab.setBackground(background);
-        tab.setTextColor(selected ? 0xFF1976D2 : 0xFF777777);
-    }
-
-    private static boolean isOtherRecordType(String type) {
-        return !AnswerOverviewRecord.TYPE_ARITHMETIC.equals(type)
-                && !AnswerOverviewRecord.TYPE_REASONING.equals(type)
-                && !AnswerOverviewRecord.TYPE_CHALLENGE.equals(type);
     }
 
     /** 两个概况列表是否一致（按时间倒序逐条比对概要字段），用于检测是否有新记录。 */
@@ -2708,9 +1898,7 @@ public class SettingsDialogManager {
             AnswerOverviewRecord x = a.get(i);
             AnswerOverviewRecord y = b.get(i);
             if (x.timestamp != y.timestamp
-                    || !java.util.Objects.equals(x.type, y.type)
                     || x.passed != y.passed
-                    || x.score != y.score
                     || x.elapsedSeconds != y.elapsedSeconds) {
                 return false;
             }
@@ -2718,27 +1906,16 @@ public class SettingsDialogManager {
         return true;
     }
 
-    /** 汇总概况记录（列表来自概况库），按答题时间倒序合并；同时预取各题型详情库，供点击行时展示完整详情。 */
+    /** 汇总概况记录（列表来自概况库），按答题时间倒序合并；同时预取详情库，供点击行时展示完整详情。 */
     private List<AnswerRecordEntry> collectAnswerRecordEntries(List<AnswerOverviewRecord> overviews) {
         Map<Long, ChallengeRecord> challenges = new HashMap<>();
         for (ChallengeRecord record : new ChallengeRecordStore().getRecords()) {
             challenges.put(record.timestamp, record);
         }
-        Map<Long, ListeningRecord> listenings = new HashMap<>();
-        for (ListeningRecord record : new ListeningRecordStore().getRecords()) {
-            listenings.put(record.timestamp, record);
-        }
-        Map<Long, RetellingRecord> retellings = new HashMap<>();
-        for (RetellingRecord record : new RetellingRecordStore(context).getRecords()) {
-            retellings.put(record.timestamp, record);
-        }
 
         List<AnswerRecordEntry> entries = new ArrayList<>();
         for (AnswerOverviewRecord overview : overviews) {
-            entries.add(new AnswerRecordEntry(overview,
-                    challenges.get(overview.timestamp),
-                    listenings.get(overview.timestamp),
-                    retellings.get(overview.timestamp)));
+            entries.add(new AnswerRecordEntry(overview, challenges.get(overview.timestamp)));
         }
         entries.sort((a, b) -> Long.compare(b.timestamp, a.timestamp));
         return entries;
@@ -2747,49 +1924,20 @@ public class SettingsDialogManager {
     /** 答题记录行封装：列表字段来自概况记录，详情字段可为空（超过详情保留期）。 */
     private static final class AnswerRecordEntry {
         final long timestamp;
-        final String type;
         final int elapsedSeconds;
         final boolean passed;
-        final int score;
         final ChallengeRecord challenge;
-        final ListeningRecord listening;
-        final RetellingRecord retelling;
 
-        AnswerRecordEntry(AnswerOverviewRecord overview,
-                          ChallengeRecord challenge,
-                          ListeningRecord listening,
-                          RetellingRecord retelling) {
+        AnswerRecordEntry(AnswerOverviewRecord overview, ChallengeRecord challenge) {
             this.timestamp = overview.timestamp;
-            this.type = overview.type;
             this.elapsedSeconds = overview.elapsedSeconds;
             this.passed = overview.passed;
-            this.score = resolveOverviewScore(overview, listening, retelling);
             this.challenge = challenge;
-            this.listening = listening;
-            this.retelling = retelling;
         }
     }
 
-    /** 兼容旧概况记录：优先读新分数字段，其次从详情回填，最后将判定题折算为 100/0。 */
-    private static int resolveOverviewScore(
-            AnswerOverviewRecord overview,
-            ListeningRecord listening,
-            RetellingRecord retelling) {
-        int score = overview.score;
-        if (score < 0 && retelling != null) {
-            score = retelling.score;
-        }
-        if (score < 0 && listening != null) {
-            score = listening.passed ? 100 : 0;
-        }
-        if (score < 0 && AnswerOverviewRecord.TYPE_LISTENING.equals(overview.type)) {
-            score = overview.passed ? 100 : 0;
-        }
-        return score < 0 ? -1 : Math.max(0, Math.min(100, score));
-    }
-
-    /** 构造答题记录表头；「其他」页将结果列切换为分数。 */
-    private View buildRecordTableHeader(boolean showOther) {
+    /** 构造答题记录表头。 */
+    private View buildRecordTableHeader() {
         LinearLayout header = new LinearLayout(context);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -2797,10 +1945,9 @@ public class SettingsDialogManager {
         header.setBackgroundColor(0xFFE8E8E8);
         header.setLayoutParams(new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        header.addView(buildTableHeaderCell("题型", 1));
         header.addView(buildTableHeaderCell("时间", 2));
         header.addView(buildTableHeaderCell("耗时", 1));
-        header.addView(buildTableHeaderCell(showOther ? "分数" : "结果", 1));
+        header.addView(buildTableHeaderCell("结果", 1));
         header.addView(buildTableHeaderCell("题目", 1));
         return header;
     }
@@ -2817,7 +1964,6 @@ public class SettingsDialogManager {
         rowParams.bottomMargin = dp(2);
         row.setLayoutParams(rowParams);
 
-        row.addView(buildRecordTypeCell(entry));
         row.addView(buildTableCell(formatRecordTime(entry.timestamp), 2));
         TextView elapsedCell = buildTableCell(formatRecordElapsed(entry), 1);
         elapsedCell.setTextColor(0xFFEF6C00);
@@ -2826,7 +1972,7 @@ public class SettingsDialogManager {
         row.addView(buildRecordQuestionCell(entry));
 
         // 无完整详情（题目列 "-"）的概况行不可点击，不弹任何窗口
-        if (entry.challenge != null || entry.listening != null || entry.retelling != null) {
+        if (entry.challenge != null) {
             row.setClickable(true);
             row.setFocusable(true);
             row.setOnClickListener(v -> showRecordDetailDialog(entry));
@@ -2836,7 +1982,7 @@ public class SettingsDialogManager {
 
     /** 题目列：有完整详情显示「查看」文本（点击弹出详情），无详情显示 "-"。 */
     private View buildRecordQuestionCell(final AnswerRecordEntry entry) {
-        if (entry.challenge == null && entry.listening == null && entry.retelling == null) {
+        if (entry.challenge == null) {
             return buildTableCell("-", 1);
         }
         TextView viewCell = buildTableCell("查看", 1);
@@ -2868,62 +2014,11 @@ public class SettingsDialogManager {
         return cell;
     }
 
-    /** 题型列按内容使用稳定的深色文字，便于在记录列表中快速区分。 */
-    private TextView buildRecordTypeCell(AnswerRecordEntry entry) {
-        TextView cell = buildTableCell(formatRecordType(entry), 1);
-        cell.setTextColor(recordTypeTextColor(entry.type));
-        return cell;
-    }
-
-    private static int recordTypeTextColor(String type) {
-        switch (type) {
-            case AnswerOverviewRecord.TYPE_ARITHMETIC:
-                return 0xFF5D4037;
-            case AnswerOverviewRecord.TYPE_REASONING:
-            case AnswerOverviewRecord.TYPE_CHALLENGE:
-                return 0xFF283593;
-            case AnswerOverviewRecord.TYPE_MIXED:
-                return 0xFF4A148C;
-            case AnswerOverviewRecord.TYPE_ENGLISH_READING:
-                return 0xFF00695C;
-            case AnswerOverviewRecord.TYPE_LISTENING:
-                return 0xFF1565C0;
-            case AnswerOverviewRecord.TYPE_RETELLING:
-                return 0xFFBF360C;
-            case AnswerOverviewRecord.TYPE_LISTENING_RETELLING:
-                return 0xFF880E4F;
-            default:
-                return 0xFF424242;
-        }
-    }
-
-    private String formatRecordType(AnswerRecordEntry entry) {
-        switch (entry.type) {
-            case AnswerOverviewRecord.TYPE_ARITHMETIC:
-                return "算术";
-            case AnswerOverviewRecord.TYPE_REASONING:
-            case AnswerOverviewRecord.TYPE_CHALLENGE:
-                return "推理";
-            case AnswerOverviewRecord.TYPE_MIXED:
-                return "混合";
-            case AnswerOverviewRecord.TYPE_ENGLISH_READING:
-                return "阅读";
-            case AnswerOverviewRecord.TYPE_LISTENING:
-                return "听力";
-            case AnswerOverviewRecord.TYPE_RETELLING:
-                return "复述";
-            case AnswerOverviewRecord.TYPE_LISTENING_RETELLING:
-                return "听述";
-            default:
-                return "其他";
-        }
-    }
-
     private String formatRecordTime(long timestamp) {
         return RECORD_TABLE_TIME_FORMAT.format(new java.util.Date(timestamp));
     }
 
-    /** 耗时列：仅推理 / 混合题记录带耗时，其余显示 "-"。 */
+    /** 耗时列：有计时数据显示 MM:SS，否则显示 "-"。 */
     private String formatRecordElapsed(AnswerRecordEntry entry) {
         if (entry.elapsedSeconds > 0) {
             return formatChallengeDuration(entry.elapsedSeconds);
@@ -2931,32 +2026,17 @@ public class SettingsDialogManager {
         return "-";
     }
 
-    /** 记录是否通过。 */
-    private static boolean isPassed(AnswerRecordEntry entry) {
-        return entry.passed;
-    }
-
-    /** 算术/推理/听力显示 √×；其余题型显示 0-100 分数。 */
+    /** 结果列：答对显示 √，答错显示 ×。 */
     private View buildResultCell(AnswerRecordEntry entry) {
-        boolean passed = isPassed(entry);
-        boolean otherRecord = isOtherRecordType(entry.type);
-        boolean displayScore = otherRecord
-                && !AnswerOverviewRecord.TYPE_LISTENING.equals(entry.type);
-        boolean scoreUnavailable = displayScore && entry.score < 0;
+        boolean passed = entry.passed;
         TextView symbol = new TextView(context);
-        symbol.setText(displayScore
-                ? (scoreUnavailable ? "-" : String.valueOf(entry.score))
-                : (passed ? "√" : "×"));
-        symbol.setTextSize(otherRecord ? 14 : 15);
+        symbol.setText(passed ? "√" : "×");
+        symbol.setTextSize(15);
         symbol.setTypeface(symbol.getTypeface(), android.graphics.Typeface.BOLD);
-        symbol.setTextColor(scoreUnavailable
-                ? 0xFF757575
-                : (passed ? 0xFF2E7D32 : 0xFFD32F2F));
+        symbol.setTextColor(passed ? 0xFF2E7D32 : 0xFFD32F2F);
         android.graphics.drawable.GradientDrawable bg =
                 new android.graphics.drawable.GradientDrawable();
-        bg.setColor(scoreUnavailable
-                ? 0xFFF1F1F1
-                : (passed ? 0xFFE8F5E9 : 0xFFFFEBEE));
+        bg.setColor(passed ? 0xFFE8F5E9 : 0xFFFFEBEE);
         bg.setCornerRadius(dp(6));
         symbol.setBackground(bg);
         symbol.setPadding(dp(7), dp(2), dp(7), dp(2));
@@ -2999,294 +2079,38 @@ public class SettingsDialogManager {
         return DateUtils.formatChallengeDurationFull(elapsedSeconds);
     }
 
-    /** 「我的答案」单字母答案统一转大写显示（如 a → A），其余原样。 */
-    private static String normalizeAnswerCase(String answer) {
-        if (answer == null) {
-            return "";
-        }
-        String trimmed = answer.trim();
-        if (trimmed.length() == 1) {
-            char c = trimmed.charAt(0);
-            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-                return trimmed.toUpperCase(Locale.US);
-            }
-        }
-        return answer;
-    }
-
     /** 点击表格行弹出完整答题详情；仅对有完整详情的记录生效（题目列 "-" 的行不可点击）。 */
     private void showRecordDetailDialog(final AnswerRecordEntry entry) {
-        // 弹窗内播放复述录音的播放状态（播放器 + 进度条 + 时长）；弹窗关闭时释放
-        final RetellingPlayState playerState = new RetellingPlayState();
+        ChallengeRecord r = entry.challenge;
+        if (r == null) {
+            return;
+        }
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(20), dp(12), dp(20), dp(8));
 
-        if (!isOtherRecordType(entry.type)) {
-            content.addView(buildRecordLine("【答题时间】" + DateUtils.formatTime(entry.timestamp),
-                    14, 0xFF252525, 0));
+        content.addView(buildRecordLine("【答题时间】" + DateUtils.formatTime(entry.timestamp),
+                14, 0xFF252525, 0));
+        content.addView(buildRecordLine("【耗时】"
+                + (r.elapsedSeconds > 0 ? formatChallengeDuration(r.elapsedSeconds) : "-"), 13, 0xFF333333, 0));
+        content.addView(buildRecordLine("【结果】" + (r.passed ? "√" : "×"), 13,
+                r.passed ? 0xFF2E7D32 : 0xFFD32F2F, 0));
+        content.addView(buildRecordLine("【完整题干】 " + r.question, 13, 0xFF333333, 0));
+        if (!r.passed) {
+            content.addView(buildRecordLine("【我的答案】 " + r.userAnswer, 13, 0xFF333333, 0));
         }
-        if (entry.challenge != null) {
-            ChallengeRecord r = entry.challenge;
-            content.addView(buildRecordLine("【耗时】"
-                    + (r.elapsedSeconds > 0 ? formatChallengeDuration(r.elapsedSeconds) : "-"), 13, 0xFF333333, 0));
-            content.addView(buildRecordLine("【结果】" + (r.passed ? "√" : "×"), 13,
-                    r.passed ? 0xFF2E7D32 : 0xFFD32F2F, 0));
-            content.addView(buildRecordLine("【完整题干】 " + r.question, 13, 0xFF333333, 0));
-            if (!r.passed) {
-                content.addView(buildRecordLine("【我的答案】 "
-                        + normalizeAnswerCase(r.userAnswer), 13, 0xFF333333, 0));
-            }
-            content.addView(buildRecordLine("【正确答案】 " + r.correctAnswer, 13, 0xFF333333, 0));
-        } else if (entry.listening != null) {
-            ListeningRecord r = entry.listening;
-            content.addView(buildRecordLine("【结果】" + (r.passed ? "√" : "×"), 13,
-                    r.passed ? 0xFF2E7D32 : 0xFFD32F2F, 0));
-            content.addView(buildRecordLine("【听力原文】 " + r.transcript, 13, 0xFF333333, 0));
-            content.addView(buildRecordLine("【提问】 " + r.question, 13, 0xFF333333, 0));
-            if (!r.passed) {
-                content.addView(buildRecordLine("【我的答案】 "
-                        + normalizeAnswerCase(r.userAnswer), 13, 0xFF333333, 0));
-            }
-            content.addView(buildRecordLine("【正确答案】 " + r.correctAnswer, 13, 0xFF333333, 0));
-        } else {
-            RetellingRecord r = entry.retelling;
-            boolean listeningRetelling = AnswerOverviewRecord.TYPE_LISTENING_RETELLING
-                    .equals(entry.type) || r.isListeningRetelling();
-            String resultText = listeningRetelling
-                    ? "【结果】答题" + r.getAttemptCount() + "次，分数"
-                    + r.formatAttemptScores()
-                    : "【结果】" + (r.passed ? "通过" : "未通过") + " · 得分 " + r.score;
-            content.addView(buildRecordLine(resultText, 13, 0xFF333333, 0));
-            content.addView(buildRecordLine("【原文】 " + r.story, 13, 0xFF333333, 0));
-            // 腾讯转写仅作评分依据，不存储、不展示；详情只展示本地模型转写结果（未跑离线识别则为空）
-            String localText = r.offlineRecognizedText;
-            if (localText != null && !localText.isEmpty()) {
-                content.addView(buildRecordLine("【本地模型转写】 " + localText, 13, 0xFF8A8A8A, 0));
-            }
-            content.addView(buildRecordSectionTitle("点评"));
-            content.addView(buildRecordLine("维度：内容完整 " + r.coverage
-                    + " · 逻辑连贯 " + r.order
-                    + " · 事实准确 " + r.accuracy
-                    + " · 表达完整 " + r.expression, 12, 0xFF000000, 0));
-            String pronunciation = r.formatPronunciationSummary();
-            if (pronunciation != null) {
-                content.addView(buildRecordLine("【口语评测】" + pronunciation, 12, 0xFF000000, 0));
-            }
-            if (r.feedback != null && !r.feedback.isEmpty()) {
-                content.addView(buildRecordLine("【建议】 " + r.feedback, 12, 0xFF000000, 0));
-            }
-            File audioFile = (r.audioPath == null || r.audioPath.isEmpty())
-                    ? null : new RetellingAudioStore(context).resolve(r.audioPath);
-            if (audioFile != null) {
-                content.addView(buildRetellingPlayRow(playerState, audioFile));
-            }
-        }
+        content.addView(buildRecordLine("【正确答案】 " + r.correctAnswer, 13, 0xFF333333, 0));
 
         ScrollView scrollView = new ScrollView(context);
         scrollView.addView(content);
         scrollView.setLayoutParams(new android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT, dp(400)));
 
-        final android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(context)
+        new android.app.AlertDialog.Builder(context)
                 .setTitle("答题详情")
                 .setView(scrollView)
                 .setNegativeButton("关闭", null)
-                .create();
-        // 弹窗关闭时释放播放器与进度轮询，避免持续占用音频焦点与资源
-        dialog.setOnDismissListener(d -> releaseRetellingPlayer(playerState));
-        dialog.show();
-    }
-
-    /** 复述题录音回放状态：播放器 + 进度条 + 时长文本 + 进度轮询。 */
-    private static final class RetellingPlayState {
-        MediaPlayer player;
-        TextView playButton;
-        SeekBar seekBar;
-        TextView timeText;
-        boolean tracking;
-        Runnable ticker;
-    }
-
-    /** 复述题录音回放行：第一行播放/停止按钮 + 当前/总时长，第二行可拖动进度条独占一行。 */
-    private View buildRetellingPlayRow(final RetellingPlayState state, final File audioFile) {
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-
-        LinearLayout controlRow = new LinearLayout(context);
-        controlRow.setOrientation(LinearLayout.HORIZONTAL);
-        controlRow.setGravity(Gravity.CENTER_VERTICAL);
-
-        // Button 会被主题的最小高度再次撑大；使用可点击 TextView，确保上下 padding 真正生效。
-        state.playButton = new AppCompatTextView(context);
-        state.playButton.setText("▶ 播放录音");
-        state.playButton.setTextSize(14);
-        state.playButton.setTextColor(0xFF1565C0);
-        state.playButton.setGravity(Gravity.CENTER);
-        state.playButton.setClickable(true);
-        state.playButton.setFocusable(true);
-        android.graphics.drawable.GradientDrawable bg =
-                new android.graphics.drawable.GradientDrawable();
-        bg.setColor(0xFFE3F2FD);
-        bg.setCornerRadius(dp(8));
-        state.playButton.setBackground(bg);
-        state.playButton.setIncludeFontPadding(false);
-        state.playButton.setPadding(dp(8), dp(3), dp(8), dp(3));
-
-        state.timeText = new TextView(context);
-        state.timeText.setText("00:00 / 00:00");
-        state.timeText.setTextSize(12);
-        state.timeText.setTextColor(0xFF666666);
-        state.timeText.setPadding(dp(8), 0, 0, 0);
-
-        controlRow.addView(state.playButton);
-        controlRow.addView(state.timeText);
-
-        state.seekBar = new SeekBar(context);
-        state.seekBar.setMax(readAudioDurationMillis(audioFile));
-        state.seekBar.setProgress(0);
-        updatePlayTime(state, 0);
-        LinearLayout.LayoutParams seekBarParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        seekBarParams.topMargin = dp(6);
-
-        LinearLayout.LayoutParams controlRowParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        controlRowParams.topMargin = dp(8);
-        container.addView(controlRow, controlRowParams);
-        container.addView(state.seekBar, seekBarParams);
-
-        state.seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && state.player != null) {
-                    state.player.seekTo(progress);
-                    updatePlayTime(state, progress);
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                state.tracking = true;
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                state.tracking = false;
-            }
-        });
-
-        state.playButton.setOnClickListener(v -> {
-            MediaPlayer player = state.player;
-            if (player != null && player.isPlaying()) {
-                // 再次点击停止并复位
-                resetRetellingPlayer(state);
-                return;
-            }
-            if (player != null) {
-                // 正在准备：忽略重复点击
-                return;
-            }
-            try {
-                MediaPlayer mp = new MediaPlayer();
-                mp.setDataSource(audioFile.getAbsolutePath());
-                mp.setOnPreparedListener(m -> {
-                    state.seekBar.setMax(m.getDuration());
-                    updatePlayTime(state, 0);
-                    m.start();
-                    state.playButton.setText("⏹ 停止");
-                    startPlaybackTicker(state);
-                });
-                mp.setOnCompletionListener(m -> resetRetellingPlayer(state));
-                mp.setOnErrorListener((m, what, extra) -> {
-                    resetRetellingPlayer(state);
-                    return true;
-                });
-                mp.prepareAsync();
-                state.player = mp;
-            } catch (Exception e) {
-                android.util.Log.w("SettingsDialog", "播放复述录音失败", e);
-                resetRetellingPlayer(state);
-                state.playButton.setText("播放失败");
-            }
-        });
-        return container;
-    }
-
-    /** 播放中周期性刷新进度条与时长；拖动期间暂停自动刷新，避免与手指互跳。 */
-    private void startPlaybackTicker(final RetellingPlayState state) {
-        final Runnable ticker = new Runnable() {
-            @Override
-            public void run() {
-                MediaPlayer player = state.player;
-                if (player == null || !player.isPlaying()) {
-                    // 已停止 / 播完，由复位逻辑清理轮询
-                    return;
-                }
-                if (!state.tracking) {
-                    state.seekBar.setProgress(player.getCurrentPosition());
-                    updatePlayTime(state, player.getCurrentPosition());
-                }
-                state.seekBar.postDelayed(this, 500);
-            }
-        };
-        state.ticker = ticker;
-        state.seekBar.postDelayed(ticker, 500);
-    }
-
-    /** 停止播放并复位界面（按钮 / 进度 / 时长），总时长保留。 */
-    private void resetRetellingPlayer(RetellingPlayState state) {
-        releaseRetellingPlayer(state);
-        state.playButton.setText("▶ 播放录音");
-        state.seekBar.setProgress(0);
-        updatePlayTime(state, 0);
-    }
-
-    /** 释放弹窗内的复述录音播放器与进度轮询（弹窗关闭 / 播完 / 出错时调用）。 */
-    private void releaseRetellingPlayer(RetellingPlayState state) {
-        if (state.ticker != null) {
-            state.seekBar.removeCallbacks(state.ticker);
-            state.ticker = null;
-        }
-        MediaPlayer player = state.player;
-        if (player != null) {
-            try {
-                player.release();
-            } catch (Exception ignored) {
-                // 释放失败可忽略
-            }
-            state.player = null;
-        }
-    }
-
-    /** 更新时长文本：当前 / 总（毫秒）。 */
-    private static void updatePlayTime(RetellingPlayState state, int positionMillis) {
-        state.timeText.setText(formatPlayTime(positionMillis) + " / " + formatPlayTime(state.seekBar.getMax()));
-    }
-
-    private static String formatPlayTime(int millis) {
-        int totalSeconds = millis / 1000;
-        return String.format(Locale.US, "%02d:%02d", totalSeconds / 60, totalSeconds % 60);
-    }
-
-    /** 弹窗初次展示时读取录音总时长，避免播放前分母固定显示 00:00。 */
-    private static int readAudioDurationMillis(File audioFile) {
-        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-        try {
-            retriever.setDataSource(audioFile.getAbsolutePath());
-            String duration = retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_DURATION);
-            long durationMillis = duration == null ? 0L : Long.parseLong(duration);
-            return (int) Math.max(0L, Math.min(Integer.MAX_VALUE, durationMillis));
-        } catch (Exception ignored) {
-            return 0;
-        } finally {
-            try {
-                retriever.release();
-            } catch (Exception ignored) {
-                // 元数据读取器释放失败不影响详情弹窗展示
-            }
-        }
+                .show();
     }
 
     private TextView buildRecordLine(String text, int sp, int color, int maxLines) {
@@ -3300,14 +2124,6 @@ public class SettingsDialogManager {
             tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
         }
         return tv;
-    }
-
-    /** 详情分区标题在纵向容器中独占一行，并与上下正文留出间距。 */
-    private TextView buildRecordSectionTitle(String text) {
-        TextView title = buildRecordLine(text, 14, 0xFF000000, 1);
-        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
-        title.setPadding(0, dp(8), 0, dp(2));
-        return title;
     }
 
     private int dp(int value) {

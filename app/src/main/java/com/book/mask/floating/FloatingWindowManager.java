@@ -160,11 +160,6 @@ public class FloatingWindowManager {
                 }
             });
             
-            View topInfoLayout = floatingView.findViewById(R.id.top_info_layout);
-            if (topInfoLayout != null) {
-                ChallengeTypeQuickSwitchDialog.attach(context, topInfoLayout);
-            }
-
             Button closeButton = floatingView.findViewById(R.id.btn_close);
             closeButton.setOnClickListener(v -> {
                 Log.d(TAG, "用户点击关闭按钮");
@@ -231,9 +226,8 @@ public class FloatingWindowManager {
     public void hideFloatingWindow() {
         if (isFloatingWindowVisible) {
             Log.d(TAG, "开始隐藏悬浮窗");
-            ChallengeTypeQuickSwitchDialog.dismissIfShowing();
 
-            // 永久移除窗口，同时释放答题会话持有的线程、播放器和语音引擎资源。
+            // 永久移除窗口，同时释放答题会话持有的资源。
             if (challengeManager != null) {
                 challengeManager.destroy();
             }
@@ -397,7 +391,6 @@ public class FloatingWindowManager {
     }
 
     private boolean suspendAttachedWindow(WindowSuspensionState.Reason reason) {
-        ChallengeTypeQuickSwitchDialog.dismissIfShowing();
         boolean shouldApplyPhysicalHide = windowSuspensionState.suspend(reason);
         if (!shouldApplyPhysicalHide) {
             return true;
@@ -536,36 +529,6 @@ public class FloatingWindowManager {
         notifyIfWindowActuallyShown();
     }
     
-    /**
-     * 复述题录音阶段：透明 Activity 前台期间暂停悬浮窗（保留已绘制 Window，避免覆盖录音界面）。
-     */
-    public void suspendForRecording() {
-        if (!isFloatingWindowVisible || floatingView == null || isSuspendedForRecording()) {
-            return;
-        }
-        if (!suspendAttachedWindow(WindowSuspensionState.Reason.RECORDING)) {
-            Log.w(TAG, "录音前无法暂停悬浮窗，直接保持原状");
-        }
-    }
-
-    /**
-     * 录音结束（完成 / 取消 / 出错）后恢复悬浮窗。
-     */
-    public void resumeFromRecording() {
-        if (!windowSuspensionState.hasReason(WindowSuspensionState.Reason.RECORDING)) {
-            return;
-        }
-        if (!resumeAttachedWindow(WindowSuspensionState.Reason.RECORDING)) {
-            Log.e(TAG, "录音后恢复悬浮窗失败");
-            return;
-        }
-        notifyIfWindowActuallyShown();
-    }
-
-    public boolean isSuspendedForRecording() {
-        return windowSuspensionState.hasReason(WindowSuspensionState.Reason.RECORDING);
-    }
-
     /**
      * 更新悬浮窗内容
      */

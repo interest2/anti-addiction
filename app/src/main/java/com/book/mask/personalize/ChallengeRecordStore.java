@@ -7,13 +7,10 @@ import com.tencent.mmkv.MMKV;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 /**
- * 文本类答题记录持久化：以 Gson JSON 数组存于 MMKV，新的在前，超过上限丢弃最旧。
+ * 算术题答题记录持久化：以 Gson JSON 数组存于 MMKV，新的在前，超过上限丢弃最旧。
  */
 public final class ChallengeRecordStore {
 
@@ -42,40 +39,17 @@ public final class ChallengeRecordStore {
         }
     }
 
-    /** 新增一条记录，插入到最前，按实际文本题型分别裁剪到上限后持久化。 */
+    /** 新增一条记录，插入到最前，超过上限丢弃最旧后持久化；历史版本遗留的其他题型详情随之被挤出。 */
     public synchronized void addRecord(ChallengeRecord record) {
         if (record == null) {
             return;
         }
         List<ChallengeRecord> records = getRecords();
         records.add(0, record);
-        trimToPerTypeLimit(records);
+        while (records.size() > QuestionConst.CHALLENGE_RECORD_MAX) {
+            records.remove(records.size() - 1);
+        }
         mmkv.putString(KEY, gson.toJson(records)).commit();
-    }
-
-    /** 列表新的在前：各文本题型独立保留详情，避免算术题挤掉推理题详情。 */
-    private static void trimToPerTypeLimit(List<ChallengeRecord> records) {
-        Map<String, Integer> seen = new HashMap<>();
-        for (Iterator<ChallengeRecord> it = records.iterator(); it.hasNext(); ) {
-            ChallengeRecord record = it.next();
-            String type = normalizedType(record.type);
-            int count = seen.getOrDefault(type, 0) + 1;
-            seen.put(type, count);
-            if (count > QuestionConst.CHALLENGE_RECORD_MAX) {
-                it.remove();
-            }
-        }
-    }
-
-    /** 旧记录或异常类型统一归入 legacy challenge 分组，避免产生无限多的裁剪分组。 */
-    private static String normalizedType(String type) {
-        if (AnswerOverviewRecord.TYPE_ARITHMETIC.equals(type)
-                || AnswerOverviewRecord.TYPE_REASONING.equals(type)
-                || AnswerOverviewRecord.TYPE_MIXED.equals(type)
-                || AnswerOverviewRecord.TYPE_ENGLISH_READING.equals(type)) {
-            return type;
-        }
-        return AnswerOverviewRecord.TYPE_CHALLENGE;
     }
 
     /** 清空全部记录。 */

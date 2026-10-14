@@ -7,38 +7,6 @@
     android:paddingTop="4dp"
     android:paddingEnd="12dp">
 
-    <LinearLayout
-        android:id="@+id/layout_answer_record_tabs"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:background="#FFECEFF1"
-        android:orientation="horizontal"
-        android:padding="2dp">
-
-        <TextView
-            android:id="@+id/tab_answer_records_reasoning"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="算术/推理"
-            android:textColor="#FF333333"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tab_answer_records_other"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="其他"
-            android:textColor="#FF777777"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
     <ScrollView
         android:id="@+id/scroll_answer_records"
         android:layout_width="match_parent"

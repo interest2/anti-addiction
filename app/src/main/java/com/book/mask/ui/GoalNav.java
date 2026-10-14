@@ -93,7 +93,7 @@ public class GoalNav extends Fragment {
             settingsDialogManager.showLeisureTimeDialog();
         });
 
-        // 复述题答题记录（可用 Const.ANSWER_RECORDS_ENABLED 控制入口显隐，便于后续恢复）
+        // 答题记录（可用 Const.ANSWER_RECORDS_ENABLED 控制入口显隐，便于后续恢复）
         View answerRecordsRow = view.findViewById(R.id.btn_answer_records);
         View answerRecordsDivider = view.findViewById(R.id.divider_answer_records);
         int answerRecordsVisibility = Const.ANSWER_RECORDS_ENABLED

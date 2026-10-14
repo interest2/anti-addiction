@@ -1,7 +1,7 @@
 package com.book.mask.challenge.common;
 
 /**
- * 答题会话通用契约。文本类题目（算术 / 推理 / 英文阅读）与复述题各自实现。
+ * 答题会话通用契约。目前由文本类题目（算术题）实现。
  */
 public interface ChallengeSession {
 

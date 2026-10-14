@@ -1,7 +1,5 @@
 package com.book.mask.config;
 
-import com.book.mask.constant.QuestionConst;
-
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Locale;
@@ -18,13 +16,7 @@ public class Share {
     public static volatile String latestVersion = "";
     public static volatile long latestVersionTimestamp = 0L;
     public static volatile String serverModel = DEFAULT_SERVER_MODEL;
-    public static volatile double mixedReasoningQuizRatio =
-            QuestionConst.MIXED_REASONING_QUIZ_RATIO_DEFAULT;
     public static volatile int appreciateImageCode = 0;
-    /** 服务端仅对 testDevId 对应设备下发的语音题功能授权。 */
-    public static volatile boolean voiceChallengeAvailable = false;
-    /** 答题记录弹窗最后选中的选项卡；仅在当前进程内保留。 */
-    public static volatile boolean answerRecordsShowOtherTab = false;
     public static CustomApp currentApp = null; // 当前活跃的APP（统一使用CustomApp）
     public static boolean isFloatingWindowVisible = false; // 悬浮窗是否显示
     public static Map<String, Boolean> appManuallyHidden = new HashMap<>(); // 每个APP的手动隐藏状态（使用包名作为键）

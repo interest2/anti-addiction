@@ -10,7 +10,6 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 
 import com.book.mask.constant.Const;
-import com.book.mask.challenge.retelling.transcription.SherpaOnnxTranscriber;
 import com.book.mask.config.Share;
 import com.book.mask.lifecycle.ServiceKeepAliveManager;
 import com.book.mask.personalize.RelaxManager;
@@ -18,7 +17,6 @@ import com.book.mask.personalize.AppSettingsManager;
 import com.book.mask.personalize.LeisureTimeManager;
 import com.book.mask.config.CustomApp;
 import com.book.mask.network.DeviceInfoReporter;
-import com.book.mask.network.ComputerFocusManager;
 import com.book.mask.network.TextFetcher;
 import com.book.mask.util.DateUtils;
 
@@ -46,8 +44,6 @@ public class FloatService extends AccessibilityService
     
     // 设备信息上报器
     private DeviceInfoReporter deviceInfoReporter;
-    private ComputerFocusManager computerFocusManager;
-    private AutoScreenshotManager autoScreenshotManager;
     
     // 悬浮窗文字获取器
     private TextFetcher textFetcher;
@@ -81,12 +77,6 @@ public class FloatService extends AccessibilityService
         relaxManager = new RelaxManager(this);
         appSettingsManager = new AppSettingsManager(this);
         leisureTimeManager = new LeisureTimeManager(this);
-
-        computerFocusManager = new ComputerFocusManager();
-        computerFocusManager.start();
-
-        autoScreenshotManager = new AutoScreenshotManager(this);
-        autoScreenshotManager.refresh();
         
         // 初始化设备信息上报器并上报设备信息
         deviceInfoReporter = new DeviceInfoReporter(this);
@@ -137,34 +127,11 @@ public class FloatService extends AccessibilityService
     }
 
     /**
-     * 复述题录音阶段：透明 Activity 前台期间暂停悬浮窗，避免遮罩盖住录音界面。
-     */
-    public void suspendFloatingWindowForRecording() {
-        if (floatingWindowManager != null) {
-            floatingWindowManager.suspendForRecording();
-        }
-    }
-
-    /**
-     * 复述题录音结束（完成 / 取消 / 出错）后恢复悬浮窗。
-     */
-    public void resumeFloatingWindowFromRecording() {
-        if (floatingWindowManager != null) {
-            floatingWindowManager.resumeFromRecording();
-        }
-    }
-
-    /**
      * 初始化核心管理器
      */
     private void initManagers() {
         // 初始化应用状态管理器
-        appStateManager = new AppStateManager(
-                this,
-                relaxManager,
-                leisureTimeManager,
-                computerFocusManager
-        );
+        appStateManager = new AppStateManager(this, relaxManager, leisureTimeManager);
         appStateManager.setOnAppStateListener(new AppStateManager.OnAppStateListener() {
             @Override
             public void onAppStateChanged(CustomApp app, boolean isTargetInterface) {
@@ -187,11 +154,6 @@ public class FloatService extends AccessibilityService
             
             @Override
             public void onAppLeft(CustomApp app) {
-                floatingWindowManager.hideFloatingWindow();
-            }
-
-            @Override
-            public void onComputerFocusBlocked(CustomApp app) {
                 floatingWindowManager.hideFloatingWindow();
             }
 
@@ -427,16 +389,6 @@ public class FloatService extends AccessibilityService
             deviceInfoReporter.release();
             deviceInfoReporter = null;
         }
-
-        if (computerFocusManager != null) {
-            computerFocusManager.stop();
-            computerFocusManager = null;
-        }
-
-        if (autoScreenshotManager != null) {
-            autoScreenshotManager.stop();
-            autoScreenshotManager = null;
-        }
         
         // 清理悬浮窗文字获取器
         if (textFetcher != null) {
@@ -444,9 +396,6 @@ public class FloatService extends AccessibilityService
             textFetcher = null;
         }
         
-        // 释放本地语音识别器（复述题），进程退出前清理
-        SherpaOnnxTranscriber.releaseInstance();
-
         // 清理多APP状态
         Share.clearAllAppStates();
 
@@ -476,18 +425,6 @@ public class FloatService extends AccessibilityService
     public static void notifyLeisureTimeChanged() {
         if (instance != null && instance.floatingWindowManager != null) {
             instance.floatingWindowManager.updateFloatingWindowContent(Share.currentApp);
-        }
-    }
-
-    public static void notifyComputerFocusSettingsChanged() {
-        if (instance != null && instance.computerFocusManager != null) {
-            instance.computerFocusManager.refreshNow();
-        }
-    }
-
-    public static void notifyAutoScreenshotSettingsChanged() {
-        if (instance != null && instance.autoScreenshotManager != null) {
-            instance.autoScreenshotManager.refresh();
         }
     }
 

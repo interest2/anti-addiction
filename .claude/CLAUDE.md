@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-「防沉迷提醒 APP」（`com.book.mask`，仓库名 anti-addiction / appMask）。通过无障碍服务读取前台包名与页面内容，命中「目标 APP + 关键词」时以悬浮窗遮挡推荐流，保留搜索栏等正常功能；解除遮挡需答题（算术 / 推理 / 英文阅读）或消耗「休闲时刻」免答题次数。悬浮窗提醒文字可由大模型基于用户目标动态生成。
+「防沉迷提醒 APP」（`com.book.mask`，仓库名 anti-addiction / appMask）。通过无障碍服务读取前台包名与页面内容，命中「目标 APP + 关键词」时以悬浮窗遮挡推荐流，保留搜索栏等正常功能；解除遮挡需答算术题（难度可调）或消耗「休闲时刻」免答题次数。悬浮窗提醒文字可由大模型基于用户目标动态生成。
 
 ## 技术栈与构建
 
@@ -13,7 +13,7 @@
   - 系统 `PATH` 默认的 Java 8（`1.8.0_211`）太旧，AGP 无法启动。
   - Android Studio 当前自带 JBR 25（`25.0.2`）又太新，执行单元测试任务时会在配置/反射阶段报 `Type T not present`；CLI 验证不要使用该 JBR。
   - 已确认稳定的是 `C:\Program Files\Java\jdk-17`（`17.0.10`）。PowerShell 中先显式设置：`$env:JAVA_HOME='C:\Program Files\Java\jdk-17'`，再执行 `$env:Path="$env:JAVA_HOME\bin;$env:Path"`。
-  - 为避免 `UP-TO-DATE` 造成假验证，推荐：`.\gradlew.bat :app:testFullDebugUnitTest :app:testLiteDebugUnitTest --rerun-tasks`；构建 APK 用 `.\gradlew.bat :app:assembleFullDebug :app:assembleLiteDebug --rerun-tasks`，并确认输出包含实际 `executed` 任务及 `BUILD SUCCESSFUL`。
+  - 为避免 `UP-TO-DATE` 造成假验证，推荐：`.\gradlew.bat :app:testDebugUnitTest --rerun-tasks`；构建 APK 用 `.\gradlew.bat :app:assembleDebug --rerun-tasks`（已无 full / lite 两个 flavor），并确认输出包含实际 `executed` 任务及 `BUILD SUCCESSFUL`。
 - 核心依赖：AndroidX / Material、RecyclerView、CardView、Gson、Tencent MMKV（本地配置存储）。
 - Maven 走阿里云镜像（`settings.gradle`）；release 不混淆（`minifyEnabled false`），刻意保持可审计。
 - 版本号在 `app/build.gradle`（`versionCode` / `versionName`），每次发版手动递增。
@@ -23,7 +23,7 @@
 ## 代码结构（`app/src/main/java/com/book/mask/`）
 
 - `floating/`：核心。`FloatService`（无障碍服务，总协调器）、`AppStateManager`（包名 / 页面 / 解禁状态判断）、`FloatingWindowManager`（窗口创建 / 暂停 / 恢复 / 移除，最重）、`WindowSuspensionState`（暂停原因叠加）、`PackageTransition*`（切换决策与时序）。
-- `challenge/`：答题解禁。`MathChallengeManager`（编排 / 校验 / 回调）、`ChallengeViewController`（界面 / 焦点 / 输入法）、`ChallengeQuestionProvider`。
+- `challenge/common/`：答题解禁（目前只有算术题）。`ChallengeManager`（编排 / 回调）、`TextChallengeSession`（出题 / 校验 / 记录）、`ChallengeViewController`（界面 / 焦点 / 输入法）、`ChallengeQuestionProvider`（算术出题）。
 - `config/`：`CustomApp` / `CustomAppManager`（预置 + 自定义 APP 增删改查）、`Share`（进程内运行时状态，静态字段 + Map）、输入法 / 包名日志管理。
 - `personalize/`：MMKV 持久化。`AppSettingsManager`、`SettingsStorage`、`BackupManager`（导出 / 恢复）、`LeisureTimeManager` / `RelaxManager`（休闲时刻、宽松次数）、`ChallengeSettingsManager`。
 - `network/`：`TextFetcher`、`LatestVersionManager`、`DeviceInfoReporter`（上报基础信息）；`reminder/` 为提醒文字多 Provider 体系，按职责分包：`config/`（Provider 配置校验、密钥存储、预设目录）、`content/`（文本缓存与策略）、`provider/`（官方云端 + OpenAI 兼容 Provider 与 HTTP 客户端），根目录为 `ReminderTextRepository` 等契约。自定义 Provider UI 由 `Const.REMINDER_PROVIDER_SETTINGS_ENABLED` 控制（当前开启）。

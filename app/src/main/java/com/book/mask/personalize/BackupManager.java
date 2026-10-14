@@ -30,7 +30,7 @@ import java.util.Map;
  * 大模型 Provider 配置（endpoint/model/名称/家选择）纳入备份，但密钥（ProviderSecretStore）
  * 默认排除，导入后需用户重填密钥再启用。
  * <p>
- * 如需把密钥一并带走（Provider API Key / SOE 凭据 / 豆包 TTS API Key），调用
+ * 如需把密钥一并带走（Provider API Key），调用
  * {@link #exportToJson(boolean)} 并传 {@code true}。导出入口按 {@link #hasSensitiveData()}
  * 决定按钮形态：无密钥时仅提供「导出」；有密钥时提供「导出(含密钥) / 导出(不含密钥)」
  * 两个按钮，并在界面提示导出风险，由用户自行决定。
@@ -59,8 +59,6 @@ public class BackupManager {
             AppSettingsManager.KEY_FLOATING_STRICT_REMINDER,   // 座右铭内容
             ChallengeSettingsManager.KEY_MATH_QUESTION_TYPE,   // 题目类型
             ChallengeSettingsManager.KEY_MATH_DIFFICULTY_MODE, // 算术题难度模式（default / custom）
-            ChallengeSettingsManager.KEY_LISTENING_SCENARIO,   // 听力题 / 听述题共用场景
-            ChallengeSettingsManager.KEY_LISTENING_CUSTOM_SCENARIOS, // 共用自定义场景
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_TIER,
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLICAND_TIER,
             LeisureTimeManager.KEY_LEISURE_RELAXED_TIER,                     // 休闲时刻·宽松模式：当前档位
@@ -75,15 +73,7 @@ public class BackupManager {
             ChallengeSettingsManager.KEY_MATH_SUBTRACTION_DIGITS,                 // 算术题难度：减法位数
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLIER_DIGITS,   // 算术题难度：乘数位数
             ChallengeSettingsManager.KEY_MATH_MULTIPLICATION_MULTIPLICAND_DIGITS, // 算术题难度：被乘数位数
-            ChallengeSettingsManager.KEY_REASONING_DIFFICULTY_LEVEL,              // 推理题难度：默认 / 0档 / 1档 / 2档
-            ChallengeSettingsManager.KEY_LISTENING_DIFFICULTY_LEVEL,              // 听力题难度
-            ChallengeSettingsManager.KEY_LISTENING_RETELLING_DIFFICULTY_LEVEL,    // 听述题难度
-            ChallengeSettingsManager.KEY_CHALLENGE_TIMER_MODE,                    // 答题计时显示模式
-            ChallengeSettingsManager.KEY_ENGLISH_READING_LENGTH,                  // 英文阅读题长度
-            ChallengeSettingsManager.KEY_RETELLING_STORY_LENGTH,                  // 复述题：故事字数
-            ChallengeSettingsManager.KEY_RETELLING_DISPLAY_SECONDS,               // 复述题：展示秒数
-            ChallengeSettingsManager.KEY_RETELLING_PASS_SCORE,                    // 复述题：通过分数
-            LeisureTimeManager.KEY_LEISURE_RELAXED_LARGE_MINUTES,                 // 休闲时刻·宽松模式：大档时长
+            LeisureTimeManager.KEY_LEISURE_RELAXED_LARGE_MINUTES,                // 休闲时刻·宽松模式：大档时长
             LeisureTimeManager.KEY_LEISURE_RELAXED_SHORT_MINUTES,                 // 休闲时刻·宽松模式：小档时长
     };
 
@@ -91,9 +81,6 @@ public class BackupManager {
     private static final String[] MORE_INT_KEYS = {
             AppSettingsManager.KEY_FLOATING_TOP_OFFSET,
             AppSettingsManager.KEY_FLOATING_BOTTOM_OFFSET,
-    };
-    private static final String[] MORE_STRING_KEYS = {
-            ComputerFocusSettings.KEY_SERVER_ADDRESS,
     };
 
     // 首页各卡片：每 APP 独立的键前缀
@@ -130,7 +117,7 @@ public class BackupManager {
     /**
      * 汇总所有可备份配置并序列化为带缩进的 JSON。
      *
-     * @param includeSecrets 是否携带密钥（Provider API Key / SOE 凭据 / 豆包 TTS API Key）。
+     * @param includeSecrets 是否携带密钥（Provider API Key）。
      *                       为 true 时生成额外的 {@code secrets} 区块，仅应在用户确认后调用。
      */
     public String exportToJson(boolean includeSecrets) {
@@ -143,10 +130,6 @@ public class BackupManager {
         Map<String, Object> reminderProvider = buildReminderProvider();
         if (reminderProvider != null) {
             root.put("reminderProvider", reminderProvider);
-        }
-        Map<String, Object> doubaoTts = buildDoubaoTtsConfig();
-        if (doubaoTts != null) {
-            root.put("doubaoTts", doubaoTts);
         }
         if (includeSecrets) {
             Map<String, Object> secrets = buildSecrets();
@@ -182,11 +165,11 @@ public class BackupManager {
     // ===== 密钥（敏感数据）检测与导出 =====
 
     /**
-     * 是否存在用户配置的密钥：自定义 Provider 的 API Key、SOE 凭据、豆包 TTS API Key。
+     * 是否存在用户配置的密钥：自定义 Provider 的 API Key。
      * 导出前据此判断是否需要向用户确认是否携带密钥。
      */
     public boolean hasSensitiveData() {
-        return hasProviderSecret() || hasSoeSecret() || hasDoubaoSecret();
+        return hasProviderSecret();
     }
 
     private boolean hasProviderSecret() {
@@ -203,18 +186,6 @@ public class BackupManager {
         return false;
     }
 
-    private boolean hasSoeSecret() {
-        SoeConfigManager soe = new SoeConfigManager(context);
-        return !soe.getAppId().isEmpty()
-                || !soe.getSecretId().isEmpty()
-                || !soe.getSecretKey().isEmpty();
-    }
-
-    private boolean hasDoubaoSecret() {
-        DoubaoTtsConfigManager doubao = new DoubaoTtsConfigManager(context);
-        return !doubao.getApiKey().isEmpty();
-    }
-
     /**
      * 汇总全部密钥区块；无任何密钥时返回 null。
      * 仅应在用户确认携带密钥导出后调用，产物里的密钥为明文，落盘即存在泄露面。
@@ -224,14 +195,6 @@ public class BackupManager {
         Map<String, Object> provider = buildProviderSecrets();
         if (provider != null) {
             secrets.put("provider", provider);
-        }
-        Map<String, Object> soe = buildSoeSecrets();
-        if (soe != null) {
-            secrets.put("soe", soe);
-        }
-        Map<String, Object> doubao = buildDoubaoSecrets();
-        if (doubao != null) {
-            secrets.put("doubao", doubao);
         }
         return secrets.isEmpty() ? null : secrets;
     }
@@ -256,46 +219,6 @@ public class BackupManager {
             } catch (Exception e) {
                 Log.w(TAG, "读取 Provider 密钥失败，已跳过: " + profileId, e);
             }
-        }
-        return map.isEmpty() ? null : map;
-    }
-
-    /** SOE 配置块：AppID / SecretId / SecretKey 任一存在即整体导出（含苛刻指数），保证换机可完整恢复。 */
-    private Map<String, Object> buildSoeSecrets() {
-        SoeConfigManager soe = new SoeConfigManager(context);
-        if (soe.getAppId().isEmpty()
-                && soe.getSecretId().isEmpty()
-                && soe.getSecretKey().isEmpty()) {
-            return null;
-        }
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("appId", soe.getAppId());
-        map.put("secretId", soe.getSecretId());
-        map.put("secretKey", soe.getSecretKey());
-        map.put("scoreCoeff", soe.getScoreCoeff());
-        return map;
-    }
-
-    /** 豆包 TTS 密钥区块：仅 API Key。资源 ID / 发音人属非密钥配置，走 doubaoTts 区块始终导出。 */
-    private Map<String, Object> buildDoubaoSecrets() {
-        DoubaoTtsConfigManager doubao = new DoubaoTtsConfigManager(context);
-        if (doubao.getApiKey().isEmpty()) {
-            return null;
-        }
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("apiKey", doubao.getApiKey());
-        return map;
-    }
-
-    /** 豆包 TTS 非密钥配置（资源 ID / 发音人），始终纳入备份；API Key 属于密钥，不在此列。 */
-    private Map<String, Object> buildDoubaoTtsConfig() {
-        DoubaoTtsConfigManager doubao = new DoubaoTtsConfigManager(context);
-        Map<String, Object> map = new LinkedHashMap<>();
-        if (!doubao.getResourceId().isEmpty()) {
-            map.put("resourceId", doubao.getResourceId());
-        }
-        if (!doubao.getSpeaker().isEmpty()) {
-            map.put("speaker", doubao.getSpeaker());
         }
         return map.isEmpty() ? null : map;
     }
@@ -371,7 +294,6 @@ public class BackupManager {
 
     private Map<String, Object> buildMore() {
         Map<String, Object> more = new LinkedHashMap<>();
-        putStringsIfSet(more, MORE_STRING_KEYS);
         putIntsIfSet(more, MORE_INT_KEYS);
         return more;
     }
@@ -434,18 +356,12 @@ public class BackupManager {
 
         JsonObject more = optObject(root, "more");
         if (more != null) {
-            importStrings(more, MORE_STRING_KEYS, result);
             importInts(more, MORE_INT_KEYS, result);
         }
 
         JsonObject reminderProvider = optObject(root, "reminderProvider");
         if (reminderProvider != null) {
             importReminderProvider(reminderProvider, result);
-        }
-
-        JsonObject doubaoTts = optObject(root, "doubaoTts");
-        if (doubaoTts != null) {
-            importDoubaoTtsConfig(doubaoTts, result);
         }
 
         // 密钥区块依赖 reminderProvider 先恢复出 Provider 定义，故放在其后处理
@@ -529,30 +445,10 @@ public class BackupManager {
         return map;
     }
 
-    /** 恢复豆包 TTS 非密钥配置（资源 ID / 发音人）。 */
-    private void importDoubaoTtsConfig(JsonObject config, ImportResult result) {
-        if (!has(config, "resourceId") && !has(config, "speaker")) {
-            return;
-        }
-        DoubaoTtsConfigManager doubaoManager = new DoubaoTtsConfigManager(context);
-        try {
-            if (has(config, "resourceId")) {
-                doubaoManager.setResourceId(config.get("resourceId").getAsString());
-            }
-            if (has(config, "speaker")) {
-                doubaoManager.setSpeaker(config.get("speaker").getAsString());
-            }
-            result.imported++;
-        } catch (Exception e) {
-            Log.w(TAG, "恢复豆包 TTS 配置失败", e);
-            result.skipped++;
-        }
-    }
-
     /**
-     * 恢复密钥区块：Provider API Key 经 Android Keystore 重新加密落盘，
-     * SOE / 豆包 TTS 写回各自配置存储。任一失败只跳过该条。
+     * 恢复密钥区块：Provider API Key 经 Android Keystore 重新加密落盘。任一失败只跳过该条。
      * Provider 密钥仅在对应 profile 存在时才恢复，避免产生无主密钥文件。
+     * 旧版备份里的 soe / doubao 密钥区块对应的功能已下线，直接忽略。
      */
     private void importSecrets(JsonObject secrets, ImportResult result) {
         JsonObject provider = optObject(secrets, "provider");
@@ -576,49 +472,6 @@ public class BackupManager {
                     Log.w(TAG, "恢复 Provider 密钥失败: " + profileId, e);
                     result.skipped++;
                 }
-            }
-        }
-
-        JsonObject soe = optObject(secrets, "soe");
-        if (soe != null) {
-            SoeConfigManager soeManager = new SoeConfigManager(context);
-            try {
-                if (has(soe, "appId")) {
-                    soeManager.setAppId(soe.get("appId").getAsString());
-                }
-                if (has(soe, "secretId")) {
-                    soeManager.setSecretId(soe.get("secretId").getAsString());
-                }
-                if (has(soe, "secretKey")) {
-                    soeManager.setSecretKey(soe.get("secretKey").getAsString());
-                }
-                if (has(soe, "scoreCoeff")) {
-                    soeManager.setScoreCoeff(soe.get("scoreCoeff").getAsFloat());
-                }
-                result.imported++;
-            } catch (Exception e) {
-                Log.w(TAG, "恢复 SOE 配置失败", e);
-                result.skipped++;
-            }
-        }
-
-        JsonObject doubao = optObject(secrets, "doubao");
-        if (doubao != null) {
-            DoubaoTtsConfigManager doubaoManager = new DoubaoTtsConfigManager(context);
-            try {
-                if (has(doubao, "apiKey")) {
-                    doubaoManager.setApiKey(doubao.get("apiKey").getAsString());
-                }
-                if (has(doubao, "resourceId")) {
-                    doubaoManager.setResourceId(doubao.get("resourceId").getAsString());
-                }
-                if (has(doubao, "speaker")) {
-                    doubaoManager.setSpeaker(doubao.get("speaker").getAsString());
-                }
-                result.imported++;
-            } catch (Exception e) {
-                Log.w(TAG, "恢复豆包 TTS 配置失败", e);
-                result.skipped++;
             }
         }
     }
